@@ -1,0 +1,16 @@
+{
+  "tenderer": "Bidder D",
+  "documents": [
+    {"checklist_id": "S1-01", "present": true, "page": 2},
+    {"checklist_id": "S1-02", "present": true, "page": 4},
+    {"checklist_id": "S1-03", "present": true, "page": 7},
+    {"checklist_id": "S1-04", "present": true, "page": 13}
+  ],
+  "compliance": [
+    {"requirement_id": "S2-01", "complies": "yes", "evidence": "Delivery 55 days stated", "page": 8},
+    {"requirement_id": "S2-02", "complies": "no", "evidence": "Shelf life stated as 6 months, below the 12-month essential requirement", "page": 7},
+    {"requirement_id": "S2-03", "complies": "unclear", "evidence": "Part C of Compliance Schedule left blank", "page": 9}
+  ],
+  "price": {"currency": "HKD", "unit_price": 18.5, "optimal_dosage": null, "quoted_total": null, "fx_to_hkd": null},
+  "source_file": "bidder_d_offer.pdf"
+}

@@ -1,0 +1,16 @@
+{
+  "tenderer": "Bidder C",
+  "documents": [
+    {"checklist_id": "S1-01", "present": true, "page": 1},
+    {"checklist_id": "S1-02", "present": true, "page": 3},
+    {"checklist_id": "S1-03", "present": true, "page": 5},
+    {"checklist_id": "S1-04", "present": false, "note": "Non-collusive Tendering Certificate not found in the offer"}
+  ],
+  "compliance": [
+    {"requirement_id": "S2-01", "complies": "yes", "evidence": "Delivery 50 days stated", "page": 6},
+    {"requirement_id": "S2-02", "complies": "yes", "evidence": "Shelf life 12 months stated", "page": 5},
+    {"requirement_id": "S2-03", "complies": "yes", "evidence": "Confirmed in Compliance Schedule", "page": 7}
+  ],
+  "price": {"currency": "HKD", "unit_price": 25.0, "optimal_dosage": 1.0, "quoted_total": null, "fx_to_hkd": null},
+  "source_file": "bidder_c_offer.pdf"
+}
