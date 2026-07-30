@@ -130,38 +130,15 @@ Word reports. Extractions can be corrected via
 `PUT /projects/{id}/bids/{tenderer}/extraction`; corrected bids are not re-extracted.
 Project data lives in `./data/` on the host (bind-mounted volume).
 
-## Deploying on AWS EC2 (demo hosting)
+## Client-site (production) deployment
 
-> The client's real documents are NDA-bound to **local** deployment — an EC2 demo must
-> only ever hold synthetic or sanitized documents. Production goes on the client's
-> DGX Spark, where only `GITHUB_MODELS_BASE_URL` changes (to local vLLM).
-
-On a fresh Amazon Linux 2023 instance (t3.medium+, ~2 GB RAM is enough):
-
-```bash
-sudo dnf install -y docker git
-sudo systemctl enable --now docker
-sudo usermod -aG docker ec2-user && newgrp docker
-DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-mkdir -p $DOCKER_CONFIG/cli-plugins
-curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
-  -o $DOCKER_CONFIG/cli-plugins/docker-compose && chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
-
-git clone git@github.com:tender-eval-ai/tender-evaluation-assistant.git
-cd tender-evaluation-assistant
-cp .env.example .env       # set GITHUB_TOKEN and a strong API_KEY (openssl rand -hex 24)
-docker compose up -d --build
-```
-
-Security checklist:
-- **Security group**: allow inbound 8501 (UI) from your own IP only; do NOT open
-  8000 publicly (delete its `ports:` mapping in docker-compose.yml, or keep it
-  firewalled) — the API spends LLM quota and serves documents.
-- **API_KEY must be set** — the UI passes it automatically; unauthenticated API
-  requests are rejected.
-- For anything beyond a demo, put nginx/Caddy with HTTPS in front and keep the
-  instance in a private subnet behind a load balancer or SSH tunnel
-  (`ssh -L 8501:localhost:8501 ec2-user@<host>` works with no open ports at all).
+The product is NDA-bound to **local** deployment — real tender/bid documents never
+leave the client's network. The same compose stack is the deliverable for the client's
+DGX Spark: stand up vLLM serving the local models, point `GITHUB_MODELS_BASE_URL` at
+it in `.env`, and build the images for ARM (`docker compose build` on the GB10, or
+`--platform linux/arm64`). Set a strong `API_KEY` whenever the services are reachable
+by anyone but you, and keep port 8000 (API) firewalled — the UI on 8501 is the only
+thing users need.
 
 ## Demo ⇄ production mapping
 
@@ -169,9 +146,9 @@ Security checklist:
 | ------------------------------------- | ------------------------------------------------- |
 | GitHub Models `openai/gpt-4o-mini`    | Qwen3.6-35B-A3B / DeepSeek-V4-Flash via vLLM      |
 | GitHub Models vision OCR              | Qwen3-VL-30B-A3B (MoE) page OCR, batched          |
-| CLI + JSON checkpoint files           | Web app with rubric-confirmation & review UI      |
-| Synthetic fixtures                    | Real tender/bid sets, fully local (DGX Spark GB10)|
+| Docker on a laptop (x86/arm)          | Same compose stack on DGX Spark GB10 (arm64)      |
+| Synthetic fixtures                    | Real tender/bid sets, fully local                 |
 
 Known demo limitations: free-tier rate limits (pages per doc capped via
-`--max-ocr-pages`), no Stage III–V (technical marking / combined score — phase 2), no
-review UI yet.
+`MAX_OCR_PAGES` / `--max-ocr-pages`), and no Stage III–V yet (technical marking /
+combined score — phase 2).

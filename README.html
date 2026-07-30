@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Tender Evaluation Assistant &mdash; Demo Pipeline</title>
+            <style>
+/* From extension vscode.github */
+/*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+.vscode-dark img[src$=\#gh-light-mode-only],
+.vscode-light img[src$=\#gh-dark-mode-only],
+.vscode-high-contrast:not(.vscode-high-contrast-light) img[src$=\#gh-light-mode-only],
+.vscode-high-contrast-light img[src$=\#gh-dark-mode-only] {
+	display: none;
+}
+
+</style>
+            <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex/dist/katex.min.css">
+<link href="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.css" rel="stylesheet" type="text/css">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css">
+<style>
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe WPC', 'Segoe UI', system-ui, 'Ubuntu', 'Droid Sans', sans-serif;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+        </style>
+        <style>
+.task-list-item {
+    list-style-type: none;
+}
+
+.task-list-item-checkbox {
+    margin-left: -20px;
+    vertical-align: middle;
+    pointer-events: none;
+}
+</style>
+<style>
+:root {
+  --color-note: #0969da;
+  --color-tip: #1a7f37;
+  --color-warning: #9a6700;
+  --color-severe: #bc4c00;
+  --color-caution: #d1242f;
+  --color-important: #8250df;
+}
+
+</style>
+<style>
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-note: #2f81f7;
+    --color-tip: #3fb950;
+    --color-warning: #d29922;
+    --color-severe: #db6d28;
+    --color-caution: #f85149;
+    --color-important: #a371f7;
+  }
+}
+
+</style>
+<style>
+.markdown-alert {
+  padding: 0.5rem 1rem;
+  margin-bottom: 16px;
+  color: inherit;
+  border-left: .25em solid #888;
+}
+
+.markdown-alert>:first-child {
+  margin-top: 0
+}
+
+.markdown-alert>:last-child {
+  margin-bottom: 0
+}
+
+.markdown-alert .markdown-alert-title {
+  display: flex;
+  font-weight: 500;
+  align-items: center;
+  line-height: 1
+}
+
+.markdown-alert .markdown-alert-title .octicon {
+  margin-right: 0.5rem;
+  display: inline-block;
+  overflow: visible !important;
+  vertical-align: text-bottom;
+  fill: currentColor;
+}
+
+.markdown-alert.markdown-alert-note {
+  border-left-color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-note .markdown-alert-title {
+  color: var(--color-note);
+}
+
+.markdown-alert.markdown-alert-important {
+  border-left-color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-important .markdown-alert-title {
+  color: var(--color-important);
+}
+
+.markdown-alert.markdown-alert-warning {
+  border-left-color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-warning .markdown-alert-title {
+  color: var(--color-warning);
+}
+
+.markdown-alert.markdown-alert-tip {
+  border-left-color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-tip .markdown-alert-title {
+  color: var(--color-tip);
+}
+
+.markdown-alert.markdown-alert-caution {
+  border-left-color: var(--color-caution);
+}
+
+.markdown-alert.markdown-alert-caution .markdown-alert-title {
+  color: var(--color-caution);
+}
+
+</style>
+        
+        </head>
+        <body class="vscode-body vscode-light">
+            <h1 id="tender-evaluation-assistant--demo-pipeline">Tender Evaluation Assistant — Demo Pipeline</h1>
+<p>Demo of an AI-assisted <strong>procurement review pipeline</strong> for public tender evaluation.
+Input: a tender document set + one bid (offer) per tenderer. Output: an editable Word
+<strong>procurement review report</strong> — Price Summary table, Stage I / Stage II conclusions, and a
+detailed evaluation record sheet.</p>
+<blockquote>
+<p><strong>CONFIDENTIALITY WARNING</strong>
+This demo calls <strong>GitHub Models</strong> (a cloud API, free tier) for document understanding.
+<strong>Never</strong> feed real client tender/bid documents through the cloud path. Use the bundled
+synthetic fixtures, or your own sanitized samples. The production design targets fully
+local inference (Qwen3-VL / Qwen3.6 / DeepSeek on DGX Spark via vLLM) — the LLM client
+here is OpenAI-compatible, so production swaps <code>GITHUB_MODELS_BASE_URL</code> for a local
+vLLM endpoint with no code change.</p>
+</blockquote>
+<h2 id="pipeline-mirrors-the-tap-workflow">Pipeline (mirrors the TAP workflow)</h2>
+<pre><code>tender docs (PDF, text) ──► [1 INGEST] ──► [2 RUBRIC]  auto-derive evaluation rubric:
+bid docs   (PDF, scans) ──►  text or OCR      │         Stage I checklist, Stage II essential
+                             (VLM per page)   │         requirements, price scheme + formula
+                                              ▼
+                              [3 BID EXTRACTION]  per tenderer: documents present,
+                                              │   compliance evidence, price fields
+                                              ▼   (every fact cites file + page)
+                              [4 EVALUATION — deterministic code, no LLM]
+                                              │   Stage I completeness matrix
+                                              │   Stage II compliance matrix
+                                              │   Price: rounding, FX, arithmetic check,
+                                              │   cost-effectiveness or price×qty, ranking
+                                              ▼
+                              [5 REPORTS — python-docx, editable Word, English]
+                                  price_summary.docx · summary_list.docx · evaluation_record.docx
+</code></pre>
+<p>Design principles:</p>
+<ul>
+<li><strong>LLMs extract and classify; code calculates and ranks.</strong> All arithmetic (totals,
+cost-effectiveness <code>D × M</code>, 2-significant-figure rounding, rankings, FX conversion,
+quoted-total tally check) is deterministic Python.</li>
+<li><strong>Every tender is different</strong> → the rubric is <em>derived from the tender documents</em> per
+project, and is saved as editable JSON (<code>rubric.json</code>) for human confirmation before
+evaluation.</li>
+<li><strong>Evidence-first</strong>: extracted facts carry page references; the evaluation record sheet
+shows them so the Tender Assessment Panel can verify every cell.</li>
+</ul>
+<h2 id="quickstart">Quickstart</h2>
+<pre><code class="language-bash"><span class="hljs-built_in">cd</span> tender_evaluation_assistant
+python3 -m venv .venv &amp;&amp; .venv/bin/pip install -r requirements.txt
+
+<span class="hljs-comment"># 1) Offline demo — no network, runs the synthetic case end-to-end:</span>
+.venv/bin/python run_demo.py offline-demo
+<span class="hljs-comment"># → output/offline_demo/reports/{price_summary,summary_list,evaluation_record}.docx</span>
+
+<span class="hljs-comment"># 2) Run tests:</span>
+.venv/bin/python -m pytest <span class="hljs-built_in">test</span>/ -q
+
+<span class="hljs-comment"># 3) Live demo with GitHub Models (sanitized/synthetic documents ONLY):</span>
+<span class="hljs-comment">#    Token: https://github.com/settings/personal-access-tokens  (fine-grained PAT,</span>
+<span class="hljs-comment">#    account permission &quot;Models: read&quot;) — put it in .env as GITHUB_TOKEN=...</span>
+<span class="hljs-comment">#    Free tier — small rate limits; the pipeline caches OCR aggressively and caps</span>
+<span class="hljs-comment">#    pages per document.</span>
+.venv/bin/python tools/make_demo_case.py     <span class="hljs-comment"># generates synthetic demo_case/</span>
+.venv/bin/python run_demo.py run \
+    --tender-dir demo_case/tender \
+    --bids-dir demo_case/bids \      <span class="hljs-comment"># one subfolder (or one PDF) per tenderer</span>
+    --out output/live_demo \
+    --acknowledge-cloud
+</code></pre>
+<p>The synthetic live case is designed to exercise the interesting paths: Tenderer C is
+cheapest but omits the Non-collusive Tendering Certificate (fails Stage I), and
+Tenderer B's quoted total contains a deliberate arithmetic error that the price engine
+flags — while B is still (correctly) the recommended conforming offer. Checkpoint files
+under <code>output/live_demo/</code> (<code>rubric.json</code>, <code>bids/*.json</code>) are editable; delete one to
+re-derive/re-extract it on the next run.</p>
+<p>Models (all on <a href="https://github.com/marketplace/models">GitHub Models</a>): text defaults
+to <code>openai/gpt-4o-mini</code>, vision to <code>openai/gpt-4.1</code>, each with a fallback chain
+(<code>openai/o3</code>, then <code>openai/gpt-4.1-mini</code>) tried automatically when the model before it
+fails — rate limit, outage, or a 403 for models not included in your plan (o3 needs a
+paid Copilot plan; on the free tier it is skipped harmlessly). Override via
+<code>TEXT_MODEL</code> / <code>VISION_MODEL</code> / <code>TEXT_MODEL_FALLBACKS</code> / <code>VISION_MODEL_FALLBACKS</code>.
+See <code>.env.example</code>.</p>
+<h2 id="repository-layout">Repository layout</h2>
+<pre><code>app/                the pipeline library (shared by CLI and backend)
+  config.py         env + model configuration (GitHub Models ⇄ local vLLM swap point)
+  llm.py            OpenAI-compatible client: fallback chains, JSON-validated chat, OCR
+  ingest.py         PDF classification (text vs scan), text extraction, VLM OCR + cache
+  schemas.py        pydantic models: Rubric, BidExtraction, EvaluationResult…
+  rubric.py         tender understanding → evaluation rubric (Stage I/II + price scheme)
+  bid_extract.py    per-bid field extraction with page citations
+  evaluate.py       Stage I / Stage II matrices + English conclusions (deterministic)
+  pricing.py        deterministic price engine (both Price Summary formats)
+  report.py         Word report generation (python-docx)
+  pipeline.py       CLI orchestrator; writes rubric.json, bids/*.json, reports/
+backend/            FastAPI service (projects, uploads, jobs, reports API) + Dockerfile
+frontend/           Streamlit review UI (HTTP client of the backend only) + Dockerfile
+docker-compose.yml  runs both services together
+run_demo.py         CLI (offline demo + cloud demo)
+test/               pytest suite incl. offline API tests (no network, no real client data)
+tools/              synthetic demo-case generator, PDF generator
+</code></pre>
+<h2 id="service-mode--frontend--backend">Service mode — frontend + backend</h2>
+<p>Requirements are split per service: <code>backend/requirements.txt</code> (FastAPI + pipeline) and
+<code>frontend/requirements.txt</code> (Streamlit + requests only). Root <code>requirements.txt</code> is the
+dev aggregate (both + pytest).</p>
+<pre><code class="language-bash"><span class="hljs-comment"># Local dev, two terminals:</span>
+.venv/bin/uvicorn backend.api:app --reload --port 8000
+BACKEND_URL=http://localhost:8000 .venv/bin/streamlit run frontend/ui.py
+
+<span class="hljs-comment"># Docker (recommended):</span>
+<span class="hljs-built_in">cp</span> .env.example .<span class="hljs-built_in">env</span>       <span class="hljs-comment"># set GITHUB_TOKEN; set API_KEY on any shared machine</span>
+docker compose up -d --build
+<span class="hljs-comment"># UI:  http://localhost:8501     API: http://localhost:8000/health</span>
+</code></pre>
+<p>UI flow = the product's checkpoints: upload documents → derive rubric → <strong>review/edit
+the rubric</strong> (human confirmation) → evaluate → browse Stage I/II evidence → download
+Word reports. Extractions can be corrected via
+<code>PUT /projects/{id}/bids/{tenderer}/extraction</code>; corrected bids are not re-extracted.
+Project data lives in <code>./data/</code> on the host (bind-mounted volume).</p>
+<h2 id="deploying-on-aws-ec2-demo-hosting">Deploying on AWS EC2 (demo hosting)</h2>
+<blockquote>
+<p>The client's real documents are NDA-bound to <strong>local</strong> deployment — an EC2 demo must
+only ever hold synthetic or sanitized documents. Production goes on the client's
+DGX Spark, where only <code>GITHUB_MODELS_BASE_URL</code> changes (to local vLLM).</p>
+</blockquote>
+<p>On a fresh Amazon Linux 2023 instance (t3.medium+, ~2 GB RAM is enough):</p>
+<pre><code class="language-bash">sudo dnf install -y docker git
+sudo systemctl <span class="hljs-built_in">enable</span> --now docker
+sudo usermod -aG docker ec2-user &amp;&amp; newgrp docker
+DOCKER_CONFIG=<span class="hljs-variable">${DOCKER_CONFIG:-<span class="hljs-variable">$HOME</span>/.docker}</span>
+<span class="hljs-built_in">mkdir</span> -p <span class="hljs-variable">$DOCKER_CONFIG</span>/cli-plugins
+curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+  -o <span class="hljs-variable">$DOCKER_CONFIG</span>/cli-plugins/docker-compose &amp;&amp; <span class="hljs-built_in">chmod</span> +x <span class="hljs-variable">$DOCKER_CONFIG</span>/cli-plugins/docker-compose
+
+git <span class="hljs-built_in">clone</span> git@github.com:tender-eval-ai/tender-evaluation-assistant.git
+<span class="hljs-built_in">cd</span> tender-evaluation-assistant
+<span class="hljs-built_in">cp</span> .env.example .<span class="hljs-built_in">env</span>       <span class="hljs-comment"># set GITHUB_TOKEN and a strong API_KEY (openssl rand -hex 24)</span>
+docker compose up -d --build
+</code></pre>
+<p>Security checklist:</p>
+<ul>
+<li><strong>Security group</strong>: allow inbound 8501 (UI) from your own IP only; do NOT open
+8000 publicly (delete its <code>ports:</code> mapping in docker-compose.yml, or keep it
+firewalled) — the API spends LLM quota and serves documents.</li>
+<li><strong>API_KEY must be set</strong> — the UI passes it automatically; unauthenticated API
+requests are rejected.</li>
+<li>For anything beyond a demo, put nginx/Caddy with HTTPS in front and keep the
+instance in a private subnet behind a load balancer or SSH tunnel
+(<code>ssh -L 8501:localhost:8501 ec2-user@&lt;host&gt;</code> works with no open ports at all).</li>
+</ul>
+<h2 id="demo--production-mapping">Demo ⇄ production mapping</h2>
+<table>
+<thead>
+<tr>
+<th>Demo (this repo)</th>
+<th>Production (client site)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>GitHub Models <code>openai/gpt-4o-mini</code></td>
+<td>Qwen3.6-35B-A3B / DeepSeek-V4-Flash via vLLM</td>
+</tr>
+<tr>
+<td>GitHub Models vision OCR</td>
+<td>Qwen3-VL-30B-A3B (MoE) page OCR, batched</td>
+</tr>
+<tr>
+<td>CLI + JSON checkpoint files</td>
+<td>Web app with rubric-confirmation &amp; review UI</td>
+</tr>
+<tr>
+<td>Synthetic fixtures</td>
+<td>Real tender/bid sets, fully local (DGX Spark GB10)</td>
+</tr>
+</tbody>
+</table>
+<p>Known demo limitations: free-tier rate limits (pages per doc capped via
+<code>--max-ocr-pages</code>), no Stage III–V (technical marking / combined score — phase 2), no
+review UI yet.</p>
+
+            <script async src="https://cdn.jsdelivr.net/npm/katex-copytex@latest/dist/katex-copytex.min.js"></script>
+            
+        </body>
+        </html>
