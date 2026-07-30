@@ -119,11 +119,14 @@ _jobs_lock = threading.Lock()
 _running: set[str] = set()
 
 
-def _start_job(pid: str, pdir: Path, target) -> None:
+def _start_job(pid: str, pdir: Path, target, detail: str = "queued") -> None:
     with _jobs_lock:
         if pid in _running:
             raise HTTPException(409, "a job is already running for this project")
         _running.add(pid)
+    # Status must flip to "running" before the endpoint returns, or a client polling
+    # right after the POST could see the previous job's terminal state and stop early.
+    _set_status(pdir, "running", detail)
 
     def wrapper():
         try:
@@ -223,7 +226,7 @@ def derive(pid: str) -> dict:
         _write_json(pdir / "work" / "rubric.json", rubric.model_dump(mode="json"))
         _set_status(pdir, "done", "rubric derived — review and edit it before evaluating")
 
-    _start_job(pid, pdir, job)
+    _start_job(pid, pdir, job, "deriving evaluation rubric from tender documents")
     return {"started": True}
 
 
@@ -288,7 +291,7 @@ def run_evaluation(pid: str) -> dict:
         render_all(result, pdir / "work" / "reports")
         _set_status(pdir, "done", "evaluation complete — reports ready")
 
-    _start_job(pid, pdir, job)
+    _start_job(pid, pdir, job, "starting bid extraction")
     return {"started": True}
 
 

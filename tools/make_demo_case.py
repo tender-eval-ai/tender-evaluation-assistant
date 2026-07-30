@@ -1,12 +1,17 @@
-"""Generate a fully synthetic tender case (safe to send to cloud APIs) in demo_case/.
+"""Generate a fully synthetic tender case (safe to send to cloud APIs).
 
-Scenario — Supply of Industrial Degreaser, unit-price x quantity scheme:
+Default (--bidders 3) — Supply of Industrial Degreaser, unit-price x quantity scheme:
   Tenderer A: complete, compliant, HK$12.50/L
   Tenderer B: complete, compliant, HK$11.80/L but quoted total has an arithmetic error
   Tenderer C: cheapest, but missing the Non-collusive Tendering Certificate (fails
               Stage I) — and its offer is an image-only "scanned" PDF, so the pipeline
               must OCR it through the vision model chain
 Expected outcome: C ranked 1 yet non-conforming; B recommended with an error note.
+
+--bidders N (N != 3) generates N deterministic varied bidders for scale testing:
+prices spread over ~HK$10-15, every 7th missing the certificate (Stage I fail),
+every 11th with a 6-month shelf life (Stage II fail), every 9th with an arithmetic
+error in its quoted total, and bidders 2 and 17 as scanned image-only PDFs (OCR path).
 """
 from __future__ import annotations
 
@@ -115,6 +120,42 @@ order is confirmed.
 """
 
 
+OFFER_TEMPLATE = """\
+Offer of {name} - Tender Ref. DEMO0022026
+
+Tender Form, Offer to be Bound: duly signed by the authorised signatory of
+{name} on {day} June 2026.
+
+Price Schedule Part A: unit price HK$ {unit:.2f} per litre. Estimated quantity
+50 000 litres. Estimated goods price HK$ {total:,.2f} free into store.
+
+Particulars of Goods Schedule: product {product}. Shelf life {shelf} months
+from the date of receipt. Supplied in sealed drums of 200 litres labelled
+with batch number and expiry date.
+{cert}
+Compliance Schedule: delivery within {delivery} days from the date of the
+purchase order is confirmed.
+"""
+
+CERT_LINE = "\nNon-collusive Tendering Certificate: completed and signed.\n"
+
+
+def synth_offer(i: int) -> tuple[str, str, bool]:
+    """Deterministic varied offer for bidder i. Returns (name, text, scanned)."""
+    name = f"Tenderer_{i:02d}"
+    unit = 10.0 + ((i * 37) % 500) / 100          # HK$10.00 - 14.99, spread
+    total = unit * 50_000
+    if i % 9 == 4:
+        total += 500.0                             # arithmetic error to be flagged
+    missing_cert = i % 7 == 3                      # Stage I failure
+    shelf = 6 if i % 11 == 5 else 12 + (i % 3) * 6  # 6 fails; 12/18/24 comply
+    text = OFFER_TEMPLATE.format(
+        name=name, day=10 + (i % 18), unit=unit, total=total,
+        product=f"CleanSolv {100 + i}", shelf=shelf,
+        cert="" if missing_cert else CERT_LINE, delivery=25 + (i % 15))
+    return name, text, i in (2, 17)
+
+
 def rasterize(pdf_path: Path) -> None:
     """Replace a text-layer PDF with an image-only version (simulates a scanned offer)."""
     import pypdfium2 as pdfium
@@ -128,17 +169,36 @@ def rasterize(pdf_path: Path) -> None:
 
 
 def main() -> None:
-    base = ROOT / "demo_case"
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--bidders", type=int, default=3,
+                        help="number of bidders (3 = the fixed A/B/C demo trio)")
+    parser.add_argument("--out", default="demo_case", help="output folder name")
+    args = parser.parse_args()
+
+    base = ROOT / args.out
     tender = base / "tender"
     tender.mkdir(parents=True, exist_ok=True)
     make_text_pdf(tender / "01_terms_of_tender_supplement.pdf", TERMS)
     make_text_pdf(tender / "02_special_conditions.pdf", SPECIAL_CONDITIONS)
-    for name, offer in [("Tenderer_A", OFFER_A), ("Tenderer_B", OFFER_B), ("Tenderer_C", OFFER_C)]:
+
+    if args.bidders == 3:
+        offers = [("Tenderer_A", OFFER_A, False), ("Tenderer_B", OFFER_B, False),
+                  ("Tenderer_C", OFFER_C, True)]
+    else:
+        offers = [synth_offer(i) for i in range(1, args.bidders + 1)]
+
+    scanned = []
+    for name, offer, scan in offers:
         d = base / "bids" / name
         d.mkdir(parents=True, exist_ok=True)
         make_text_pdf(d / "offer.pdf", offer)
-    rasterize(base / "bids" / "Tenderer_C" / "offer.pdf")
-    print(f"Synthetic case written to {base} (Tenderer_C's offer is scanned/image-only)")
+        if scan:
+            rasterize(d / "offer.pdf")
+            scanned.append(name)
+    print(f"Synthetic case written to {base}: {len(offers)} bidders"
+          f" (scanned/image-only: {', '.join(scanned) or 'none'})")
 
 
 if __name__ == "__main__":
