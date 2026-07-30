@@ -1,0 +1,30 @@
+# Tender Evaluation Assistant — backend API + frontend UI.
+#   cp .env.example .env   # set GITHUB_TOKEN and (on any shared machine) API_KEY
+#   docker compose up -d --build
+# UI: http://<host>:8501 — restrict inbound access (EC2 security group) to your own IP.
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    environment:
+      - DATA_DIR=/data
+    volumes:
+      - ./data:/data
+    ports:
+      - "8000:8000"   # remove if only the UI needs access (compose network suffices)
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    environment:
+      - BACKEND_URL=http://backend:8000
+      - API_KEY=${API_KEY:-}
+    ports:
+      - "8501:8501"
+    depends_on:
+      - backend
+    restart: unless-stopped

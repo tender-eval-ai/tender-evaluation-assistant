@@ -88,19 +88,80 @@ See `.env.example`.
 ## Repository layout
 
 ```
-app/config.py       env + model configuration (GitHub Models ⇄ local vLLM swap point)
-app/llm.py          OpenAI-compatible client: JSON-validated chat, page OCR
-app/ingest.py       PDF classification (text vs scan), text extraction, VLM OCR + cache
-app/schemas.py      pydantic models: Rubric, BidExtraction, EvaluationResult…
-app/rubric.py       tender understanding → evaluation rubric (Stage I/II + price scheme)
-app/bid_extract.py  per-bid field extraction with page citations
-app/evaluate.py     Stage I / Stage II matrices + English conclusions (deterministic)
-app/pricing.py      deterministic price engine (both Price Summary formats)
-app/report.py       Word report generation (python-docx)
-app/pipeline.py     orchestrator; writes rubric.json, bids/*.json, evaluation.json, reports/
-run_demo.py         CLI
-test/               pytest suite + synthetic fixtures (no network, no real client data)
+app/                the pipeline library (shared by CLI and backend)
+  config.py         env + model configuration (GitHub Models ⇄ local vLLM swap point)
+  llm.py            OpenAI-compatible client: fallback chains, JSON-validated chat, OCR
+  ingest.py         PDF classification (text vs scan), text extraction, VLM OCR + cache
+  schemas.py        pydantic models: Rubric, BidExtraction, EvaluationResult…
+  rubric.py         tender understanding → evaluation rubric (Stage I/II + price scheme)
+  bid_extract.py    per-bid field extraction with page citations
+  evaluate.py       Stage I / Stage II matrices + English conclusions (deterministic)
+  pricing.py        deterministic price engine (both Price Summary formats)
+  report.py         Word report generation (python-docx)
+  pipeline.py       CLI orchestrator; writes rubric.json, bids/*.json, reports/
+backend/            FastAPI service (projects, uploads, jobs, reports API) + Dockerfile
+frontend/           Streamlit review UI (HTTP client of the backend only) + Dockerfile
+docker-compose.yml  runs both services together
+run_demo.py         CLI (offline demo + cloud demo)
+test/               pytest suite incl. offline API tests (no network, no real client data)
+tools/              synthetic demo-case generator, PDF generator
 ```
+
+## Service mode — frontend + backend
+
+Requirements are split per service: `backend/requirements.txt` (FastAPI + pipeline) and
+`frontend/requirements.txt` (Streamlit + requests only). Root `requirements.txt` is the
+dev aggregate (both + pytest).
+
+```bash
+# Local dev, two terminals:
+.venv/bin/uvicorn backend.api:app --reload --port 8000
+BACKEND_URL=http://localhost:8000 .venv/bin/streamlit run frontend/ui.py
+
+# Docker (recommended):
+cp .env.example .env       # set GITHUB_TOKEN; set API_KEY on any shared machine
+docker compose up -d --build
+# UI:  http://localhost:8501     API: http://localhost:8000/health
+```
+
+UI flow = the product's checkpoints: upload documents → derive rubric → **review/edit
+the rubric** (human confirmation) → evaluate → browse Stage I/II evidence → download
+Word reports. Extractions can be corrected via
+`PUT /projects/{id}/bids/{tenderer}/extraction`; corrected bids are not re-extracted.
+Project data lives in `./data/` on the host (bind-mounted volume).
+
+## Deploying on AWS EC2 (demo hosting)
+
+> The client's real documents are NDA-bound to **local** deployment — an EC2 demo must
+> only ever hold synthetic or sanitized documents. Production goes on the client's
+> DGX Spark, where only `GITHUB_MODELS_BASE_URL` changes (to local vLLM).
+
+On a fresh Amazon Linux 2023 instance (t3.medium+, ~2 GB RAM is enough):
+
+```bash
+sudo dnf install -y docker git
+sudo systemctl enable --now docker
+sudo usermod -aG docker ec2-user && newgrp docker
+DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
+mkdir -p $DOCKER_CONFIG/cli-plugins
+curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+  -o $DOCKER_CONFIG/cli-plugins/docker-compose && chmod +x $DOCKER_CONFIG/cli-plugins/docker-compose
+
+git clone git@github.com:tender-eval-ai/tender-evaluation-assistant.git
+cd tender-evaluation-assistant
+cp .env.example .env       # set GITHUB_TOKEN and a strong API_KEY (openssl rand -hex 24)
+docker compose up -d --build
+```
+
+Security checklist:
+- **Security group**: allow inbound 8501 (UI) from your own IP only; do NOT open
+  8000 publicly (delete its `ports:` mapping in docker-compose.yml, or keep it
+  firewalled) — the API spends LLM quota and serves documents.
+- **API_KEY must be set** — the UI passes it automatically; unauthenticated API
+  requests are rejected.
+- For anything beyond a demo, put nginx/Caddy with HTTPS in front and keep the
+  instance in a private subnet behind a load balancer or SSH tunnel
+  (`ssh -L 8501:localhost:8501 ec2-user@<host>` works with no open ports at all).
 
 ## Demo ⇄ production mapping
 

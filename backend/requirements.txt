@@ -1,0 +1,12 @@
+# Backend: FastAPI service wrapping the evaluation pipeline
+fastapi>=0.111
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+
+# Pipeline (app/ package)
+openai>=1.40
+pydantic>=2.7
+pypdf>=4.0
+pypdfium2>=4.30
+pillow>=10.0
+python-docx>=1.1
