@@ -12,8 +12,11 @@ import time
 
 import requests
 import streamlit as st
+import streamlit.components.v1 as components
 
 BACKEND = os.environ.get("BACKEND_URL", "http://localhost:8000").rstrip("/")
+# What the *browser* can reach (inside Docker, BACKEND_URL is the internal hostname).
+PUBLIC_BACKEND = os.environ.get("PUBLIC_BACKEND_URL", BACKEND).rstrip("/")
 API_KEY = os.environ.get("API_KEY", "")
 HEADERS = {"X-API-Key": API_KEY} if API_KEY else {}
 
@@ -79,46 +82,123 @@ tab_docs, tab_rubric, tab_eval, tab_reports = st.tabs(
 
 # ---------------------------------------------------------------- 1: documents
 
+FOLDER_PICKER_HTML = """
+<style>
+  body { font-family: -apple-system, "Segoe UI", sans-serif; margin: 0; }
+  .box { border: 1px solid #d0d0d0; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
+  .box b { font-size: 0.95rem; }
+  .hint { color: #666; font-size: 0.8rem; margin: 4px 0 8px 0; }
+  .st { font-size: 0.85rem; margin-top: 8px; color: #444; min-height: 1.2em; }
+  input[type=file] { font-size: 0.85rem; }
+</style>
+<div class="box">
+  <b>Tender documents — choose a folder</b>
+  <div class="hint">Every PDF inside (including subfolders) is uploaded as a tender document.</div>
+  <input type="file" id="tin" webkitdirectory multiple>
+  <div class="st" id="tst"></div>
+</div>
+<div class="box">
+  <b>Bid documents — choose the folder that contains one subfolder per tenderer</b>
+  <div class="hint">Each subfolder becomes one tenderer (its PDFs are collected recursively);
+  loose PDFs directly inside become single-file tenderers.</div>
+  <input type="file" id="bin" webkitdirectory multiple>
+  <div class="st" id="bst"></div>
+</div>
+<script>
+function pdfs(input) {
+  return Array.from(input.files).filter(function (f) {
+    return f.name.toLowerCase().endsWith('.pdf') && !f.name.startsWith('~$');
+  });
+}
+function rel(f) { return f.webkitRelativePath || f.name; }
+async function up(url, fd) {
+  const r = await fetch(url, { method: 'POST', headers: HDRS, body: fd });
+  if (!r.ok) { throw new Error(r.status + ' ' + (await r.text())); }
+}
+document.getElementById('tin').addEventListener('change', async function () {
+  const el = document.getElementById('tst');
+  const fs = pdfs(this);
+  if (!fs.length) { el.textContent = 'No PDFs found in that folder.'; return; }
+  el.textContent = 'Uploading ' + fs.length + ' PDFs...';
+  const fd = new FormData();
+  fs.forEach(function (f) {
+    const parts = rel(f).split('/');
+    fd.append('files', f, parts.length > 1 ? parts.slice(1).join('__') : f.name);
+  });
+  try {
+    await up(B + '/projects/' + PID + '/tender', fd);
+    el.textContent = 'Done: ' + fs.length + ' tender PDFs uploaded. Click Refresh below.';
+  } catch (e) { el.textContent = 'Failed: ' + e.message; }
+});
+document.getElementById('bin').addEventListener('change', async function () {
+  const el = document.getElementById('bst');
+  const fs = pdfs(this);
+  if (!fs.length) { el.textContent = 'No PDFs found in that folder.'; return; }
+  const groups = {};
+  fs.forEach(function (f) {
+    const parts = rel(f).split('/');
+    var tenderer, name;
+    if (parts.length >= 3) { tenderer = parts[1]; name = parts.slice(2).join('__'); }
+    else { tenderer = f.name.replace(/\\.pdf$/i, ''); name = f.name; }
+    if (!groups[tenderer]) { groups[tenderer] = new FormData(); }
+    groups[tenderer].append('files', f, name);
+  });
+  const names = Object.keys(groups);
+  var done = 0;
+  for (const t of names) {
+    el.textContent = 'Uploading tenderer ' + (done + 1) + '/' + names.length + ': ' + t;
+    try { await up(B + '/projects/' + PID + '/bids/' + encodeURIComponent(t), groups[t]); done++; }
+    catch (e) { el.textContent = 'Failed at ' + t + ': ' + e.message; return; }
+  }
+  el.textContent = 'Done: ' + done + ' tenderer(s) uploaded. Click Refresh below.';
+});
+</script>
+"""
+
 with tab_docs:
-    st.subheader("Import a whole case folder")
-    st.caption("Drop a case folder into the server's `inbox/` directory "
-               "(convention: `tender/*.pdf` + `bids/<tenderer>/*.pdf`), then import "
-               "everything in one click. `demo_case` is pre-mounted.")
-    inbox = call("GET", "/inbox").json()
-    if inbox:
-        labels = {f"{e['name']}  ({e['tender_pdfs']} tender PDFs, "
-                  f"{len(e['bidders'])} bidders)": e["name"] for e in inbox}
-        picked = st.selectbox("Inbox folder", list(labels))
-        if st.button("Import case", type="primary"):
-            result = call("POST", f"/projects/{pid}/import",
-                          json={"path": labels[picked], "kind": "case"}).json()
-            st.success(f"Imported {result['tender_pdfs']} tender PDFs and "
-                       f"{len(result['bidders'])} bidders.")
-            st.rerun()
-    else:
-        st.info("Inbox is empty — copy a case folder into `inbox/` on the server, "
-                "or upload files manually below.")
-    st.divider()
-    left, right = st.columns(2)
-    with left:
-        st.subheader("Tender documents")
-        st.caption(f"Uploaded: {', '.join(project['tender_files']) or 'none'}")
-        tender_files = st.file_uploader("Add tender PDFs", type="pdf",
-                                        accept_multiple_files=True, key="tender_up")
-        if st.button("Upload tender documents", disabled=not tender_files):
-            call("POST", f"/projects/{pid}/tender",
-                 files=[("files", (f.name, f.getvalue(), "application/pdf")) for f in tender_files])
-            st.rerun()
-    with right:
-        st.subheader("Bids (one tenderer at a time)")
-        st.caption(f"Bidders so far: {', '.join(project['bidders']) or 'none'}")
-        tenderer = st.text_input("Tenderer name", placeholder="e.g. Tenderer_A")
-        bid_files = st.file_uploader("Offer PDFs", type="pdf",
-                                     accept_multiple_files=True, key="bid_up")
-        if st.button("Upload bid", disabled=not (tenderer and bid_files)):
-            call("POST", f"/projects/{pid}/bids/{tenderer}",
-                 files=[("files", (f.name, f.getvalue(), "application/pdf")) for f in bid_files])
-            st.rerun()
+    st.subheader("Upload by folder")
+    st.caption(f"Tender files: {len(project['tender_files'])} · "
+               f"Bidders: {', '.join(project['bidders']) or 'none'}")
+    boot = ("<script>const B=" + json.dumps(PUBLIC_BACKEND) + ";const PID=" + json.dumps(pid)
+            + ";const HDRS=" + json.dumps(HEADERS) + ";</script>")
+    components.html(boot + FOLDER_PICKER_HTML, height=310)
+    if st.button("↻ Refresh"):
+        st.rerun()
+
+    with st.expander("Import from server inbox (alternative)"):
+        st.caption("Case folders placed in the server's `inbox/` directory "
+                   "(`tender/*.pdf` + `bids/<tenderer>/*.pdf`). `demo_case` is pre-mounted.")
+        inbox = call("GET", "/inbox").json()
+        if inbox:
+            labels = {f"{e['name']}  ({e['tender_pdfs']} tender PDFs, "
+                      f"{len(e['bidders'])} bidders)": e["name"] for e in inbox}
+            picked = st.selectbox("Inbox folder", list(labels))
+            if st.button("Import case"):
+                result = call("POST", f"/projects/{pid}/import",
+                              json={"path": labels[picked], "kind": "case"}).json()
+                st.success(f"Imported {result['tender_pdfs']} tender PDFs and "
+                           f"{len(result['bidders'])} bidders.")
+                st.rerun()
+        else:
+            st.info("Inbox is empty.")
+
+    with st.expander("Manual file upload (fallback)"):
+        left, right = st.columns(2)
+        with left:
+            tender_files = st.file_uploader("Tender PDFs", type="pdf",
+                                            accept_multiple_files=True, key="tender_up")
+            if st.button("Upload tender documents", disabled=not tender_files):
+                call("POST", f"/projects/{pid}/tender",
+                     files=[("files", (f.name, f.getvalue(), "application/pdf")) for f in tender_files])
+                st.rerun()
+        with right:
+            tenderer = st.text_input("Tenderer name", placeholder="e.g. Tenderer_A")
+            bid_files = st.file_uploader("Offer PDFs", type="pdf",
+                                         accept_multiple_files=True, key="bid_up")
+            if st.button("Upload bid", disabled=not (tenderer and bid_files)):
+                call("POST", f"/projects/{pid}/bids/{tenderer}",
+                     files=[("files", (f.name, f.getvalue(), "application/pdf")) for f in bid_files])
+                st.rerun()
 
 # ---------------------------------------------------------------- 2: rubric checkpoint
 

@@ -63,6 +63,18 @@ def require_key(x_api_key: str | None = Header(default=None)) -> None:
 
 
 app = FastAPI(title="Tender Evaluation Assistant API", version="0.1.0")
+
+# The UI's folder picker uploads from the browser straight to this API (the Streamlit
+# server never proxies the files), which is a cross-origin request from the UI's port.
+from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",")],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 api = APIRouter(dependencies=[Depends(require_key)])
 
 

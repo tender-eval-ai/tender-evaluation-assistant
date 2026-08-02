@@ -25,6 +25,9 @@ services:
       dockerfile: frontend/Dockerfile
     environment:
       - BACKEND_URL=http://backend:8000
+      # What the user's browser can reach — change to http://<server-ip>:8000 when
+      # the UI is accessed from another machine.
+      - PUBLIC_BACKEND_URL=${PUBLIC_BACKEND_URL:-http://localhost:8000}
       - API_KEY=${API_KEY:-}
     ports:
       - "8501:8501"
