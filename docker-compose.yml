@@ -10,8 +10,11 @@ services:
     env_file: .env
     environment:
       - DATA_DIR=/data
+      - INBOX_DIR=/inbox
     volumes:
       - ./data:/data
+      - ./inbox:/inbox               # drop case folders here, import via the UI
+      - ./demo_case:/inbox/demo_case:ro   # demo case always available for import
     ports:
       - "8000:8000"   # remove if only the UI needs access (compose network suffices)
     restart: unless-stopped

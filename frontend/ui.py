@@ -68,12 +68,37 @@ st.sidebar.caption(
     f"Rubric: {'✓' if project['has_rubric'] else '—'} · "
     f"Evaluation: {'✓' if project['has_evaluation'] else '—'}")
 
+with st.sidebar.expander("Danger zone"):
+    sure = st.checkbox("Yes, delete this project and all its files", key="del_confirm")
+    if st.button("Delete project", disabled=not sure):
+        call("DELETE", f"/projects/{pid}")
+        st.rerun()
+
 tab_docs, tab_rubric, tab_eval, tab_reports = st.tabs(
     ["1 · Documents", "2 · Rubric (confirm)", "3 · Evaluation", "4 · Reports"])
 
 # ---------------------------------------------------------------- 1: documents
 
 with tab_docs:
+    st.subheader("Import a whole case folder")
+    st.caption("Drop a case folder into the server's `inbox/` directory "
+               "(convention: `tender/*.pdf` + `bids/<tenderer>/*.pdf`), then import "
+               "everything in one click. `demo_case` is pre-mounted.")
+    inbox = call("GET", "/inbox").json()
+    if inbox:
+        labels = {f"{e['name']}  ({e['tender_pdfs']} tender PDFs, "
+                  f"{len(e['bidders'])} bidders)": e["name"] for e in inbox}
+        picked = st.selectbox("Inbox folder", list(labels))
+        if st.button("Import case", type="primary"):
+            result = call("POST", f"/projects/{pid}/import",
+                          json={"path": labels[picked], "kind": "case"}).json()
+            st.success(f"Imported {result['tender_pdfs']} tender PDFs and "
+                       f"{len(result['bidders'])} bidders.")
+            st.rerun()
+    else:
+        st.info("Inbox is empty — copy a case folder into `inbox/` on the server, "
+                "or upload files manually below.")
+    st.divider()
     left, right = st.columns(2)
     with left:
         st.subheader("Tender documents")

@@ -11,13 +11,14 @@ from test.conftest import FIXTURES
 
 
 def make_client(tmp_path, monkeypatch, api_key: str | None = None):
-    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
+    monkeypatch.setenv("INBOX_DIR", str(tmp_path / "inbox"))
     if api_key:
         monkeypatch.setenv("API_KEY", api_key)
     else:
         monkeypatch.delenv("API_KEY", raising=False)
     import backend.api as api
-    importlib.reload(api)  # module reads DATA_DIR / API_KEY at import time
+    importlib.reload(api)  # module reads DATA_DIR / INBOX_DIR / API_KEY at import time
     return TestClient(api.app)
 
 
@@ -76,6 +77,40 @@ def test_full_project_flow_offline(tmp_path, monkeypatch):
 def test_unknown_project_404(tmp_path, monkeypatch):
     client = make_client(tmp_path, monkeypatch)
     assert client.get("/projects/nope/status").status_code == 404
+
+
+def test_inbox_import_and_delete(tmp_path, monkeypatch):
+    client = make_client(tmp_path, monkeypatch)
+
+    # A case folder in the inbox following the tender/ + bids/<tenderer>/ convention.
+    case = tmp_path / "inbox" / "case1"
+    (case / "tender").mkdir(parents=True)
+    (case / "tender" / "terms.pdf").write_bytes(b"%PDF-1.4 stub")
+    for bidder in ("Alpha", "Beta"):
+        d = case / "bids" / bidder
+        d.mkdir(parents=True)
+        (d / "offer.pdf").write_bytes(b"%PDF-1.4 stub")
+    (case / "bids" / "Gamma.pdf").write_bytes(b"%PDF-1.4 stub")  # loose PDF = one bidder
+
+    inbox = client.get("/inbox").json()
+    assert [e["name"] for e in inbox] == ["case1"]
+    assert inbox[0]["tender_pdfs"] == 1 and inbox[0]["bidders"] == ["Alpha", "Beta"]
+
+    pid = client.post("/projects", json={"name": "import test"}).json()["id"]
+    result = client.post(f"/projects/{pid}/import", json={"path": "case1"}).json()
+    assert result == {"tender_pdfs": 1, "bidders": {"Alpha": 1, "Beta": 1, "Gamma": 1}}
+    proj = client.get(f"/projects/{pid}").json()
+    assert proj["tender_files"] == ["terms.pdf"]
+    assert proj["bidders"] == ["Alpha", "Beta", "Gamma"]
+
+    # Path traversal is rejected; unknown folder is a 404.
+    assert client.post(f"/projects/{pid}/import", json={"path": "../data"}).status_code == 404
+    assert client.post(f"/projects/{pid}/import", json={"path": "nope"}).status_code == 404
+
+    # Delete removes the project entirely.
+    assert client.delete(f"/projects/{pid}").json() == {"deleted": pid}
+    assert client.get(f"/projects/{pid}").status_code == 404
+    assert client.get("/projects").json() == []
 
 
 def test_api_key_enforced(tmp_path, monkeypatch):

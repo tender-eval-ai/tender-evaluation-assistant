@@ -5,6 +5,7 @@ __pycache__/
 cache/
 output/
 data/
+inbox/
 .DS_Store
 README.html
 demo_case_stress/

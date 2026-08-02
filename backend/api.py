@@ -27,9 +27,11 @@ import json
 import os
 import re
 import secrets
+import shutil
 import threading
 import time
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, FastAPI, File, Header, HTTPException, UploadFile
 from fastapi.responses import FileResponse
@@ -48,6 +50,9 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
 PROJECTS = DATA_DIR / "projects"
 API_KEY = os.environ.get("API_KEY", "")
+# Server-side folder imports: case folders placed here (host ./inbox, mounted
+# read-only in Docker) can be imported into a project with one click.
+INBOX_DIR = Path(os.environ.get("INBOX_DIR", "inbox"))
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
@@ -194,6 +199,16 @@ def get_project(pid: str) -> dict:
     }
 
 
+@api.delete("/projects/{pid}")
+def delete_project(pid: str) -> dict:
+    pdir = _project_dir(pid)
+    with _jobs_lock:
+        if pid in _running:
+            raise HTTPException(409, "a job is running for this project; wait for it to finish")
+    shutil.rmtree(pdir)
+    return {"deleted": pid}
+
+
 # ---------------------------------------------------------------- uploads
 
 @api.post("/projects/{pid}/tender")
@@ -206,6 +221,91 @@ async def upload_tender(pid: str, files: list[UploadFile] = File(...)) -> dict:
 async def upload_bid(pid: str, tenderer: str, files: list[UploadFile] = File(...)) -> dict:
     saved = await _save_pdfs(files, _project_dir(pid) / "bids" / _safe_name(tenderer))
     return {"saved": saved}
+
+
+# ---------------------------------------------------------------- server-folder import
+
+def _pdfs_in(folder: Path) -> list[Path]:
+    return sorted(p for p in folder.glob("*.pdf") if not p.name.startswith("~$"))
+
+
+@api.get("/inbox")
+def list_inbox() -> list[dict]:
+    """Case folders available for one-click import (host ./inbox; demo_case is
+    mounted there too). Convention: <case>/tender/*.pdf + <case>/bids/<tenderer>/."""
+    if not INBOX_DIR.is_dir():
+        return []
+    out = []
+    for d in sorted(INBOX_DIR.iterdir()):
+        if not d.is_dir() or d.name.startswith("."):
+            continue
+        bids_dir = d / "bids"
+        bidders = sorted(b.name for b in bids_dir.iterdir() if b.is_dir()) \
+            if bids_dir.is_dir() else []
+        entry = {
+            "name": d.name,
+            "tender_pdfs": len(_pdfs_in(d / "tender")) if (d / "tender").is_dir() else 0,
+            "bidders": bidders,
+            "loose_pdfs": len(_pdfs_in(d)),
+        }
+        if entry["tender_pdfs"] or entry["bidders"] or entry["loose_pdfs"]:
+            out.append(entry)
+    return out
+
+
+class ImportRequest(BaseModel):
+    path: str
+    kind: Literal["case", "tender", "bids"] = "case"
+
+
+def _copy_pdfs(src: Path, dest: Path) -> int:
+    pdfs = _pdfs_in(src)
+    if pdfs:
+        dest.mkdir(parents=True, exist_ok=True)
+        for pdf in pdfs:
+            shutil.copy2(pdf, dest / pdf.name)
+    return len(pdfs)
+
+
+@api.post("/projects/{pid}/import")
+def import_from_inbox(pid: str, req: ImportRequest) -> dict:
+    """Import a whole folder from the inbox: kind 'case' expects tender/ + bids/
+    subfolders; 'tender' copies a folder of PDFs as tender documents; 'bids' treats
+    each subfolder (or loose PDF) as one tenderer."""
+    pdir = _project_dir(pid)
+    src = (INBOX_DIR / req.path).resolve()
+    if not src.is_dir() or not src.is_relative_to(INBOX_DIR.resolve()):
+        raise HTTPException(404, f"inbox folder '{req.path}' not found")
+
+    tender_count, bidders = 0, {}
+
+    def import_bids(bids_src: Path) -> None:
+        for entry in sorted(bids_src.iterdir()):
+            if entry.is_dir() and not entry.name.startswith("."):
+                n = _copy_pdfs(entry, pdir / "bids" / _safe_name(entry.name))
+                if n:
+                    bidders[entry.name] = n
+            elif entry.suffix.lower() == ".pdf" and not entry.name.startswith("~$"):
+                dest = pdir / "bids" / _safe_name(entry.stem)
+                dest.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(entry, dest / entry.name)
+                bidders[entry.stem] = 1
+
+    if req.kind == "tender":
+        tender_count = _copy_pdfs(src, pdir / "tender")
+    elif req.kind == "bids":
+        import_bids(src)
+    else:  # case
+        if (src / "tender").is_dir():
+            tender_count = _copy_pdfs(src / "tender", pdir / "tender")
+        if (src / "bids").is_dir():
+            import_bids(src / "bids")
+        if not tender_count and not bidders:
+            raise HTTPException(
+                400, f"'{req.path}' has no tender/ or bids/ subfolder with PDFs — "
+                     "use kind='tender' or kind='bids' to import a flat folder")
+
+    return {"tender_pdfs": tender_count, "bidders": bidders}
 
 
 # ---------------------------------------------------------------- rubric
