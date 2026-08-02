@@ -77,32 +77,66 @@ with st.sidebar.expander("Danger zone"):
         call("DELETE", f"/projects/{pid}")
         st.rerun()
 
-tab_docs, tab_rubric, tab_eval, tab_reports = st.tabs(
-    ["1 · Documents", "2 · Rubric (confirm)", "3 · Evaluation", "4 · Reports"])
+# A failed background job must stay visible across reruns, on every page.
+if project["status"]["state"] == "error":
+    st.error(f"Last job failed: {project['status']['detail']}")
+
+# Segmented control instead of st.tabs: its selection survives st.rerun(), so
+# finishing a job keeps the user on the page they were on.
+NAV = ["1 · Documents", "2 · Rubric (confirm)", "3 · Evaluation", "4 · Reports"]
+SHORT = [n.split(" · ")[1].split(" (")[0] for n in NAV]  # Documents, Rubric, ...
+
+
+def _go(delta: int) -> None:
+    """Button callback: runs before the rerun, when nav state may still be changed."""
+    idx = NAV.index(st.session_state.get("nav") or NAV[0])
+    st.session_state["nav"] = NAV[max(0, min(len(NAV) - 1, idx + delta))]
+
+
+page = st.segmented_control("Navigation", NAV, key="nav", default=NAV[0],
+                            label_visibility="collapsed") or NAV[0]
 
 # ---------------------------------------------------------------- 1: documents
 
 FOLDER_PICKER_HTML = """
 <style>
-  body { font-family: -apple-system, "Segoe UI", sans-serif; margin: 0; }
-  .box { border: 1px solid #d0d0d0; border-radius: 8px; padding: 12px 14px; margin-bottom: 10px; }
-  .box b { font-size: 0.95rem; }
-  .hint { color: #666; font-size: 0.8rem; margin: 4px 0 8px 0; }
+  body { font-family: -apple-system, "Segoe UI", sans-serif; margin: 0; color: #262730; }
+  .card { border: 1px solid #d0d0d0; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+  .head { background: #1f6feb; color: #fff; font-size: 1.05rem; font-weight: 700;
+          padding: 8px 14px; }
+  .head .num { display: inline-block; background: #fff; color: #1f6feb; border-radius: 50%;
+               width: 1.5em; height: 1.5em; line-height: 1.5em; text-align: center;
+               font-size: 0.85em; margin-right: 8px; }
+  .body { padding: 12px 14px; }
+  .lead { font-weight: 600; margin: 0 0 2px 0; }
+  .hint { color: #666; font-size: 0.8rem; margin: 0 0 8px 0; }
   .st { font-size: 0.85rem; margin-top: 8px; color: #444; min-height: 1.2em; }
-  input[type=file] { font-size: 0.85rem; }
+  input[type=file] { font-size: 0.85rem; color: inherit; }
+  @media (prefers-color-scheme: dark) {
+    body { color: #fafafa; }
+    .card { border-color: #555; }
+    .hint { color: #b0b0b0; }
+    .st { color: #d0d0d0; }
+  }
 </style>
-<div class="box">
-  <b>Tender documents — choose a folder</b>
-  <div class="hint">Every PDF inside (including subfolders) is uploaded as a tender document.</div>
-  <input type="file" id="tin" webkitdirectory multiple>
-  <div class="st" id="tst"></div>
+<div class="card">
+  <div class="head"><span class="num">1</span>Tender documents</div>
+  <div class="body">
+    <div class="lead">Choose a folder</div>
+    <div class="hint">Every PDF inside (including subfolders) is uploaded as a tender document.</div>
+    <input type="file" id="tin" webkitdirectory multiple>
+    <div class="st" id="tst"></div>
+  </div>
 </div>
-<div class="box">
-  <b>Bid documents — choose the folder that contains one subfolder per tenderer</b>
-  <div class="hint">Each subfolder becomes one tenderer (its PDFs are collected recursively);
-  loose PDFs directly inside become single-file tenderers.</div>
-  <input type="file" id="bin" webkitdirectory multiple>
-  <div class="st" id="bst"></div>
+<div class="card">
+  <div class="head"><span class="num">2</span>Bid documents</div>
+  <div class="body">
+    <div class="lead">Choose the folder that contains one subfolder per tenderer</div>
+    <div class="hint">Each subfolder becomes one tenderer (its PDFs are collected recursively);
+    loose PDFs directly inside become single-file tenderers.</div>
+    <input type="file" id="bin" webkitdirectory multiple>
+    <div class="st" id="bst"></div>
+  </div>
 </div>
 <script>
 function pdfs(input) {
@@ -127,7 +161,7 @@ document.getElementById('tin').addEventListener('change', async function () {
   });
   try {
     await up(B + '/projects/' + PID + '/tender', fd);
-    el.textContent = 'Done: ' + fs.length + ' tender PDFs uploaded. Click Refresh below.';
+    el.textContent = 'Done: ' + fs.length + ' tender PDFs uploaded. Counts above update in a few seconds.';
   } catch (e) { el.textContent = 'Failed: ' + e.message; }
 });
 document.getElementById('bin').addEventListener('change', async function () {
@@ -150,20 +184,44 @@ document.getElementById('bin').addEventListener('change', async function () {
     try { await up(B + '/projects/' + PID + '/bids/' + encodeURIComponent(t), groups[t]); done++; }
     catch (e) { el.textContent = 'Failed at ' + t + ': ' + e.message; return; }
   }
-  el.textContent = 'Done: ' + done + ' tenderer(s) uploaded. Click Refresh below.';
+  el.textContent = 'Done: ' + done + ' tenderer(s) uploaded. Counts above update in a few seconds.';
 });
 </script>
 """
 
-with tab_docs:
+if page == NAV[0]:
     st.subheader("Upload by folder")
-    st.caption(f"Tender files: {len(project['tender_files'])} · "
-               f"Bidders: {', '.join(project['bidders']) or 'none'}")
+
+    @st.fragment(run_every="3s")
+    def _live_counts():
+        """Folder uploads go browser->backend directly, so Streamlit doesn't see them;
+        poll the project and refresh the page when its contents change."""
+        p = call("GET", f"/projects/{pid}").json()
+        st.caption(f"Tender files: {len(p['tender_files'])} · "
+                   f"Bidders: {', '.join(p['bidders']) or 'none'}")
+        sig = (tuple(p["tender_files"]), tuple(p["bidders"]), tuple(p["extracted"]),
+               p["has_rubric"], p["has_evaluation"], p["status"]["state"])
+        key = f"proj_sig_{pid}"
+        prev = st.session_state.get(key)
+        st.session_state[key] = sig
+        if prev is not None and prev != sig:
+            st.rerun(scope="app")
+
+    _live_counts()
     boot = ("<script>const B=" + json.dumps(PUBLIC_BACKEND) + ";const PID=" + json.dumps(pid)
             + ";const HDRS=" + json.dumps(HEADERS) + ";</script>")
-    components.html(boot + FOLDER_PICKER_HTML, height=310)
-    if st.button("↻ Refresh"):
-        st.rerun()
+    # Match the app's actual theme (like st.subheader does) instead of the OS
+    # preference the iframe would otherwise follow; media query stays as fallback.
+    try:
+        dark = st.context.theme.type == "dark"
+    except Exception:
+        theme_css = ""
+    else:
+        theme_css = ("<style>body{color:#fafafa}.card{border-color:#555}"
+                     ".hint{color:#b0b0b0}.st{color:#d0d0d0}</style>" if dark else
+                     "<style>body{color:#31333f}.card{border-color:#d0d0d0}"
+                     ".hint{color:#666}.st{color:#444}</style>")
+    components.html(boot + FOLDER_PICKER_HTML + theme_css, height=360)
 
     with st.expander("Import from server inbox (alternative)"):
         st.caption("Case folders placed in the server's `inbox/` directory "
@@ -202,16 +260,20 @@ with tab_docs:
 
 # ---------------------------------------------------------------- 2: rubric checkpoint
 
-with tab_rubric:
+if page == NAV[1]:
     st.subheader("Evaluation rubric — the human checkpoint")
     st.caption("Derived from the tender documents. Review and edit before evaluating: "
                "Stage I checklist, Stage II essential requirements, price scheme.")
+    if not project["tender_files"]:
+        st.info("Upload tender documents first (Documents tab) to enable derivation.")
     if st.button("Derive rubric from tender documents",
                  disabled=not project["tender_files"]):
         call("POST", f"/projects/{pid}/rubric/derive")
         result = wait_for_job(pid, st.empty())
-        (st.error if result["state"] == "error" else st.success)(result["detail"])
-        st.rerun()
+        if result["state"] == "error":
+            st.error(result["detail"])  # stays on screen — no rerun on failure
+        else:
+            st.rerun()
     if project["has_rubric"]:
         rubric = call("GET", f"/projects/{pid}/rubric").json()
         edited = st.text_area("rubric.json (editable)",
@@ -225,7 +287,7 @@ with tab_rubric:
 
 # ---------------------------------------------------------------- 3: evaluation
 
-with tab_eval:
+if page == NAV[2]:
     st.subheader("Run evaluation")
     st.caption("Extracts each bid (skipping ones already extracted/corrected), then runs "
                "the deterministic Stage I/II checks and price computation.")
@@ -233,8 +295,10 @@ with tab_eval:
                  disabled=not (project["has_rubric"] and (project["bidders"] or project["extracted"]))):
         call("POST", f"/projects/{pid}/evaluate")
         result = wait_for_job(pid, st.empty())
-        (st.error if result["state"] == "error" else st.success)(result["detail"])
-        st.rerun()
+        if result["state"] == "error":
+            st.error(result["detail"])  # stays on screen — no rerun on failure
+        else:
+            st.rerun()
 
     if project["has_evaluation"]:
         ev = call("GET", f"/projects/{pid}/evaluation").json()
@@ -270,7 +334,7 @@ with tab_eval:
 
 # ---------------------------------------------------------------- 4: reports
 
-with tab_reports:
+if page == NAV[3]:
     st.subheader("Word deliverables (editable)")
     reports = call("GET", f"/projects/{pid}/reports").json()
     if not reports:
@@ -279,3 +343,17 @@ with tab_reports:
         data = call("GET", f"/projects/{pid}/reports/{name}").content
         st.download_button(f"Download {name}", data, file_name=name,
                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+# ---------------------------------------------------------------- back / next
+
+st.divider()
+idx = NAV.index(page)
+back_col, _, next_col = st.columns([1, 3, 1])
+with back_col:
+    if idx > 0:
+        st.button(f"← {SHORT[idx - 1]}", on_click=_go, args=(-1,),
+                  use_container_width=True)
+with next_col:
+    if idx < len(NAV) - 1:
+        st.button(f"{SHORT[idx + 1]} →", type="primary", on_click=_go, args=(1,),
+                  use_container_width=True)

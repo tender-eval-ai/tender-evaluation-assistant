@@ -57,17 +57,15 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 # 2) Run tests:
 .venv/bin/python -m pytest test/ -q
 
-# 3) Live demo with GitHub Models (sanitized/synthetic documents ONLY):
-#    Token: https://github.com/settings/personal-access-tokens  (fine-grained PAT,
-#    account permission "Models: read") — put it in .env as GITHUB_TOKEN=...
-#    Free tier — small rate limits; the pipeline caches OCR aggressively and caps
-#    pages per document.
+# 3) Live demo with local Ollama (default backend — no key, no cloud):
+#    Install https://ollama.com then:
+#      ollama pull qwen3:8b && ollama pull qwen3-vl:8b
 .venv/bin/python tools/make_demo_case.py     # generates synthetic demo_case/
-.venv/bin/python run_demo.py run \
+GITHUB_MODELS_BASE_URL=http://localhost:11434/v1 .venv/bin/python run_demo.py run \
     --tender-dir demo_case/tender \
     --bids-dir demo_case/bids \      # one subfolder (or one PDF) per tenderer
     --out output/live_demo \
-    --acknowledge-cloud
+    --acknowledge-cloud              # only actually cloud if you point at a cloud URL
 ```
 
 The synthetic live case is designed to exercise the interesting paths: Tenderer C is
@@ -77,13 +75,14 @@ flags — while B is still (correctly) the recommended conforming offer. Checkpo
 under `output/live_demo/` (`rubric.json`, `bids/*.json`) are editable; delete one to
 re-derive/re-extract it on the next run.
 
-Models (all on [GitHub Models](https://github.com/marketplace/models)): text defaults
-to `openai/gpt-4o-mini`, vision to `openai/gpt-4.1`, each with a fallback chain
-(`openai/o3`, then `openai/gpt-4.1-mini`) tried automatically when the model before it
-fails — rate limit, outage, or a 403 for models not included in your plan (o3 needs a
-paid Copilot plan; on the free tier it is skipped harmlessly). Override via
-`TEXT_MODEL` / `VISION_MODEL` / `TEXT_MODEL_FALLBACKS` / `VISION_MODEL_FALLBACKS`.
-See `.env.example`.
+**LLM backend**: any OpenAI-compatible endpoint, configured entirely in `.env`. The
+demo default is **local Ollama** (free, keyless, no cloud): `qwen3:8b` for text and
+`qwen3-vl:8b` (fallback `qwen2.5vl:7b`) for vision OCR —
+`ollama pull qwen3:8b && ollama pull qwen3-vl:8b`. Fallback chains
+(`*_MODEL_FALLBACKS`) are tried automatically when the model before them fails.
+Production swaps the base URL for vLLM on the client's hardware. (The original demo
+backend, GitHub Models, was retired in 2026 — any OpenAI-compatible cloud endpoint
+still works if you set its URL, key, and model names.)
 
 ## Repository layout
 

@@ -32,16 +32,32 @@ def _is_reasoning_model(model: str) -> bool:
 
 
 class LLM:
+    """Chain entries are "model" (served from cfg.base_url) or "model@base_url" —
+    the @ form lets a fallback live on a different endpoint entirely, e.g. a cloud
+    primary with a local Ollama/vLLM safety net."""
+
     def __init__(self, cfg: Config):
-        if not cfg.token:
+        # Local OpenAI-compatible servers (Ollama, vLLM) need no real key; hosted
+        # endpoints like GitHub Models do.
+        if not cfg.token and "github" in cfg.base_url:
             raise RuntimeError(
                 "No GitHub token found. Set GITHUB_TOKEN (fine-grained PAT with "
                 "'Models: read' permission) or run `gh auth login`. See .env.example."
             )
         self.cfg = cfg
-        self.client = OpenAI(base_url=cfg.base_url, api_key=cfg.token)
+        self._clients: dict[str, OpenAI] = {}
         self.text_chain = [cfg.text_model] + cfg.text_fallbacks
         self.vision_chain = [cfg.vision_model] + cfg.vision_fallbacks
+
+    def _split(self, entry: str) -> tuple[str, str]:
+        model, _, url = entry.partition("@")
+        return model, (url or self.cfg.base_url)
+
+    def _client(self, base_url: str) -> OpenAI:
+        if base_url not in self._clients:
+            key = self.cfg.token if "github" in base_url else (self.cfg.token or "local")
+            self._clients[base_url] = OpenAI(base_url=base_url, api_key=key or "local")
+        return self._clients[base_url]
 
     @staticmethod
     def _params(model: str, messages: list, json_mode: bool) -> dict:
@@ -53,17 +69,18 @@ class LLM:
         return params
 
     def _complete(self, chain: list[str], messages: list, json_mode: bool = False) -> str:
-        """Try each model in the chain until one answers."""
+        """Try each chain entry (model, endpoint) until one answers."""
         last_err: OpenAIError | None = None
-        for i, model in enumerate(chain):
+        for i, entry in enumerate(chain):
+            model, base_url = self._split(entry)
             try:
-                resp = self.client.chat.completions.create(
+                resp = self._client(base_url).chat.completions.create(
                     **self._params(model, messages, json_mode))
                 return resp.choices[0].message.content or ""
             except OpenAIError as err:
                 last_err = err
                 nxt = f"; falling back to {chain[i + 1]}" if i + 1 < len(chain) else ""
-                print(f"[llm] {model} failed ({err.__class__.__name__}){nxt}", file=sys.stderr)
+                print(f"[llm] {entry} failed ({err.__class__.__name__}){nxt}", file=sys.stderr)
         raise RuntimeError(f"All models in chain failed ({' -> '.join(chain)}): {last_err}")
 
     # ---------------------------------------------------------------- JSON extraction
