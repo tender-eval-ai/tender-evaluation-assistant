@@ -15,23 +15,33 @@ detailed evaluation record sheet.
 
 ## Pipeline (mirrors the TAP workflow)
 
+```mermaid
+flowchart TD
+    T["📄 Tender documents<br/>PDF with text layer"] --> ING
+    B["📠 Bid documents<br/>PDF, often pure scans"] --> ING
+
+    ING["<b>1 · Ingest</b><br/>text extraction — or page-by-page VLM OCR, cached"]
+    RUB["<b>2 · Rubric</b> — derived from <i>this</i> tender<br/>Stage I checklist · Stage II essential requirements<br/>price scheme + formula"]
+    HC1["✋ Human checkpoint<br/>review &amp; edit rubric.json"]
+    EXT["<b>3 · Bid extraction</b> — per tenderer<br/>documents present · compliance evidence · price fields<br/>every fact cites file + page"]
+    VER["🛡️ Adversarial verification<br/>every negative finding must survive a refutation attempt"]
+    HC2["✋ Human checkpoint<br/>review extractions — corrections are final"]
+    EVA["<b>4 · Evaluation</b> — deterministic code, no LLM<br/>Stage I completeness · Stage II compliance matrices<br/>rounding · FX · arithmetic tally · cost-effectiveness or price × qty · ranking"]
+    REP["<b>5 · Reports</b> — python-docx, editable Word, English<br/>price_summary.docx · summary_list.docx · evaluation_record.docx"]
+
+    ING --> RUB --> HC1 --> EXT --> VER --> HC2 --> EVA --> REP
+
+    classDef llm fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef code fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef human fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef docs fill:#f3f4f6,stroke:#9ca3af,color:#374151
+    class T,B docs
+    class ING,RUB,EXT,VER llm
+    class HC1,HC2 human
+    class EVA,REP code
 ```
-tender docs (PDF, text) ──► [1 INGEST] ──► [2 RUBRIC]  auto-derive evaluation rubric:
-bid docs   (PDF, scans) ──►  text or OCR      │         Stage I checklist, Stage II essential
-                             (VLM per page)   │         requirements, price scheme + formula
-                                              ▼
-                              [3 BID EXTRACTION]  per tenderer: documents present,
-                                              │   compliance evidence, price fields
-                                              ▼   (every fact cites file + page)
-                              [4 EVALUATION — deterministic code, no LLM]
-                                              │   Stage I completeness matrix
-                                              │   Stage II compliance matrix
-                                              │   Price: rounding, FX, arithmetic check,
-                                              │   cost-effectiveness or price×qty, ranking
-                                              ▼
-                              [5 REPORTS — python-docx, editable Word, English]
-                                  price_summary.docx · summary_list.docx · evaluation_record.docx
-```
+
+🔵 LLM reads &nbsp;·&nbsp; 🟢 deterministic code computes &nbsp;·&nbsp; 🟡 human decides
 
 Design principles:
 
