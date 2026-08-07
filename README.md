@@ -16,18 +16,18 @@ detailed evaluation record sheet.
 ## Pipeline (mirrors the TAP workflow)
 
 ```mermaid
-flowchart TD
-    T["📄 Tender documents<br/>PDF with text layer"] --> ING
-    B["📠 Bid documents<br/>PDF, often pure scans"] --> ING
+flowchart LR
+    T["📄 Tender PDFs<br/>text layer"] --> ING
+    B["📠 Bid PDFs<br/>pure scans"] --> ING
 
-    ING["<b>1 · Ingest</b><br/>text extraction — or page-by-page VLM OCR, cached"]
-    RUB["<b>2 · Rubric</b> — derived from <i>this</i> tender<br/>Stage I checklist · Stage II essential requirements<br/>price scheme + formula"]
-    HC1["✋ Human checkpoint<br/>review &amp; edit rubric.json"]
-    EXT["<b>3 · Bid extraction</b> — per tenderer<br/>documents present · compliance evidence · price fields<br/>every fact cites file + page"]
-    VER["🛡️ Adversarial verification<br/>every negative finding must survive a refutation attempt"]
-    HC2["✋ Human checkpoint<br/>review extractions — corrections are final"]
-    EVA["<b>4 · Evaluation</b> — deterministic code, no LLM<br/>Stage I completeness · Stage II compliance matrices<br/>rounding · FX · arithmetic tally · cost-effectiveness or price × qty · ranking"]
-    REP["<b>5 · Reports</b> — python-docx, editable Word, English<br/>price_summary.docx · summary_list.docx · evaluation_record.docx"]
+    ING["<b>1 · Ingest</b><br/>text /<br/>VLM OCR"]
+    RUB["<b>2 · Rubric</b><br/>Stage I + II<br/>price scheme"]
+    HC1["✋ confirm<br/>rubric"]
+    EXT["<b>3 · Extraction</b><br/>per tenderer,<br/>page-cited"]
+    VER["🛡️ refute<br/>negative<br/>findings"]
+    HC2["✋ correct<br/>extractions"]
+    EVA["<b>4 · Evaluation</b><br/>deterministic<br/>code, no LLM"]
+    REP["<b>5 · Reports</b><br/>editable<br/>Word × 3"]
 
     ING --> RUB --> HC1 --> EXT --> VER --> HC2 --> EVA --> REP
 
@@ -41,7 +41,10 @@ flowchart TD
     class EVA,REP code
 ```
 
-🔵 LLM reads &nbsp;·&nbsp; 🟢 deterministic code computes &nbsp;·&nbsp; 🟡 human decides
+🔵 LLM reads &nbsp;·&nbsp; 🟢 deterministic code computes &nbsp;·&nbsp; 🟡 human decides —
+rubric derives Stage I checklist, Stage II essential requirements and the price formula
+from *this* tender's documents; extraction cites file + page for every fact; evaluation
+covers both stage matrices plus rounding, FX, arithmetic tally and ranking.
 
 Design principles:
 
