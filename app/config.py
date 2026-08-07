@@ -64,3 +64,7 @@ class Config:
     max_ocr_pages: int = 8
     max_doc_chars: int = 15000
     max_total_chars: int = 45000
+    # Adversarial re-check of negative findings (set VERIFY_FINDINGS=0 to disable).
+    verify_findings: bool = field(
+        default_factory=lambda: os.environ.get("VERIFY_FINDINGS", "1").lower()
+        not in ("0", "false", "no"))

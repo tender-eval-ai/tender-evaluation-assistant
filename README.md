@@ -124,10 +124,21 @@ docker compose up -d --build
 ```
 
 UI flow = the product's checkpoints: upload documents → derive rubric → **review/edit
-the rubric** (human confirmation) → evaluate → browse Stage I/II evidence → download
-Word reports. Extractions can be corrected via
-`PUT /projects/{id}/bids/{tenderer}/extraction`; corrected bids are not re-extracted.
-Project data lives in `./data/` on the host (bind-mounted volume).
+the rubric** → extract bids → **review/correct extractions** (side-by-side with
+rendered evidence pages; corrected bids are never re-extracted) → evaluate → download
+Word reports. Two quality layers run inside extraction automatically:
+
+- **Targeted retrieval** (`app/retrieval.py`): pages are keyword-scored and only the
+  relevant ones enter the prompt — a Price Schedule on page 40 of a 300-page bid is
+  found, not truncated away.
+- **Adversarial verification** (`app/verify.py`): every negative finding (document
+  missing / non-compliant) gets an independent refutation attempt before it can reach
+  a report; refuted "missing" is restored with evidence, refuted "non-compliant" is
+  demoted to *unclear* for human clarification — never auto-passed. Disable with
+  `VERIFY_FINDINGS=0`.
+
+Project data lives in `./data/` on the host (bind-mounted volume). CI runs the full
+offline test suite on every push (`.github/workflows/ci.yml`).
 
 ## Client-site (production) deployment
 

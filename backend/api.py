@@ -34,16 +34,17 @@ from pathlib import Path
 from typing import Literal
 
 from fastapi import APIRouter, Depends, FastAPI, File, Header, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
 from app.bid_extract import extract_bid
 from app.config import Config, load_dotenv
 from app.evaluate import evaluate
-from app.ingest import load_folder
+from app.ingest import load_folder, render_page_png
 from app.report import render_all
 from app.rubric import derive_rubric
 from app.schemas import BidExtraction, Rubric
+from app.verify import verify_extraction
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
@@ -368,35 +369,102 @@ def put_extraction(pid: str, tenderer: str, extraction: BidExtraction) -> dict:
     return {"saved": True}
 
 
-@api.post("/projects/{pid}/evaluate")
-def run_evaluation(pid: str) -> dict:
-    pdir = _project_dir(pid)
+@api.get("/projects/{pid}/bids/{tenderer}/extraction")
+def get_extraction(pid: str, tenderer: str) -> dict:
+    path = _project_dir(pid) / "work" / "bids" / f"{_safe_name(tenderer)}.json"
+    if not path.is_file():
+        raise HTTPException(404, f"no extraction for '{tenderer}' yet")
+    return _read_json(path)
+
+
+@api.get("/projects/{pid}/bids/{tenderer}/page")
+def bid_page_image(pid: str, tenderer: str, page: int = 1, file: str | None = None) -> Response:
+    """Rendered PNG of one page of a tenderer's offer — the evidence behind a citation."""
+    bid_dir = _project_dir(pid) / "bids" / _safe_name(tenderer)
+    pdfs = sorted(bid_dir.glob("*.pdf")) if bid_dir.is_dir() else []
+    if file:
+        target = bid_dir / _safe_name(file)
+        if not target.is_file():
+            raise HTTPException(404, f"file '{file}' not found for '{tenderer}'")
+    elif pdfs:
+        target = pdfs[0]
+    else:
+        raise HTTPException(404, f"no PDFs uploaded for '{tenderer}'")
+    cache = _project_dir(pid) / "work" / "cache" / "pages"
+    cache.mkdir(parents=True, exist_ok=True)
+    cached = cache / f"{_safe_name(tenderer)}__{target.stem}__{page}.png"
+    if not cached.is_file():
+        try:
+            cached.write_bytes(render_page_png(target, page - 1, scale=1.5))
+        except Exception as err:
+            raise HTTPException(400, f"cannot render page {page} of {target.name}: {err}")
+    return Response(content=cached.read_bytes(), media_type="image/png")
+
+
+def _bidder_names(pdir: Path) -> set[str]:
+    uploaded = {p.name for p in (pdir / "bids").iterdir() if p.is_dir()}
+    extracted = {p.stem for p in (pdir / "work" / "bids").glob("*.json")}
+    return uploaded | extracted
+
+
+def _require_rubric(pdir: Path) -> Path:
     rubric_path = pdir / "work" / "rubric.json"
     if not rubric_path.is_file():
         raise HTTPException(400, "derive (and review) the rubric first")
-    uploaded = {p.name for p in (pdir / "bids").iterdir() if p.is_dir()}
-    extracted = {p.stem for p in (pdir / "work" / "bids").glob("*.json")}
-    if not uploaded | extracted:
+    return rubric_path
+
+
+def _extract_missing(pdir: Path, rubric: Rubric, cfg: Config) -> list[BidExtraction]:
+    """Extract (and adversarially verify) bids that have no stored extraction; stored
+    ones — including human corrections — are used as-is and never re-verified."""
+    llm = None
+    extractions = []
+    for name in sorted(_bidder_names(pdir)):
+        ext_path = pdir / "work" / "bids" / f"{name}.json"
+        if ext_path.is_file():
+            extractions.append(BidExtraction.model_validate(_read_json(ext_path)))
+            continue
+        if llm is None:
+            from app.llm import LLM
+            llm = LLM(cfg)
+        _set_status(pdir, "running", f"extracting bid: {name}")
+        docs = load_folder(pdir / "bids" / name, cfg, llm)
+        extraction = extract_bid(name, docs, rubric, cfg, llm)
+        if cfg.verify_findings:
+            _set_status(pdir, "running", f"verifying negative findings: {name}")
+            extraction, _ = verify_extraction(extraction, docs, rubric, cfg, llm)
+        _write_json(ext_path, extraction.model_dump(mode="json"))
+        extractions.append(extraction)
+    return extractions
+
+
+@api.post("/projects/{pid}/extract")
+def run_extract(pid: str) -> dict:
+    """Extract missing bids only (no evaluation) — feeds the human review step."""
+    pdir = _project_dir(pid)
+    rubric_path = _require_rubric(pdir)
+    if not _bidder_names(pdir):
         raise HTTPException(400, "upload at least one bid first")
 
     def job():
         rubric = Rubric.model_validate(_read_json(rubric_path))
-        cfg = _make_cfg(pdir)
-        llm = None
-        extractions = []
-        for name in sorted(uploaded | extracted):
-            ext_path = pdir / "work" / "bids" / f"{name}.json"
-            if ext_path.is_file():
-                extractions.append(BidExtraction.model_validate(_read_json(ext_path)))
-                continue
-            if llm is None:
-                from app.llm import LLM
-                llm = LLM(cfg)
-            _set_status(pdir, "running", f"extracting bid: {name}")
-            docs = load_folder(pdir / "bids" / name, cfg, llm)
-            extraction = extract_bid(name, docs, rubric, cfg, llm)
-            _write_json(ext_path, extraction.model_dump(mode="json"))
-            extractions.append(extraction)
+        _extract_missing(pdir, rubric, _make_cfg(pdir))
+        _set_status(pdir, "done", "extractions ready for review")
+
+    _start_job(pid, pdir, job, "starting bid extraction")
+    return {"started": True}
+
+
+@api.post("/projects/{pid}/evaluate")
+def run_evaluation(pid: str) -> dict:
+    pdir = _project_dir(pid)
+    rubric_path = _require_rubric(pdir)
+    if not _bidder_names(pdir):
+        raise HTTPException(400, "upload at least one bid first")
+
+    def job():
+        rubric = Rubric.model_validate(_read_json(rubric_path))
+        extractions = _extract_missing(pdir, rubric, _make_cfg(pdir))
         _set_status(pdir, "running", "evaluating (deterministic) and rendering reports")
         result = evaluate(rubric, extractions)
         _write_json(pdir / "work" / "evaluation.json", result.model_dump(mode="json"))

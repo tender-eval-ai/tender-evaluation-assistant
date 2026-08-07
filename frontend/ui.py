@@ -83,17 +83,18 @@ if project["status"]["state"] == "error":
 
 # Segmented control instead of st.tabs: its selection survives st.rerun(), so
 # finishing a job keeps the user on the page they were on.
-NAV = ["1 · Documents", "2 · Rubric (confirm)", "3 · Evaluation", "4 · Reports"]
+NAV = ["1 · Documents", "2 · Rubric (confirm)", "3 · Extraction (review)",
+       "4 · Evaluation", "5 · Reports"]
 SHORT = [n.split(" · ")[1].split(" (")[0] for n in NAV]  # Documents, Rubric, ...
 
 
 def _go(delta: int) -> None:
     """Button callback: runs before the rerun, when nav state may still be changed."""
-    idx = NAV.index(st.session_state.get("nav") or NAV[0])
-    st.session_state["nav"] = NAV[max(0, min(len(NAV) - 1, idx + delta))]
+    idx = NAV.index(st.session_state.get("nav_v2") or NAV[0])
+    st.session_state["nav_v2"] = NAV[max(0, min(len(NAV) - 1, idx + delta))]
 
 
-page = st.segmented_control("Navigation", NAV, key="nav", default=NAV[0],
+page = st.segmented_control("Navigation", NAV, key="nav_v2", default=NAV[0],
                             label_visibility="collapsed") or NAV[0]
 
 # ---------------------------------------------------------------- 1: documents
@@ -288,6 +289,73 @@ if page == NAV[1]:
 # ---------------------------------------------------------------- 3: evaluation
 
 if page == NAV[2]:
+    st.subheader("Extraction review — check the machine before it counts")
+    st.caption("Extract every bid, then review and correct what the model read: "
+               "document presence, compliance findings, price fields. Corrected bids "
+               "are never re-extracted. Negative findings were already re-checked by "
+               "an adversarial verification pass.")
+    if st.button("Extract all bids", type="primary",
+                 disabled=not (project["has_rubric"] and project["bidders"])):
+        call("POST", f"/projects/{pid}/extract")
+        result = wait_for_job(pid, st.empty())
+        if result["state"] == "error":
+            st.error(result["detail"])
+        else:
+            st.rerun()
+
+    if not project["extracted"]:
+        st.info("No extractions yet — run the extraction, or evaluate directly on the "
+                "next page (it extracts anything missing).")
+    else:
+        tenderer = st.selectbox("Tenderer", project["extracted"])
+        ext = call("GET", f"/projects/{pid}/bids/{tenderer}/extraction").json()
+        left, right = st.columns([3, 2])
+        with left:
+            st.markdown("**Documents (Stage I presence)**")
+            docs_rows = st.data_editor(
+                ext["documents"], key=f"docs_{tenderer}", hide_index=True,
+                use_container_width=True, num_rows="fixed")
+            st.markdown("**Compliance (Stage II findings)**")
+            comp_rows = st.data_editor(
+                ext["compliance"], key=f"comp_{tenderer}", hide_index=True,
+                use_container_width=True, num_rows="fixed",
+                column_config={"complies": st.column_config.SelectboxColumn(
+                    "complies", options=["yes", "no", "unclear"], required=True)})
+            st.markdown("**Price**")
+            price = ext["price"]
+            c1, c2, c3, c4 = st.columns(4)
+            price["currency"] = c1.text_input("Currency", price.get("currency") or "HKD",
+                                              key=f"cur_{tenderer}")
+            price["unit_price"] = c2.number_input(
+                "Unit price", value=float(price["unit_price"]) if price.get("unit_price")
+                is not None else None, key=f"up_{tenderer}")
+            price["optimal_dosage"] = c3.number_input(
+                "Optimal dosage", value=float(price["optimal_dosage"])
+                if price.get("optimal_dosage") is not None else None, key=f"od_{tenderer}")
+            price["quoted_total"] = c4.number_input(
+                "Quoted total", value=float(price["quoted_total"])
+                if price.get("quoted_total") is not None else None, key=f"qt_{tenderer}")
+            if st.button("Save corrections", type="primary", key=f"save_{tenderer}"):
+                ext["documents"], ext["compliance"], ext["price"] = docs_rows, comp_rows, price
+                call("PUT", f"/projects/{pid}/bids/{tenderer}/extraction", json=ext)
+                st.success("Saved — this bid will not be re-extracted.")
+        with right:
+            st.markdown("**Evidence page preview**")
+            files = [f.strip() for f in (ext.get("source_file") or "").split(",") if f.strip()]
+            file_choice = st.selectbox("File", files, key=f"file_{tenderer}") if len(files) > 1 else None
+            page_no = st.number_input("Page", min_value=1, max_value=999, value=1,
+                                      key=f"page_{tenderer}")
+            params = {"page": int(page_no)}
+            if file_choice:
+                params["file"] = file_choice
+            img = requests.get(f"{BACKEND}/projects/{pid}/bids/{tenderer}/page",
+                               headers=HEADERS, params=params, timeout=60)
+            if img.status_code == 200:
+                st.image(img.content, use_container_width=True)
+            else:
+                st.info("Page not renderable — check the page number.")
+
+if page == NAV[3]:
     st.subheader("Run evaluation")
     st.caption("Extracts each bid (skipping ones already extracted/corrected), then runs "
                "the deterministic Stage I/II checks and price computation.")
@@ -334,7 +402,7 @@ if page == NAV[2]:
 
 # ---------------------------------------------------------------- 4: reports
 
-if page == NAV[3]:
+if page == NAV[4]:
     st.subheader("Word deliverables (editable)")
     reports = call("GET", f"/projects/{pid}/reports").json()
     if not reports:

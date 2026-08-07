@@ -11,6 +11,7 @@ from pathlib import Path
 from .config import Config
 from .ingest import Document
 from .llm import LLM
+from .retrieval import RUBRIC_KEYWORDS, excerpt_all
 from .schemas import Rubric
 
 SYSTEM = (
@@ -46,21 +47,8 @@ def _priority(doc: Document) -> int:
 
 def derive_rubric(tender_docs: list[Document], cfg: Config, llm: LLM) -> Rubric:
     docs = sorted(tender_docs, key=_priority)
-    parts: list[str] = []
-    total = 0
-    for doc in docs:
-        chunk = doc.joined(cfg.max_doc_chars)
-        if not chunk.strip():
-            continue
-        piece = f"### FILE: {doc.name}\n{chunk}"
-        if total + len(piece) > cfg.max_total_chars:
-            piece = piece[: max(0, cfg.max_total_chars - total)]
-        parts.append(piece)
-        total += len(piece)
-        if total >= cfg.max_total_chars:
-            break
-    user = "Tender documents:\n\n" + "\n\n".join(parts)
-    return llm.chat_json(SYSTEM, user, Rubric)
+    content = excerpt_all(docs, RUBRIC_KEYWORDS, cfg.max_doc_chars, cfg.max_total_chars)
+    return llm.chat_json(SYSTEM, "Tender documents:\n\n" + content, Rubric)
 
 
 def save_rubric(rubric: Rubric, path: Path) -> None:

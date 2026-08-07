@@ -50,7 +50,7 @@ def classify_pdf(path: Path, sample_pages: int = 5) -> str:
     return "text" if chars / n >= SCAN_THRESHOLD else "scanned"
 
 
-def _render_page_png(path: Path, page_index: int, scale: float = 2.0) -> bytes:
+def render_page_png(path: Path, page_index: int, scale: float = 2.0) -> bytes:
     import pypdfium2 as pdfium
 
     pdf = pdfium.PdfDocument(str(path))
@@ -97,7 +97,7 @@ def load_pdf(path: Path, cfg: Config, llm: LLM | None = None) -> Document:
         if cached.is_file():
             text = cached.read_text()
         else:
-            text = llm.ocr_page(_render_page_png(path, i))
+            text = llm.ocr_page(render_page_png(path, i))
             cached.write_text(text)
         doc.pages.append(Page(number=i + 1, text=text, source="ocr"))
     return doc

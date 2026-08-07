@@ -113,6 +113,38 @@ def test_inbox_import_and_delete(tmp_path, monkeypatch):
     assert client.get("/projects").json() == []
 
 
+def test_extraction_review_endpoints_and_page_image(tmp_path, monkeypatch):
+    client = make_client(tmp_path, monkeypatch)
+    pid = client.post("/projects", json={"name": "review"}).json()["id"]
+    rubric = json.loads((FIXTURES / "rubric.json").read_text())
+    client.put(f"/projects/{pid}/rubric", json=rubric)
+
+    # GET extraction: 404 before, roundtrip after PUT.
+    assert client.get(f"/projects/{pid}/bids/Alpha/extraction").status_code == 404
+    ext = json.loads((FIXTURES / "bids" / "bidder_a.json").read_text())
+    client.put(f"/projects/{pid}/bids/Alpha/extraction", json=ext)
+    assert client.get(f"/projects/{pid}/bids/Alpha/extraction").json()["tenderer"] == "Alpha"
+
+    # Extract-only job with everything already extracted completes without any LLM.
+    assert client.post(f"/projects/{pid}/extract").status_code == 200
+    status = wait_done(client, pid)
+    assert status["state"] == "done" and "review" in status["detail"]
+
+    # Evidence page image rendered from a real uploaded PDF.
+    from tools.pdfgen import make_text_pdf
+    pdf = tmp_path / "offer.pdf"
+    make_text_pdf(pdf, "Offer of Alpha. Price Schedule Part A: unit price HK$ 1.00.")
+    client.post(f"/projects/{pid}/bids/Alpha",
+                files=[("files", ("offer.pdf", pdf.read_bytes(), "application/pdf"))])
+    img = client.get(f"/projects/{pid}/bids/Alpha/page", params={"page": 1})
+    assert img.status_code == 200
+    assert img.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert img.headers["content-type"] == "image/png"
+    assert client.get(f"/projects/{pid}/bids/Alpha/page",
+                      params={"page": 99}).status_code == 400
+    assert client.get(f"/projects/{pid}/bids/Nobody/page").status_code == 404
+
+
 def test_api_key_enforced(tmp_path, monkeypatch):
     client = make_client(tmp_path, monkeypatch, api_key="sesame")
     assert client.get("/health").status_code == 200  # health stays open

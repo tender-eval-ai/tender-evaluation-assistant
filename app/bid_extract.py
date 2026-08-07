@@ -5,6 +5,7 @@ from __future__ import annotations
 from .config import Config
 from .ingest import Document
 from .llm import LLM
+from .retrieval import excerpt_all, keywords_from_rubric
 from .schemas import BidExtraction, Rubric
 
 SYSTEM = (
@@ -30,19 +31,11 @@ SYSTEM = (
 
 def extract_bid(tenderer: str, bid_docs: list[Document], rubric: Rubric,
                 cfg: Config, llm: LLM) -> BidExtraction:
-    parts = []
-    total = 0
-    for doc in bid_docs:
-        piece = f"### FILE: {doc.name}\n{doc.joined(cfg.max_doc_chars)}"
-        if total + len(piece) > cfg.max_total_chars:
-            piece = piece[: max(0, cfg.max_total_chars - total)]
-        parts.append(piece)
-        total += len(piece)
-        if total >= cfg.max_total_chars:
-            break
+    content = excerpt_all(bid_docs, keywords_from_rubric(rubric),
+                          cfg.max_doc_chars, cfg.max_total_chars)
     user = (
         f"Evaluation rubric:\n{rubric.model_dump_json(indent=2)}\n\n"
-        f"Offer of tenderer '{tenderer}':\n\n" + "\n\n".join(parts)
+        f"Offer of tenderer '{tenderer}':\n\n" + content
     )
     extraction = llm.chat_json(SYSTEM, user, BidExtraction)
     extraction.tenderer = tenderer  # folder name wins over anything the model inferred

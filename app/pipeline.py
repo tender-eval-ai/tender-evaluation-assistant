@@ -20,6 +20,7 @@ from .llm import LLM
 from .report import render_all
 from .rubric import derive_rubric, load_rubric, save_rubric
 from .schemas import BidExtraction, EvaluationResult
+from .verify import verify_extraction
 
 
 def discover_bidders(bids_dir: Path) -> dict[str, Path]:
@@ -64,6 +65,10 @@ def run_pipeline(tender_dir: Path, bids_dir: Path, out_dir: Path,
             continue
         docs = load_folder(path, cfg, llm) if path.is_dir() else [load_pdf(path, cfg, llm)]
         extraction = extract_bid(name, docs, rubric, cfg, llm)
+        if cfg.verify_findings:
+            extraction, amendments = verify_extraction(extraction, docs, rubric, cfg, llm)
+            for note in amendments:
+                log(f"      {name}: verification amended — {note}")
         cached.write_text(extraction.model_dump_json(indent=2))
         bids.append(extraction)
         log(f"      {name}: extracted ({len(docs)} file(s))")
