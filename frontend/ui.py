@@ -22,6 +22,20 @@ HEADERS = {"X-API-Key": API_KEY} if API_KEY else {}
 
 st.set_page_config(page_title="Tender Evaluation Assistant", layout="wide")
 
+# Theme accent is blue (.streamlit/config.toml) — red is reserved for destructive
+# actions, currently only the project-delete button.
+st.markdown("""
+<style>
+.st-key-delete_project button:not(:disabled) {
+  background: #d32f2f; border-color: #d32f2f; color: #fff;
+}
+.st-key-delete_project button:not(:disabled):hover,
+.st-key-delete_project button:not(:disabled):active {
+  background: #b71c1c; border-color: #b71c1c; color: #fff;
+}
+</style>
+""", unsafe_allow_html=True)
+
 
 def call(method: str, path: str, **kwargs):
     resp = requests.request(method, f"{BACKEND}{path}", headers=HEADERS, timeout=120, **kwargs)
@@ -73,7 +87,7 @@ st.sidebar.caption(
 
 with st.sidebar.expander("Danger zone"):
     sure = st.checkbox("Yes, delete this project and all its files", key="del_confirm")
-    if st.button("Delete project", disabled=not sure):
+    if st.button("Delete project", key="delete_project", disabled=not sure):
         call("DELETE", f"/projects/{pid}")
         st.rerun()
 

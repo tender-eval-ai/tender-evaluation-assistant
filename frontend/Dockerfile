@@ -7,6 +7,7 @@ COPY frontend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY frontend/ui.py .
+COPY .streamlit ./.streamlit
 
 EXPOSE 8501
 
