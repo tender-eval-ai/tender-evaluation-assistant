@@ -291,14 +291,81 @@ if page == NAV[1]:
             st.rerun()
     if project["has_rubric"]:
         rubric = call("GET", f"/projects/{pid}/rubric").json()
-        edited = st.text_area("rubric.json (editable)",
-                              json.dumps(rubric, indent=2, ensure_ascii=False), height=420)
-        if st.button("Save rubric", type="primary"):
-            try:
-                call("PUT", f"/projects/{pid}/rubric", json=json.loads(edited))
-                st.success("Rubric saved.")
-            except (ValueError, RuntimeError) as err:
-                st.error(f"Not saved: {err}")
+
+        def _cite(x: dict) -> str:
+            bits = []
+            if x.get("source_file"):
+                bits.append(f"📄 {x['source_file']}")
+            if x.get("source_page"):
+                bits.append(f"p.{x['source_page']}")
+            clause = (x.get("source_clause") or "").strip()
+            if clause:
+                bits.append("“" + (clause[:160] + "…" if len(clause) > 160 else clause) + "”")
+            return " · ".join(bits)
+
+        left, right = st.columns([3, 2])
+        with left:
+            st.markdown(f"**{rubric['tender_ref']}** — {rubric.get('subject') or ''}")
+            st.markdown("##### Stage I — completeness checklist")
+            for it in rubric["stage1_checklist"]:
+                opt = "" if it.get("required", True) else " *(optional)*"
+                st.markdown(f"`{it['id']}` {it['item']}{opt}")
+                if _cite(it):
+                    st.caption(_cite(it))
+            st.markdown("##### Stage II — essential requirements")
+            for rq in rubric["stage2_requirements"]:
+                st.markdown(f"`{rq['id']}` {rq['requirement']}")
+                if _cite(rq):
+                    st.caption(_cite(rq))
+            ps = rubric["price_scheme"]
+            st.markdown("##### Price scheme")
+            st.markdown(f"`{ps['type']}` — quantity {ps['quantity']} {ps.get('unit', '')}, "
+                        f"{ps.get('currency', 'HKD')}"
+                        + (f" — {ps['notes']}" if ps.get("notes") else ""))
+            if _cite(ps):
+                st.caption(_cite(ps))
+
+        with right:
+            st.markdown("**Source page preview**")
+            cited = {}
+            for x in (rubric["stage1_checklist"] + rubric["stage2_requirements"]
+                      + [rubric["price_scheme"]]):
+                if x.get("source_page"):
+                    label = (f"{x.get('id', 'price scheme')} — "
+                             f"{x.get('source_file') or 'tender'} p.{x['source_page']}")
+                    cited[label] = x
+            if cited:
+                def _jump_rubric():
+                    x = cited[st.session_state[f"rubric_ev_{pid}"]]
+                    st.session_state[f"t_page_{pid}"] = int(x["source_page"])
+                    if x.get("source_file") in project["tender_files"]:
+                        st.session_state[f"t_file_{pid}"] = x["source_file"]
+                st.selectbox("Jump to citation", list(cited), key=f"rubric_ev_{pid}",
+                             on_change=_jump_rubric)
+            else:
+                st.caption("This rubric has no source citations — re-derive it to add them.")
+            if project["tender_files"]:
+                file_choice = st.selectbox("File", project["tender_files"], key=f"t_file_{pid}")
+                page_no = st.number_input("Page", min_value=1, max_value=999,
+                                          key=f"t_page_{pid}")
+                img = requests.get(f"{BACKEND}/projects/{pid}/tender/page", headers=HEADERS,
+                                   params={"page": int(page_no), "file": file_choice},
+                                   timeout=60)
+                if img.status_code == 200:
+                    st.image(img.content, use_container_width=True)
+                else:
+                    st.info("Page not renderable — check the page number.")
+
+        with st.expander("Edit rubric JSON (the checkpoint — save to confirm changes)"):
+            edited = st.text_area("rubric.json", label_visibility="collapsed",
+                                  value=json.dumps(rubric, indent=2, ensure_ascii=False),
+                                  height=420)
+            if st.button("Save rubric", type="primary"):
+                try:
+                    call("PUT", f"/projects/{pid}/rubric", json=json.loads(edited))
+                    st.success("Rubric saved.")
+                except (ValueError, RuntimeError) as err:
+                    st.error(f"Not saved: {err}")
 
 # ---------------------------------------------------------------- 3: evaluation
 
@@ -323,18 +390,56 @@ if page == NAV[2]:
     else:
         tenderer = st.selectbox("Tenderer", project["extracted"])
         ext = call("GET", f"/projects/{pid}/bids/{tenderer}/extraction").json()
+        docs_all, comp_all = ext["documents"], ext["compliance"]
+        doc_issues = [r for r in docs_all if not r.get("present")]
+        doc_passed = [r for r in docs_all if r.get("present")]
+        comp_issues = [r for r in comp_all if r.get("complies") != "yes"]
+        comp_passed = [r for r in comp_all if r.get("complies") == "yes"]
+
+        COMP_COLS = {"complies": st.column_config.SelectboxColumn(
+            "complies", options=["yes", "no", "unclear"], required=True)}
+        STATUS_COL = {"status": st.column_config.TextColumn(" ", disabled=True,
+                                                            width="small")}
+
+        def _doc_status(r) -> str:
+            return "🟢" if r.get("present") else "🔴"
+
+        def _comp_status(r) -> str:
+            return {"yes": "🟢", "no": "🔴"}.get(r.get("complies"), "🟠")
+
+        def _editor(rows, status_of, tag, extra_cols=None):
+            """data_editor with a read-only traffic-light column, stripped on return."""
+            display = [{"status": status_of(r), **r} for r in rows]
+            edited = st.data_editor(display, key=f"{tag}_{tenderer}", hide_index=True,
+                                    use_container_width=True, num_rows="fixed",
+                                    column_config={**STATUS_COL, **(extra_cols or {})})
+            return [{k: v for k, v in r.items() if k != "status"} for r in edited]
+
         left, right = st.columns([3, 2])
         with left:
-            st.markdown("**Documents (Stage I presence)**")
-            docs_rows = st.data_editor(
-                ext["documents"], key=f"docs_{tenderer}", hide_index=True,
-                use_container_width=True, num_rows="fixed")
-            st.markdown("**Compliance (Stage II findings)**")
-            comp_rows = st.data_editor(
-                ext["compliance"], key=f"comp_{tenderer}", hide_index=True,
-                use_container_width=True, num_rows="fixed",
-                column_config={"complies": st.column_config.SelectboxColumn(
-                    "complies", options=["yes", "no", "unclear"], required=True)})
+            n_issues = len(doc_issues) + len(comp_issues)
+            if n_issues:
+                st.markdown(f"##### ⚠️ Needs review — {n_issues} negative finding(s)")
+            else:
+                st.success("No negative findings for this tenderer.")
+            doc_issues_e, comp_issues_e = doc_issues, comp_issues
+            if doc_issues:
+                st.markdown("**Documents flagged missing (Stage I)**")
+                doc_issues_e = _editor(doc_issues, _doc_status, "docsi")
+            if comp_issues:
+                st.markdown("**Compliance flagged no / unclear (Stage II)**")
+                comp_issues_e = _editor(comp_issues, _comp_status, "compi", COMP_COLS)
+
+            doc_passed_e, comp_passed_e = doc_passed, comp_passed
+            n_ok = len(doc_passed) + len(comp_passed)
+            with st.expander(f"✅ Passed checks ({n_ok}) — show, verify, edit"):
+                if doc_passed:
+                    st.markdown("**Documents present (Stage I)**")
+                    doc_passed_e = _editor(doc_passed, _doc_status, "docsp")
+                if comp_passed:
+                    st.markdown("**Compliant (Stage II)**")
+                    comp_passed_e = _editor(comp_passed, _comp_status, "compp", COMP_COLS)
+
             st.markdown("**Price**")
             price = ext["price"]
             c1, c2, c3, c4 = st.columns(4)
@@ -350,14 +455,33 @@ if page == NAV[2]:
                 "Quoted total", value=float(price["quoted_total"])
                 if price.get("quoted_total") is not None else None, key=f"qt_{tenderer}")
             if st.button("Save corrections", type="primary", key=f"save_{tenderer}"):
-                ext["documents"], ext["compliance"], ext["price"] = docs_rows, comp_rows, price
+                doc_order = {r["checklist_id"]: i for i, r in enumerate(docs_all)}
+                comp_order = {r["requirement_id"]: i for i, r in enumerate(comp_all)}
+                ext["documents"] = sorted(doc_issues_e + doc_passed_e,
+                                          key=lambda r: doc_order.get(r["checklist_id"], 999))
+                ext["compliance"] = sorted(comp_issues_e + comp_passed_e,
+                                           key=lambda r: comp_order.get(r["requirement_id"], 999))
+                ext["price"] = price
                 call("PUT", f"/projects/{pid}/bids/{tenderer}/extraction", json=ext)
                 st.success("Saved — this bid will not be re-extracted.")
         with right:
             st.markdown("**Evidence page preview**")
+            cited = {}
+            for r in doc_issues + doc_passed:
+                if r.get("page"):
+                    cited[f"{_doc_status(r)} {r['checklist_id']} — p.{r['page']}"] = int(r["page"])
+            for r in comp_issues + comp_passed:
+                if r.get("page"):
+                    cited[f"{_comp_status(r)} {r['requirement_id']} — p.{r['page']}"] = int(r["page"])
+            if cited:
+                def _jump_bid():
+                    st.session_state[f"page_{tenderer}"] = \
+                        cited[st.session_state[f"ev_{tenderer}"]]
+                st.selectbox("Jump to cited page", list(cited), key=f"ev_{tenderer}",
+                             on_change=_jump_bid)
             files = [f.strip() for f in (ext.get("source_file") or "").split(",") if f.strip()]
             file_choice = st.selectbox("File", files, key=f"file_{tenderer}") if len(files) > 1 else None
-            page_no = st.number_input("Page", min_value=1, max_value=999, value=1,
+            page_no = st.number_input("Page", min_value=1, max_value=999,
                                       key=f"page_{tenderer}")
             params = {"page": int(page_no)}
             if file_choice:

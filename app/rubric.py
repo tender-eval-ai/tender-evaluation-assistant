@@ -27,7 +27,10 @@ SYSTEM = (
     "the formula multiplies a dosage/consumption figure by unit price (e.g. D x M), "
     "otherwise 'unit_price_x_quantity'. Include the estimated quantity and unit from "
     "the Price Schedule.\n"
-    "Quote source clauses. Only include what the documents actually require."
+    "Cite where the tender states each item: set source_file to the '### FILE:' header "
+    "and source_page to the [Page N] marker of the passage you relied on, and copy the "
+    "requiring clause into source_clause. Only include what the documents actually "
+    "require."
 )
 
 # Files most likely to define the rubric, in priority order for the prompt budget.

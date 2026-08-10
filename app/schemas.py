@@ -16,7 +16,9 @@ class ChecklistItem(BaseModel):
     """One Stage I completeness item (a form/schedule/certificate that must be present)."""
     id: str = Field(description="Stable id, e.g. 'S1-01'")
     item: str = Field(description="What must be submitted, e.g. 'Signed Tender Form (G.F.230)'")
-    source_clause: str = Field(default="", description="Where the tender documents require it")
+    source_clause: str = Field(default="", description="Quoted clause requiring it")
+    source_file: str = Field(default="", description="Tender file (### FILE header) stating it")
+    source_page: Optional[int] = Field(default=None, description="[Page N] marker where stated")
     required: bool = True
 
 
@@ -25,6 +27,8 @@ class EssentialRequirement(BaseModel):
     id: str = Field(description="Stable id, e.g. 'S2-01'")
     requirement: str
     source_clause: str = ""
+    source_file: str = Field(default="", description="Tender file (### FILE header) stating it")
+    source_page: Optional[int] = Field(default=None, description="[Page N] marker where stated")
 
 
 class PriceScheme(BaseModel):
@@ -34,6 +38,8 @@ class PriceScheme(BaseModel):
     unit: str = "kg"
     currency: str = "HKD"
     notes: str = ""
+    source_file: str = Field(default="", description="Tender file (### FILE header) defining the scheme")
+    source_page: Optional[int] = Field(default=None, description="[Page N] marker where defined")
 
 
 class Rubric(BaseModel):

@@ -55,8 +55,8 @@ class LLM:
 
     def _client(self, base_url: str) -> OpenAI:
         if base_url not in self._clients:
-            key = self.cfg.token if "github" in base_url else (self.cfg.token or "local")
-            self._clients[base_url] = OpenAI(base_url=base_url, api_key=key or "local")
+            self._clients[base_url] = OpenAI(
+                base_url=base_url, api_key=self.cfg.key_for(base_url) or "local")
         return self._clients[base_url]
 
     @staticmethod

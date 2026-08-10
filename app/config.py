@@ -1,7 +1,8 @@
 """Environment / model configuration.
 
-Demo backend: GitHub Models (free, OpenAI-compatible). Production backend: local vLLM
-serving Qwen3.6 / Qwen3-VL / DeepSeek — same client, different BASE_URL and model names.
+Demo backend: any OpenAI-compatible endpoint — DeepSeek cloud, local Ollama, or a mix
+via fallback chains. Production backend: local vLLM serving Qwen3.6 / Qwen3-VL /
+DeepSeek — same client, different BASE_URL and model names.
 """
 from __future__ import annotations
 
@@ -68,3 +69,15 @@ class Config:
     verify_findings: bool = field(
         default_factory=lambda: os.environ.get("VERIFY_FINDINGS", "1").lower()
         not in ("0", "false", "no"))
+
+    def key_for(self, base_url: str) -> str | None:
+        """API key for an endpoint, selected by hostname — lets fallback-chain entries
+        span providers with different credentials. Local servers (Ollama, vLLM) accept
+        any non-empty placeholder."""
+        for marker, env_var in (("deepseek", "DEEPSEEK_API_KEY"),
+                                ("googleapis", "GEMINI_API_KEY"),
+                                ("dashscope", "DASHSCOPE_API_KEY"),
+                                ("bigmodel", "ZHIPU_API_KEY")):
+            if marker in base_url:
+                return os.environ.get(env_var)
+        return self.token or "local"

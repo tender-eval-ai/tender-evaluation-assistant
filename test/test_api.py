@@ -145,6 +145,63 @@ def test_extraction_review_endpoints_and_page_image(tmp_path, monkeypatch):
     assert client.get(f"/projects/{pid}/bids/Nobody/page").status_code == 404
 
 
+def test_tender_page_image(tmp_path, monkeypatch):
+    client = make_client(tmp_path, monkeypatch)
+    pid = client.post("/projects", json={"name": "tp"}).json()["id"]
+    assert client.get(f"/projects/{pid}/tender/page").status_code == 404
+
+    from tools.pdfgen import make_text_pdf
+    pdf = tmp_path / "terms.pdf"
+    make_text_pdf(pdf, "Terms of Tender. Delivery within 45 days is essential.")
+    client.post(f"/projects/{pid}/tender",
+                files=[("files", ("terms.pdf", pdf.read_bytes(), "application/pdf"))])
+    img = client.get(f"/projects/{pid}/tender/page", params={"page": 1})
+    assert img.status_code == 200
+    assert img.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert client.get(f"/projects/{pid}/tender/page", params={"page": 99}).status_code == 400
+
+
+def test_parallel_extraction_extracts_all_missing(tmp_path, monkeypatch):
+    """The extract job fans missing bids out to a thread pool; every bid must end up
+    stored under its own name, and stored bids must survive untouched."""
+    monkeypatch.setenv("VERIFY_FINDINGS", "0")
+    client = make_client(tmp_path, monkeypatch)
+    import backend.api as api
+
+    pid = client.post("/projects", json={"name": "par"}).json()["id"]
+    client.put(f"/projects/{pid}/rubric",
+               json=json.loads((FIXTURES / "rubric.json").read_text()))
+
+    from tools.pdfgen import make_text_pdf
+    pdf = tmp_path / "offer.pdf"
+    make_text_pdf(pdf, "Offer document.")
+    for name in ("Alpha", "Beta", "Gamma", "Delta", "Echo"):
+        client.post(f"/projects/{pid}/bids/{name}",
+                    files=[("files", ("offer.pdf", pdf.read_bytes(), "application/pdf"))])
+
+    template = json.loads((FIXTURES / "bids" / "bidder_a.json").read_text())
+
+    def fake_extract(name, docs, rubric, cfg, llm):
+        time.sleep(0.05)  # force the extractions to overlap
+        from app.schemas import BidExtraction
+        ext = BidExtraction.model_validate(template)
+        ext.tenderer = name
+        return ext
+
+    monkeypatch.setattr(api, "extract_bid", fake_extract)
+    monkeypatch.setattr(api, "load_folder", lambda *a, **k: [])
+    monkeypatch.setattr("app.llm.LLM", lambda cfg: object())
+
+    assert client.post(f"/projects/{pid}/extract").json()["started"] is True
+    status = wait_done(client, pid)
+    assert status["state"] == "done", status
+    proj = client.get(f"/projects/{pid}").json()
+    assert proj["extracted"] == ["Alpha", "Beta", "Delta", "Echo", "Gamma"]
+    for name in proj["extracted"]:
+        got = client.get(f"/projects/{pid}/bids/{name}/extraction").json()
+        assert got["tenderer"] == name
+
+
 def test_api_key_enforced(tmp_path, monkeypatch):
     client = make_client(tmp_path, monkeypatch, api_key="sesame")
     assert client.get("/health").status_code == 200  # health stays open

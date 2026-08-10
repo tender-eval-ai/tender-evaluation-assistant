@@ -30,6 +30,7 @@ import secrets
 import shutil
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Literal
 
@@ -54,6 +55,9 @@ API_KEY = os.environ.get("API_KEY", "")
 # Server-side folder imports: case folders placed here (host ./inbox, mounted
 # read-only in Docker) can be imported into a project with one click.
 INBOX_DIR = Path(os.environ.get("INBOX_DIR", "inbox"))
+# Fresh bid extractions run concurrently (cloud endpoints benefit; a local Ollama
+# just queues them). 1 disables parallelism.
+MAX_PARALLEL_BIDS = max(1, int(os.environ.get("MAX_PARALLEL_BIDS", "4")))
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
@@ -377,28 +381,41 @@ def get_extraction(pid: str, tenderer: str) -> dict:
     return _read_json(path)
 
 
-@api.get("/projects/{pid}/bids/{tenderer}/page")
-def bid_page_image(pid: str, tenderer: str, page: int = 1, file: str | None = None) -> Response:
-    """Rendered PNG of one page of a tenderer's offer — the evidence behind a citation."""
-    bid_dir = _project_dir(pid) / "bids" / _safe_name(tenderer)
-    pdfs = sorted(bid_dir.glob("*.pdf")) if bid_dir.is_dir() else []
+def _page_png(pdir: Path, pdf_dir: Path, cache_tag: str, page: int,
+              file: str | None) -> Response:
+    """Rendered PNG of one page of a PDF in pdf_dir — the evidence behind a citation."""
+    pdfs = sorted(pdf_dir.glob("*.pdf")) if pdf_dir.is_dir() else []
     if file:
-        target = bid_dir / _safe_name(file)
+        target = pdf_dir / _safe_name(file)
         if not target.is_file():
-            raise HTTPException(404, f"file '{file}' not found for '{tenderer}'")
+            raise HTTPException(404, f"file '{file}' not found")
     elif pdfs:
         target = pdfs[0]
     else:
-        raise HTTPException(404, f"no PDFs uploaded for '{tenderer}'")
-    cache = _project_dir(pid) / "work" / "cache" / "pages"
+        raise HTTPException(404, "no PDFs uploaded")
+    cache = pdir / "work" / "cache" / "pages"
     cache.mkdir(parents=True, exist_ok=True)
-    cached = cache / f"{_safe_name(tenderer)}__{target.stem}__{page}.png"
+    cached = cache / f"{cache_tag}__{target.stem}__{page}.png"
     if not cached.is_file():
         try:
             cached.write_bytes(render_page_png(target, page - 1, scale=1.5))
         except Exception as err:
             raise HTTPException(400, f"cannot render page {page} of {target.name}: {err}")
     return Response(content=cached.read_bytes(), media_type="image/png")
+
+
+@api.get("/projects/{pid}/bids/{tenderer}/page")
+def bid_page_image(pid: str, tenderer: str, page: int = 1, file: str | None = None) -> Response:
+    pdir = _project_dir(pid)
+    safe = _safe_name(tenderer)
+    return _page_png(pdir, pdir / "bids" / safe, safe, page, file)
+
+
+@api.get("/projects/{pid}/tender/page")
+def tender_page_image(pid: str, page: int = 1, file: str | None = None) -> Response:
+    """Evidence page for rubric source citations."""
+    pdir = _project_dir(pid)
+    return _page_png(pdir, pdir / "tender", "tender", page, file)
 
 
 def _bidder_names(pdir: Path) -> set[str]:
@@ -416,26 +433,50 @@ def _require_rubric(pdir: Path) -> Path:
 
 def _extract_missing(pdir: Path, rubric: Rubric, cfg: Config) -> list[BidExtraction]:
     """Extract (and adversarially verify) bids that have no stored extraction; stored
-    ones — including human corrections — are used as-is and never re-verified."""
-    llm = None
-    extractions = []
-    for name in sorted(_bidder_names(pdir)):
+    ones — including human corrections — are used as-is and never re-verified. Fresh
+    extractions run in parallel, MAX_PARALLEL_BIDS at a time."""
+    names = sorted(_bidder_names(pdir))
+    results: dict[str, BidExtraction] = {}
+    todo: list[str] = []
+    for name in names:
         ext_path = pdir / "work" / "bids" / f"{name}.json"
         if ext_path.is_file():
-            extractions.append(BidExtraction.model_validate(_read_json(ext_path)))
-            continue
-        if llm is None:
-            from app.llm import LLM
-            llm = LLM(cfg)
-        _set_status(pdir, "running", f"extracting bid: {name}")
+            results[name] = BidExtraction.model_validate(_read_json(ext_path))
+        else:
+            todo.append(name)
+    if not todo:
+        return [results[n] for n in names]
+
+    from app.llm import LLM
+    llm = LLM(cfg)
+    progress_lock = threading.Lock()
+    done = 0
+
+    def extract_one(name: str) -> None:
+        nonlocal done
         docs = load_folder(pdir / "bids" / name, cfg, llm)
         extraction = extract_bid(name, docs, rubric, cfg, llm)
         if cfg.verify_findings:
-            _set_status(pdir, "running", f"verifying negative findings: {name}")
             extraction, _ = verify_extraction(extraction, docs, rubric, cfg, llm)
-        _write_json(ext_path, extraction.model_dump(mode="json"))
-        extractions.append(extraction)
-    return extractions
+        _write_json(pdir / "work" / "bids" / f"{name}.json",
+                    extraction.model_dump(mode="json"))
+        results[name] = extraction
+        with progress_lock:
+            done += 1
+            _set_status(pdir, "running",
+                        f"extracting bids: {done}/{len(todo)} finished (last: {name})")
+
+    _set_status(pdir, "running",
+                f"extracting {len(todo)} bid(s), up to {MAX_PARALLEL_BIDS} in parallel")
+    with ThreadPoolExecutor(max_workers=min(MAX_PARALLEL_BIDS, len(todo))) as pool:
+        futures = {pool.submit(extract_one, n): n for n in todo}
+        for fut in as_completed(futures):
+            try:
+                fut.result()
+            except Exception as err:
+                pool.shutdown(wait=False, cancel_futures=True)
+                raise RuntimeError(f"extracting {futures[fut]}: {err}") from err
+    return [results[n] for n in names]
 
 
 @api.post("/projects/{pid}/extract")

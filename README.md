@@ -6,8 +6,8 @@ Input: a tender document set + one bid (offer) per tenderer. Output: an editable
 detailed evaluation record sheet.
 
 > **CONFIDENTIALITY WARNING**
-> This demo calls **GitHub Models** (a cloud API, free tier) for document understanding.
-> **Never** feed real client tender/bid documents through the cloud path. Use the bundled
+> The demo's default text model is a **cloud API** (DeepSeek) for document understanding.
+> **Never** feed real client tender/bid documents through any cloud path. Use the bundled
 > synthetic fixtures, or your own sanitized samples. The production design targets fully
 > local inference (Qwen3-VL / Qwen3.6 / DeepSeek on DGX Spark via vLLM) — the LLM client
 > here is OpenAI-compatible, so production swaps `GITHUB_MODELS_BASE_URL` for a local
@@ -88,14 +88,17 @@ flags — while B is still (correctly) the recommended conforming offer. Checkpo
 under `output/live_demo/` (`rubric.json`, `bids/*.json`) are editable; delete one to
 re-derive/re-extract it on the next run.
 
-**LLM backend**: any OpenAI-compatible endpoint, configured entirely in `.env`. The
-demo default is **local Ollama** (free, keyless, no cloud): `qwen3:8b` for text and
-`qwen3-vl:8b` (fallback `qwen2.5vl:7b`) for vision OCR —
-`ollama pull qwen3:8b && ollama pull qwen3-vl:8b`. Fallback chains
+**LLM backend**: any OpenAI-compatible endpoint, configured entirely in `.env`. Two
+ready-made setups: fully **local Ollama** (free, keyless —
+`ollama pull qwen3:8b && ollama pull qwen3-vl:8b`), or a cheap **cloud text primary**
+such as DeepSeek (`TEXT_MODEL=deepseek-chat@https://api.deepseek.com/v1` +
+`DEEPSEEK_API_KEY`) with local Ollama as automatic fallback — synthetic/sanitized
+documents only on any cloud path. Hosted endpoints pick their key by hostname
+(`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `DASHSCOPE_API_KEY`, `ZHIPU_API_KEY`,
+`GITHUB_TOKEN`), so a fallback chain can span providers. Chains
 (`*_MODEL_FALLBACKS`) are tried automatically when the model before them fails.
 Production swaps the base URL for vLLM on the client's hardware. (The original demo
-backend, GitHub Models, was retired in 2026 — any OpenAI-compatible cloud endpoint
-still works if you set its URL, key, and model names.)
+backend, GitHub Models, was retired in 2026.)
 
 ## Repository layout
 
@@ -137,9 +140,12 @@ docker compose up -d --build
 ```
 
 UI flow = the product's checkpoints: upload documents → derive rubric → **review/edit
-the rubric** → extract bids → **review/correct extractions** (side-by-side with
-rendered evidence pages; corrected bids are never re-extracted) → evaluate → download
-Word reports. Two quality layers run inside extraction automatically:
+the rubric** (every item shows its source citation — file, page, quoted clause — next
+to a rendered tender-page preview) → extract bids → **review/correct extractions**
+(triaged: negative findings first with 🔴/🟠 badges, passed checks collapsed behind a
+"Passed checks" expander, jump-to-cited-page evidence preview; corrected bids are
+never re-extracted) → evaluate → download Word reports. Quality/throughput layers
+that run automatically:
 
 - **Targeted retrieval** (`app/retrieval.py`): pages are keyword-scored and only the
   relevant ones enter the prompt — a Price Schedule on page 40 of a 300-page bid is
@@ -149,6 +155,12 @@ Word reports. Two quality layers run inside extraction automatically:
   a report; refuted "missing" is restored with evidence, refuted "non-compliant" is
   demoted to *unclear* for human clarification — never auto-passed. Disable with
   `VERIFY_FINDINGS=0`.
+- **Per-page OCR routing** (`app/ingest.py`): the text-vs-scan decision is per page,
+  so a digital document with a scanned annex OCRs only the annex, and a scan with an
+  embedded text layer on some pages skips OCR there.
+- **Parallel extraction** (`backend/api.py`): missing bids are extracted concurrently
+  (`MAX_PARALLEL_BIDS`, default 4) — cloud endpoints scale with it; a local Ollama
+  simply queues the requests.
 
 Project data lives in `./data/` on the host (bind-mounted volume). CI runs the full
 offline test suite on every push (`.github/workflows/ci.yml`).
@@ -167,8 +179,8 @@ thing users need.
 
 | Demo (this repo)                      | Production (client site)                          |
 | ------------------------------------- | ------------------------------------------------- |
-| GitHub Models `openai/gpt-4o-mini`    | Qwen3.6-35B-A3B / DeepSeek-V4-Flash via vLLM      |
-| GitHub Models vision OCR              | Qwen3-VL-30B-A3B (MoE) page OCR, batched          |
+| DeepSeek API `deepseek-chat` (text)   | Qwen3.6-35B-A3B / DeepSeek-V4-Flash via vLLM      |
+| Ollama `qwen3-vl:8b` vision OCR       | Qwen3-VL-30B-A3B (MoE) page OCR, batched          |
 | Docker on a laptop (x86/arm)          | Same compose stack on DGX Spark GB10 (arm64)      |
 | Synthetic fixtures                    | Real tender/bid sets, fully local                 |
 

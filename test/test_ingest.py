@@ -32,3 +32,53 @@ def test_scanned_pdf_requires_llm(tmp_path):
     assert classify_pdf(pdf) == "scanned"
     with pytest.raises(RuntimeError, match="OCR requires"):
         load_pdf(pdf, Config(token="unused"))
+
+
+def _tiny_jpeg() -> bytes:
+    import io
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.new("RGB", (24, 24), "white").save(buf, format="JPEG")
+    return buf.getvalue()
+
+
+class _OCRStub:
+    def __init__(self):
+        self.calls = 0
+
+    def ocr_page(self, png_bytes):
+        self.calls += 1
+        return "OCR CONTENT of the scanned page"
+
+
+class _NoOCR:
+    def ocr_page(self, png_bytes):
+        raise AssertionError("OCR must not be called for imageless text pages")
+
+
+def test_mixed_pdf_ocrs_only_the_scanned_page(tmp_path):
+    # Page 1 has a rich text layer; page 2 is image-only (a scanned annex): the
+    # text-vs-scan decision is per page, so only page 2 goes through OCR.
+    pdf = tmp_path / "mixed.pdf"
+    make_text_pdf(pdf, ["Tender terms and conditions apply. " * 10] + [""] * 48,
+                  images={1: _tiny_jpeg()})
+    assert classify_pdf(pdf) == "text"
+    cfg = Config(token="unused")
+    cfg.cache_dir = tmp_path / "cache"
+    llm = _OCRStub()
+    doc = load_pdf(pdf, cfg, llm)
+    assert [p.source for p in doc.pages] == ["text", "ocr"]
+    assert doc.pages[1].text == "OCR CONTENT of the scanned page"
+    assert llm.calls == 1
+    # Second load hits the per-page cache — no new OCR call.
+    doc2 = load_pdf(pdf, cfg, llm)
+    assert llm.calls == 1 and doc2.pages[1].source == "ocr"
+
+
+def test_text_pdf_blank_page_not_ocred(tmp_path):
+    # An imageless sparse page (blank separator) in a text document must not waste
+    # an OCR call — there is nothing on it to read.
+    pdf = tmp_path / "report.pdf"
+    make_text_pdf(pdf, ["Substantive tender content here. " * 10] + [""] * 48)
+    doc = load_pdf(pdf, Config(token="unused"), _NoOCR())
+    assert [p.source for p in doc.pages] == ["text", "text"]

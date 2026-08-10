@@ -72,33 +72,50 @@ def _file_sha(path: Path) -> str:
     return h.hexdigest()[:16]
 
 
+def _page_has_image(page) -> bool:
+    """True if the page carries an image XObject (i.e. looks like a scan)."""
+    try:
+        return bool(page.images)
+    except Exception:
+        return True  # malformed resources — assume it is worth OCR'ing
+
+
 def load_pdf(path: Path, cfg: Config, llm: LLM | None = None) -> Document:
-    """Load a PDF as per-page text. Scanned PDFs are OCR'd page-by-page through the
-    vision model with an on-disk cache; pages beyond cfg.max_ocr_pages are skipped
-    (free-tier rate limits — raise the cap for production)."""
+    """Load a PDF as per-page text. The text-vs-scan decision is made PER PAGE: pages
+    with a usable text layer are read directly, sparse pages that carry an image are
+    OCR'd through the vision model (on-disk cache). So a digital document with a
+    scanned annex, or a scan with an embedded OCR layer on some pages, both get the
+    cheap path wherever possible. Imageless sparse pages in a text document (blank
+    separators, short cover pages) keep their text — there is nothing more to read.
+    At most cfg.max_ocr_pages pages per document are OCR'd; the rest are skipped."""
     kind = classify_pdf(path)
     doc = Document(path=path, kind=kind)
     reader = PdfReader(str(path))
 
-    if kind == "text":
-        for i, page in enumerate(reader.pages):
-            doc.pages.append(Page(number=i + 1, text=page.extract_text() or "", source="text"))
-        return doc
-
-    if llm is None:
+    if kind == "scanned" and llm is None:
         raise RuntimeError(f"{path.name} is a scanned PDF; OCR requires an LLM client.")
+
     cache = cfg.cache_dir / _file_sha(path)
-    cache.mkdir(parents=True, exist_ok=True)
-    for i in range(len(reader.pages)):
-        if i >= cfg.max_ocr_pages:
+    ocr_used = 0
+    for i, page in enumerate(reader.pages):
+        text = page.extract_text() or ""
+        if len(text) >= SCAN_THRESHOLD:
+            doc.pages.append(Page(number=i + 1, text=text, source="text"))
+            continue
+        if kind == "text" and (llm is None or not _page_has_image(page)):
+            doc.pages.append(Page(number=i + 1, text=text, source="text"))
+            continue
+        if ocr_used >= cfg.max_ocr_pages:
             doc.pages.append(Page(number=i + 1, text="", source="skipped"))
             continue
         cached = cache / f"page_{i + 1:04d}.md"
         if cached.is_file():
             text = cached.read_text()
         else:
+            cache.mkdir(parents=True, exist_ok=True)
             text = llm.ocr_page(render_page_png(path, i))
             cached.write_text(text)
+        ocr_used += 1
         doc.pages.append(Page(number=i + 1, text=text, source="ocr"))
     return doc
 
