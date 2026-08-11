@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from urllib.parse import urlencode
 
 import requests
 import streamlit as st
@@ -46,6 +47,19 @@ def call(method: str, path: str, **kwargs):
             detail = resp.text
         raise RuntimeError(f"{method} {path} -> {resp.status_code}: {detail}")
     return resp
+
+
+def page_url(path: str, page, highlight: str = "", file: str = "") -> str:
+    """Browser-openable evidence link (opens in a new tab) with the citation
+    highlighted on the rendered page."""
+    params: dict = {"page": int(page)}
+    if file:
+        params["file"] = file
+    if highlight:
+        params["highlight"] = highlight[:300]
+    if API_KEY:
+        params["key"] = API_KEY
+    return f"{PUBLIC_BACKEND}{path}?{urlencode(params)}"
 
 
 def wait_for_job(pid: str, placeholder) -> dict:
@@ -294,11 +308,17 @@ if page == NAV[1]:
 
         def _cite(x: dict) -> str:
             bits = []
-            if x.get("source_file"):
-                bits.append(f"📄 {x['source_file']}")
-            if x.get("source_page"):
-                bits.append(f"p.{x['source_page']}")
             clause = (x.get("source_clause") or "").strip()
+            where = " · ".join(b for b in (
+                f"📄 {x['source_file']}" if x.get("source_file") else "",
+                f"p.{x['source_page']}" if x.get("source_page") else "") if b)
+            if where and x.get("source_page"):
+                url = page_url(f"/projects/{pid}/tender/page", x["source_page"], clause,
+                               x["source_file"] if x.get("source_file")
+                               in project["tender_files"] else "")
+                bits.append(f"[{where}]({url})")
+            elif where:
+                bits.append(where)
             if clause:
                 bits.append("“" + (clause[:160] + "…" if len(clause) > 160 else clause) + "”")
             return " · ".join(bits)
@@ -338,6 +358,7 @@ if page == NAV[1]:
                 def _jump_rubric():
                     x = cited[st.session_state[f"rubric_ev_{pid}"]]
                     st.session_state[f"t_page_{pid}"] = int(x["source_page"])
+                    st.session_state[f"t_hl_{pid}"] = (x.get("source_clause") or "").strip()
                     if x.get("source_file") in project["tender_files"]:
                         st.session_state[f"t_file_{pid}"] = x["source_file"]
                 st.selectbox("Jump to citation", list(cited), key=f"rubric_ev_{pid}",
@@ -348,9 +369,13 @@ if page == NAV[1]:
                 file_choice = st.selectbox("File", project["tender_files"], key=f"t_file_{pid}")
                 page_no = st.number_input("Page", min_value=1, max_value=999,
                                           key=f"t_page_{pid}")
+                params = {"page": int(page_no), "file": file_choice}
+                hl = st.session_state.get(f"t_hl_{pid}", "")
+                if hl:
+                    params["highlight"] = hl[:300]
+                    st.caption("Highlighting: “" + (hl[:90] + "…" if len(hl) > 90 else hl) + "”")
                 img = requests.get(f"{BACKEND}/projects/{pid}/tender/page", headers=HEADERS,
-                                   params={"page": int(page_no), "file": file_choice},
-                                   timeout=60)
+                                   params=params, timeout=60)
                 if img.status_code == 200:
                     st.image(img.content, use_container_width=True)
                 else:
@@ -398,8 +423,12 @@ if page == NAV[2]:
 
         COMP_COLS = {"complies": st.column_config.SelectboxColumn(
             "complies", options=["yes", "no", "unclear"], required=True)}
-        STATUS_COL = {"status": st.column_config.TextColumn(" ", disabled=True,
-                                                            width="small")}
+        STATUS_COL = {
+            "status": st.column_config.TextColumn(" ", disabled=True, width="small"),
+            "view": st.column_config.LinkColumn(
+                "src", display_text="🔎", disabled=True, width="small",
+                help="Open the cited page with the quoted evidence highlighted"),
+        }
 
         def _doc_status(r) -> str:
             return "🟢" if r.get("present") else "🔴"
@@ -407,13 +436,24 @@ if page == NAV[2]:
         def _comp_status(r) -> str:
             return {"yes": "🟢", "no": "🔴"}.get(r.get("complies"), "🟠")
 
+        def _quote_of(r) -> str:
+            return (r.get("note") if "checklist_id" in r else r.get("evidence")) or ""
+
+        def _view_link(r):
+            if not r.get("page"):
+                return None
+            return page_url(f"/projects/{pid}/bids/{tenderer}/page", r["page"],
+                            _quote_of(r))
+
         def _editor(rows, status_of, tag, extra_cols=None):
-            """data_editor with a read-only traffic-light column, stripped on return."""
-            display = [{"status": status_of(r), **r} for r in rows]
+            """data_editor with read-only traffic-light + evidence-link columns,
+            both stripped from the returned rows."""
+            display = [{"status": status_of(r), "view": _view_link(r), **r} for r in rows]
             edited = st.data_editor(display, key=f"{tag}_{tenderer}", hide_index=True,
                                     use_container_width=True, num_rows="fixed",
                                     column_config={**STATUS_COL, **(extra_cols or {})})
-            return [{k: v for k, v in r.items() if k != "status"} for r in edited]
+            return [{k: v for k, v in r.items() if k not in ("status", "view")}
+                    for r in edited]
 
         left, right = st.columns([3, 2])
         with left:
@@ -469,14 +509,17 @@ if page == NAV[2]:
             cited = {}
             for r in doc_issues + doc_passed:
                 if r.get("page"):
-                    cited[f"{_doc_status(r)} {r['checklist_id']} — p.{r['page']}"] = int(r["page"])
+                    cited[f"{_doc_status(r)} {r['checklist_id']} — p.{r['page']}"] = \
+                        (int(r["page"]), _quote_of(r))
             for r in comp_issues + comp_passed:
                 if r.get("page"):
-                    cited[f"{_comp_status(r)} {r['requirement_id']} — p.{r['page']}"] = int(r["page"])
+                    cited[f"{_comp_status(r)} {r['requirement_id']} — p.{r['page']}"] = \
+                        (int(r["page"]), _quote_of(r))
             if cited:
                 def _jump_bid():
-                    st.session_state[f"page_{tenderer}"] = \
-                        cited[st.session_state[f"ev_{tenderer}"]]
+                    page, quote = cited[st.session_state[f"ev_{tenderer}"]]
+                    st.session_state[f"page_{tenderer}"] = page
+                    st.session_state[f"hl_{tenderer}"] = quote
                 st.selectbox("Jump to cited page", list(cited), key=f"ev_{tenderer}",
                              on_change=_jump_bid)
             files = [f.strip() for f in (ext.get("source_file") or "").split(",") if f.strip()]
@@ -486,6 +529,10 @@ if page == NAV[2]:
             params = {"page": int(page_no)}
             if file_choice:
                 params["file"] = file_choice
+            hl = st.session_state.get(f"hl_{tenderer}", "")
+            if hl:
+                params["highlight"] = hl[:300]
+                st.caption("Highlighting: “" + (hl[:90] + "…" if len(hl) > 90 else hl) + "”")
             img = requests.get(f"{BACKEND}/projects/{pid}/bids/{tenderer}/page",
                                headers=HEADERS, params=params, timeout=60)
             if img.status_code == 200:

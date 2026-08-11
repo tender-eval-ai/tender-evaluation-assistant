@@ -50,15 +50,54 @@ def classify_pdf(path: Path, sample_pages: int = 5) -> str:
     return "text" if chars / n >= SCAN_THRESHOLD else "scanned"
 
 
-def render_page_png(path: Path, page_index: int, scale: float = 2.0) -> bytes:
+def _highlight_rects(page, query: str) -> list[tuple[float, float, float, float]]:
+    """Line rectangles (PDF points, bottom-left origin) of the first occurrence of
+    `query` on the page. LLM quotes rarely match the PDF verbatim and pdfium search
+    does not cross line breaks, so progressively shorter leading word-runs are tried.
+    Scanned pages have no text layer — they simply return no rects."""
+    import re
+    words = re.sub(r"\s+", " ", query or "").strip().split(" ")
+    if not words:
+        return []
+    textpage = page.get_textpage()
+    for n in dict.fromkeys([len(words), 10, 6, 4, 3]):
+        if n > len(words):
+            continue
+        needle = " ".join(words[:n])
+        if len(needle) < 4:
+            break
+        match = textpage.search(needle, match_case=False).get_next()
+        if match:
+            index, count = match
+            return [textpage.get_rect(i)
+                    for i in range(textpage.count_rects(index, count))]
+    return []
+
+
+def render_page_png(path: Path, page_index: int, scale: float = 2.0,
+                    highlight: str | None = None) -> bytes:
+    """Rendered page PNG. If `highlight` text is found on the page (needs a text
+    layer), its lines get a translucent yellow marker."""
     import pypdfium2 as pdfium
 
     pdf = pdfium.PdfDocument(str(path))
     try:
         page = pdf[page_index]
-        pil = page.render(scale=scale).to_pil()
+        pil = page.render(scale=scale).to_pil().convert("RGBA")
+        rects = _highlight_rects(page, highlight) if highlight else []
+        if rects:
+            from PIL import Image, ImageDraw
+            _, page_h = page.get_size()
+            overlay = Image.new("RGBA", pil.size, (0, 0, 0, 0))
+            draw = ImageDraw.Draw(overlay)
+            for left, bottom, right, top in rects:
+                box = ((left - 2) * scale, (page_h - top - 2) * scale,
+                       (right + 2) * scale, (page_h - bottom + 2) * scale)
+                draw.rectangle(box, fill=(255, 225, 0, 88),
+                               outline=(255, 160, 0, 220), width=2)
+            pil = Image.alpha_composite(pil, overlay)
         buf = io.BytesIO()
-        pil.save(buf, format="PNG")
+        pil.convert("RGB").save(buf, format="PNG")
         return buf.getvalue()
     finally:
         pdf.close()

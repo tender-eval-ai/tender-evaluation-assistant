@@ -160,6 +160,35 @@ def test_tender_page_image(tmp_path, monkeypatch):
     assert img.content[:8] == b"\x89PNG\r\n\x1a\n"
     assert client.get(f"/projects/{pid}/tender/page", params={"page": 99}).status_code == 400
 
+    # Highlighting the quoted evidence visibly changes the render; a quote that is
+    # nowhere on the page falls back to the clean render.
+    marked = client.get(f"/projects/{pid}/tender/page",
+                        params={"page": 1, "highlight": "Delivery within 45 days"})
+    assert marked.status_code == 200 and marked.content[:8] == b"\x89PNG\r\n\x1a\n"
+    assert marked.content != img.content
+    unfound = client.get(f"/projects/{pid}/tender/page",
+                         params={"page": 1, "highlight": "totally absent wording zz"})
+    assert unfound.content == img.content
+
+
+def test_page_image_accepts_query_key(tmp_path, monkeypatch):
+    """Evidence links open in a browser tab (no headers): page endpoints accept
+    ?key=…, but the data API must still require the header."""
+    client = make_client(tmp_path, monkeypatch, api_key="sesame")
+    h = {"X-API-Key": "sesame"}
+    pid = client.post("/projects", json={"name": "k"}, headers=h).json()["id"]
+    from tools.pdfgen import make_text_pdf
+    pdf = tmp_path / "t.pdf"
+    make_text_pdf(pdf, "Terms of Tender apply here.")
+    client.post(f"/projects/{pid}/tender", headers=h,
+                files=[("files", ("t.pdf", pdf.read_bytes(), "application/pdf"))])
+    assert client.get(f"/projects/{pid}/tender/page").status_code == 401
+    assert client.get(f"/projects/{pid}/tender/page",
+                      params={"key": "wrong"}).status_code == 401
+    assert client.get(f"/projects/{pid}/tender/page",
+                      params={"key": "sesame"}).status_code == 200
+    assert client.get("/projects", params={"key": "sesame"}).status_code == 401
+
 
 def test_parallel_extraction_extracts_all_missing(tmp_path, monkeypatch):
     """The extract job fans missing bids out to a thread pool; every bid must end up

@@ -23,6 +23,7 @@ X-API-Key header. Always set it on any machine that is not localhost-only.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -81,6 +82,17 @@ app.add_middleware(
 )
 
 api = APIRouter(dependencies=[Depends(require_key)])
+
+
+def require_key_or_query(x_api_key: str | None = Header(default=None),
+                         key: str | None = None) -> None:
+    """Evidence page images are also opened as plain browser links (new tab), which
+    cannot send headers — those endpoints accept the key as ?key=… too."""
+    if API_KEY and x_api_key != API_KEY and key != API_KEY:
+        raise HTTPException(401, "invalid or missing X-API-Key header")
+
+
+media = APIRouter(dependencies=[Depends(require_key_or_query)])
 
 
 # ---------------------------------------------------------------- helpers
@@ -382,8 +394,9 @@ def get_extraction(pid: str, tenderer: str) -> dict:
 
 
 def _page_png(pdir: Path, pdf_dir: Path, cache_tag: str, page: int,
-              file: str | None) -> Response:
-    """Rendered PNG of one page of a PDF in pdf_dir — the evidence behind a citation."""
+              file: str | None, highlight: str | None = None) -> Response:
+    """Rendered PNG of one page of a PDF in pdf_dir — the evidence behind a citation.
+    With `highlight`, the quoted text is marked on the page (text-layer pages only)."""
     pdfs = sorted(pdf_dir.glob("*.pdf")) if pdf_dir.is_dir() else []
     if file:
         target = pdf_dir / _safe_name(file)
@@ -395,27 +408,31 @@ def _page_png(pdir: Path, pdf_dir: Path, cache_tag: str, page: int,
         raise HTTPException(404, "no PDFs uploaded")
     cache = pdir / "work" / "cache" / "pages"
     cache.mkdir(parents=True, exist_ok=True)
-    cached = cache / f"{cache_tag}__{target.stem}__{page}.png"
+    hl_tag = f"__{hashlib.sha1(highlight.encode()).hexdigest()[:10]}" if highlight else ""
+    cached = cache / f"{cache_tag}__{target.stem}__{page}{hl_tag}.png"
     if not cached.is_file():
         try:
-            cached.write_bytes(render_page_png(target, page - 1, scale=1.5))
+            cached.write_bytes(render_page_png(target, page - 1, scale=1.5,
+                                               highlight=highlight))
         except Exception as err:
             raise HTTPException(400, f"cannot render page {page} of {target.name}: {err}")
     return Response(content=cached.read_bytes(), media_type="image/png")
 
 
-@api.get("/projects/{pid}/bids/{tenderer}/page")
-def bid_page_image(pid: str, tenderer: str, page: int = 1, file: str | None = None) -> Response:
+@media.get("/projects/{pid}/bids/{tenderer}/page")
+def bid_page_image(pid: str, tenderer: str, page: int = 1, file: str | None = None,
+                   highlight: str | None = None) -> Response:
     pdir = _project_dir(pid)
     safe = _safe_name(tenderer)
-    return _page_png(pdir, pdir / "bids" / safe, safe, page, file)
+    return _page_png(pdir, pdir / "bids" / safe, safe, page, file, highlight)
 
 
-@api.get("/projects/{pid}/tender/page")
-def tender_page_image(pid: str, page: int = 1, file: str | None = None) -> Response:
+@media.get("/projects/{pid}/tender/page")
+def tender_page_image(pid: str, page: int = 1, file: str | None = None,
+                      highlight: str | None = None) -> Response:
     """Evidence page for rubric source citations."""
     pdir = _project_dir(pid)
-    return _page_png(pdir, pdir / "tender", "tender", page, file)
+    return _page_png(pdir, pdir / "tender", "tender", page, file, highlight)
 
 
 def _bidder_names(pdir: Path) -> set[str]:
@@ -546,3 +563,4 @@ def download_report(pid: str, name: str) -> FileResponse:
 
 
 app.include_router(api)
+app.include_router(media)
