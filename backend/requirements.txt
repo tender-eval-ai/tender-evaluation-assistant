@@ -10,3 +10,7 @@ pypdf>=4.0
 pypdfium2>=4.30
 pillow>=10.0
 python-docx>=1.1
+
+# Orchestration (app/graph.py): state graph, checkpoints, human-in-the-loop
+langgraph==1.2.11
+langgraph-checkpoint-sqlite==3.1.1

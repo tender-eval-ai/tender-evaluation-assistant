@@ -51,7 +51,11 @@ def cmd_run(args: argparse.Namespace) -> int:
     from app.llm import LLM  # import here so offline mode never needs the openai package
     llm = LLM(cfg)
     print(f"Backend: {cfg.base_url}  text={cfg.text_model}  vision={cfg.vision_model}")
-    result = run_pipeline(Path(args.tender_dir), Path(args.bids_dir), Path(args.out), cfg, llm)
+    if args.orchestrator == "graph":
+        from app.graph import run_graph
+        result = run_graph(Path(args.tender_dir), Path(args.bids_dir), Path(args.out), cfg, llm)
+    else:
+        result = run_pipeline(Path(args.tender_dir), Path(args.bids_dir), Path(args.out), cfg, llm)
     print()
     print(summarize(result))
     return 0
@@ -73,6 +77,9 @@ def main() -> int:
     p_run.add_argument("--out", required=True, help="output/checkpoint directory")
     p_run.add_argument("--max-ocr-pages", type=int, default=None,
                        help="cap OCR pages per scanned document (default 8; free-tier limits)")
+    p_run.add_argument("--orchestrator", choices=["legacy", "graph"], default="legacy",
+                       help="'graph' runs the LangGraph orchestration (same steps, "
+                            "parallel bids, durable checkpoints)")
     p_run.add_argument("--acknowledge-cloud", action="store_true",
                        help="confirm the input documents are safe to send to a cloud API")
     p_run.set_defaults(func=cmd_run)
