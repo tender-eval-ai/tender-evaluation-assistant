@@ -287,7 +287,7 @@ qwen3-vl:8b; seconds on a cloud vision model); text-model steps are negligible.
 | **A. Graph wrapper** ✅ done | `graph.py`, checkpointer, interrupts, Send fan-out, CLI `--orchestrator graph`, 5 graph tests | ~1 day | **Met**: live graph run on `demo_case` 59 s (3 bids in parallel); legacy replay on the same checkpoints → `evaluation.json` byte-identical; 55 tests green |
 | **B. Evidence-search agent** ✅ done | `tools.py`, `agent.py`, `grounding.py`, on-demand OCR, budgets, trace, 8 agent + 3 grounding tests; `--buried` case + `benchmark_buried.py` | ~1.5–2 days | **Met** — see §6a: certificate recall 0/2 → 2/2, 0 false restores, price 0/3 → 3/3, unclear findings with evidence 0/9 → 8/9, ~6 OCR pages per bid |
 | **C. Service + UI** ✅ done | `POST /run`, `POST /resume`, `GET /graph`, `GET …/bids/{t}/agent`; SQLite checkpointer per project; `waiting` job state; UI Confirm-&-continue at both checkpoints, agent trace viewer, 🔎 badges; legacy thread-pool / `/rubric/derive` / `/extract` / sequential CLI **removed** (decision 4); atomic `status.json` writes | ~1 day | **Met**: live flow run → paused (4 s) → resume → 3 bids parallel incl. OCR + agent (54 s) → paused → resume → evaluated (2 s), edits honoured; 69 tests |
-| **D. Benchmark + docs** ✅ done (Docker rebuild pending) | `--buried` generator + benchmark script (done in B), README, detailed specification, interview prep, this plan | ~0.5 day | Numbers in §6a measured and recorded in all docs; container rebuild waits on Docker Desktop regaining registry access (services verified natively meanwhile) |
+| **D. Benchmark + docs** ✅ done | `--buried` generator + benchmark script (done in B), README, detailed specification, interview prep, this plan | ~0.5 day | Numbers in §6a measured and recorded in all docs; containers rebuilt on the final code and verified |
 
 Total ≈ 4–5 working days. Order is fixed: A gives the safety net (identical outputs)
 before B changes behaviour; C only after B is measured.
@@ -337,4 +337,9 @@ whole evaluation?" and answer with §0.
 4. **Legacy orchestration path is removed after Phase C** — ✅ confirmed; it stays
    as the safety net during A–C only.
 
-**Implementation status 2026-08: all four phases complete. Open item: rebuild the Docker images once the registry is reachable again (`docker compose up -d --build`).**
+**Implementation status 2026-08: all four phases complete; Docker images rebuilt and verified.**
+
+*Ops note:* after a Docker Desktop update, `docker pull` / `compose build` hung on
+the macOS credential helper (keychain prompt with no GUI to answer). Workaround used:
+an anonymous config — `DOCKER_CONFIG=<empty dir with config.json '{}' and a symlink to
+~/.docker/cli-plugins>` — for the pull and the build.
