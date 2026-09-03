@@ -31,7 +31,7 @@ def wait_for_job(base: str, headers: dict, pid: str, poll: float = 2.0,
         if status.get("detail") != last:
             last = status.get("detail", "")
             print(f"  [{time.time() - start:6.1f}s] {status['state']}: {last}", flush=True)
-        if status["state"] in ("done", "error") and status.get("updated", 0) > after_ts:
+        if status["state"] in ("done", "error", "waiting") and status.get("updated", 0) > after_ts:
             return status, time.time() - start
         time.sleep(poll)
 
@@ -68,20 +68,32 @@ def main() -> int:
     t_upload = time.time() - t_start
     print(f"\nUploads done in {t_upload:.1f}s. Deriving rubric ...")
 
+    # Orchestrated run: pauses at the rubric checkpoint, is resumed unedited, pauses
+    # again at the extraction review, is resumed again -> evaluation + reports.
     mark = time.time()
-    requests.post(f"{base}/projects/{pid}/rubric/derive", headers=headers, timeout=30).raise_for_status()
+    requests.post(f"{base}/projects/{pid}/run", headers=headers, timeout=30).raise_for_status()
     status, t_rubric = wait_for_job(base, headers, pid, after_ts=mark)
-    if status["state"] == "error":
+    if status["state"] != "waiting":
         print(f"RUBRIC FAILED: {status['detail']}")
         return 1
 
-    print(f"Rubric derived in {t_rubric:.1f}s. Evaluating {len(bidders)} bids ...")
+    print(f"Rubric derived in {t_rubric:.1f}s (paused for confirmation — auto-confirming). "
+          f"Extracting {len(bidders)} bids in parallel ...")
     mark = time.time()
-    requests.post(f"{base}/projects/{pid}/evaluate", headers=headers, timeout=30).raise_for_status()
-    status, t_eval = wait_for_job(base, headers, pid, after_ts=mark)
+    requests.post(f"{base}/projects/{pid}/resume", json={}, headers=headers, timeout=30).raise_for_status()
+    status, t_extract = wait_for_job(base, headers, pid, after_ts=mark)
+    if status["state"] != "waiting":
+        print(f"EXTRACTION FAILED: {status['detail']}")
+        return 1
+
+    print(f"Extraction done in {t_extract:.1f}s (paused for review — auto-confirming) ...")
+    mark = time.time()
+    requests.post(f"{base}/projects/{pid}/resume", json={}, headers=headers, timeout=30).raise_for_status()
+    status, t_final = wait_for_job(base, headers, pid, after_ts=mark)
     if status["state"] == "error":
         print(f"EVALUATION FAILED: {status['detail']}")
         return 1
+    t_eval = t_extract + t_final
 
     ev = requests.get(f"{base}/projects/{pid}/evaluation", headers=headers, timeout=30).json()
     s1_pass = sum(r["passed"] for r in ev["stage1"])

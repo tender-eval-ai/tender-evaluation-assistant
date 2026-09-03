@@ -5,10 +5,15 @@ Project lifecycle (mirrors the CLI checkpoints, which stay human-editable):
     POST /projects                          create a project
     POST /projects/{id}/tender              upload tender document PDFs
     POST /projects/{id}/bids/{tenderer}     upload one tenderer's offer PDFs
-    POST /projects/{id}/rubric/derive       background job -> work/rubric.json
     GET/PUT /projects/{id}/rubric           review / edit the rubric  (human checkpoint)
-    POST /projects/{id}/evaluate            background job: extract missing bids,
-                                            evaluate deterministically, render reports
+    POST /projects/{id}/run                 orchestrated run (LangGraph): derive rubric
+                                            -> PAUSE -> extract bids (parallel, verified,
+                                            evidence-searched) -> PAUSE -> evaluate, report
+    POST /projects/{id}/resume              continue past a pause (edits made via the PUT
+                                            endpoints while paused are picked up)
+    GET  /projects/{id}/graph               pending checkpoint, progress, corrections
+    POST /projects/{id}/evaluate            re-evaluate from the stored extractions
+                                            (deterministic; no LLM)
     GET  /projects/{id}/status              poll background job state
     GET  /projects/{id}/evaluation          full EvaluationResult JSON
     GET  /projects/{id}/reports[/{name}]    list / download the Word deliverables
@@ -31,7 +36,6 @@ import secrets
 import shutil
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Literal
 
@@ -39,15 +43,15 @@ from fastapi import APIRouter, Depends, FastAPI, File, Header, HTTPException, Up
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
-from app.agent import evidence_search
-from app.bid_extract import extract_bid
+from langgraph.checkpoint.sqlite import SqliteSaver
+
 from app.config import Config, load_dotenv
 from app.evaluate import evaluate
-from app.ingest import load_folder, render_page_png
+from app.graph import (build_graph, graph_config, initial_state, pending_checkpoint,
+                       pending_from_snapshot, resume as graph_resume)
+from app.ingest import render_page_png
 from app.report import render_all
-from app.rubric import derive_rubric
 from app.schemas import BidExtraction, Rubric
-from app.verify import verify_extraction
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
@@ -57,9 +61,6 @@ API_KEY = os.environ.get("API_KEY", "")
 # Server-side folder imports: case folders placed here (host ./inbox, mounted
 # read-only in Docker) can be imported into a project with one click.
 INBOX_DIR = Path(os.environ.get("INBOX_DIR", "inbox"))
-# Fresh bid extractions run concurrently (cloud endpoints benefit; a local Ollama
-# just queues them). 1 disables parallelism.
-MAX_PARALLEL_BIDS = max(1, int(os.environ.get("MAX_PARALLEL_BIDS", "4")))
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
@@ -103,8 +104,13 @@ def _read_json(path: Path) -> dict:
 
 
 def _write_json(path: Path, obj) -> None:
+    """Atomic write (temp file + rename): status.json is rewritten on every progress
+    line by background jobs while the UI/tests poll it — a reader must never see a
+    half-written file."""
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, indent=2, ensure_ascii=False))
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+    tmp.write_text(json.dumps(obj, indent=2, ensure_ascii=False))
+    os.replace(tmp, path)
 
 
 def _project_dir(pid: str) -> Path:
@@ -340,26 +346,6 @@ def import_from_inbox(pid: str, req: ImportRequest) -> dict:
 
 # ---------------------------------------------------------------- rubric
 
-@api.post("/projects/{pid}/rubric/derive")
-def derive(pid: str) -> dict:
-    pdir = _project_dir(pid)
-    if not list((pdir / "tender").glob("*.pdf")):
-        raise HTTPException(400, "upload tender documents first")
-
-    def job():
-        from app.llm import LLM
-        _set_status(pdir, "running", "deriving evaluation rubric from tender documents")
-        cfg = _make_cfg(pdir)
-        llm = LLM(cfg)
-        docs = load_folder(pdir / "tender", cfg, llm)
-        rubric = derive_rubric(docs, cfg, llm)
-        _write_json(pdir / "work" / "rubric.json", rubric.model_dump(mode="json"))
-        _set_status(pdir, "done", "rubric derived — review and edit it before evaluating")
-
-    _start_job(pid, pdir, job, "deriving evaluation rubric from tender documents")
-    return {"started": True}
-
-
 @api.get("/projects/{pid}/rubric")
 def get_rubric(pid: str) -> dict:
     path = _project_dir(pid) / "work" / "rubric.json"
@@ -449,73 +435,108 @@ def _require_rubric(pdir: Path) -> Path:
     return rubric_path
 
 
-def _extract_missing(pdir: Path, rubric: Rubric, cfg: Config) -> list[BidExtraction]:
-    """Extract (and adversarially verify) bids that have no stored extraction; stored
-    ones — including human corrections — are used as-is and never re-verified. Fresh
-    extractions run in parallel, MAX_PARALLEL_BIDS at a time."""
+def _stored_extractions(pdir: Path) -> list[BidExtraction]:
+    """Every bidder's stored extraction (the graph's output, possibly human-corrected)."""
     names = sorted(_bidder_names(pdir))
-    results: dict[str, BidExtraction] = {}
-    todo: list[str] = []
-    for name in names:
-        ext_path = pdir / "work" / "bids" / f"{name}.json"
-        if ext_path.is_file():
-            results[name] = BidExtraction.model_validate(_read_json(ext_path))
-        else:
-            todo.append(name)
-    if not todo:
-        return [results[n] for n in names]
-
-    from app.llm import LLM
-    llm = LLM(cfg)
-    progress_lock = threading.Lock()
-    done = 0
-
-    def extract_one(name: str) -> None:
-        nonlocal done
-        docs = load_folder(pdir / "bids" / name, cfg, llm)
-        extraction = extract_bid(name, docs, rubric, cfg, llm)
-        if cfg.verify_findings:
-            extraction, _ = verify_extraction(extraction, docs, rubric, cfg, llm)
-        if cfg.agent_enabled:
-            extraction, report = evidence_search(extraction, docs, rubric, cfg, llm)
-            if report["findings"]:
-                _write_json(pdir / "work" / "agent" / f"{name}.json", report)
-        _write_json(pdir / "work" / "bids" / f"{name}.json",
-                    extraction.model_dump(mode="json"))
-        results[name] = extraction
-        with progress_lock:
-            done += 1
-            _set_status(pdir, "running",
-                        f"extracting bids: {done}/{len(todo)} finished (last: {name})")
-
-    _set_status(pdir, "running",
-                f"extracting {len(todo)} bid(s), up to {MAX_PARALLEL_BIDS} in parallel")
-    with ThreadPoolExecutor(max_workers=min(MAX_PARALLEL_BIDS, len(todo))) as pool:
-        futures = {pool.submit(extract_one, n): n for n in todo}
-        for fut in as_completed(futures):
-            try:
-                fut.result()
-            except Exception as err:
-                pool.shutdown(wait=False, cancel_futures=True)
-                raise RuntimeError(f"extracting {futures[fut]}: {err}") from err
-    return [results[n] for n in names]
+    missing = [n for n in names if not (pdir / "work" / "bids" / f"{n}.json").is_file()]
+    if missing:
+        raise HTTPException(400, f"no extraction yet for: {', '.join(missing)} — start the "
+                                 "orchestrated run (POST /run) first")
+    return [BidExtraction.model_validate(_read_json(pdir / "work" / "bids" / f"{n}.json"))
+            for n in names]
 
 
-@api.post("/projects/{pid}/extract")
-def run_extract(pid: str) -> dict:
-    """Extract missing bids only (no evaluation) — feeds the human review step."""
-    pdir = _project_dir(pid)
-    rubric_path = _require_rubric(pdir)
-    if not _bidder_names(pdir):
-        raise HTTPException(400, "upload at least one bid first")
+# ---------------------------------------------------------------- orchestrated run (graph)
 
+WAITING_DETAIL = {
+    "rubric": "waiting: confirm the rubric — review/edit it, then Continue",
+    "review": "waiting: review the extractions — correct any, then Continue",
+}
+
+
+def _graph_db(pdir: Path) -> str:
+    (pdir / "work").mkdir(parents=True, exist_ok=True)
+    return str(pdir / "work" / "graph.sqlite")
+
+
+def _graph_snapshot(pdir: Path, pid: str):
+    """State of the project's graph thread (None if it never ran)."""
+    if not (pdir / "work" / "graph.sqlite").is_file():
+        return None
+    cfg = _make_cfg(pdir)
+    with SqliteSaver.from_conn_string(_graph_db(pdir)) as saver:
+        graph = build_graph(cfg, None, checkpointer=saver, interactive=True, log=lambda m: None)
+        return graph.get_state(graph_config(cfg, pid))
+
+
+def _graph_job(pid: str, pdir: Path, start: bool, payload: dict | None = None) -> None:
+    """Run the graph in the background until the next human checkpoint or the end."""
     def job():
-        rubric = Rubric.model_validate(_read_json(rubric_path))
-        _extract_missing(pdir, rubric, _make_cfg(pdir))
-        _set_status(pdir, "done", "extractions ready for review")
+        from app.llm import LLM
+        cfg = _make_cfg(pdir)
+        llm = LLM(cfg)
+        with SqliteSaver.from_conn_string(_graph_db(pdir)) as saver:
+            graph = build_graph(cfg, llm, checkpointer=saver, interactive=True,
+                                log=lambda m: _set_status(pdir, "running", m))
+            if start:
+                state = graph.invoke(initial_state(pdir / "tender", pdir / "bids", pdir / "work"),
+                                     graph_config(cfg, pid))
+            else:
+                state = graph_resume(graph, cfg, pid, payload)
+        pending = pending_checkpoint(state)
+        if pending:
+            _set_status(pdir, "waiting", WAITING_DETAIL[pending["checkpoint"]])
+        else:
+            _set_status(pdir, "done", "evaluation complete — reports ready")
 
-    _start_job(pid, pdir, job, "starting bid extraction")
+    _start_job(pid, pdir, job, "starting the orchestrated run" if start else "continuing the run")
+
+
+@api.post("/projects/{pid}/run")
+def run_project(pid: str) -> dict:
+    pdir = _project_dir(pid)
+    if not list((pdir / "tender").glob("*.pdf")) and not (pdir / "work" / "rubric.json").is_file():
+        raise HTTPException(400, "upload tender documents first")
+    if pending_from_snapshot(_graph_snapshot(pdir, pid)):
+        raise HTTPException(409, "the run is paused at a human checkpoint — use /resume")
+    _graph_job(pid, pdir, start=True)
     return {"started": True}
+
+
+class ResumeRequest(BaseModel):
+    rubric: dict | None = None
+    extractions: dict[str, dict] | None = None
+
+
+@api.post("/projects/{pid}/resume")
+def resume_project(pid: str, req: ResumeRequest | None = None) -> dict:
+    pdir = _project_dir(pid)
+    pending = pending_from_snapshot(_graph_snapshot(pdir, pid))
+    if not pending:
+        raise HTTPException(409, "nothing to resume — the run is not paused")
+    payload = {k: v for k, v in (req.model_dump() if req else {}).items() if v is not None}
+    _graph_job(pid, pdir, start=False, payload=payload)
+    return {"resumed": pending["checkpoint"]}
+
+
+@api.get("/projects/{pid}/graph")
+def graph_state(pid: str) -> dict:
+    pdir = _project_dir(pid)
+    snap = _graph_snapshot(pdir, pid)
+    pending = pending_from_snapshot(snap)
+    values = (snap.values if snap else None) or {}
+    return {"ran": snap is not None, "pending": pending["checkpoint"] if pending else None,
+            "progress": values.get("progress", []), "corrected": values.get("corrected", []),
+            "next": list(snap.next) if snap else []}
+
+
+@api.get("/projects/{pid}/bids/{tenderer}/agent")
+def agent_trace(pid: str, tenderer: str) -> dict:
+    """The evidence-search agent's step trace for one bid (404 if it never ran)."""
+    path = _project_dir(pid) / "work" / "agent" / f"{_safe_name(tenderer)}.json"
+    if not path.is_file():
+        raise HTTPException(404, f"no evidence-search trace for '{tenderer}'")
+    return _read_json(path)
 
 
 @api.post("/projects/{pid}/evaluate")
@@ -525,16 +546,17 @@ def run_evaluation(pid: str) -> dict:
     if not _bidder_names(pdir):
         raise HTTPException(400, "upload at least one bid first")
 
+    extractions = _stored_extractions(pdir)
+
     def job():
         rubric = Rubric.model_validate(_read_json(rubric_path))
-        extractions = _extract_missing(pdir, rubric, _make_cfg(pdir))
         _set_status(pdir, "running", "evaluating (deterministic) and rendering reports")
         result = evaluate(rubric, extractions)
         _write_json(pdir / "work" / "evaluation.json", result.model_dump(mode="json"))
         render_all(result, pdir / "work" / "reports")
         _set_status(pdir, "done", "evaluation complete — reports ready")
 
-    _start_job(pid, pdir, job, "starting bid extraction")
+    _start_job(pid, pdir, job, "evaluating from stored extractions")
     return {"started": True}
 
 

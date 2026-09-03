@@ -2,7 +2,8 @@
 """Tender Evaluation Assistant — demo CLI.
 
   offline-demo   run the synthetic case end-to-end with no network calls
-  run            full pipeline over real folders via GitHub Models (cloud!)
+  run            full pipeline over real folders (LangGraph orchestration; the LLM
+                 endpoints in .env — cloud text means synthetic documents ONLY)
 
 Examples:
   python run_demo.py offline-demo
@@ -19,7 +20,7 @@ ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT))
 
 from app.config import Config, load_dotenv  # noqa: E402
-from app.pipeline import run_offline, run_pipeline, summarize  # noqa: E402
+from app.pipeline import run_offline, summarize  # noqa: E402
 
 CLOUD_WARNING = """\
 *** CONFIDENTIALITY CHECK ***
@@ -51,11 +52,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     from app.llm import LLM  # import here so offline mode never needs the openai package
     llm = LLM(cfg)
     print(f"Backend: {cfg.base_url}  text={cfg.text_model}  vision={cfg.vision_model}")
-    if args.orchestrator == "graph":
-        from app.graph import run_graph
-        result = run_graph(Path(args.tender_dir), Path(args.bids_dir), Path(args.out), cfg, llm)
-    else:
-        result = run_pipeline(Path(args.tender_dir), Path(args.bids_dir), Path(args.out), cfg, llm)
+    from app.graph import run_graph
+    result = run_graph(Path(args.tender_dir), Path(args.bids_dir), Path(args.out), cfg, llm)
     print()
     print(summarize(result))
     return 0
@@ -70,16 +68,13 @@ def main() -> int:
     p_off.add_argument("--out", default="output/offline_demo")
     p_off.set_defaults(func=cmd_offline)
 
-    p_run = sub.add_parser("run", help="full pipeline via GitHub Models (cloud)")
+    p_run = sub.add_parser("run", help="full pipeline over real folders (graph orchestration)")
     p_run.add_argument("--tender-dir", required=True, help="folder of tender document PDFs")
     p_run.add_argument("--bids-dir", required=True,
                        help="folder with one subfolder (or one PDF) per tenderer")
     p_run.add_argument("--out", required=True, help="output/checkpoint directory")
     p_run.add_argument("--max-ocr-pages", type=int, default=None,
                        help="cap OCR pages per scanned document (default 8; free-tier limits)")
-    p_run.add_argument("--orchestrator", choices=["legacy", "graph"], default="legacy",
-                       help="'graph' runs the LangGraph orchestration (same steps, "
-                            "parallel bids, durable checkpoints)")
     p_run.add_argument("--acknowledge-cloud", action="store_true",
                        help="confirm the input documents are safe to send to a cloud API")
     p_run.set_defaults(func=cmd_run)

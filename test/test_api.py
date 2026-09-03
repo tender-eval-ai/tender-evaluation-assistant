@@ -13,6 +13,7 @@ from test.conftest import FIXTURES
 def make_client(tmp_path, monkeypatch, api_key: str | None = None):
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("INBOX_DIR", str(tmp_path / "inbox"))
+    monkeypatch.setenv("GITHUB_MODELS_BASE_URL", "http://localhost:11434/v1")  # keyless client
     if api_key:
         monkeypatch.setenv("API_KEY", api_key)
     else:
@@ -26,7 +27,7 @@ def wait_done(client, pid, timeout=15.0):
     deadline = time.time() + timeout
     while time.time() < deadline:
         status = client.get(f"/projects/{pid}/status").json()
-        if status["state"] in ("done", "error"):
+        if status["state"] in ("done", "error", "waiting"):
             return status
         time.sleep(0.05)
     pytest.fail("background job did not finish in time")
@@ -125,10 +126,11 @@ def test_extraction_review_endpoints_and_page_image(tmp_path, monkeypatch):
     client.put(f"/projects/{pid}/bids/Alpha/extraction", json=ext)
     assert client.get(f"/projects/{pid}/bids/Alpha/extraction").json()["tenderer"] == "Alpha"
 
-    # Extract-only job with everything already extracted completes without any LLM.
-    assert client.post(f"/projects/{pid}/extract").status_code == 200
+    # With every bid already extracted the orchestrated run needs no LLM at all: it
+    # goes straight to the review checkpoint and pauses there.
+    assert client.post(f"/projects/{pid}/run").status_code == 200
     status = wait_done(client, pid)
-    assert status["state"] == "done" and "review" in status["detail"]
+    assert status["state"] == "waiting" and "review" in status["detail"]
 
     # Evidence page image rendered from a real uploaded PDF.
     from tools.pdfgen import make_text_pdf
@@ -190,50 +192,68 @@ def test_page_image_accepts_query_key(tmp_path, monkeypatch):
     assert client.get("/projects", params={"key": "sesame"}).status_code == 401
 
 
-def test_parallel_extraction_extracts_all_missing(tmp_path, monkeypatch):
-    """The extract job fans missing bids out to a thread pool; every bid must end up
-    stored under its own name, and stored bids must survive untouched."""
-    monkeypatch.setenv("VERIFY_FINDINGS", "0")
-    client = make_client(tmp_path, monkeypatch)
-    import backend.api as api
-
-    pid = client.post("/projects", json={"name": "par"}).json()["id"]
-    client.put(f"/projects/{pid}/rubric",
-               json=json.loads((FIXTURES / "rubric.json").read_text()))
-
-    from tools.pdfgen import make_text_pdf
-    pdf = tmp_path / "offer.pdf"
-    make_text_pdf(pdf, "Offer document.")
-    for name in ("Alpha", "Beta", "Gamma", "Delta", "Echo"):
-        client.post(f"/projects/{pid}/bids/{name}",
-                    files=[("files", ("offer.pdf", pdf.read_bytes(), "application/pdf"))])
-
-    template = json.loads((FIXTURES / "bids" / "bidder_a.json").read_text())
-
-    def fake_extract(name, docs, rubric, cfg, llm):
-        time.sleep(0.05)  # force the extractions to overlap
-        from app.schemas import BidExtraction
-        ext = BidExtraction.model_validate(template)
-        ext.tenderer = name
-        return ext
-
-    monkeypatch.setattr(api, "extract_bid", fake_extract)
-    monkeypatch.setattr(api, "load_folder", lambda *a, **k: [])
-    monkeypatch.setattr("app.llm.LLM", lambda cfg: object())
-
-    assert client.post(f"/projects/{pid}/extract").json()["started"] is True
-    status = wait_done(client, pid)
-    assert status["state"] == "done", status
-    proj = client.get(f"/projects/{pid}").json()
-    assert proj["extracted"] == ["Alpha", "Beta", "Delta", "Echo", "Gamma"]
-    for name in proj["extracted"]:
-        got = client.get(f"/projects/{pid}/bids/{name}/extraction").json()
-        assert got["tenderer"] == name
-
-
 def test_api_key_enforced(tmp_path, monkeypatch):
     client = make_client(tmp_path, monkeypatch, api_key="sesame")
     assert client.get("/health").status_code == 200  # health stays open
     assert client.get("/projects").status_code == 401
     assert client.get("/projects", headers={"X-API-Key": "wrong"}).status_code == 401
     assert client.get("/projects", headers={"X-API-Key": "sesame"}).status_code == 200
+
+
+def test_orchestrated_run_pauses_at_both_checkpoints_and_honours_edits(tmp_path, monkeypatch):
+    """/run -> paused at rubric -> PUT edit -> /resume -> paused at review -> PUT
+    correction -> /resume -> done, with the edits visible in the evaluation."""
+    monkeypatch.setenv("VERIFY_FINDINGS", "0")
+    monkeypatch.setenv("AGENT_SEARCH", "0")
+    client = make_client(tmp_path, monkeypatch)
+    import app.graph as graph_mod
+    from app.schemas import BidExtraction, Rubric
+    fixture_rubric = Rubric.model_validate_json((FIXTURES / "rubric.json").read_text())
+    fixture_bids = {e.tenderer: e for e in (BidExtraction.model_validate_json(p.read_text())
+                                            for p in sorted((FIXTURES / "bids").glob("*.json")))}
+    monkeypatch.setattr(graph_mod, "load_folder", lambda *a, **k: [])
+    monkeypatch.setattr(graph_mod, "load_pdf", lambda *a, **k: None)
+    monkeypatch.setattr(graph_mod, "derive_rubric",
+                        lambda docs, cfg, llm: fixture_rubric.model_copy(deep=True))
+    monkeypatch.setattr(graph_mod, "extract_bid",
+                        lambda name, docs, rubric, cfg, llm: fixture_bids[name].model_copy(deep=True))
+    monkeypatch.setattr("app.llm.LLM", lambda cfg: object())
+
+    pid = client.post("/projects", json={"name": "graph"}).json()["id"]
+    assert client.post(f"/projects/{pid}/run").status_code == 400   # no tender docs yet
+    stub = b"%PDF-1.4 stub"
+    client.post(f"/projects/{pid}/tender", files=[("files", ("terms.pdf", stub, "application/pdf"))])
+    for name in fixture_bids:
+        client.post(f"/projects/{pid}/bids/{name}", files=[("files", ("offer.pdf", stub, "application/pdf"))])
+
+    assert client.post(f"/projects/{pid}/run").json()["started"] is True
+    status = wait_done(client, pid)
+    assert status["state"] == "waiting" and "rubric" in status["detail"]
+    assert client.get(f"/projects/{pid}/graph").json()["pending"] == "rubric"
+    assert client.post(f"/projects/{pid}/run").status_code == 409         # paused: must resume
+
+    rubric = client.get(f"/projects/{pid}/rubric").json()
+    rubric["subject"] = "EDITED IN THE UI"
+    client.put(f"/projects/{pid}/rubric", json=rubric)
+    assert client.post(f"/projects/{pid}/resume", json={}).json()["resumed"] == "rubric"
+    status = wait_done(client, pid)
+    assert status["state"] == "waiting" and "extractions" in status["detail"]
+    assert client.get(f"/projects/{pid}/graph").json()["pending"] == "review"
+    assert len(client.get(f"/projects/{pid}").json()["extracted"]) == len(fixture_bids)
+
+    fixed = client.get(f"/projects/{pid}/bids/Bidder A/extraction").json()
+    fixed["documents"][0]["present"] = False
+    client.put(f"/projects/{pid}/bids/Bidder A/extraction", json=fixed)
+    assert client.post(f"/projects/{pid}/resume", json={}).json()["resumed"] == "review"
+    status = wait_done(client, pid)
+    assert status["state"] == "done", status
+
+    ev = client.get(f"/projects/{pid}/evaluation").json()
+    assert ev["rubric"]["subject"] == "EDITED IN THE UI"
+    assert next(r for r in ev["stage1"] if r["tenderer"] == "Bidder A")["passed"] is False
+    g = client.get(f"/projects/{pid}/graph").json()
+    assert g["pending"] is None and g["corrected"] == ["Bidder A"]
+    assert client.post(f"/projects/{pid}/resume", json={}).status_code == 409
+    assert client.get(f"/projects/{pid}/bids/Bidder A/agent").status_code == 404
+    assert sorted(client.get(f"/projects/{pid}/reports").json()) == [
+        "evaluation_record.docx", "price_summary.docx", "summary_list.docx"]

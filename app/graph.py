@@ -108,11 +108,17 @@ def build_graph(cfg: Config, llm: LLM | None, checkpointer=None, interactive: bo
         return {"rubric": rubric.model_dump(mode="json"), "progress": ["rubric derived"]}
 
     def confirm_rubric(state: PipelineState) -> dict:
+        """Pause for the human. On resume the rubric comes from the payload
+        ({"rubric": …}) or, failing that, from rubric.json — which the service lets the
+        human edit (PUT) while the graph is paused."""
         if not interactive:
             return {}
         answer = interrupt({"checkpoint": "rubric", "rubric": state["rubric"]})
-        if isinstance(answer, dict) and answer:
-            rubric = Rubric.model_validate(answer)
+        raw = answer.get("rubric") if isinstance(answer, dict) else None
+        if raw is None and (out(state) / "rubric.json").is_file():
+            raw = json.loads((out(state) / "rubric.json").read_text())
+        if raw and raw != state["rubric"]:
+            rubric = Rubric.model_validate(raw)
             (out(state) / "rubric.json").write_text(rubric.model_dump_json(indent=2))
             return {"rubric": rubric.model_dump(mode="json"), "progress": ["rubric confirmed (edited)"]}
         return {"progress": ["rubric confirmed"]}
@@ -139,15 +145,22 @@ def build_graph(cfg: Config, llm: LLM | None, checkpointer=None, interactive: bo
                 "progress": [f"extracted {name}"]}
 
     def review_extractions(state: PipelineState) -> dict:
+        """Pause for the human. On resume, corrections come from the payload
+        ({"extractions": {name: …}}) and from bids/*.json on disk (edited via PUT while
+        paused); anything that differs from the graph's own extraction is a correction."""
         if not interactive:
             return {}
         answer = interrupt({"checkpoint": "review", "extractions": state["extractions"]})
-        if isinstance(answer, dict) and answer:
-            fixed = {}
-            for name, raw in answer.items():
-                ext = BidExtraction.model_validate({**raw, "tenderer": name})
-                (out(state) / "bids" / f"{name}.json").write_text(ext.model_dump_json(indent=2))
-                fixed[name] = ext.model_dump(mode="json")
+        overrides = answer.get("extractions") if isinstance(answer, dict) else None
+        for name, raw in (overrides or {}).items():
+            ext = BidExtraction.model_validate({**raw, "tenderer": name})
+            (out(state) / "bids" / f"{name}.json").write_text(ext.model_dump_json(indent=2))
+        fixed = {}
+        for path in sorted((out(state) / "bids").glob("*.json")):
+            ext = BidExtraction.model_validate_json(path.read_text()).model_dump(mode="json")
+            if ext != (state.get("extractions") or {}).get(ext["tenderer"]):
+                fixed[ext["tenderer"]] = ext
+        if fixed:
             return {"extractions": fixed, "corrected": list(fixed),
                     "progress": [f"corrected {', '.join(sorted(fixed))}"]}
         return {"progress": ["extractions reviewed"]}
@@ -220,11 +233,22 @@ def run_graph(tender_dir: Path, bids_dir: Path, out_dir: Path, cfg: Config, llm:
 
 
 def resume(graph, cfg: Config, thread_id: str, payload) -> dict:
-    """Continue a paused (interrupted) graph with the human's answer."""
-    return graph.invoke(Command(resume=payload), graph_config(cfg, thread_id))
+    """Continue a paused (interrupted) graph with the human's answer. An empty dict
+    would be read by LangGraph as an (empty) interrupt-id -> value map and resume
+    nothing, so "no overrides" is sent as an explicit marker."""
+    return graph.invoke(Command(resume=payload or {"confirmed": True}),
+                        graph_config(cfg, thread_id))
 
 
 def pending_checkpoint(state: dict) -> dict | None:
     """The interrupt payload if the graph is paused at a human checkpoint, else None."""
     ints = state.get("__interrupt__") or []
     return ints[0].value if ints else None
+
+
+def pending_from_snapshot(snapshot) -> dict | None:
+    """Same, from graph.get_state(config) — for querying a paused thread later."""
+    for task in getattr(snapshot, "tasks", ()) or ():
+        for intr in getattr(task, "interrupts", ()) or ():
+            return intr.value
+    return None

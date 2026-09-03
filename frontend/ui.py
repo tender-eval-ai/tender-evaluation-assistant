@@ -67,7 +67,7 @@ def wait_for_job(pid: str, placeholder) -> dict:
     while True:
         status = call("GET", f"/projects/{pid}/status").json()
         placeholder.info(f"⏳ {status.get('detail') or status['state']}")
-        if status["state"] in ("done", "error", "idle"):
+        if status["state"] in ("done", "error", "idle", "waiting"):
             return status
         time.sleep(2)
 
@@ -105,9 +105,14 @@ with st.sidebar.expander("Danger zone"):
         call("DELETE", f"/projects/{pid}")
         st.rerun()
 
-# A failed background job must stay visible across reruns, on every page.
+graph = call("GET", f"/projects/{pid}/graph").json()
+
+# A failed background job must stay visible across reruns, on every page; a paused
+# run says where it is waiting.
 if project["status"]["state"] == "error":
     st.error(f"Last job failed: {project['status']['detail']}")
+elif project["status"]["state"] == "waiting":
+    st.info(f"⏸ {project['status']['detail']}")
 
 # Segmented control instead of st.tabs: its selection survives st.rerun(), so
 # finishing a job keeps the user on the page they were on.
@@ -120,6 +125,33 @@ def _go(delta: int) -> None:
     """Button callback: runs before the rerun, when nav state may still be changed."""
     idx = NAV.index(st.session_state.get("nav_v2") or NAV[0])
     st.session_state["nav_v2"] = NAV[max(0, min(len(NAV) - 1, idx + delta))]
+
+
+if st.session_state.pop("nav_advance", 0):
+    _go(1)
+
+
+def _continue_run(button_label: str) -> None:
+    """Resume the paused graph; on success move to the next step."""
+    if st.button(button_label, type="primary"):
+        call("POST", f"/projects/{pid}/resume", json={})
+        result = wait_for_job(pid, st.empty())
+        if result["state"] == "error":
+            st.error(result["detail"])
+        else:
+            st.session_state["nav_advance"] = 1
+            st.rerun()
+
+
+def _start_run(button_label: str, disabled: bool) -> None:
+    """Start (or restart) the orchestrated run; it pauses at the next checkpoint."""
+    if st.button(button_label, type="primary", disabled=disabled):
+        call("POST", f"/projects/{pid}/run")
+        result = wait_for_job(pid, st.empty())
+        if result["state"] == "error":
+            st.error(result["detail"])  # stays on screen — no rerun on failure
+        else:
+            st.rerun()
 
 
 page = st.segmented_control("Navigation", NAV, key="nav_v2", default=NAV[0],
@@ -293,16 +325,14 @@ if page == NAV[1]:
     st.subheader("Evaluation rubric — the human checkpoint")
     st.caption("Derived from the tender documents. Review and edit before evaluating: "
                "Stage I checklist, Stage II essential requirements, price scheme.")
-    if not project["tender_files"]:
+    if not project["tender_files"] and not project["has_rubric"]:
         st.info("Upload tender documents first (Documents tab) to enable derivation.")
-    if st.button("Derive rubric from tender documents",
-                 disabled=not project["tender_files"]):
-        call("POST", f"/projects/{pid}/rubric/derive")
-        result = wait_for_job(pid, st.empty())
-        if result["state"] == "error":
-            st.error(result["detail"])  # stays on screen — no rerun on failure
-        else:
-            st.rerun()
+    if graph["pending"] == "rubric":
+        st.info("⏸ The run is paused here. Review the rubric (edit & save if needed), "
+                "then continue — all bids are then extracted in parallel.")
+        _continue_run("✅ Confirm rubric & continue ▶")
+    elif not project["has_rubric"]:
+        _start_run("Derive rubric from tender documents ▶", disabled=not project["tender_files"])
     if project["has_rubric"]:
         rubric = call("GET", f"/projects/{pid}/rubric").json()
 
@@ -400,14 +430,15 @@ if page == NAV[2]:
                "document presence, compliance findings, price fields. Corrected bids "
                "are never re-extracted. Negative findings were already re-checked by "
                "an adversarial verification pass.")
-    if st.button("Extract all bids", type="primary",
-                 disabled=not (project["has_rubric"] and project["bidders"])):
-        call("POST", f"/projects/{pid}/extract")
-        result = wait_for_job(pid, st.empty())
-        if result["state"] == "error":
-            st.error(result["detail"])
-        else:
-            st.rerun()
+    if graph["pending"] == "review":
+        st.info("⏸ Paused for review: negative findings come first — correct anything "
+                "wrong (Save corrections), then continue to the evaluation.")
+        _continue_run("✅ Confirm extractions & continue ▶")
+    elif graph["pending"] == "rubric":
+        st.info("The run is paused at the rubric checkpoint — confirm the rubric first.")
+    else:
+        _start_run("Run extraction — all bids in parallel ▶",
+                   disabled=not (project["has_rubric"] and project["bidders"]))
 
     if not project["extracted"]:
         st.info("No extractions yet — run the extraction, or evaluate directly on the "
@@ -431,10 +462,30 @@ if page == NAV[2]:
         }
 
         def _doc_status(r) -> str:
-            return "🟢" if r.get("present") else "🔴"
+            if not r.get("present"):
+                return "🔴"
+            return "🟢🔎" if (r.get("note") or "").startswith("found by evidence search") else "🟢"
 
         def _comp_status(r) -> str:
-            return {"yes": "🟢", "no": "🔴"}.get(r.get("complies"), "🟠")
+            badge = {"yes": "🟢", "no": "🔴"}.get(r.get("complies"), "🟠")
+            if (r.get("evidence") or "").startswith("evidence found by search"):
+                badge += "🔎"
+            return badge
+
+        trace = requests.get(f"{BACKEND}/projects/{pid}/bids/{tenderer}/agent",
+                             headers=HEADERS, timeout=30)
+        if trace.status_code == 200:
+            rep = trace.json()
+            with st.expander(f"🔎 Evidence-search agent: {len(rep['findings'])} unresolved "
+                             f"finding(s) searched, {len(rep['ocr_pages'])} page(s) read on "
+                             "demand — how it looked"):
+                for line in rep["amendments"]:
+                    st.markdown(f"- {line}")
+                for fid, steps in rep["findings"].items():
+                    st.markdown(f"**{fid}**")
+                    st.table([{"step": x["step"], "tool": x["tool"],
+                               "args": json.dumps(x.get("args", {}), ensure_ascii=False),
+                               "result": (x.get("result") or "")[:140]} for x in steps])
 
         def _quote_of(r) -> str:
             return (r.get("note") if "checklist_id" in r else r.get("evidence")) or ""
@@ -541,11 +592,14 @@ if page == NAV[2]:
                 st.info("Page not renderable — check the page number.")
 
 if page == NAV[3]:
-    st.subheader("Run evaluation")
-    st.caption("Extracts each bid (skipping ones already extracted/corrected), then runs "
-               "the deterministic Stage I/II checks and price computation.")
-    if st.button("Evaluate all bids", type="primary",
-                 disabled=not (project["has_rubric"] and (project["bidders"] or project["extracted"]))):
+    st.subheader("Evaluation")
+    st.caption("The orchestrated run evaluates automatically after the extraction review. "
+               "Use this to re-evaluate after later corrections (deterministic, no LLM "
+               "for already-extracted bids).")
+    if graph["pending"]:
+        st.info("The run is paused at an earlier checkpoint — continue it from that step.")
+    if st.button("Evaluate / re-evaluate from stored extractions", type="primary",
+                 disabled=bool(graph["pending"]) or not (project["has_rubric"] and (project["bidders"] or project["extracted"]))):
         call("POST", f"/projects/{pid}/evaluate")
         result = wait_for_job(pid, st.empty())
         if result["state"] == "error":

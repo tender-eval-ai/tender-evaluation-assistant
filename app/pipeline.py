@@ -1,28 +1,22 @@
-"""Orchestrator: tender docs -> rubric -> per-bid extraction -> evaluation -> reports.
+"""Pipeline helpers shared by the graph orchestrator (app/graph.py) and the CLI:
+bidder discovery, the offline (fixture-driven) run, and the console summary.
 
-Writes checkpoint JSON at every step so runs are resumable, auditable, and the rubric
-can be human-edited between steps (the product's confirmation checkpoint):
+Checkpoint layout written by the graph — human-editable between runs:
 
     <out>/rubric.json         derived rubric (editable; delete to re-derive)
     <out>/bids/<name>.json    per-tenderer extraction (editable; delete to re-extract)
+    <out>/agent/<name>.json   evidence-search agent trace, when it ran
     <out>/evaluation.json     full evaluation result
     <out>/reports/*.docx      the three Word deliverables
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-from .agent import evidence_search
-from .bid_extract import extract_bid
-from .config import Config
 from .evaluate import evaluate
-from .ingest import load_folder, load_pdf
-from .llm import LLM
 from .report import render_all
-from .rubric import derive_rubric, load_rubric, save_rubric
+from .rubric import load_rubric
 from .schemas import BidExtraction, EvaluationResult
-from .verify import verify_extraction
 
 
 def discover_bidders(bids_dir: Path) -> dict[str, Path]:
@@ -34,61 +28,6 @@ def discover_bidders(bids_dir: Path) -> dict[str, Path]:
         elif entry.suffix.lower() == ".pdf" and not entry.name.startswith("~$"):
             bidders[entry.stem] = entry
     return bidders
-
-
-def run_pipeline(tender_dir: Path, bids_dir: Path, out_dir: Path,
-                 cfg: Config, llm: LLM, log=print) -> EvaluationResult:
-    out_dir.mkdir(parents=True, exist_ok=True)
-
-    rubric_path = out_dir / "rubric.json"
-    if rubric_path.is_file():
-        log(f"Using existing rubric: {rubric_path} (delete it to re-derive)")
-        rubric = load_rubric(rubric_path)
-    else:
-        log(f"[1/4] Ingesting tender documents from {tender_dir} ...")
-        tender_docs = load_folder(tender_dir, cfg, llm)
-        log(f"      {len(tender_docs)} documents "
-            f"({sum(d.kind == 'scanned' for d in tender_docs)} scanned)")
-        log("[2/4] Deriving evaluation rubric ...")
-        rubric = derive_rubric(tender_docs, cfg, llm)
-        save_rubric(rubric, rubric_path)
-        log(f"      rubric saved to {rubric_path} — review/edit it, then re-run to continue")
-
-    bids: list[BidExtraction] = []
-    bids_out = out_dir / "bids"
-    bids_out.mkdir(exist_ok=True)
-    bidders = discover_bidders(bids_dir)
-    log(f"[3/4] Extracting {len(bidders)} bids ...")
-    for name, path in bidders.items():
-        cached = bids_out / f"{name}.json"
-        if cached.is_file():
-            bids.append(BidExtraction.model_validate_json(cached.read_text()))
-            log(f"      {name}: using cached extraction")
-            continue
-        docs = load_folder(path, cfg, llm) if path.is_dir() else [load_pdf(path, cfg, llm)]
-        extraction = extract_bid(name, docs, rubric, cfg, llm)
-        if cfg.verify_findings:
-            extraction, amendments = verify_extraction(extraction, docs, rubric, cfg, llm)
-            for note in amendments:
-                log(f"      {name}: verification amended — {note}")
-        if cfg.agent_enabled:
-            extraction, report = evidence_search(extraction, docs, rubric, cfg, llm)
-            if report["findings"]:
-                (out_dir / "agent").mkdir(exist_ok=True)
-                (out_dir / "agent" / f"{name}.json").write_text(json.dumps(report, indent=2))
-                for note in report["amendments"]:
-                    log(f"      {name}: evidence search — {note}")
-        cached.write_text(extraction.model_dump_json(indent=2))
-        bids.append(extraction)
-        log(f"      {name}: extracted ({len(docs)} file(s))")
-
-    log("[4/4] Evaluating (deterministic) and rendering reports ...")
-    result = evaluate(rubric, bids)
-    (out_dir / "evaluation.json").write_text(result.model_dump_json(indent=2))
-    paths = render_all(result, out_dir / "reports")
-    for p in paths:
-        log(f"      wrote {p}")
-    return result
 
 
 def run_offline(fixture_dir: Path, out_dir: Path, log=print) -> EvaluationResult:

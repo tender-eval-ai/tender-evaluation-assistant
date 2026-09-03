@@ -107,7 +107,7 @@ def test_graph_human_checkpoints_pause_and_resume(tmp_path, stubs):
     assert stubs["extract"] == []                      # nothing extracted before confirmation
 
     edited = {**pause["rubric"], "subject": "EDITED BY HUMAN"}
-    state = resume(graph, cfg, "t1", edited)
+    state = resume(graph, cfg, "t1", {"rubric": edited})
     pause = pending_checkpoint(state)
     assert pause and pause["checkpoint"] == "review"
     assert sorted(pause["extractions"]) == sorted(FIXTURE_BIDS)
@@ -116,7 +116,7 @@ def test_graph_human_checkpoints_pause_and_resume(tmp_path, stubs):
     # Human flips Bidder A's first document to missing; correction must win.
     fixed = json.loads(json.dumps(pause["extractions"]["Bidder A"]))
     fixed["documents"][0]["present"] = False
-    state = resume(graph, cfg, "t1", {"Bidder A": fixed})
+    state = resume(graph, cfg, "t1", {"extractions": {"Bidder A": fixed}})
     assert pending_checkpoint(state) is None
     assert state["corrected"] == ["Bidder A"]
     assert state["evaluation"]["rubric"]["subject"] == "EDITED BY HUMAN"
@@ -147,3 +147,27 @@ def test_graph_resumes_after_node_failure(tmp_path, stubs, monkeypatch):
     state = graph.invoke(None, config)                 # resume from last checkpoint
     assert sorted(state["extractions"]) == sorted(FIXTURE_BIDS)
     assert state["evaluation"]["recommended"] == "Bidder B"
+
+
+def test_graph_resume_picks_up_checkpoints_edited_on_disk(tmp_path, stubs):
+    """Service mode: the human edits rubric.json / bids/*.json (PUT) while the graph is
+    paused, then resumes with an empty payload — the edits must be honoured."""
+    cfg = _cfg(tmp_path)
+    out = tmp_path / "out"
+    graph = build_graph(cfg, None, checkpointer=MemorySaver(), interactive=True,
+                        log=lambda *a: None)
+    config = graph_config(cfg, "t3")
+    state = graph.invoke(initial_state(tmp_path / "tender", _bids_dir(tmp_path), out), config)
+    rubric = json.loads((out / "rubric.json").read_text())
+    rubric["subject"] = "EDITED ON DISK"
+    (out / "rubric.json").write_text(json.dumps(rubric))
+    state = resume(graph, cfg, "t3", {})
+    assert pending_checkpoint(state)["checkpoint"] == "review"
+    fixed = json.loads((out / "bids" / "Bidder A.json").read_text())
+    fixed["documents"][0]["present"] = False
+    (out / "bids" / "Bidder A.json").write_text(json.dumps(fixed))
+    state = resume(graph, cfg, "t3", {})
+    assert pending_checkpoint(state) is None
+    assert state["corrected"] == ["Bidder A"]
+    assert state["evaluation"]["rubric"]["subject"] == "EDITED ON DISK"
+    assert not next(r for r in state["evaluation"]["stage1"] if r["tenderer"] == "Bidder A")["passed"]
