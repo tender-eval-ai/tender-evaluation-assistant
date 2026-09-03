@@ -119,6 +119,19 @@ def _page_has_image(page) -> bool:
         return True  # malformed resources — assume it is worth OCR'ing
 
 
+def ocr_single_page(path: Path, page_index: int, cfg: Config, llm: LLM) -> str:
+    """OCR one page through the vision chain, with the per-page on-disk cache. Also
+    used by the evidence-search agent to read pages beyond the initial OCR cap."""
+    cache = cfg.cache_dir / _file_sha(path)
+    cached = cache / f"page_{page_index + 1:04d}.md"
+    if cached.is_file():
+        return cached.read_text()
+    text = llm.ocr_page(render_page_png(path, page_index))
+    cache.mkdir(parents=True, exist_ok=True)
+    cached.write_text(text)
+    return text
+
+
 def load_pdf(path: Path, cfg: Config, llm: LLM | None = None) -> Document:
     """Load a PDF as per-page text. The text-vs-scan decision is made PER PAGE: pages
     with a usable text layer are read directly, sparse pages that carry an image are
@@ -134,7 +147,6 @@ def load_pdf(path: Path, cfg: Config, llm: LLM | None = None) -> Document:
     if kind == "scanned" and llm is None:
         raise RuntimeError(f"{path.name} is a scanned PDF; OCR requires an LLM client.")
 
-    cache = cfg.cache_dir / _file_sha(path)
     ocr_used = 0
     for i, page in enumerate(reader.pages):
         text = page.extract_text() or ""
@@ -147,13 +159,7 @@ def load_pdf(path: Path, cfg: Config, llm: LLM | None = None) -> Document:
         if ocr_used >= cfg.max_ocr_pages:
             doc.pages.append(Page(number=i + 1, text="", source="skipped"))
             continue
-        cached = cache / f"page_{i + 1:04d}.md"
-        if cached.is_file():
-            text = cached.read_text()
-        else:
-            cache.mkdir(parents=True, exist_ok=True)
-            text = llm.ocr_page(render_page_png(path, i))
-            cached.write_text(text)
+        text = ocr_single_page(path, i, cfg, llm)
         ocr_used += 1
         doc.pages.append(Page(number=i + 1, text=text, source="ocr"))
     return doc

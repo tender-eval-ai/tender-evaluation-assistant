@@ -3,10 +3,11 @@ price fields — every finding cites the page it came from."""
 from __future__ import annotations
 
 from .config import Config
+from .grounding import ground_extraction
 from .ingest import Document
 from .llm import LLM
 from .retrieval import excerpt_all, keywords_from_rubric
-from .schemas import BidExtraction, Rubric
+from .schemas import BidExtraction, BidPrice, Rubric
 
 SYSTEM = (
     "You support a public Tender Assessment Panel (TAP). You are given the "
@@ -25,7 +26,10 @@ SYSTEM = (
     "3. price — unit price, currency, optimal dosage (if the scheme uses one), and the "
     "quoted total/estimated goods price if stated. Numbers exactly as printed.\n"
     "Content marked [REDACTED] is masked, not missing: a form that is visibly present "
-    "but with values redacted still counts as present. Never guess numbers."
+    "but with values redacted still counts as present. A table of contents entry, index "
+    "line or generic section heading is NOT evidence that a specific document is present "
+    "or a requirement met — only the document itself, or an explicit statement, counts. "
+    "Cite only pages whose content you were given. Never guess numbers."
 )
 
 
@@ -40,4 +44,27 @@ def extract_bid(tenderer: str, bid_docs: list[Document], rubric: Rubric,
     extraction = llm.chat_json(SYSTEM, user, BidExtraction)
     extraction.tenderer = tenderer  # folder name wins over anything the model inferred
     extraction.source_file = ", ".join(d.name for d in bid_docs)
+    ground_extraction(extraction, bid_docs)  # citations of unread pages are not evidence
     return extraction
+
+
+PRICE_SYSTEM = (
+    "You support a public Tender Assessment Panel (TAP). From ONE tenderer's offer "
+    "(page numbers marked as [Page N]) extract ONLY the price fields: unit price, "
+    "currency, optimal dosage (only if the price scheme uses one), and the quoted "
+    "total / estimated goods price if stated. Numbers exactly as printed; null for "
+    "anything not stated. Never guess."
+)
+
+PRICE_KEYWORDS = ["price schedule", "unit price", "estimated goods price", "total",
+                  "dosage", "currency", "hk$", "per litre", "per kg"]
+
+
+def extract_price(tenderer: str, bid_docs: list[Document], rubric: Rubric,
+                  cfg: Config, llm: LLM) -> BidPrice:
+    """Targeted re-extraction of the price fields alone — used after the evidence-search
+    agent has read pages (e.g. a Price Schedule) that the first pass could not see."""
+    content = excerpt_all(bid_docs, PRICE_KEYWORDS, cfg.max_doc_chars, cfg.max_total_chars)
+    user = (f"Price scheme: {rubric.price_scheme.model_dump_json()}\n\n"
+            f"Offer of tenderer '{tenderer}':\n\n" + content)
+    return llm.chat_json(PRICE_SYSTEM, user, BidPrice)

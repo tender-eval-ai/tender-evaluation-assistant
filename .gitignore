@@ -9,3 +9,6 @@ inbox/
 .DS_Store
 README.html
 demo_case_stress/
+
+# Benchmark case — regenerate with: python tools/make_demo_case.py --buried --out buried_case
+buried_case/

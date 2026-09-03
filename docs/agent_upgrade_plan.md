@@ -235,6 +235,35 @@ absent (the agent must return `found=false`).
 The benchmark script prints a before/after table; it becomes the number quoted in
 the README, the slides and the interview doc.
 
+### 6a. Measured (2026-08, 3-bidder `--buried` case, `MAX_OCR_PAGES=4`, DeepSeek text + local qwen3-vl OCR)
+
+| run | certificate recall | agent false restores | first-pass false positives | price extracted | unclear findings w/ evidence | agent OCR pages |
+| --- | --- | --- | --- | --- | --- | --- |
+| baseline (agent off) | 0/2 | 0 | 0 | 0/3 | 0/9 | 0 |
+| agent on | **2/2** | **0** | **0** | **3/3** | **8/9** | 17 (≈6 per bid) |
+
+Two things the benchmark taught us, both now in the code:
+
+1. **Citation grounding** (`app/grounding.py`): the first benchmark run showed the
+   *first-pass* extraction claiming "present on page 11" having never read page 11 —
+   inferred from a contents entry. A citation of an unread page is now demoted
+   (present → missing, yes/no → unclear) so verification and the agent actually look;
+   verification refutations and agent finishes must additionally quote text that
+   appears on the cited page. The prompts also state that a table-of-contents entry
+   is not evidence.
+2. **Initial observation**: the agent's transcript starts with the page listing and
+   page 1 (cover/contents), so it follows the contents page instead of OCR-ing filler
+   sequentially — OCR use fell from 6 wasted pages to the 3–4 right ones per bid.
+
+**No-regression check** (30-bidder seeded case through the graph path, agent on):
+all seeded defects matched exactly — Stage I failures 03/10/17/24, Stage II
+05/16/27, arithmetic errors 04/13/22, recommendation Tenderer_14 — in **116 s**
+(previously 287 s sequential); the agent ran for the 4 missing-certificate bids
+and restored nothing (correct).
+
+Time: the agent run's cost is the OCR it triggers (~25 s per page on the local
+qwen3-vl:8b; seconds on a cloud vision model); text-model steps are negligible.
+
 ## 7. Tests (all offline, added to the 50)
 
 - **Graph**: stubbed LLM; assert node order, conditional skip when `rubric.json`
@@ -256,7 +285,7 @@ the README, the slides and the interview doc.
 | Phase | Work | Effort | Deliverable / exit criterion |
 | --- | --- | --- | --- |
 | **A. Graph wrapper** ✅ done | `graph.py`, checkpointer, interrupts, Send fan-out, CLI `--orchestrator graph`, 5 graph tests | ~1 day | **Met**: live graph run on `demo_case` 59 s (3 bids in parallel); legacy replay on the same checkpoints → `evaluation.json` byte-identical; 55 tests green |
-| **B. Evidence-search agent** | `tools.py`, `agent.py`, on-demand OCR, budgets, trace, agent + tool tests | ~1.5–2 days | Agent finds the buried certificate in the `--buried` case; 0 false restores |
+| **B. Evidence-search agent** ✅ done | `tools.py`, `agent.py`, `grounding.py`, on-demand OCR, budgets, trace, 8 agent + 3 grounding tests; `--buried` case + `benchmark_buried.py` | ~1.5–2 days | **Met** — see §6a: certificate recall 0/2 → 2/2, 0 false restores, price 0/3 → 3/3, unclear findings with evidence 0/9 → 8/9, ~6 OCR pages per bid |
 | **C. Service + UI** | run/resume endpoints, status mapping, UI confirm/resume, trace viewer, `ORCHESTRATOR` flag, API tests | ~1 day | Full flow in the browser on the graph path; legacy path still passes its tests |
 | **D. Benchmark + docs** | `--buried` generator, benchmark script, before/after table, README/docs/interview/slides updates | ~0.5 day | Numbers in §6 measured and recorded |
 

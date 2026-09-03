@@ -22,6 +22,7 @@ def _cfg(tmp_path) -> Config:
     cfg = Config(token="unused")
     cfg.cache_dir = tmp_path / "cache"
     cfg.verify_findings = False
+    cfg.agent_enabled = False      # LLM steps are stubbed; no model available here
     return cfg
 
 

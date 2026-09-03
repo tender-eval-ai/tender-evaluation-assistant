@@ -10,8 +10,10 @@ can be human-edited between steps (the product's confirmation checkpoint):
 """
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
+from .agent import evidence_search
 from .bid_extract import extract_bid
 from .config import Config
 from .evaluate import evaluate
@@ -69,6 +71,13 @@ def run_pipeline(tender_dir: Path, bids_dir: Path, out_dir: Path,
             extraction, amendments = verify_extraction(extraction, docs, rubric, cfg, llm)
             for note in amendments:
                 log(f"      {name}: verification amended — {note}")
+        if cfg.agent_enabled:
+            extraction, report = evidence_search(extraction, docs, rubric, cfg, llm)
+            if report["findings"]:
+                (out_dir / "agent").mkdir(exist_ok=True)
+                (out_dir / "agent" / f"{name}.json").write_text(json.dumps(report, indent=2))
+                for note in report["amendments"]:
+                    log(f"      {name}: evidence search — {note}")
         cached.write_text(extraction.model_dump_json(indent=2))
         bids.append(extraction)
         log(f"      {name}: extracted ({len(docs)} file(s))")

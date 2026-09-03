@@ -68,6 +68,15 @@ class Config:
     # Concurrent bid extractions (graph fan-out / backend thread pool).
     max_parallel_bids: int = field(
         default_factory=lambda: max(1, int(os.environ.get("MAX_PARALLEL_BIDS", "4"))))
+    # Evidence-search agent for findings still missing/unclear after verification
+    # (AGENT_SEARCH=0 disables): per-finding step budget, per-bid on-demand OCR budget.
+    agent_enabled: bool = field(
+        default_factory=lambda: os.environ.get("AGENT_SEARCH", "1").lower()
+        not in ("0", "false", "no"))
+    agent_max_steps: int = field(
+        default_factory=lambda: int(os.environ.get("AGENT_MAX_STEPS", "8")))
+    agent_ocr_pages: int = field(
+        default_factory=lambda: int(os.environ.get("AGENT_OCR_PAGES", "6")))
     # Adversarial re-check of negative findings (set VERIFY_FINDINGS=0 to disable).
     verify_findings: bool = field(
         default_factory=lambda: os.environ.get("VERIFY_FINDINGS", "1").lower()

@@ -19,6 +19,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from .config import Config
+from .grounding import cited_ok
 from .ingest import Document
 from .llm import LLM
 from .retrieval import excerpt_all, keywords_for_text
@@ -29,8 +30,10 @@ SYSTEM = (
     "A first-pass reviewer made a NEGATIVE finding about a tenderer's offer. Your only "
     "job is to try to REFUTE it: search the offer content for evidence that the "
     "document IS present or the requirement IS met. Set refuted=true ONLY if you can "
-    "quote concrete evidence and cite its [Page N]. If you find no such evidence, "
-    "uphold the finding with refuted=false. Never invent evidence."
+    "quote concrete evidence VERBATIM and cite its [Page N]. A table of contents entry "
+    "or generic section heading is not evidence that a specific document is present. If "
+    "you find no such evidence, uphold the finding with refuted=false. Never invent "
+    "evidence."
 )
 
 
@@ -61,7 +64,11 @@ def verify_extraction(extraction: BidExtraction, bid_docs: list[Document],
                               cfg.max_doc_chars, cfg.max_total_chars)
         verdict = _challenge(
             llm, f"The offer does NOT include: {item}", content)
-        if verdict.refuted and verdict.evidence:
+        if verdict.refuted and verdict.evidence and not cited_ok(
+                verdict.page, verdict.evidence, bid_docs, require_quote=True):
+            amendments.append(f"{extraction.tenderer}/{doc_finding.checklist_id}: refutation "
+                              f"ignored — quote not found on p.{verdict.page}")
+        elif verdict.refuted and verdict.evidence:
             doc_finding.present = True
             doc_finding.page = verdict.page
             doc_finding.note = f"restored by verification pass: {verdict.evidence[:200]}"
@@ -76,7 +83,11 @@ def verify_extraction(extraction: BidExtraction, bid_docs: list[Document],
                               cfg.max_doc_chars, cfg.max_total_chars)
         verdict = _challenge(
             llm, f"The offer does NOT comply with the essential requirement: {req}", content)
-        if verdict.refuted and verdict.evidence:
+        if verdict.refuted and verdict.evidence and not cited_ok(
+                verdict.page, verdict.evidence, bid_docs, require_quote=True):
+            amendments.append(f"{extraction.tenderer}/{comp_finding.requirement_id}: refutation "
+                              f"ignored — quote not found on p.{verdict.page}")
+        elif verdict.refuted and verdict.evidence:
             comp_finding.complies = "unclear"
             comp_finding.evidence = (f"verification found counter-evidence, needs human "
                                      f"review: {verdict.evidence[:200]}")

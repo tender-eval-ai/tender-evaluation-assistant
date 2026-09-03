@@ -41,8 +41,13 @@ def make_extraction() -> BidExtraction:
 
 
 def make_docs() -> list[Document]:
+    """12 pages; the refutation quotes used below really are on pages 7 and 12."""
     doc = Document(path=Path("offer.pdf"), kind="text")
     doc.pages.append(Page(number=1, text="Offer content with certificate mention.", source="text"))
+    for n in range(2, 13):
+        text = {7: "Particulars: shelf life 18 months on page 7 as stated.",
+                12: "Non-collusive Tendering Certificate: completed and signed."}.get(n, "filler")
+        doc.pages.append(Page(number=n, text=text, source="text"))
     return [doc]
 
 
@@ -90,3 +95,13 @@ def test_refuted_noncompliance_demoted_to_unclear_not_yes():
 def test_refutation_without_evidence_is_ignored():
     ext, _, _ = run([Verdict(refuted=True, evidence=""), Verdict(refuted=False)])
     assert ext.documents[1].present is False  # evidence-free refutation doesn't count
+
+def test_refutation_citing_unread_page_or_missing_quote_is_ignored():
+    # Page 99 was never read; page 3 is read but does not contain the quote.
+    ext, amendments, _ = run([
+        Verdict(refuted=True, evidence="Certificate: completed and signed", page=99),
+        Verdict(refuted=True, evidence="shelf life 18 months", page=3),
+    ])
+    assert ext.documents[1].present is False
+    assert ext.compliance[1].complies == "no"
+    assert len(amendments) == 2 and all("refutation ignored" in a for a in amendments)

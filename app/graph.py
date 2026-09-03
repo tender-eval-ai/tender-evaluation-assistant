@@ -23,6 +23,7 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, Send, interrupt
 
+from .agent import evidence_search
 from .bid_extract import extract_bid
 from .config import Config
 from .evaluate import evaluate
@@ -123,6 +124,14 @@ def build_graph(cfg: Config, llm: LLM | None, checkpointer=None, interactive: bo
         extraction = extract_bid(name, docs, rubric, cfg, llm)
         if cfg.verify_findings:
             extraction, _ = verify_extraction(extraction, docs, rubric, cfg, llm)
+        if cfg.agent_enabled:
+            extraction, report = evidence_search(extraction, docs, rubric, cfg, llm)
+            if report["findings"]:
+                agent_dir = Path(bid["out_dir"]) / "agent"
+                agent_dir.mkdir(exist_ok=True)
+                (agent_dir / f"{name}.json").write_text(json.dumps(report, indent=2))
+                for note in report["amendments"]:
+                    log(f"[agent] {name}: {note}")
         (Path(bid["out_dir"]) / "bids" / f"{name}.json").write_text(
             extraction.model_dump_json(indent=2))
         log(f"[extract] {name}: extracted ({len(docs)} file(s))")

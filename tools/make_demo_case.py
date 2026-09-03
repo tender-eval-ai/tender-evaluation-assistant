@@ -12,6 +12,15 @@ Expected outcome: C ranked 1 yet non-conforming; B recommended with an error not
 prices spread over ~HK$10-15, every 7th missing the certificate (Stage I fail),
 every 11th with a 6-month shelf life (Stage II fail), every 9th with an arithmetic
 error in its quoted total, and bidders 2 and 17 as scanned image-only PDFs (OCR path).
+
+--buried generates the evidence-search benchmark: every offer is a 12-page scan-only
+PDF whose Price Schedule, Particulars, Non-collusive Certificate and Compliance
+Schedule sit on pages 9-12, behind a table of contents on page 1 (with a generic
+"Certificates and Declarations" entry, so presence cannot be inferred from the TOC)
+and six pages of company-profile filler — with a small MAX_OCR_PAGES the first pass
+cannot see them and only an agent that follows the contents page can. Bidder 3
+genuinely omits the certificate (a false restore would be caught). Ground truth goes
+to ground_truth.json.
 """
 from __future__ import annotations
 
@@ -21,7 +30,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tools.pdfgen import make_text_pdf  # noqa: E402
+from tools.pdfgen import LINES_PER_PAGE, make_text_pdf  # noqa: E402
 
 TERMS = """\
 Tender Ref.: DEMO0022026
@@ -156,6 +165,62 @@ def synth_offer(i: int) -> tuple[str, str, bool]:
     return name, text, i in (2, 17)
 
 
+def _pad_pages(pages: list[str]) -> list[str]:
+    """Lay each text out on its own PDF page (pdfgen paginates by line count)."""
+    lines: list[str] = []
+    for text in pages:
+        chunk = text.splitlines()[:LINES_PER_PAGE]
+        lines.extend(chunk + [""] * (LINES_PER_PAGE - len(chunk)))
+    return lines
+
+
+PROFILE_TOPICS = ["history and ownership", "quality management system", "warehouse and "
+                  "logistics capacity", "environmental and safety policy", "key personnel",
+                  "reference contracts"]
+
+
+def buried_offer(i: int) -> tuple[str, list[str], dict]:
+    """12-page offer with the substantive schedules buried on pages 9-12."""
+    name = f"Tenderer_{i:02d}"
+    unit = 10.0 + ((i * 37) % 500) / 100
+    total = unit * 50_000
+    missing_cert = i == 3
+    shelf = 12 + (i % 3) * 6
+    delivery = 25 + (i % 15)
+    contents = [
+        "2   Tender Form, Offer to be Bound",
+        "3-8 Company Profile",
+        "9   Price Schedule Part A",
+        "10  Particulars of Goods Schedule",
+        "11  Certificates and Declarations",   # generic on purpose: presence needs the page
+        "12  Compliance Schedule",
+    ]
+    pages = [
+        f"Offer of {name} - Tender Ref. DEMO0022026\n\nTable of Contents\n" + "\n".join(contents),
+        f"Tender Form, Offer to be Bound\n\nDuly signed by the authorised signatory of {name} "
+        f"on {10 + (i % 18)} June 2026. {name} offers to be bound by the Terms of Tender.",
+    ]
+    for k, topic in enumerate(PROFILE_TOPICS, start=1):
+        pages.append(f"Company Profile - Section {k}: {topic}\n\n" + "\n".join(
+            f"{name} paragraph {k}.{j} about its {topic}, provided for information only."
+            for j in range(1, 9)))
+    pages.append(f"Price Schedule Part A\n\nUnit price HK$ {unit:.2f} per litre. Estimated "
+                 f"quantity 50 000 litres.\nEstimated goods price HK$ {total:,.2f} free into store.")
+    pages.append(f"Particulars of Goods Schedule\n\nProduct CleanSolv {100 + i}. Shelf life "
+                 f"{shelf} months from the date of receipt.\nSupplied in sealed drums of 200 "
+                 "litres labelled with batch number and expiry date.")
+    pages.append("Quality Assurance Statement\n\nThe tenderer maintains an ISO 9001 certified "
+                 "quality system." if missing_cert else
+                 "Non-collusive Tendering Certificate\n\nCompleted and signed by the "
+                 f"authorised signatory of {name}.")
+    pages.append(f"Compliance Schedule\n\nDelivery within {delivery} days from the date of "
+                 "the purchase order is confirmed.")
+    truth = {"certificate": not missing_cert, "unit_price": round(unit, 2),
+             "quoted_total": round(total, 2), "shelf_life_months": shelf,
+             "delivery_days": delivery, "pages": len(pages)}
+    return name, _pad_pages(pages), truth
+
+
 def rasterize(pdf_path: Path) -> None:
     """Replace a text-layer PDF with an image-only version (simulates a scanned offer)."""
     import pypdfium2 as pdfium
@@ -175,6 +240,9 @@ def main() -> None:
     parser.add_argument("--bidders", type=int, default=3,
                         help="number of bidders (3 = the fixed A/B/C demo trio)")
     parser.add_argument("--out", default="demo_case", help="output folder name")
+    parser.add_argument("--buried", action="store_true",
+                        help="evidence-search benchmark: 12-page scan-only offers with the "
+                             "schedules on pages 9-12 (see module docstring)")
     args = parser.parse_args()
 
     base = ROOT / args.out
@@ -183,7 +251,16 @@ def main() -> None:
     make_text_pdf(tender / "01_terms_of_tender_supplement.pdf", TERMS)
     make_text_pdf(tender / "02_special_conditions.pdf", SPECIAL_CONDITIONS)
 
-    if args.bidders == 3:
+    import json
+    truth: dict[str, dict] = {}
+    if args.buried:
+        offers = []
+        for i in range(1, args.bidders + 1):
+            name, lines, t = buried_offer(i)
+            offers.append((name, lines, True))
+            truth[name] = t
+        (base / "ground_truth.json").write_text(json.dumps(truth, indent=2))
+    elif args.bidders == 3:
         offers = [("Tenderer_A", OFFER_A, False), ("Tenderer_B", OFFER_B, False),
                   ("Tenderer_C", OFFER_C, True)]
     else:

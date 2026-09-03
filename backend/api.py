@@ -39,6 +39,7 @@ from fastapi import APIRouter, Depends, FastAPI, File, Header, HTTPException, Up
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 
+from app.agent import evidence_search
 from app.bid_extract import extract_bid
 from app.config import Config, load_dotenv
 from app.evaluate import evaluate
@@ -475,6 +476,10 @@ def _extract_missing(pdir: Path, rubric: Rubric, cfg: Config) -> list[BidExtract
         extraction = extract_bid(name, docs, rubric, cfg, llm)
         if cfg.verify_findings:
             extraction, _ = verify_extraction(extraction, docs, rubric, cfg, llm)
+        if cfg.agent_enabled:
+            extraction, report = evidence_search(extraction, docs, rubric, cfg, llm)
+            if report["findings"]:
+                _write_json(pdir / "work" / "agent" / f"{name}.json", report)
         _write_json(pdir / "work" / "bids" / f"{name}.json",
                     extraction.model_dump(mode="json"))
         results[name] = extraction
