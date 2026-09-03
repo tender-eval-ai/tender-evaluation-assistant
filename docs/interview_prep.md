@@ -1,14 +1,14 @@
 # Tender Evaluation Assistant — Interview Preparation
 
 *How to present this project on a resume, in a 90-second pitch, and under questioning.
-Everything here is true of the repo as of commit `4e96b4b` — no embellishment needed;
-the honest version is the strong version.*
+Everything here is true of the repo as of commit `a74295d` (after the LangGraph +
+agent upgrade) — no embellishment needed; the honest version is the strong version.*
 
 ---
 
 ## 1. Resume entry
 
-### Project-section version (4 bullets)
+### Project-section version (5 bullets — drop one to fit)
 
 > **AI Tender Evaluation Assistant** — LLM document-review pipeline for public
 > procurement (Python, FastAPI, Streamlit, Docker) · [github.com/tender-eval-ai/tender-evaluation-assistant]
@@ -29,23 +29,29 @@ the honest version is the strong version.*
 >   original cloud provider was **retired mid-project**, the pipeline fell back to
 >   local Ollama models with zero code change — the same one-line config swap targets
 >   vLLM on the client's DGX workstation for fully local production.
-> - Shipped as a two-service Docker Compose stack (FastAPI backend with background
->   jobs and parallel bid extraction; Streamlit review UI with human checkpoints,
->   triaged review, and one-click folder upload) with **50 fully-offline tests** and
->   CI on every push; parallel extraction + cloud text cut a 3-bid case from ~337 s
->   to 55 s.
+> - Orchestrated the pipeline as a **LangGraph state graph** with durable per-project
+>   checkpoints, human-in-the-loop `interrupt()`s at the two review points and
+>   parallel per-bid fan-out; added a **bounded tool-using agent** (schema-validated
+>   actions, read-only tools incl. on-demand OCR, step/OCR budgets, quotes verified on
+>   the cited page) that runs only for unresolved findings — raised buried-evidence
+>   recall from **0% to 100%** with **zero false restores** on a seeded benchmark.
+> - Shipped as a two-service Docker Compose stack (FastAPI backend with run/resume
+>   jobs; Streamlit review UI with triaged review, evidence highlighting and one-click
+>   folder upload) with **69 fully-offline tests** and CI on every push; 30 bidders
+>   evaluated end to end in 116 s.
 
 ### One-line version (for a crowded resume)
 
-> Built an LLM pipeline that drafts public tender-evaluation reports from scanned
-> bids (OCR → rubric derivation → cited extraction → deterministic scoring → Word);
-> 100% ground-truth agreement on a 30-bidder stress test; 50-test CI; Dockerized,
-> runs fully local for confidentiality.
+> Built a LangGraph-orchestrated LLM pipeline with a bounded evidence-search agent
+> that drafts public tender-evaluation reports from scanned bids (OCR → rubric
+> derivation → cited extraction → deterministic scoring → Word); 100% ground-truth
+> agreement on a 30-bidder case, 0→100% buried-evidence recall with zero false
+> positives; 69-test CI; Dockerized, runs fully local for confidentiality.
 
-**Tailoring tips**: applying for an *AI/LLM engineer* role → lead with bullet 2
-(verification, retrieval, schema validation). *Backend/platform* role → lead with
-bullet 4 (services, jobs, parallelism, CI). *Product-minded* role → lead with bullet 1
-and the human-checkpoint design.
+**Tailoring tips**: applying for an *AI/LLM/agent engineer* role → lead with bullets
+2 and 4 (verification, grounding, LangGraph, the bounded agent and its benchmark).
+*Backend/platform* role → lead with bullet 5 (services, run/resume jobs, parallelism,
+CI). *Product-minded* role → lead with bullet 1 and the human-checkpoint design.
 
 ---
 
@@ -64,17 +70,18 @@ and the human-checkpoint design.
 >
 > My core design principle: **LLMs extract, code calculates**. Models do OCR, derive
 > that tender's rubric, and extract facts with page citations; every number — totals,
-> rounding, rankings — is deterministic Python. On top of that I added trust
-> mechanisms: schema-validated JSON with retry, and an **adversarial verification
-> pass** — every "document missing" or "non-compliant" finding gets an independent
-> attempt to refute it before it can reach a report. Humans confirm the rubric and can
-> correct any extraction, side-by-side with the cited page image, evidence highlighted.
+> rounding, rankings — is deterministic Python. The whole flow is a **LangGraph state
+> graph** with durable checkpoints and two human-in-the-loop interrupts. On top of that
+> I added trust mechanisms: schema-validated JSON with retry, an **adversarial
+> verification pass** that tries to refute every negative finding, and code-level
+> **citation grounding** — a claim that cites a page nobody read is not evidence.
 >
-> To prove it works I generated a **30-bidder** synthetic case with seeded defects —
-> missing certificates, compliance breaches, arithmetic errors. The pipeline matched
-> the ground truth **100 percent**, in under five minutes. And when the cloud API I
-> started on was retired mid-project, the fallback chain switched to **local models
-> with zero code change** — which is exactly the design production needs.
+> The one place I let a model choose its own actions is a **bounded evidence-search
+> agent**: for findings still unresolved, it reads the contents page, OCRs the pages
+> it points to on demand, and can only finish with a quote that's verified on that
+> page. On a seeded benchmark it took buried-evidence recall from **zero to 100
+> percent with zero false positives**. And the full 30-bidder case still matches its
+> ground truth **100 percent**, now in under two minutes.
 
 ### 中文版（口语，约 90 秒）
 
@@ -87,13 +94,14 @@ and the human-checkpoint design.
 >
 > 我的核心设计原则是"**模型负责读，代码负责算**"：LLM 做 OCR、推导本标书的评审
 > 规则、带页码引用地提取事实；所有数字——合计、修约、排名——全部是确定性的 Python
-> 代码。在这之上我加了可信机制：JSON 按 schema 校验失败自动重试；每一条负面结论——
-> "材料缺失"、"不合规"——都要先经过一次**对抗性反驳**才能进报告。人工确认评审规则，
-> 也可以修正任何提取结果，界面上证据页图片就在旁边，原句高亮。
+> 代码。整个流程用 **LangGraph** 编排成状态图：持久化检查点，两处人工确认用 interrupt
+> 实现。在这之上是可信机制：JSON 按 schema 校验失败自动重试；每条负面结论先经过一次
+> **对抗性反驳**；还有代码层面的**引用落地校验**——引用了一页没读过的页面，不算证据。
 >
-> 为了验证效果，我生成了一个 **30 家投标人**的合成案例，故意埋入缺证书、违规、总价
-> 算错等缺陷——系统与预埋答案 **100% 一致**，全程不到五分钟。项目中途最初用的云端
-> API 被停服，回退链**零代码改动**切到了本地模型——这恰好就是生产环境需要的架构。
+> 唯一让模型自主决定动作的地方，是一个**受约束的证据搜索 agent**：针对仍未解决的
+> 结论，它读目录页、按需 OCR 目录指向的页面，而且只能用在该页上核实过的原文来
+> 结束。在预埋答案的基准测试上，被"埋"起来的证据召回率从 **0 提到 100%，零误报**；
+> 30 家投标人的完整案例依然与预埋答案 **100% 一致**，现在不到两分钟。
 
 ---
 
@@ -104,10 +112,12 @@ and the human-checkpoint design.
 | **20–60** | Bidders per tender in production; hundreds of pages each |
 | **30 / 287 s / 100%** | Stress test: bidders / end-to-end time / ground-truth agreement |
 | **4/4, 3/3, 3/3** | Missing certs (one inside a scan), shelf-life breaches, arithmetic errors — all caught |
-| **50** | Fully-offline tests in CI |
+| **69** | Fully-offline tests in CI (incl. graph, agent, grounding) |
+| **0/2 → 2/2, 0 false, 0/3 → 3/3** | Agent benchmark: buried certificate recall, false restores, buried prices |
+| **116 s** | 30-bidder case end to end through the graph (was 287 s) |
 | **6 s vs 133 s** | Rubric derivation, DeepSeek vs local qwen3:8b (same verdicts) |
 | **55 s vs ~337 s** | 3-bid case with parallel extraction + cloud text vs sequential local |
-| **~3,800** | Lines of Python across 57 files (12-module library + 2 services) |
+| **~3,900 + 1,200** | Lines of Python (app, services, tools) + tests, across 68 files (16-module library + 2 services) |
 | **2** | Human checkpoints (rubric confirm; extraction correction — corrections are final) |
 
 ---
@@ -176,16 +186,55 @@ the free cloud API I started with was retired mid-project — my pipeline logged
 failure and fell through to local Ollama with zero code change, same verdicts. It's
 also the production story: point the same config at vLLM on the client's hardware.
 
+### The agent
+
+**Q: Is this an agent, or a pipeline with a fancy name?**
+A: The top level is deliberately a *workflow* — a fixed graph — because a procurement
+panel needs predictable, auditable steps. There is exactly one agentic component:
+an evidence-search loop that runs only for findings still unresolved after
+verification. There the model does choose its own actions — list pages, search, read,
+OCR a page on demand, finish — and I bound it: read-only tools, step and OCR budgets,
+a finish accepted only if the quote is verifiably on the cited page, and no power to
+change a compliance verdict. I'd rather defend "bounded agency where search is the
+problem" than a free-roaming agent I can't audit.
+
+**Q: Why LangGraph?**
+A: I had hand-rolled what it provides: status files, JSON checkpoints for
+resumability, a thread pool for parallel bids, and two human checkpoints. LangGraph
+gave me durable per-project checkpoints, `interrupt()` for the human-in-the-loop
+pauses, `Send` for parallel fan-out and crash recovery that keeps finished work — and
+its nodes are plain Python, so my existing functions and OpenAI-compatible client
+stayed unchanged. I proved the wrapper first: byte-identical evaluation output versus
+the previous orchestrator before I changed any behaviour.
+
+**Q: How did you evaluate the agent, and what did you learn?**
+A: I built a benchmark case where the schedules are buried on pages 9–12 of scan-only
+offers behind a table of contents, with the first pass capped at 4 pages — so the
+baseline provably cannot see them — and one bidder that genuinely lacks the
+certificate. The agent took certificate recall from 0/2 to 2/2 and prices from 0/3 to
+3/3 with zero false restores. The first run taught me two things I fixed: the
+*first-pass* extractor was claiming "present on page 11" without ever reading page 11
+— that became a deterministic grounding rule — and the agent was OCR-ing filler pages
+sequentially because it hadn't seen the contents page — so its transcript now starts
+with the page listing and the cover page.
+
+**Q: What can the agent not do, and why?**
+A: It cannot flip "unclear" to "compliant", cannot cite a page it hasn't read, cannot
+exceed its OCR budget, and cannot invent a quote — every finish is checked against the
+page text in code. Those limits are the design: the agent proposes evidence, the
+deterministic evaluator and the human decide.
+
 ### Engineering & quality
 
 **Q: How do you test an LLM pipeline in CI?**
-A: I separate the deterministic 80% from the model 20%. All 50 CI tests are fully
-offline: the price engine, evaluation logic, report rendering, retrieval scoring and
-per-page OCR routing are tested directly; the LLM client is tested with stubbed
-endpoints (including fallback behaviour); the API is tested end-to-end by injecting
-fixture extractions through the human-correction path, and the parallel extractor
-runs against a stubbed model through the real thread pool. Model *quality* is
-measured separately, against synthetic cases with seeded ground truth.
+A: I separate the deterministic 80% from the model 20%. All 69 CI tests are fully
+offline: the price engine, evaluation logic, grounding, report rendering, retrieval
+scoring and per-page OCR routing are tested directly; the LLM client with stubbed
+endpoints; the graph with stubbed model steps — byte-identical output versus the
+fixture run, pause/resume with edits, crash recovery; the agent with scripted action
+sequences — finds a buried document, rejects an unverifiable quote, respects budgets;
+and the API end to end through run → resume → resume. Model *quality* is measured
+separately, against synthetic cases with seeded ground truth.
 
 **Q: Tell me about a bug you're glad you caught.**
 A: A race condition. The stress driver polled job status right after POSTing an
@@ -194,13 +243,13 @@ written "running" yet. I fixed both sides: the endpoint now writes "running" bef
 returning, and the poller ignores terminal states older than its request. It was a
 good lesson that job status is API contract, not just UI decoration.
 
-**Q: Why threads and not asyncio for parallel extraction?**
-A: The bottleneck is waiting on LLM HTTP calls, which threads handle fine through the
-sync OpenAI client; a ThreadPoolExecutor with a small cap (default 4) got the win —
-a 3-bid case went from ~337 s to 55 s — without converting the whole pipeline to
-async. The shared state is tiny: results keyed by bidder, and a lock around progress
-updates. If profiling ever shows thread overhead matters at 60 bidders, the seam to
-swap is one function.
+**Q: How does parallelism work now?**
+A: Bids are independent units of work, so the graph fans them out with LangGraph's
+`Send` — one branch per bidder without a stored extraction — under a concurrency cap
+(default 4) that matches what the model endpoint can take; results merge back through
+a dict reducer keyed by bidder. Before the graph I had the same win with a thread pool
+(a 3-bid case from ~337 s to 55 s); the graph version adds crash recovery for free:
+finished bids survive a failure mid fan-out. 30 bidders now take 116 s end to end.
 
 **Q: How would you scale this to 60 bidders / production?**
 A: The units of work are naturally parallel — bids are independent. Production plan:

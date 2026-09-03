@@ -1,7 +1,8 @@
 # Tender Evaluation Assistant — Detailed Specification
 
-*Last updated: 2026-08 (commit `4e96b4b`). Numbers in this document are measured, not
-estimated: 57 tracked files, ~3,800 lines of Python, 50 offline tests, CI on every push.*
+*Last updated: 2026-08 (after the agent upgrade, commit `a74295d`). Numbers in this
+document are measured, not estimated: 68 tracked files, ~3,900 lines of Python plus
+~1,200 lines of tests, 69 offline tests, CI on every push.*
 
 ---
 
@@ -39,6 +40,13 @@ Two facts about the input data shaped the whole design:
   extraction can be corrected, and corrections are final (never re-extracted).
 - **Negative findings must survive attack.** Every "document missing" / "non-compliant"
   verdict gets an adversarial refutation pass before it can reach a report.
+- **Citations are grounded in code.** A claim that cites a page nobody read is not
+  evidence — it is demoted so the pipeline actually looks. Refutations and agent
+  results must quote text present on the cited page.
+- **Bounded agency.** The top-level flow is a fixed workflow orchestrated as a
+  LangGraph state graph. Exactly one step lets an LLM choose its own actions — the
+  evidence-search agent — and it runs only for unresolved findings, with read-only
+  tools, step/OCR budgets, and no power over compliance verdicts.
 - **Local-first, cloud-optional.** The NDA forbids real client documents on any cloud
   path. The demo uses cloud text models on *synthetic data only*; production is the
   same stack pointed at local vLLM on the client's DGX Spark (GB10, arm64).
@@ -52,16 +60,19 @@ flowchart LR
     end
     subgraph docker [Docker Compose]
       API["FastAPI backend<br/>backend/api.py<br/>:8000"]
-      LIB["Pipeline library<br/>app/ (12 modules)"]
+      GRAPH["LangGraph orchestration<br/>app/graph.py<br/>SQLite checkpoints · interrupts · Send"]
+      LIB["Pipeline library<br/>app/ (16 modules)"]
+      AGENT["Evidence-search agent<br/>app/agent.py + tools.py<br/>bounded, unresolved findings only"]
     end
     subgraph llm [LLM endpoints — OpenAI-compatible]
       DS["DeepSeek API<br/>(text, demo)"]
       OL["Ollama local<br/>qwen3:8b · qwen3-vl:8b"]
       VL["vLLM on DGX Spark<br/>(production)"]
     end
-    UI -- "REST + X-API-Key" --> API
+    UI -- "REST + X-API-Key<br/>run / resume" --> API
     UI -. "folder upload posts<br/>browser → API directly" .-> API
-    API --> LIB
+    API --> GRAPH --> LIB
+    GRAPH --> AGENT --> LIB
     LIB -- "fallback chains<br/>model@base_url" --> DS & OL & VL
     API --- DATA[("./data volume<br/>projects/&lt;id&gt;/…")]
 ```
@@ -70,7 +81,7 @@ Three deployable pieces, one library:
 
 | Piece | Role | Depends on |
 | --- | --- | --- |
-| `app/` | The pipeline library — all document/LLM/evaluation logic | openai, pydantic, pypdf, pypdfium2, pillow, python-docx |
+| `app/` | The pipeline library — all document/LLM/evaluation logic, the graph and the agent | openai, pydantic, pypdf, pypdfium2, pillow, python-docx, langgraph (+ sqlite checkpointer) |
 | `backend/` | FastAPI service: projects, uploads, background jobs, reports API | fastapi, uvicorn + `app/` |
 | `frontend/` | Streamlit review UI — a pure HTTP client of the backend | streamlit, requests only |
 
@@ -78,27 +89,28 @@ The frontend never imports pipeline code and never touches documents (except the
 browser-direct folder upload, which posts straight to the API). Requirements are split
 per service; the root `requirements.txt` is the dev aggregate (both + pytest).
 
-## 4. Repository inventory (57 tracked files)
+## 4. Repository inventory (68 tracked files)
 
 | Path | Files | LOC (py) | Contents |
 | --- | --- | --- | --- |
-| `app/` | 13 | ~1,300 | Pipeline library (12 modules + `__init__`) |
-| `backend/` | 4 | 566 | `api.py`, Dockerfile, requirements, `__init__` |
-| `frontend/` | 3 | 612 | `ui.py`, Dockerfile, requirements |
-| `test/` | 16 | ~780 | 10 test modules, 50 tests, fixtures, conftest |
-| `tools/` | 4 | ~400 | Synthetic-case generator, PDF generator, stress driver |
+| `app/` | 17 | ~1,900 | Pipeline library (16 modules + `__init__`) incl. graph, agent, tools, grounding |
+| `backend/` | 4 | 593 | `api.py`, Dockerfile, requirements, `__init__` |
+| `frontend/` | 3 | 666 | `ui.py`, Dockerfile, requirements |
+| `test/` | 19 | ~1,220 | 13 test modules, 69 tests, fixtures, conftest |
+| `tools/` | 5 | ~590 | Case generator (incl. `--buried`), PDF generator, stress driver, evidence-search benchmark |
 | `demo_case/` | 5 | — | Committed synthetic demo PDFs (2 tender, 3 bids) |
-| `docs/` | 3+ | — | Presentation + plan reports (+ this spec) |
+| `docs/` | 6 | — | Presentation, plan reports, agent upgrade plan, interview prep, this spec |
 | root | 9 | 85 | `run_demo.py` CLI, compose file, CI workflow, `.env.example`, `.streamlit/config.toml`, README, ignore files |
 
 ## 5. The pipeline library — module by module
 
-### `app/config.py` (83 LOC)
+### `app/config.py` (95 LOC)
 Environment loading and model configuration. `Config` dataclass fields: `base_url`
 (default from `GITHUB_MODELS_BASE_URL` — historic name, now usually the local Ollama
 URL), `text_model` / `vision_model` + `*_fallbacks` lists, `cache_dir`, prompt budgets
-(`max_ocr_pages=8`, `max_doc_chars=15000`, `max_total_chars=45000`), `verify_findings`
-flag. Two notable functions:
+(`max_ocr_pages=8`, `max_doc_chars=15000`, `max_total_chars=45000`), `verify_findings`,
+`max_parallel_bids`, and the agent knobs (`agent_enabled`, `agent_max_steps`,
+`agent_ocr_pages`). Two notable functions:
 - `load_dotenv()` — minimal `.env` parser, never overrides existing env vars.
 - `Config.key_for(base_url)` — **API key selected by endpoint hostname**
   (`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `DASHSCOPE_API_KEY`, `ZHIPU_API_KEY`,
@@ -128,7 +140,7 @@ to the model, so output is validated at the boundary:
   `BidPrice` (unit price, optimal dosage, quoted total, FX rate).
 - Evaluation results: `Stage1Result`, `Stage2Result`, `PriceRow`, `EvaluationResult`.
 
-### `app/ingest.py` (164 LOC)
+### `app/ingest.py` (170 LOC)
 PDF → per-page text. `classify_pdf` samples up to 5 pages, `SCAN_THRESHOLD=100`
 chars/page average. `load_pdf` makes the text-vs-scan decision **per page**: pages
 with a text layer are read directly; sparse pages that carry an image XObject are
@@ -152,17 +164,21 @@ Tender understanding → `Rubric`. Prioritises files by name ("terms of tender",
 checklist / essential requirements / price scheme **with source citations** (file,
 `[Page N]`, quoted clause). Saved as editable `rubric.json` — the human checkpoint.
 
-### `app/bid_extract.py` (43 LOC)
+### `app/bid_extract.py` (70 LOC)
 Per-bid extraction against the rubric. The prompt encodes the hard-won rules:
 `present=true` only if the offer text explicitly mentions the document (quote the
 sentence); numeric limits compared by direction ("delivery in 30 days complies with
-'within 45 days'"); `[REDACTED]` is masked-not-missing; never guess numbers.
+'within 45 days'"); `[REDACTED]` is masked-not-missing; a contents entry is not evidence; never guess
+numbers. Output is passed through `ground_extraction` before it is returned.
+`extract_price` is the targeted price-only re-extraction the agent triggers after it
+has read a Price Schedule the first pass never saw.
 
-### `app/verify.py` (87 LOC)
+### `app/verify.py` (98 LOC)
 The adversarial second pass. For every negative finding, an independent prompt tries
 to **refute** it from the same documents: a refuted "missing" is restored (with the
 evidence noted); a refuted "non-compliant" is demoted to *unclear* for human
-clarification — never auto-passed; evidence-free refutations are ignored.
+clarification — never auto-passed; evidence-free refutations are ignored, and so
+are refutations whose quote is not actually on the cited (read) page.
 
 ### `app/evaluate.py` (120 LOC)
 Deterministic Stage I/II matrices and TAP-style English conclusions. "Unclear"
@@ -182,13 +198,59 @@ cost-effectiveness table or unit-price/estimated-goods-price table), `summary_li
 (Stage I/II conclusions), `evaluation_record.docx` (per-tenderer evidence sheet).
 Notes (arithmetic errors, non-conforming ranks) are auto-generated.
 
-### `app/pipeline.py` (114 LOC)
-CLI orchestrator (used by `run_demo.py`): every step writes checkpoint JSON
-(`rubric.json`, `bids/*.json`, `evaluation.json`) so runs are resumable and
-human-editable between steps; delete a checkpoint file to redo that step.
-`run_offline()` runs the deterministic half from fixtures with zero network.
+### `app/grounding.py` (77 LOC)
+The deterministic guardrail behind every citation. `readable_pages()` is the set of
+pages that were actually read; `ground_extraction()` demotes first-pass findings that
+cite any other page (present → missing, yes/no → unclear); `cited_ok()` /
+`quote_on_page()` require a verbatim quote (whole, or any 6-word window — tolerant of
+OCR edge noise) to appear on the cited page. Used after extraction, by every
+verification refutation, and by every agent `finish`. It exists because the first
+benchmark run caught the first pass claiming "present on page 11" without having read
+page 11.
 
-## 6. Backend service — `backend/api.py` (566 LOC)
+### `app/tools.py` (114 LOC)
+The agent's read-only tools over one bid's `Document`s: `list_pages` (file, number,
+source `text|ocr|skipped`, preview), `search_pages` (keyword-scored over pages already
+read), `read_page`, and `ocr_page` — read a `skipped` page on demand through the
+vision chain, cached, within a per-bid budget. Tools mutate the in-memory pages so
+later steps and the final quote check see the new text; nothing is written but the
+OCR cache.
+
+### `app/agent.py` (165 LOC)
+The bounded evidence-search agent. Runs per bid only for required documents still
+missing and compliance findings still "unclear" after verification, plus a price the
+first pass never saw. Each step the model returns a schema-validated `AgentAction`
+(tool + args, or `finish`) via the same `chat_json` path as everything else — no
+native tool-calling dependency, so it behaves identically on DeepSeek, Ollama and
+vLLM. The transcript starts with an initial observation (page listing + the cover/
+contents page), so the agent follows a table of contents instead of reading pages
+sequentially. Guardrails: `AGENT_MAX_STEPS` per finding, `AGENT_OCR_PAGES` per bid,
+`finish(found=true)` accepted only if the quote is on the cited page. Outcomes: a
+missing document is restored with the verified quote; an unclear finding gets the
+evidence and a *suggested* verdict attached but stays unclear; a found Price Schedule
+triggers a targeted `extract_price`. Every step is traced to `work/agent/<bid>.json`.
+
+### `app/graph.py` (254 LOC)
+LangGraph orchestration of the whole pipeline. `PipelineState` holds paths, the
+rubric, per-bidder extractions (dict reducer for fan-in), corrections, evaluation and
+a progress log. Nodes wrap the existing functions unchanged: `load_checkpoints`
+(stored rubric / extractions from disk win) → `derive_rubric` → `confirm_rubric`
+(`interrupt()`) → `extract_bid` (one `Send` per bidder without a stored extraction —
+load, extract, verify, evidence search, write `bids/<name>.json`) →
+`review_extractions` (`interrupt()`; on resume, payload overrides and any
+`bids/*.json` edited on disk count as corrections) → `evaluate` → `render_reports`.
+`interactive=False` (CLI) turns the interrupts into pass-throughs. Concurrency comes
+from `max_concurrency` = `MAX_PARALLEL_BIDS`. A crash mid fan-out resumes from the last
+checkpoint with the finished bids kept.
+
+### `app/pipeline.py` (~50 LOC)
+Shared helpers: `discover_bidders` (one folder or loose PDF per tenderer),
+`run_offline` (the deterministic half from JSON fixtures — zero network) and the
+console `summarize`. Checkpoint files (`rubric.json`, `bids/*.json`,
+`agent/*.json`, `evaluation.json`, `reports/`) are human-editable between runs;
+delete one to redo that step.
+
+## 6. Backend service — `backend/api.py` (593 LOC)
 
 Project-based REST API. Data layout: `$DATA_DIR/projects/<id>/` with `meta.json`,
 `tender/*.pdf`, `bids/<tenderer>/*.pdf`, and `work/` (rubric, extractions, evaluation,
@@ -199,9 +261,10 @@ reports, caches, `status.json`).
 | Projects | `POST/GET /projects`, `GET/DELETE /projects/{id}` (delete 409s while a job runs) |
 | Uploads | `POST …/tender`, `POST …/bids/{tenderer}` (PDF-only, filename sanitised) |
 | Server inbox | `GET /inbox`, `POST …/import` (case/tender/bids kinds, path-traversal guarded) |
-| Rubric | `POST …/rubric/derive` (job), `GET/PUT …/rubric` (checkpoint) |
-| Extraction | `POST …/extract` (job), `GET/PUT …/bids/{t}/extraction` (corrections win) |
-| Evaluation | `POST …/evaluate` (job: extract missing → evaluate → render), `GET …/evaluation` |
+| Orchestrated run | `POST …/run` starts the graph in a background thread (SQLite checkpointer, thread = project) and pauses at the first checkpoint; `POST …/resume` continues past a pause; `GET …/graph` = pending checkpoint, progress, corrections |
+| Rubric | `GET/PUT …/rubric` (checkpoint; edits while paused are picked up on resume) |
+| Extraction | `GET/PUT …/bids/{t}/extraction` (corrections win, never re-extracted); `GET …/bids/{t}/agent` = evidence-search trace |
+| Evaluation | `POST …/evaluate` (deterministic re-evaluation of stored extractions, no LLM), `GET …/evaluation` |
 | Reports | `GET …/reports`, `GET …/reports/{name}` |
 | Evidence | `GET …/bids/{t}/page`, `GET …/tender/page` — rendered PNG, `?highlight=` marks the quoted text, cached |
 | Misc | `GET /health`, `GET …/status` |
@@ -209,16 +272,19 @@ reports, caches, `status.json`).
 Operational design points:
 - **Background jobs**: one thread per job, one job per project (`_running` set +
   lock). Status is flipped to `running` *before* the POST returns — closing a race
-  where a fast poller saw the previous job's terminal state.
-- **Parallel extraction**: missing bids fan out to a `ThreadPoolExecutor`
-  (`MAX_PARALLEL_BIDS`, default 4) with lock-guarded progress written to
-  `status.json`; stored/corrected extractions are never re-extracted or re-verified.
+  where a fast poller saw the previous job's terminal state. Job states: `running`,
+  `waiting` (paused at a human checkpoint), `done`, `error`. `status.json` is written
+  atomically (temp file + rename) because it is rewritten per progress line while
+  the UI polls it.
+- **Parallel extraction** happens inside the graph (`Send` fan-out, `max_concurrency`
+  = `MAX_PARALLEL_BIDS`); stored/corrected extractions are never re-extracted or
+  re-verified.
 - **Auth**: optional `API_KEY` → `X-API-Key` header on everything except `/health`.
   The two page-image endpoints also accept `?key=` (browser-tab links can't send
   headers); a test pins that the query key does **not** unlock the data API.
 - **CORS** open (configurable) because the UI's folder picker uploads browser→API.
 
-## 7. Frontend — `frontend/ui.py` (612 LOC)
+## 7. Frontend — `frontend/ui.py` (666 LOC)
 
 Five-step wizard over `st.segmented_control` (its selection survives `st.rerun()`,
 unlike `st.tabs`) with Back/Next buttons; blue theme accent (`.streamlit/config.toml`),
@@ -228,17 +294,21 @@ red reserved for the delete button.
    folder tree uploads browser→backend directly; subfolders become tenderers), server
    inbox import, manual upload fallback. A 3-second `st.fragment` polls the project
    and refreshes when contents change.
-2. **Rubric** — derive button; cited overview (each item shows `📄 file · p.N` as a
-   link + quoted clause) beside a tender-page preview with jump-to-citation and
-   highlight; raw JSON editor in an expander as the formal checkpoint.
-3. **Extraction review** — triaged: negative findings first under "⚠️ Needs review"
-   with 🔴/🟠 badges, passed checks collapsed in a "✅ Passed checks" expander with 🟢
-   badges; every row has a 🔎 link opening the cited page with the evidence
-   highlighted; per-row editing via `st.data_editor`; price fields; evidence side
-   panel with jump-to-cited-page. Saving marks the bid as corrected (never
-   re-extracted).
-4. **Evaluation** — run button; Stage I matrix, Stage II expanders with evidence,
-   ranked price summary in whichever format the scheme dictates.
+2. **Rubric** — *Derive rubric ▶* starts the orchestrated run, which pauses here;
+   cited overview (each item shows `📄 file · p.N` as a link + quoted clause) beside a
+   tender-page preview with jump-to-citation and highlight; raw JSON editor in an
+   expander; *Confirm rubric & continue ▶* resumes the run (edits saved via PUT are
+   picked up) and moves to the next step.
+3. **Extraction review** — the run pauses here after parallel extraction; triaged:
+   negative findings first under "⚠️ Needs review" with 🔴/🟠 badges, passed checks
+   collapsed in a "✅ Passed checks" expander with 🟢 badges, 🔎 appended where the
+   agent found the evidence; the agent's step trace in an expander; every row has a
+   🔎 link opening the cited page with the evidence highlighted; per-row editing via
+   `st.data_editor`; price fields; evidence side panel with jump-to-cited-page.
+   *Confirm extractions & continue ▶* resumes into evaluation.
+4. **Evaluation** — filled automatically by the run; a re-evaluate button recomputes
+   from stored (possibly corrected) extractions; Stage I matrix, Stage II expanders
+   with evidence, ranked price summary in whichever format the scheme dictates.
 5. **Reports** — download the three `.docx` files.
 
 Errors from background jobs persist across reruns on every page (a failed job must
@@ -253,14 +323,24 @@ stay visible — an early bug hid it behind an immediate rerun).
   certificate, `i%11==5` breaches shelf life, `i%9==4` has an arithmetic error in the
   quoted total, bidders 2 and 17 are scan-only. Determinism makes stress runs
   verifiable against ground truth.
-- `tools/stress_test.py` — API driver that runs an N-bidder case end-to-end and
-  reports per-phase timings.
-- `test/` — **50 tests, all offline** (no network, no tokens, no client data): unit
-  tests for pricing/rounding, evaluation, retrieval, verification amendments, report
-  rendering, per-page OCR routing (mixed text+image PDFs), LLM fallback chains
-  (stubbed clients), and API tests covering the full project flow, inbox import,
-  parallel extraction (stubbed extractor through the real thread pool), evidence
-  pages with highlighting, and auth scoping.
+- `tools/make_demo_case.py --buried` — the evidence-search benchmark case: 12-page
+  scan-only offers whose Price Schedule, Particulars, Certificate and Compliance
+  Schedule sit on pages 9–12 behind a generic contents entry; bidder 3 truly lacks
+  the certificate; `ground_truth.json` written alongside.
+- `tools/benchmark_buried.py` — runs the case with the agent off and on (shared OCR
+  cache) and prints the scored table (§11).
+- `tools/stress_test.py` — API driver that runs an N-bidder case through
+  run → resume → resume and reports per-phase timings.
+- `test/` — **69 tests, all offline** (no network, no tokens, no client data): unit
+  tests for pricing/rounding, evaluation, retrieval, verification (incl. grounded
+  refutations), grounding, report rendering, per-page OCR routing (mixed text+image
+  PDFs), LLM fallback chains (stubbed clients); graph tests (byte-identical
+  evaluation vs the offline fixture run, stored checkpoints skipping the LLM,
+  pause/resume with edits from payload and from disk, crash recovery mid fan-out);
+  agent tests (buried document found via on-demand OCR, unverifiable quote rejected,
+  step budget, unclear stays unclear, price re-extraction, zero calls when nothing is
+  unresolved); API tests covering the full run/resume flow with stubbed models,
+  inbox import, evidence pages with highlighting, and auth scoping.
 - `.github/workflows/ci.yml` — the suite runs on every push (Ubuntu, Python 3.12).
 
 ## 9. Configuration reference (`.env`)
@@ -272,8 +352,9 @@ stay visible — an early bug hid it behind an immediate rerun).
 | `TEXT_MODEL_FALLBACKS`, `VISION_MODEL_FALLBACKS` | Comma-separated fallback entries |
 | `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `DASHSCOPE_API_KEY`, `ZHIPU_API_KEY`, `GITHUB_TOKEN` | Per-provider keys, matched to endpoints by hostname |
 | `VERIFY_FINDINGS` | `0` disables the adversarial pass |
+| `AGENT_SEARCH`, `AGENT_MAX_STEPS`, `AGENT_OCR_PAGES` | Evidence-search agent on/off (default on), step budget per finding (8), on-demand OCR pages per bid (6) |
 | `MAX_OCR_PAGES` | OCR cap per document (demo 8) |
-| `MAX_PARALLEL_BIDS` | Concurrent bid extractions (default 4) |
+| `MAX_PARALLEL_BIDS` | Concurrent bid extractions in the graph fan-out (default 4) |
 | `API_KEY` | Enables auth; required on any shared machine |
 | `DATA_DIR`, `INBOX_DIR` | Storage roots (bind-mounted in Docker) |
 | `PUBLIC_BACKEND_URL` | What the *browser* can reach (folder upload + evidence links) |
@@ -301,6 +382,9 @@ stay visible — an early bug hid it behind an immediate rerun).
 | Rubric derivation | 6 s on DeepSeek (133 s on local qwen3:8b — same verdicts) |
 | 3-bid case incl. scanned-bid OCR + verification | 55 s with parallel extraction (~337 s sequential local) |
 | Evaluation from stored extractions | ~5 s (no LLM) |
+| 30-bidder case through the graph, agent on | **116 s**, all seeded defects matched; agent ran for the 4 missing-certificate bids and restored nothing |
+| Evidence-search benchmark (`--buried`, first pass capped at 4 pages) | certificate recall **0/2 → 2/2**, **0** false restores, price **0/3 → 3/3**, unclear findings with evidence **0/9 → 8/9**, ~6 OCR pages per bid |
+| Orchestrated run/resume flow (demo case) | rubric derived + paused in 4 s; 3 bids extracted in parallel incl. OCR + agent in 54 s; evaluation + reports 2 s |
 | Mid-project provider retirement (GitHub Models, HTTP 410) | Survived via fallback chain → local Ollama, zero code change |
 
 ## 12. Demo → production mapping and roadmap

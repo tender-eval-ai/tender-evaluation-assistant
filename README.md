@@ -25,18 +25,19 @@ flowchart LR
     HC1["✋ confirm<br/>rubric"]
     EXT["<b>3 · Extraction</b><br/>per tenderer,<br/>page-cited"]
     VER["🛡️ refute<br/>negative<br/>findings"]
+    AG["🧭 evidence-search<br/>agent (bounded,<br/>unresolved only)"]
     HC2["✋ correct<br/>extractions"]
     EVA["<b>4 · Evaluation</b><br/>deterministic<br/>code, no LLM"]
     REP["<b>5 · Reports</b><br/>editable<br/>Word × 3"]
 
-    ING --> RUB --> HC1 --> EXT --> VER --> HC2 --> EVA --> REP
+    ING --> RUB --> HC1 --> EXT --> VER --> AG --> HC2 --> EVA --> REP
 
     classDef llm fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
     classDef code fill:#dcfce7,stroke:#16a34a,color:#14532d
     classDef human fill:#fef3c7,stroke:#d97706,color:#78350f
     classDef docs fill:#f3f4f6,stroke:#9ca3af,color:#374151
     class T,B docs
-    class ING,RUB,EXT,VER llm
+    class ING,RUB,EXT,VER,AG llm
     class HC1,HC2 human
     class EVA,REP code
 ```
@@ -44,7 +45,11 @@ flowchart LR
 🔵 LLM reads &nbsp;·&nbsp; 🟢 deterministic code computes &nbsp;·&nbsp; 🟡 human decides —
 rubric derives Stage I checklist, Stage II essential requirements and the price formula
 from *this* tender's documents; extraction cites file + page for every fact; evaluation
-covers both stage matrices plus rounding, FX, arithmetic tally and ranking.
+covers both stage matrices plus rounding, FX, arithmetic tally and ranking. The whole
+flow runs as a **LangGraph state graph** (`app/graph.py`): durable per-project
+checkpoints, the two human checkpoints as `interrupt()`s, bids fanned out in parallel.
+The agent step is the only place an LLM chooses its own actions — and it is bounded:
+read-only tools, step and OCR budgets, quotes verified on the cited page.
 
 Design principles:
 
@@ -56,6 +61,14 @@ Design principles:
   evaluation.
 - **Evidence-first**: extracted facts carry page references; the evaluation record sheet
   shows them so the Tender Assessment Panel can verify every cell.
+- **Citations are grounded in code** (`app/grounding.py`): a finding that cites a page
+  nobody read is demoted (present → missing, yes/no → unclear); verification
+  refutations and agent results must quote text that appears on the cited page.
+- **Bounded agency** (`app/agent.py`): the top-level flow is a fixed workflow. The one
+  agentic step — evidence search for findings still missing/unclear after
+  verification — picks its own tool calls (list/search/read pages, OCR a page on
+  demand) under step and OCR budgets, can only *add* verified evidence, and never
+  changes a compliance verdict.
 
 ## Quickstart
 
@@ -79,6 +92,11 @@ GITHUB_MODELS_BASE_URL=http://localhost:11434/v1 .venv/bin/python run_demo.py ru
     --bids-dir demo_case/bids \      # one subfolder (or one PDF) per tenderer
     --out output/live_demo \
     --acknowledge-cloud              # only actually cloud if you point at a cloud URL
+
+# 4) Evidence-search benchmark — the agent OFF vs ON, scored against ground truth:
+.venv/bin/python tools/make_demo_case.py --buried --bidders 3 --out buried_case
+GITHUB_MODELS_BASE_URL=http://localhost:11434/v1 .venv/bin/python tools/benchmark_buried.py \
+    --case buried_case --max-ocr-pages 4
 ```
 
 The synthetic live case is designed to exercise the interesting paths: Tenderer C is
@@ -113,13 +131,18 @@ app/                the pipeline library (shared by CLI and backend)
   evaluate.py       Stage I / Stage II matrices + English conclusions (deterministic)
   pricing.py        deterministic price engine (both Price Summary formats)
   report.py         Word report generation (python-docx)
-  pipeline.py       CLI orchestrator; writes rubric.json, bids/*.json, reports/
+  grounding.py      citation grounding: unread-page citations are not evidence
+  tools.py          the agent's read-only tools, incl. on-demand OCR with a budget
+  agent.py          bounded evidence-search agent: structured actions, budgets, trace
+  graph.py          LangGraph orchestration: state, checkpoints, interrupts, Send fan-out
+  pipeline.py       bidder discovery, offline (fixture) run, console summary
 backend/            FastAPI service (projects, uploads, jobs, reports API) + Dockerfile
 frontend/           Streamlit review UI (HTTP client of the backend only) + Dockerfile
 docker-compose.yml  runs both services together
-run_demo.py         CLI (offline demo + cloud demo)
-test/               pytest suite incl. offline API tests (no network, no real client data)
-tools/              synthetic demo-case generator, PDF generator
+run_demo.py         CLI (offline demo + orchestrated run over real folders)
+test/               69 offline tests incl. API, graph, agent (no network, no client data)
+tools/              case generator (incl. --buried benchmark case), PDF generator,
+                    stress driver, evidence-search benchmark
 ```
 
 ## Service mode — frontend + backend
@@ -139,13 +162,16 @@ docker compose up -d --build
 # UI:  http://localhost:8501     API: http://localhost:8000/health
 ```
 
-UI flow = the product's checkpoints: upload documents → derive rubric → **review/edit
-the rubric** (every item shows its source citation — file, page, quoted clause — next
-to a rendered tender-page preview) → extract bids → **review/correct extractions**
-(triaged: negative findings first with 🔴/🟠 badges, passed checks collapsed behind a
-"Passed checks" expander, jump-to-cited-page evidence preview; corrected bids are
-never re-extracted) → evaluate → download Word reports. Quality/throughput layers
-that run automatically:
+UI flow = **one orchestrated run with two human checkpoints** (`POST /run`,
+`POST /resume`): upload documents → *Run* derives the rubric and pauses → review it
+(every item shows its source citation — file, page, quoted clause — next to a
+rendered tender-page preview; edit the JSON if needed) → *Confirm & continue*
+extracts all bids in parallel, verifies them and runs the evidence-search agent on
+whatever is still unresolved, then pauses → triaged review (negative findings first
+with 🔴/🟠 badges, passed checks collapsed, 🔎 marks evidence the agent found, its
+step trace in an expander, jump-to-cited-page preview) → *Confirm & continue*
+evaluates and renders the Word reports. Edits made while paused are picked up on
+resume; corrected bids are never re-extracted. Layers that run automatically:
 
 - **Targeted retrieval** (`app/retrieval.py`): pages are keyword-scored and only the
   relevant ones enter the prompt — a Price Schedule on page 40 of a 300-page bid is
@@ -158,9 +184,23 @@ that run automatically:
 - **Per-page OCR routing** (`app/ingest.py`): the text-vs-scan decision is per page,
   so a digital document with a scanned annex OCRs only the annex, and a scan with an
   embedded text layer on some pages skips OCR there.
-- **Parallel extraction** (`backend/api.py`): missing bids are extracted concurrently
-  (`MAX_PARALLEL_BIDS`, default 4) — cloud endpoints scale with it; a local Ollama
-  simply queues the requests.
+- **Parallel extraction** (`app/graph.py`): bids without a stored extraction fan out
+  as parallel graph branches (`MAX_PARALLEL_BIDS`, default 4) — cloud endpoints scale
+  with it; a local Ollama simply queues the requests. 30 bidders: 116 s end to end.
+- **Citation grounding** (`app/grounding.py`): "present on page 11" is not accepted if
+  page 11 was never read — the finding is demoted so verification and the agent
+  actually look. Refutations and agent results must quote text on the cited page.
+- **Evidence-search agent** (`app/agent.py`, `app/tools.py`): for findings still
+  missing/unclear after verification, and for a price the first pass never saw, a
+  bounded tool-using loop reads the contents page, OCRs the pages it points to (on
+  demand, within `AGENT_OCR_PAGES`), and finishes only with a quote verified on that
+  page. `AGENT_SEARCH=0` disables it. Measured on the `--buried` case (schedules on
+  pages 9–12 of scan-only offers, first pass capped at 4 pages):
+
+  | run | certificate recall | false restores | price extracted | unclear findings w/ evidence |
+  | --- | --- | --- | --- | --- |
+  | agent off | 0/2 | 0 | 0/3 | 0/9 |
+  | agent on | **2/2** | **0** | **3/3** | **8/9** |
 
 Project data lives in `./data/` on the host (bind-mounted volume). CI runs the full
 offline test suite on every push (`.github/workflows/ci.yml`).
