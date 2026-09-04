@@ -1,4 +1,4 @@
-# Tender Evaluation Assistant — Demo Pipeline
+# Tender Evaluation Assistant
 
 Demo of an AI-assisted **procurement review pipeline** for public tender evaluation.
 Input: a tender document set + one bid (offer) per tenderer. Output: an editable Word
@@ -224,6 +224,8 @@ thing users need.
 | Docker on a laptop (x86/arm)          | Same compose stack on DGX Spark GB10 (arm64)      |
 | Synthetic fixtures                    | Real tender/bid sets, fully local                 |
 
-Known demo limitations: free-tier rate limits (pages per doc capped via
-`MAX_OCR_PAGES` / `--max-ocr-pages`), and no Stage III–V yet (technical marking /
-combined score — phase 2).
+Known demo limitations: the first-pass OCR cap per document (`MAX_OCR_PAGES` /
+`--max-ocr-pages`, default 8 — the evidence-search agent reads further pages on demand
+within `AGENT_OCR_PAGES`), local OCR speed (~25 s per page on `qwen3-vl:8b`; seconds
+on a cloud vision model), and no Stage III–V yet (technical marking / combined score —
+phase 2).

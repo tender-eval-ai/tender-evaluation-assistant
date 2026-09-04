@@ -1,6 +1,6 @@
 # Tender Evaluation Assistant — Detailed Specification
 
-*Last updated: 2026-08 (after the agent upgrade, commit `a74295d`). Numbers in this
+*Last updated: 2026-08 (after the agent upgrade, commit `7f9c1d8`). Numbers in this
 document are measured, not estimated: 68 tracked files, ~3,900 lines of Python plus
 ~1,200 lines of tests, 69 offline tests, CI on every push.*
 
@@ -375,7 +375,7 @@ stay visible — an early bug hid it behind an immediate rerun).
 
 | Measurement | Result |
 | --- | --- |
-| 30-bidder stress test (cloud text, seeded defects) | **287 s** end-to-end, **100%** agreement with seeded ground truth |
+| 30-bidder stress test, pre-graph (sequential extraction, cloud text) | **287 s** end-to-end, **100%** agreement with seeded ground truth |
 | — missing certificates | 4/4 found, incl. one inside a scan-only bid |
 | — shelf-life breaches / arithmetic errors | 3/3 and 3/3 flagged |
 | — cheapest non-conforming bid | ranked #1 on price, correctly **not** recommended |
@@ -384,7 +384,7 @@ stay visible — an early bug hid it behind an immediate rerun).
 | Evaluation from stored extractions | ~5 s (no LLM) |
 | 30-bidder case through the graph, agent on | **116 s**, all seeded defects matched; agent ran for the 4 missing-certificate bids and restored nothing |
 | Evidence-search benchmark (`--buried`, first pass capped at 4 pages) | certificate recall **0/2 → 2/2**, **0** false restores, price **0/3 → 3/3**, unclear findings with evidence **0/9 → 8/9**, ~6 OCR pages per bid |
-| Orchestrated run/resume flow (demo case) | rubric derived + paused in 4 s; 3 bids extracted in parallel incl. OCR + agent in 54 s; evaluation + reports 2 s |
+| Orchestrated run/resume flow (demo case) | rubric derived + paused in 4 s; 3 bids extracted in parallel incl. OCR + agent in 54 s; evaluation + reports 2 s — verified both natively and on the rebuilt Docker stack |
 | Mid-project provider retirement (GitHub Models, HTTP 410) | Survived via fallback chain → local Ollama, zero code change |
 
 ## 12. Demo → production mapping and roadmap

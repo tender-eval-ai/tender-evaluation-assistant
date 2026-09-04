@@ -1,8 +1,9 @@
 # Tender Evaluation Assistant — Interview Preparation
 
 *How to present this project on a resume, in a 90-second pitch, and under questioning.
-Everything here is true of the repo as of commit `a74295d` (after the LangGraph +
-agent upgrade) — no embellishment needed; the honest version is the strong version.*
+Everything here is true of the repo as of commit `7f9c1d8` (after the LangGraph +
+agent upgrade, Docker images rebuilt and verified) — no embellishment needed; the
+honest version is the strong version.*
 
 ---
 
@@ -23,7 +24,7 @@ agent upgrade) — no embellishment needed; the honest version is the strong ver
 >   **adversarial verification pass** that must refute every negative finding before
 >   it reaches a report, and page-cited evidence rendered with the quoted sentence
 >   highlighted — **100% agreement with seeded ground truth on a 30-bidder stress
->   test (287 s end-to-end)**.
+>   test (now 116 s end-to-end)**.
 > - Designed for strict confidentiality (NDA): OpenAI-compatible client with
 >   cross-provider fallback chains (`model@endpoint`, per-hostname API keys); when the
 >   original cloud provider was **retired mid-project**, the pipeline fell back to
@@ -110,11 +111,10 @@ CI). *Product-minded* role → lead with bullet 1 and the human-checkpoint desig
 | Number | What it is |
 | --- | --- |
 | **20–60** | Bidders per tender in production; hundreds of pages each |
-| **30 / 287 s / 100%** | Stress test: bidders / end-to-end time / ground-truth agreement |
+| **30 / 116 s / 100%** | Stress test through the graph: bidders / end-to-end time / ground-truth agreement (287 s before parallel fan-out) |
 | **4/4, 3/3, 3/3** | Missing certs (one inside a scan), shelf-life breaches, arithmetic errors — all caught |
 | **69** | Fully-offline tests in CI (incl. graph, agent, grounding) |
 | **0/2 → 2/2, 0 false, 0/3 → 3/3** | Agent benchmark: buried certificate recall, false restores, buried prices |
-| **116 s** | 30-bidder case end to end through the graph (was 287 s) |
 | **6 s vs 133 s** | Rubric derivation, DeepSeek vs local qwen3:8b (same verdicts) |
 | **55 s vs ~337 s** | 3-bid case with parallel extraction + cloud text vs sequential local |
 | **~3,900 + 1,200** | Lines of Python (app, services, tools) + tests, across 68 files (16-module library + 2 services) |
