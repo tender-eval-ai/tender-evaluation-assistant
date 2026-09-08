@@ -105,7 +105,19 @@ per hour: step 1 needs nothing from outside; step 2 carries the substantive clai
 step 3 adds the "deployed on GCP" line and can be dropped if budget or time is tight.
 Azure is deliberately skipped (one cloud, done properly).
 
-### 4.1 Step 1 — MCP server over the read-only tools (0.5–1 day)
+### 4.1 Step 1 — MCP server over the read-only tools, with a local-model client (1–1.5 days)
+
+**Confidentiality rule (governs this whole step).** An MCP server only moves *tool
+execution* onto the machine that holds the documents. Every tool result — page
+listings, snippets, full page text, OCR output — is sent to whatever model drives the
+connected client. Claude Desktop, Cursor and similar clients are driven by cloud
+models, so connecting them is cloud egress of document content: **synthetic or
+sanitized projects only**, exactly like the demo's DeepSeek text path. The
+production-compatible client is one driven by a *local* model (Ollama / the DGX vLLM
+endpoint). Consequences for the implementation: stdio transport by default; the HTTP
+transport is off unless explicitly enabled, binds to localhost, requires `X-API-Key`,
+and the server refuses to serve a project unless it is marked demo/synthetic
+(`ALLOW_CLOUD_CLIENTS=1` + a per-project `synthetic: true` flag in `meta.json`).
 
 **Steps**
 1. `mcp_server/server.py` on the official `mcp` Python SDK (FastMCP), pinned. Tools
@@ -116,24 +128,39 @@ Azure is deliberately skipped (one cloud, done properly).
    `AGENT_OCR_PAGES`.
 2. Transports: stdio (Claude Desktop / Cursor) and streamable HTTP guarded by
    `X-API-Key` (reuse the backend's key).
-3. Tests: in-process MCP client session exercising all tools, the OCR budget, and the
-   "skipped page → use ocr_page" hint; server must never write except to the OCR cache.
-4. README section with a Claude Desktop config snippet and a screenshot of a
+3. **Local-model MCP client** — `mcp_server/local_client.py`: a small client that
+   connects to the server over stdio and drives the tools with the project's own
+   `LLM` class (structured `AgentAction` steps, same budgets), so the *whole loop stays
+   on-premises* with `qwen3:8b` locally or the DGX models in production. This is the
+   artifact that proves MCP and the NDA are compatible; Claude Desktop is the
+   convenience demo on synthetic data.
+4. Tests: in-process MCP client session exercising all tools, the OCR budget, the
+   "skipped page → use ocr_page" hint, the synthetic-only guard on the HTTP transport,
+   and the local client answering a scripted question; the server must never write
+   except to the OCR cache.
+5. README section: the confidentiality rule up front, a Claude Desktop config snippet
+   (demo), the local-client command (production-compatible), and a screenshot of a
    tool-walked answer.
 
-**Experiment / acceptance.** Connect Claude Desktop to the demo project and ask *"Does
-Tenderer_C's offer include the Non-collusive Tendering Certificate?"* — expect a
-tool trace (list → search → read/OCR) and an answer with page citations; the same
-question on `buried_case` should show the contents-page → `ocr_page(11)` path.
+**Experiment / acceptance.** Ask *"Does Tenderer_C's offer include the Non-collusive
+Tendering Certificate?"* two ways on the same synthetic project: (a) Claude Desktop
+connected over stdio — expect a tool trace (list → search → read/OCR) and an answer
+with page citations; (b) the local-model client on `qwen3:8b` — same question, same
+tools, nothing leaves the machine; record both traces and step counts. On
+`buried_case` both should show the contents-page → `ocr_page(11)` path; (c) attempt
+to serve a project without the synthetic flag over HTTP → refused.
 
 **Requirements / tools.** `mcp` SDK; Claude Desktop or Cursor for the demo (optional);
 no cloud. **API spend:** none (local tools; OCR through the configured vision chain —
 local Ollama is free).
 
-**Difficulties.** SDK API churn (pin, thin adapter); a stdio server must not print to
-stdout (log to stderr); interactive OCR latency on local `qwen3-vl` (~25 s/page —
-say so, or point the vision chain at a cloud model for the demo); expose only
-synthetic projects on any network transport.
+**Difficulties.** The egress point above is the one that matters — it must be stated
+in the README and enforced in code, not left to the operator; SDK API churn (pin, thin
+adapter); a stdio server must not print to stdout (log to stderr); interactive OCR
+latency on local `qwen3-vl` (~25 s/page — say so, or point the vision chain at a cloud
+model *for synthetic demos only*); an 8B local model drives the tools less reliably
+than Claude — the local client keeps the step budget and the quote-on-page check, so
+the failure mode is "not found", never a fabricated citation.
 
 ### 4.2 Step 2 — Vertex AI Gemini as a measured fourth backend (1.5–2 days)
 
@@ -227,7 +254,7 @@ Q&As, cost-per-bid numbers), this file (results into §3).
 
 | Step | Effort | Spend | Needs from the owner |
 | --- | --- | --- | --- |
-| 1 MCP server | 0.5–1 day | $0 | — |
+| 1 MCP server + local-model client | 1–1.5 days | $0 | — |
 | 2 Vertex AI Gemini + measurement | 1.5–2 days | ≤ $5 | GCP project with billing, Vertex API on, ADC login, region |
 | 3 Cloud Run | 1.5–2 days | ≈ $5–10 | same project, budget alert |
 | 4 Docs | 0.5 day | $0 | — |
