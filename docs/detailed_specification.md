@@ -99,7 +99,7 @@ per service; the root `requirements.txt` is the dev aggregate (both + pytest).
 | `test/` | 19 | ~1,220 | 13 test modules, 69 tests, fixtures, conftest |
 | `tools/` | 5 | ~590 | Case generator (incl. `--buried`), PDF generator, stress driver, evidence-search benchmark |
 | `demo_case/` | 5 | — | Committed synthetic demo PDFs (2 tender, 3 bids) |
-| `docs/` | 6 | — | Presentation, plan reports, agent upgrade plan, interview prep, this spec |
+| `docs/` | 3 | — | `plan.md` (product plan, agent upgrade, experiments, next steps), interview prep, this spec |
 | root | 9 | 85 | `run_demo.py` CLI, compose file, CI workflow, `.env.example`, `.streamlit/config.toml`, README, ignore files |
 
 ## 5. The pipeline library — module by module
