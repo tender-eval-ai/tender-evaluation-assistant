@@ -9,7 +9,7 @@ honest version is the strong version.*
 
 ## 1. Resume entry
 
-### Project-section version (5 bullets — drop one to fit)
+### Project-section version (6 bullets — drop one or two to fit)
 
 > **AI Tender Evaluation Assistant** — LLM document-review pipeline for public
 > procurement (Python, FastAPI, Streamlit, Docker) · [github.com/tender-eval-ai/tender-evaluation-assistant]
@@ -36,9 +36,13 @@ honest version is the strong version.*
 >   actions, read-only tools incl. on-demand OCR, step/OCR budgets, quotes verified on
 >   the cited page) that runs only for unresolved findings — raised buried-evidence
 >   recall from **0% to 100%** with **zero false restores** on a seeded benchmark.
+> - Exposed the agent's read-only tools as an **MCP server** (official SDK, stdio +
+>   API-keyed HTTP) with a **local-model MCP client** so the whole tool loop can stay
+>   on-premises, and a confidentiality guard enforced in code — cloud-driven clients
+>   (Claude Desktop) see synthetic projects only.
 > - Shipped as a two-service Docker Compose stack (FastAPI backend with run/resume
 >   jobs; Streamlit review UI with triaged review, evidence highlighting and one-click
->   folder upload) with **69 fully-offline tests** and CI on every push; 30 bidders
+>   folder upload) with **81 fully-offline tests** and CI on every push; 30 bidders
 >   evaluated end to end in 116 s.
 
 ### One-line version (for a crowded resume)
@@ -47,12 +51,15 @@ honest version is the strong version.*
 > that drafts public tender-evaluation reports from scanned bids (OCR → rubric
 > derivation → cited extraction → deterministic scoring → Word); 100% ground-truth
 > agreement on a 30-bidder case, 0→100% buried-evidence recall with zero false
-> positives; 69-test CI; Dockerized, runs fully local for confidentiality.
+> positives; tools also served over MCP with a local-model client; 81-test CI;
+> Dockerized, runs fully local for confidentiality.
 
 **Tailoring tips**: applying for an *AI/LLM/agent engineer* role → lead with bullets
-2 and 4 (verification, grounding, LangGraph, the bounded agent and its benchmark).
-*Backend/platform* role → lead with bullet 5 (services, run/resume jobs, parallelism,
-CI). *Product-minded* role → lead with bullet 1 and the human-checkpoint design.
+2, 4 and 5 (verification, grounding, LangGraph, the bounded agent and its benchmark,
+MCP). *Backend/platform* role → lead with bullet 6 (services, run/resume jobs,
+parallelism, CI). *Product-minded* role → lead with bullet 1 and the human-checkpoint
+design. If the posting names **MCP** (Quantiphi, Hexion, Avnet, Abacus did), keep
+bullet 5 and be ready for the egress question below.
 
 ---
 
@@ -113,11 +120,12 @@ CI). *Product-minded* role → lead with bullet 1 and the human-checkpoint desig
 | **20–60** | Bidders per tender in production; hundreds of pages each |
 | **30 / 116 s / 100%** | Stress test through the graph: bidders / end-to-end time / ground-truth agreement (287 s before parallel fan-out) |
 | **4/4, 3/3, 3/3** | Missing certs (one inside a scan), shelf-life breaches, arithmetic errors — all caught |
-| **69** | Fully-offline tests in CI (incl. graph, agent, grounding) |
+| **81** | Fully-offline tests in CI (incl. graph, agent, grounding, MCP) |
+| **9 / 3** | MCP tools exposed (all read-only) / policies the guard distinguishes (stdio default, on-premises client, HTTP) |
 | **0/2 → 2/2, 0 false, 0/3 → 3/3** | Agent benchmark: buried certificate recall, false restores, buried prices |
 | **6 s vs 133 s** | Rubric derivation, DeepSeek vs local qwen3:8b (same verdicts) |
 | **55 s vs ~337 s** | 3-bid case with parallel extraction + cloud text vs sequential local |
-| **~3,900 + 1,200** | Lines of Python (app, services, tools) + tests, across 68 files (16-module library + 2 services) |
+| **~4,500 + 1,600** | Lines of Python (app, services, MCP, tools) + tests, across 69 files (16-module library + 2 services + MCP surface) |
 | **2** | Human checkpoints (rubric confirm; extraction correction — corrections are final) |
 
 ---
@@ -223,6 +231,39 @@ A: It cannot flip "unclear" to "compliant", cannot cite a page it hasn't read, c
 exceed its OCR budget, and cannot invent a quote — every finish is checked against the
 page text in code. Those limits are the design: the agent proposes evidence, the
 deterministic evaluator and the human decide.
+
+### MCP
+
+**Q: You mention an MCP server — what does it expose, and why bother?**
+A: The same read-only tools the agent uses — list pages, keyword search, read a page,
+OCR a scanned page on demand within a budget — plus project navigation and the
+confirmed rubric, over the official Python SDK on stdio and a guarded HTTP transport.
+The point is that the tool layer becomes a product surface: a reviewer can ask any MCP
+client "does Tenderer 3's offer include the certificate?" and get a page-cited answer
+from the same bounded tools, without re-running the pipeline. It was cheap because the
+tools were already pure functions over one tenderer's documents with an explicit
+budget; the server is a thin adapter plus per-connection state on the SDK's lifespan
+object.
+
+**Q: Doesn't connecting Claude Desktop to confidential tender documents break the NDA?**
+A: Yes, if you let it — an MCP server only moves *tool execution* on-premises; every
+tool result is sent to the model driving the client, and Claude Desktop's model is in
+the cloud. So I enforce it in code rather than in a README: a project is served only if
+it was created with a *synthetic* flag; unflagged projects are not even listed. The
+production-compatible path is my local-model client — the project's own OpenAI-
+compatible class on Ollama or the DGX's vLLM driving the same tools over stdio — which
+declares itself with an environment flag, and even then the HTTP transport stays
+synthetic-only because an HTTP client could be anywhere. The tests cover all three
+policies.
+
+**Q: How does an 8B local model cope with driving tools?**
+A: Worse than Claude, and the design assumes that. The client feeds it an initial
+observation so it doesn't burn steps orienting itself, validates every action against
+a schema with a correction retry, caps the steps, and only accepts a `found=true`
+finish whose quote is on a page the client actually read. So a weak model degrades to
+"not found in N steps" with a trace you can inspect — never to a fabricated citation.
+On the buried-evidence case it followed the contents page to page 11 and quoted the
+certificate, the same path the pipeline's agent takes.
 
 ### Engineering & quality
 

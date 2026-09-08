@@ -138,9 +138,10 @@ app/                the pipeline library (shared by CLI and backend)
   pipeline.py       bidder discovery, offline (fixture) run, console summary
 backend/            FastAPI service (projects, uploads, jobs, reports API) + Dockerfile
 frontend/           Streamlit review UI (HTTP client of the backend only) + Dockerfile
+mcp_server/         MCP server over the read-only tools + local-model MCP client
 docker-compose.yml  runs both services together
 run_demo.py         CLI (offline demo + orchestrated run over real folders)
-test/               69 offline tests incl. API, graph, agent (no network, no client data)
+test/               81 offline tests incl. API, graph, agent, MCP (no network, no client data)
 tools/              case generator (incl. --buried benchmark case), PDF generator,
                     stress driver, evidence-search benchmark
 ```
@@ -203,7 +204,83 @@ resume; corrected bids are never re-extracted. Layers that run automatically:
   | agent on | **2/2** | **0** | **3/3** | **8/9** |
 
 Project data lives in `./data/` on the host (bind-mounted volume). CI runs the full
-offline test suite on every push (`.github/workflows/ci.yml`).
+offline test suite on every push (`.github/workflows/ci.yml`). The same read-only
+tools are exposed as an MCP server — see the next section.
+
+## MCP server — the tools as a product surface
+
+The read-only tools the evidence-search agent uses are also exposed over the
+[Model Context Protocol](https://modelcontextprotocol.io) (`mcp_server/server.py`,
+official `mcp` SDK 2.2), so any MCP client can walk a tender or an offer and answer a
+reviewer's question with page citations: `list_projects` → `list_bids` →
+`select_bid` / `select_tender` → `list_pages`, `search_pages`, `read_page`,
+`ocr_page` (on-demand OCR of scanned pages, `AGENT_OCR_PAGES` budget, cache shared
+with the pipeline), plus `get_rubric`. The server never writes anything but that
+cache.
+
+> **Confidentiality rule.** An MCP server only moves *tool execution* onto the
+> machine holding the documents — every tool result (page listings, snippets, page
+> text, OCR output) goes to whatever model drives the connected client. Claude
+> Desktop, Cursor and similar clients are driven by cloud models, so connecting them
+> is cloud egress of document content: **synthetic or sanitized projects only**.
+> This is enforced in code, not left to the operator: a project is served only if it
+> was created with the *synthetic* flag (checkbox in the UI, `"synthetic": true` in
+> `meta.json`); unflagged projects are not even listed. The exception is an
+> on-premises client, declared by starting the server with `MCP_LOCAL_MODEL=1` — the
+> bundled local client does that itself. The HTTP transport is off unless
+> `ALLOW_CLOUD_CLIENTS=1`, binds to loopback, requires `X-API-Key` and serves
+> synthetic projects only, whatever `MCP_LOCAL_MODEL` says.
+
+**Production-compatible client** — the project's own `LLM` class on a *local* model
+drives the same tools over stdio, so nothing leaves the machine (Ollama on a laptop,
+vLLM on the DGX Spark); cloud endpoints are refused unless `--allow-cloud-model`:
+
+```bash
+python -m mcp_server.local_client \
+  "Does the offer include the Non-collusive Tendering Certificate?" \
+  --project <project-id> --tenderer Tenderer_03 --trace trace.json
+# --model qwen3:8b@http://localhost:11434/v1 is the default (LOCAL_TEXT_MODEL)
+# native runs: GITHUB_MODELS_BASE_URL=http://localhost:11434/v1 (not host.docker.internal)
+```
+
+It keeps the agent's guardrails: schema-validated JSON actions, a step budget, the
+server's OCR budget, and a quote-on-page check — `found=true` is accepted only if the
+quoted text is on a page the client actually read, so the failure mode is "not
+found", never a fabricated citation.
+
+**Claude Desktop (demo, synthetic projects only)** — `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "tender-assistant": {
+      "command": "/abs/path/tender_evaluation_assistant/.venv/bin/python",
+      "args": ["/abs/path/tender_evaluation_assistant/mcp_server/server.py"]
+    }
+  }
+}
+```
+
+`python -m mcp_server.server --list` prints what a given policy would serve. Measured
+on the synthetic `--buried` case (12-page scan-only offers, first pass cached pages
+1–4 only, agent off), same question, same tools, two drivers:
+
+| driver (model reading the tool results) | tenderer | truth | outcome | steps | OCR calls | seconds | path |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| cloud — DeepSeek via `--allow-cloud-model` | Tenderer_01 | cert on p.11 | **found p.11**, quote verified | 3 | 1 | 32 | contents → `read_page(11)` (hint) → `ocr_page(11)` → finish |
+| cloud — DeepSeek | Tenderer_03 | no cert | **not found** (correct) | 7 | 3 | 127 | contents → `ocr_page(11)`, `(12)`, `(5)` → search → finish(found=false) |
+| local — `qwen3:8b`, cold cache | Tenderer_02 | cert on p.11 | **found p.11**, quote verified | 4 | 1 | 111 | contents → `ocr_page(11)` → finish rejected (no `page`) → finish(page=11) |
+| local — `qwen3:8b`, warm cache | Tenderer_03 | no cert | **not found** (correct) | 3 | 0 | 158 | contents → `ocr_page(11)` (cached) → `read_page(12)` → finish(found=false) |
+| local — `qwen3:8b`, warm cache, *before* the clearer rejection message | Tenderer_01 | cert on p.11 | budget exhausted — **no answer, no fabricated citation** | 10 | 0 | 243 | read p.11 four times, six `finish` attempts without `page`, all rejected |
+
+Both drivers follow the same contents-page → page 11 path the pipeline's agent
+takes. The 8B local model is slower and clumsier (it forgot the `page` field until
+the rejection message named it), but the guardrails hold: every "found" carries a
+quote verified on the cited page, and every failure is "not found" or "budget
+exhausted", never an invented citation. Traces: `docs/mcp_traces/`. The cloud
+driver here plays the role of Claude Desktop — structurally the same egress — on
+a project created with the *synthetic* flag; unflagged projects are refused (tested
+live over HTTP: no key → 401, unflagged → refused, synthetic → served).
 
 ## Client-site (production) deployment
 

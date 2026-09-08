@@ -119,10 +119,19 @@ async def answer_question(question: str, client: Client, llm, *, project: str | 
         first = ("list_bids", {"project": project})
     else:
         first = ("list_projects", {})
-    text, _ = await call(*first)
+    text, is_error = await call(*first)
     trace.append({"step": 0, "tool": first[0], "args": first[1], "result": text[:TRACE_CHARS]})
     transcript.append(f"Initial observation — {first[0]}({first[1]}) ->\n{text[:RESULT_CHARS]}")
     log(f"[0] {first[0]}{first[1]} -> {text[:120]!r}")
+    if first[0] == "select_bid" and not is_error:
+        # Same lesson as the pipeline's agent: show the cover / contents page up front,
+        # or the model hunts through filler pages instead of following the contents.
+        page1, is_error = await call("read_page", {"page": 1})
+        if not is_error:
+            seen.setdefault(1, []).append(page1)
+        trace.append({"step": 0, "tool": "read_page", "args": {"page": 1}, "result": page1[:TRACE_CHARS]})
+        transcript.append(f"Page 1 (cover / contents) reads:\n{page1[:1500]}")
+        log(f"[0] read_page(1) -> {page1[:120]!r}")
 
     for step in range(1, max_steps + 1):
         prompt = "\n\n".join(transcript) + f"\n\nStep {step}: choose your next action."
@@ -131,9 +140,18 @@ async def answer_question(question: str, client: Client, llm, *, project: str | 
             if action.found:
                 texts = seen.get(action.page if action.page is not None else -1, [])
                 if not any(quote_on_page(action.quote, t) for t in texts):
-                    result = (f"REJECTED: the quote does not appear verbatim on page {action.page} "
-                              "as read in this session. Read the page and copy the text exactly, "
-                              "or finish with found=false.")
+                    if action.page is None:
+                        result = ("REJECTED: finish(found=true) needs `page` — the number of the "
+                                  "page you read the evidence on — and `quote` copied verbatim "
+                                  "from it. Set both, or finish with found=false.")
+                    elif action.page not in seen:
+                        result = (f"REJECTED: you have not read page {action.page} in this session "
+                                  f"— call read_page({action.page}) or ocr_page({action.page}) "
+                                  "first, then quote it verbatim, or finish with found=false.")
+                    else:
+                        result = (f"REJECTED: the quote does not appear verbatim on page "
+                                  f"{action.page} as read in this session. Copy the text exactly "
+                                  "from that page, or finish with found=false.")
                     trace.append({"step": step, "thought": action.thought, "tool": "finish",
                                   "args": {"page": action.page, "quote": action.quote[:200]},
                                   "result": result})

@@ -1,0 +1,57 @@
+{
+  "question": "Does this offer include the Non-collusive Tendering Certificate? Cite the page.",
+  "found": true,
+  "answer": "Yes, the Non-collusive Tendering Certificate is included on page 11.",
+  "page": 11,
+  "quote": "Non-collusive Tendering Certificate\n\nCompleted and signed by the authorised signatory of Tenderer_01.",
+  "steps": 3,
+  "seconds": 31.7,
+  "trace": [
+    {
+      "step": 0,
+      "tool": "select_bid",
+      "args": {
+        "project": "mcp-buried-1153ae",
+        "tenderer": "Tenderer_01"
+      },
+      "result": "Selected bid Tenderer_01 of project mcp-buried-1153ae: 1 file(s), 12 page(s). 8 scanned page(s) are [skipped] — not read yet: use ocr_page(page) (budget 6 page(s) for this selection; a local vision model needs ~25 s per page).\noffer.pdf p.1 [ocr] # Offer of Tenderer_01 - Tender Ref. DEMO00022026\noff"
+    },
+    {
+      "step": 0,
+      "tool": "read_page",
+      "args": {
+        "page": 1
+      },
+      "result": "# Offer of Tenderer_01 - Tender Ref. DEMO00022026\n\n## Table of Contents\n\n2 Tender Form, Offer to be Bound\n\n3-8 Company Profile\n\n9 Price Schedule Part A\n\n10 Particulars of Goods Schedule\n\n11 Certificates and Declarations\n\n12 Compliance Schedule"
+    },
+    {
+      "step": 1,
+      "thought": "The table of contents shows page 11 is 'Certificates and Declarations', likely containing the Non-collusive Tendering Certificate. I'll read that page.",
+      "tool": "read_page",
+      "args": {
+        "page": 11
+      },
+      "result": "offer.pdf p.11 has not been read (scanned page beyond the initial OCR cap) — call ocr_page(11) to read it"
+    },
+    {
+      "step": 2,
+      "thought": "The table of contents indicates page 11 contains Certificates and Declarations, which likely includes the Non-collusive Tendering Certificate. Since it is scanned and not yet read, I will OCR it.",
+      "tool": "ocr_page",
+      "args": {
+        "page": 11
+      },
+      "result": "Non-collusive Tendering Certificate\n\nCompleted and signed by the authorised signatory of Tenderer_01."
+    },
+    {
+      "step": 3,
+      "thought": "The certificate is on page 11, which I read via OCR. I can finish with the quote.",
+      "tool": "finish",
+      "args": {
+        "found": true,
+        "page": 11,
+        "quote": "Non-collusive Tendering Certificate\n\nCompleted and signed by the authorised signatory of Tenderer_01."
+      },
+      "result": "accepted"
+    }
+  ]
+}

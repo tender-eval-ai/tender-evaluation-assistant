@@ -1,8 +1,8 @@
 # Tender Evaluation Assistant — Detailed Specification
 
-*Last updated: 2026-08 (after the agent upgrade, commit `7f9c1d8`). Numbers in this
-document are measured, not estimated: 68 tracked files, ~3,900 lines of Python plus
-~1,200 lines of tests, 69 offline tests, CI on every push.*
+*Last updated: 2026-09-08 (after the MCP step). Numbers in this document are
+measured, not estimated: 75 tracked files, ~4,500 lines of Python plus ~1,600 lines
+of tests, 81 offline tests, CI on every push.*
 
 ---
 
@@ -64,6 +64,11 @@ flowchart LR
       LIB["Pipeline library<br/>app/ (16 modules)"]
       AGENT["Evidence-search agent<br/>app/agent.py + tools.py<br/>bounded, unresolved findings only"]
     end
+    subgraph mcp [MCP surface — host process]
+      MCPS["MCP server<br/>mcp_server/server.py<br/>read-only tools · synthetic-only guard"]
+      LC["Local-model client<br/>mcp_server/local_client.py"]
+      CD["Claude Desktop / Cursor<br/>(synthetic projects only)"]
+    end
     subgraph llm [LLM endpoints — OpenAI-compatible]
       DS["DeepSeek API<br/>(text, demo)"]
       OL["Ollama local<br/>qwen3:8b · qwen3-vl:8b"]
@@ -75,32 +80,42 @@ flowchart LR
     GRAPH --> AGENT --> LIB
     LIB -- "fallback chains<br/>model@base_url" --> DS & OL & VL
     API --- DATA[("./data volume<br/>projects/&lt;id&gt;/…")]
+    LC -- "stdio, MCP_LOCAL_MODEL=1" --> MCPS
+    CD -. "stdio" .-> MCPS
+    MCPS --> LIB
+    MCPS --- DATA
+    LC -- "local model only" --> OL & VL
 ```
 
-Three deployable pieces, one library:
+Four deployable pieces, one library:
 
 | Piece | Role | Depends on |
 | --- | --- | --- |
 | `app/` | The pipeline library — all document/LLM/evaluation logic, the graph and the agent | openai, pydantic, pypdf, pypdfium2, pillow, python-docx, langgraph (+ sqlite checkpointer) |
 | `backend/` | FastAPI service: projects, uploads, background jobs, reports API | fastapi, uvicorn + `app/` |
 | `frontend/` | Streamlit review UI — a pure HTTP client of the backend | streamlit, requests only |
+| `mcp_server/` | MCP server over the read-only tools (stdio; guarded HTTP) + local-model client | mcp 2.2 + `app/` |
 
 The frontend never imports pipeline code and never touches documents (except the
 browser-direct folder upload, which posts straight to the API). Requirements are split
 per service; the root `requirements.txt` is the dev aggregate (both + pytest).
 
-## 4. Repository inventory (68 tracked files)
+## 4. Repository inventory (75 tracked files)
 
 | Path | Files | LOC (py) | Contents |
 | --- | --- | --- | --- |
-| `app/` | 17 | ~1,900 | Pipeline library (16 modules + `__init__`) incl. graph, agent, tools, grounding |
-| `backend/` | 4 | 593 | `api.py`, Dockerfile, requirements, `__init__` |
-| `frontend/` | 3 | 666 | `ui.py`, Dockerfile, requirements |
-| `test/` | 19 | ~1,220 | 13 test modules, 69 tests, fixtures, conftest |
+| `app/` | 17 | ~1,920 | Pipeline library (16 modules + `__init__`) incl. graph, agent, tools, grounding |
+| `backend/` | 4 | 600 | `api.py`, Dockerfile, requirements, `__init__` |
+| `frontend/` | 3 | 672 | `ui.py`, Dockerfile, requirements |
+| `mcp_server/` | 3 | ~630 | MCP server (393), local-model client (237), `__init__` |
+| `test/` | 20 | ~1,650 | 14 test modules, 81 tests, fixtures, conftest |
 | `tools/` | 5 | ~590 | Case generator (incl. `--buried`), PDF generator, stress driver, evidence-search benchmark |
 | `demo_case/` | 5 | — | Committed synthetic demo PDFs (2 tender, 3 bids) |
-| `docs/` | 3 | — | `plan.md` (product plan, agent upgrade, experiments, next steps), interview prep, this spec |
+| `docs/` | 9 | — | `plan.md` (product plan, agent upgrade, experiments, next steps), interview prep, this spec, `mcp_traces/` (5 experiment traces + index) |
 | root | 9 | 85 | `run_demo.py` CLI, compose file, CI workflow, `.env.example`, `.streamlit/config.toml`, README, ignore files |
+
+Not tracked: `data/` (projects), `inbox/`, `cache/`, `output/`, `.env`, the
+regenerable `buried_case/` and `demo_case_stress/`.
 
 ## 5. The pipeline library — module by module
 
@@ -250,7 +265,43 @@ console `summarize`. Checkpoint files (`rubric.json`, `bids/*.json`,
 `agent/*.json`, `evaluation.json`, `reports/`) are human-editable between runs;
 delete one to redo that step.
 
-## 6. Backend service — `backend/api.py` (593 LOC)
+### `mcp_server/server.py` (393 LOC) — the tools as an MCP server
+`MCPServer` from the official `mcp` SDK 2.2 exposing nine read-only tools (all
+annotated `readOnlyHint`): navigation — `list_projects`, `list_bids(project)`,
+`get_rubric(project)`, `select_tender(project)`, `select_bid(project, tenderer)` —
+and the agent's `BidTools` one-to-one — `list_pages`, `search_pages(query)`,
+`read_page(page[, file])`, `ocr_page(page[, file])`. Documents load with
+`load_pdf(cached_only=True)`: text pages read, scanned pages taken from the
+pipeline's OCR cache if present, otherwise `skipped` until a client calls `ocr_page`
+(budget `AGENT_OCR_PAGES` per selection; the vision client is built lazily, so
+listing and reading never need a model or key). The current selection is
+per-connection state kept on the server *lifespan* object (the SDK enters it once per
+stdio process / HTTP session), so nothing is registered globally or leaked.
+
+The confidentiality guard is a `Policy(transport, local_model)` object consulted by
+every navigation tool: a project is served only if `meta.json` has
+`"synthetic": true`; unflagged projects are withheld from `list_projects` (only a
+count is shown) unless the server was started with `MCP_LOCAL_MODEL=1`, the
+operator's declaration that the connected client's model runs on-premises; the HTTP
+transport (`--transport http`, only with `ALLOW_CLOUD_CLIENTS=1` and `API_KEY`) binds
+to loopback, checks `X-API-Key` in an ASGI middleware and serves synthetic projects
+only regardless. The server writes nothing but the OCR cache and never prints to
+stdout (the stdio transport owns it; logs go to stderr). `--list` prints what the
+current policy would serve.
+
+### `mcp_server/local_client.py` (237 LOC) — the production-compatible client
+Launches the server as a stdio subprocess with `MCP_LOCAL_MODEL=1` and drives the
+tools with the project's own `LLM` class on a *local* endpoint (default
+`qwen3:8b@http://localhost:11434/v1`; cloud endpoints are refused unless
+`--allow-cloud-model`, meant for synthetic demos). The loop mirrors the agent's:
+`ClientAction` (schema-validated JSON, `chat_json` retry), an initial observation
+(`select_bid` / `list_bids` / `list_projects` without spending a step), a step
+budget, and a quote-on-page check — `finish(found=true)` is accepted only if the
+quote appears on a page this client read through `read_page`/`ocr_page`; otherwise
+the step is rejected and the model must read the page or finish with `found=false`.
+Output: answer, page, quote, step count, seconds and the full trace (`--trace`).
+
+## 6. Backend service — `backend/api.py` (600 LOC)
 
 Project-based REST API. Data layout: `$DATA_DIR/projects/<id>/` with `meta.json`,
 `tender/*.pdf`, `bids/<tenderer>/*.pdf`, and `work/` (rubric, extractions, evaluation,
@@ -331,7 +382,7 @@ stay visible — an early bug hid it behind an immediate rerun).
   cache) and prints the scored table (§11).
 - `tools/stress_test.py` — API driver that runs an N-bidder case through
   run → resume → resume and reports per-phase timings.
-- `test/` — **69 tests, all offline** (no network, no tokens, no client data): unit
+- `test/` — **81 tests, all offline** (no network, no tokens, no client data): unit
   tests for pricing/rounding, evaluation, retrieval, verification (incl. grounded
   refutations), grounding, report rendering, per-page OCR routing (mixed text+image
   PDFs), LLM fallback chains (stubbed clients); graph tests (byte-identical
@@ -340,7 +391,15 @@ stay visible — an early bug hid it behind an immediate rerun).
   agent tests (buried document found via on-demand OCR, unverifiable quote rejected,
   step budget, unclear stays unclear, price re-extraction, zero calls when nothing is
   unresolved); API tests covering the full run/resume flow with stubbed models,
-  inbox import, evidence pages with highlighting, and auth scoping.
+  inbox import, evidence pages with highlighting, auth scoping and the project
+  `synthetic` flag; MCP tests (`test/test_mcp.py`, 11): every tool over an
+  in-process client, on-demand OCR budget and shared cache, "nothing written but the
+  cache", the synthetic-only guard in all three policies, the API-key-guarded HTTP
+  transport on a real socket, the real server as a stdio subprocess, an OCR outage
+  reported to the model instead of swallowed, and the local
+  client answering a scripted question — verified quote accepted, unverifiable quote
+  rejected twice then "not found", step budget never fabricating an answer, cloud
+  endpoints refused.
 - `.github/workflows/ci.yml` — the suite runs on every push (Ubuntu, Python 3.12).
 
 ## 9. Configuration reference (`.env`)
@@ -358,6 +417,9 @@ stay visible — an early bug hid it behind an immediate rerun).
 | `API_KEY` | Enables auth; required on any shared machine |
 | `DATA_DIR`, `INBOX_DIR` | Storage roots (bind-mounted in Docker) |
 | `PUBLIC_BACKEND_URL` | What the *browser* can reach (folder upload + evidence links) |
+| `MCP_LOCAL_MODEL` | `1` declares an on-premises MCP client: unflagged (real) projects are served over stdio; the local client sets it itself — never for Claude Desktop |
+| `ALLOW_CLOUD_CLIENTS`, `MCP_PORT` | Enable the MCP HTTP transport (loopback, `X-API-Key`, synthetic projects only) and its port (8765) |
+| `LOCAL_TEXT_MODEL` | Model the local MCP client drives the tools with (must be a local endpoint; default `qwen3:8b@http://localhost:11434/v1`) |
 
 ## 10. Security & confidentiality model
 
@@ -370,6 +432,12 @@ stay visible — an early bug hid it behind an immediate rerun).
 - Auth: `X-API-Key` on all data endpoints; image endpoints additionally accept a
   query key (scoped — tested to not unlock the data API). Keep :8000 firewalled in
   production; users only need the UI on :8501.
+- MCP egress: an MCP server only moves tool execution on-premises — every tool
+  result goes to the model driving the client, so cloud-driven clients (Claude
+  Desktop, Cursor) equal cloud egress. Enforced in code: projects are served only if
+  created with the `synthetic` flag, unless the server is started for an on-premises
+  client (`MCP_LOCAL_MODEL=1`, which the bundled local client sets itself); the HTTP
+  transport is opt-in, loopback, API-keyed and synthetic-only.
 
 ## 11. Verified performance & quality
 
@@ -386,6 +454,8 @@ stay visible — an early bug hid it behind an immediate rerun).
 | Evidence-search benchmark (`--buried`, first pass capped at 4 pages) | certificate recall **0/2 → 2/2**, **0** false restores, price **0/3 → 3/3**, unclear findings with evidence **0/9 → 8/9**, ~6 OCR pages per bid |
 | Orchestrated run/resume flow (demo case) | rubric derived + paused in 4 s; 3 bids extracted in parallel incl. OCR + agent in 54 s; evaluation + reports 2 s — verified both natively and on the rebuilt Docker stack |
 | Mid-project provider retirement (GitHub Models, HTTP 410) | Survived via fallback chain → local Ollama, zero code change |
+| MCP tools, same question two ways (`--buried` project, first pass cached pp. 1–4, agent off) | cloud driver (DeepSeek): certificate **found p.11** in 3 steps / 32 s, absent one **not found** in 7 steps; local driver (`qwen3:8b`, cold cache): **found p.11** in 4 steps / 111 s, absent one not found in 3 steps; no run ever produced an unverified citation |
+| MCP guard, live | HTTP refused to start without opt-in or key; 401 without key; unflagged project refused even with `MCP_LOCAL_MODEL=1`; synthetic served |
 
 ## 12. Demo → production mapping and roadmap
 

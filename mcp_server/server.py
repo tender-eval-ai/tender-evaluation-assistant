@@ -147,6 +147,32 @@ async def _lifespan(_server: MCPServer) -> AsyncIterator[ConnectionState]:
     yield ConnectionState()
 
 
+def _bidder_dirs(pdir: Path) -> list[Path]:
+    bids = pdir / "bids"
+    if not bids.is_dir():
+        return []
+    return sorted(p for p in bids.iterdir() if p.is_dir() and not p.name.startswith("."))
+
+
+def describe_projects(projects_dir: Path, policy: Policy) -> str:
+    """The projects a policy would serve — used by the list_projects tool and --list.
+    Withheld projects contribute a count only (their names may be sensitive)."""
+    lines, withheld = [], 0
+    for meta_path in sorted(projects_dir.glob("*/meta.json")):
+        meta = json.loads(meta_path.read_text())
+        if policy.refusal(meta):
+            withheld += 1
+            continue
+        pdir = meta_path.parent
+        tenderers = ", ".join(p.name for p in _bidder_dirs(pdir)) or "none"
+        flag = "synthetic" if meta.get("synthetic") is True else "REAL DOCUMENTS"
+        lines.append(f"{pdir.name} — {meta.get('name', '')} [{flag}] — tenderers: {tenderers}")
+    if withheld:
+        lines.append(f"({withheld} other project(s) withheld: not flagged synthetic — "
+                     f"{policy.describe()})")
+    return "\n".join(lines) or "no projects"
+
+
 def default_cfg(pdir: Path) -> Config:
     cfg = Config()
     cfg.cache_dir = pdir / "work" / "cache"     # shared with the pipeline's OCR cache
@@ -181,11 +207,7 @@ def build_server(data_dir: Path, policy: Policy,
             raise ToolError(why)
         return pdir, meta
 
-    def _bidders(pdir: Path) -> list[Path]:
-        bids = pdir / "bids"
-        if not bids.is_dir():
-            return []
-        return sorted(p for p in bids.iterdir() if p.is_dir() and not p.name.startswith("."))
+    _bidders = _bidder_dirs
 
     def _pdfs(folder: Path) -> list[Path]:
         return sorted(p for p in folder.rglob("*.pdf") if not p.name.startswith("~$"))
@@ -218,20 +240,7 @@ def build_server(data_dir: Path, policy: Policy,
     def list_projects() -> str:
         """Projects this server may serve: id, name, tenderers. Projects not flagged
         synthetic are withheld unless the server was started for an on-premises client."""
-        lines, withheld = [], 0
-        for meta_path in sorted(projects_dir.glob("*/meta.json")):
-            meta = json.loads(meta_path.read_text())
-            if policy.refusal(meta):
-                withheld += 1
-                continue
-            pdir = meta_path.parent
-            tenderers = ", ".join(p.name for p in _bidders(pdir)) or "none"
-            flag = "synthetic" if meta.get("synthetic") is True else "REAL DOCUMENTS"
-            lines.append(f"{pdir.name} — {meta.get('name', '')} [{flag}] — tenderers: {tenderers}")
-        if withheld:
-            lines.append(f"({withheld} other project(s) withheld: not flagged synthetic — "
-                         f"{policy.describe()})")
-        return "\n".join(lines) or "no projects"
+        return describe_projects(projects_dir, policy)
 
     @server.tool(annotations=READ_ONLY)
     def list_bids(project: str) -> str:
@@ -308,6 +317,10 @@ def build_server(data_dir: Path, policy: Policy,
             return _sel(ctx).tools.ocr_page(page, file)
         except ValueError as err:
             raise ToolError(str(err)) from err
+        except RuntimeError as err:      # vision chain down — tell the model, once
+            log.error("ocr_page failed: %s", err)
+            raise ToolError(f"OCR unavailable ({str(err)[:160]}) — decide with the pages "
+                            "already read") from err
 
     return server
 
@@ -359,13 +372,11 @@ def main(argv: list[str] | None = None) -> int:
     if not data_dir.is_absolute():
         data_dir = ROOT / data_dir
     policy = Policy.from_env(args.transport)
-    server = build_server(data_dir, policy)
-
     if args.list:
         print(policy.describe())
-        # A direct call of the registered function — no client involved.
-        print(server._tool_manager.get_tool("list_projects").fn())  # type: ignore[attr-defined]
+        print(describe_projects(data_dir / "projects", policy))
         return 0
+    server = build_server(data_dir, policy)
 
     if args.transport == "http":
         if os.environ.get("ALLOW_CLOUD_CLIENTS", "0").lower() not in TRUE:

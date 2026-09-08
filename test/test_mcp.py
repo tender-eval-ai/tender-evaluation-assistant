@@ -287,8 +287,10 @@ def test_local_client_answers_with_a_verified_quote(tmp_path):
     result = asyncio.run(run())
     assert result["found"] is True and result["page"] == 2 and result["quote"] == CERT_OCR
     assert result["steps"] == 3 and ocr.calls == 1
-    assert [s["tool"] for s in result["trace"]] == ["select_bid", "search_pages", "ocr_page", "finish"]
+    assert [s["tool"] for s in result["trace"]] == ["select_bid", "read_page", "search_pages",
+                                                    "ocr_page", "finish"]
     assert result["trace"][0]["step"] == 0 and "[skipped]" in result["trace"][0]["result"]
+    assert result["trace"][1]["step"] == 0 and "Table of Contents" in result["trace"][1]["result"]
 
 
 def test_local_client_rejects_unverifiable_quote_then_reports_not_found(tmp_path):
@@ -313,6 +315,24 @@ def test_local_client_rejects_unverifiable_quote_then_reports_not_found(tmp_path
     rejected = [s for s in result["trace"] if str(s["result"]).startswith("REJECTED")]
     assert len(rejected) == 2 and ocr.calls == 0
     assert result["steps"] == 4
+
+
+class _BrokenOCR:
+    def ocr_page(self, png_bytes):
+        raise RuntimeError("All models in chain failed (qwen3-vl:8b): Connection error.")
+
+
+def test_ocr_outage_is_reported_to_the_model_not_swallowed(tmp_path):
+    make_project(tmp_path, "demo-1", synthetic=True)
+    server = build_server(tmp_path, Policy(), llm_factory=lambda cfg: _BrokenOCR())
+
+    async def run():
+        async with Client(server) as c:
+            await call(c, "select_bid", {"project": "demo-1", "tenderer": "Tenderer_X"})
+            return await call(c, "ocr_page", {"page": 2})
+
+    text, err = asyncio.run(run())
+    assert err and "OCR unavailable" in text and "Connection error" in text
 
 
 def test_local_client_step_budget_is_never_a_fabricated_answer(tmp_path):

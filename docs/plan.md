@@ -95,7 +95,9 @@ All on synthetic, deterministic cases with seeded ground truth (never client dat
 | 8 | Run 3, final | Grounding on; agent off vs on | off: certificate recall 0/2, prices 0/3, unclear findings with evidence 0/9 → on: **2/2, 0 false restores, 3/3, 8/9**; 17 OCR pages (~6 per bid) |
 | 9 | 30-bidder regression through the graph, agent on | Same seeded case as #1 | **116 s**; all seeded defects matched exactly; agent ran for the 4 truly-missing-certificate bids and restored nothing |
 | 10 | Orchestrated run/resume flow, live | Native services, then the rebuilt Docker stack | Rubric derived + paused **4 s**; 3 bids in parallel incl. OCR + agent **54 s**; evaluation + reports **2 s**; edits made while paused honoured |
-| 11 | Offline test suite | Grown across phases | 22 → 30 → 45 → 50 → **69** tests, all offline, CI on every push |
+| 11 | Offline test suite | Grown across phases | 22 → 30 → 45 → 50 → 69 → **81** tests, all offline, CI on every push |
+| 12 | MCP tools, two drivers (2026-09-08) | `buried_case` as a synthetic project, first pass cached pages 1–4 only, agent off (pipeline says "certificate missing" for all three bidders); same question, same tools over the MCP server; cloud driver = DeepSeek through the local client with `--allow-cloud-model` (Claude Desktop is not installed on this Mac; structurally the same egress), local driver = `qwen3:8b` on Ollama | Cloud: Tenderer_01 **found p.11** in 3 steps / 32 s, Tenderer_03 **not found** (correct) in 7 steps / 127 s. Local, cold cache: Tenderer_02 **found p.11** in 4 steps / 111 s (one rejected finish — it omitted `page`); Tenderer_03 **not found** in 3 steps. Both followed the contents page → page 11 path. One local run before the rejection message was made explicit exhausted its 10 steps (six `finish` attempts without `page`) — no fabricated citation. Traces in `docs/mcp_traces/` |
+| 13 | MCP confidentiality guard, live | HTTP transport without `ALLOW_CLOUD_CLIENTS` / without `API_KEY`; guarded server probed with and without the key on an unflagged and a synthetic project (`MCP_LOCAL_MODEL=1` also set) | Refused to start (exit 2) in both misconfigurations; no key → 401; unflagged project → refused even with the local flag; synthetic project → served. `--list` withholds the 8 unflagged projects on this machine (count only) |
 
 ## 4. Next plan — MCP server, Vertex AI Gemini backend, Cloud Run
 
@@ -105,7 +107,16 @@ per hour: step 1 needs nothing from outside; step 2 carries the substantive clai
 step 3 adds the "deployed on GCP" line and can be dropped if budget or time is tight.
 Azure is deliberately skipped (one cloud, done properly).
 
-### 4.1 Step 1 — MCP server over the read-only tools, with a local-model client (1–1.5 days)
+### 4.1 Step 1 — MCP server over the read-only tools, with a local-model client (1–1.5 days) — DONE 2026-09-08
+
+*Status: implemented and measured (commits `e7203ca` +docs). Delivered as planned
+with one deliberate tightening: the synthetic-only guard applies to the **stdio**
+transport as well, because the server cannot tell Claude Desktop from the local
+client by transport alone — unflagged projects are withheld unless the operator
+starts the server with `MCP_LOCAL_MODEL=1` (the local client does so itself). The
+per-connection selection lives on the SDK's lifespan object (entered once per stdio
+process / HTTP session), and the SDK turned out to be v2 (`MCPServer`, not
+`FastMCP`), pinned at 2.2.0. Results in §3 rows 12–13.*
 
 **Confidentiality rule (governs this whole step).** An MCP server only moves *tool
 execution* onto the machine that holds the documents. Every tool result — page
@@ -142,8 +153,11 @@ and the server refuses to serve a project unless it is marked demo/synthetic
    (demo), the local-client command (production-compatible), and a screenshot of a
    tool-walked answer.
 
-**Experiment / acceptance.** Ask *"Does Tenderer_C's offer include the Non-collusive
-Tendering Certificate?"* two ways on the same synthetic project: (a) Claude Desktop
+**Experiment / acceptance** (done — results in §3 rows 12–13; Claude Desktop is not
+installed here, so the cloud driver was DeepSeek through the local client's
+`--allow-cloud-model`, which is the same egress). Ask *"Does Tenderer_C's offer
+include the Non-collusive Tendering Certificate?"* two ways on the same synthetic
+project: (a) Claude Desktop
 connected over stdio — expect a tool trace (list → search → read/OCR) and an answer
 with page citations; (b) the local-model client on `qwen3:8b` — same question, same
 tools, nothing leaves the machine; record both traces and step counts. On
@@ -154,7 +168,18 @@ to serve a project without the synthetic flag over HTTP → refused.
 no cloud. **API spend:** none (local tools; OCR through the configured vision chain —
 local Ollama is free).
 
-**Difficulties.** The egress point above is the one that matters — it must be stated
+**Lessons from the run.** (1) The server subprocess inherits the caller's
+environment — `.env`'s Docker-style Ollama URL (`host.docker.internal`) does not
+resolve natively, so the OCR chain failed until `GITHUB_MODELS_BASE_URL` was
+overridden; and a crashed OCR reached the model as a bare "Error executing tool", so
+it retried five times — the server now raises a descriptive `ToolError` ("OCR
+unavailable … decide with the pages already read"). (2) Without the contents page in
+its first observation the cloud driver hunted through filler pages 5–8; the client
+now reads page 1 up front, exactly as the pipeline's agent does. (3) `qwen3:8b`
+omitted `page` in its finish until the rejection message said which field was
+missing — the message now names it, and the cold-cache run then succeeded.
+
+**Difficulties (as anticipated).** The egress point above is the one that matters — it must be stated
 in the README and enforced in code, not left to the operator; SDK API churn (pin, thin
 adapter); a stdio server must not print to stdout (log to stderr); interactive OCR
 latency on local `qwen3-vl` (~25 s/page — say so, or point the vision chain at a cloud
@@ -254,7 +279,7 @@ Q&As, cost-per-bid numbers), this file (results into §3).
 
 | Step | Effort | Spend | Needs from the owner |
 | --- | --- | --- | --- |
-| 1 MCP server + local-model client | 1–1.5 days | $0 | — |
+| 1 MCP server + local-model client — **done** | 1 day | $0 (a few DeepSeek cents for the cloud-driver run) | — |
 | 2 Vertex AI Gemini + measurement | 1.5–2 days | ≤ $5 | GCP project with billing, Vertex API on, ADC login, region |
 | 3 Cloud Run | 1.5–2 days | ≈ $5–10 | same project, budget alert |
 | 4 Docs | 0.5 day | $0 | — |
