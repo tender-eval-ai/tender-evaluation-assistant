@@ -22,6 +22,8 @@ Project lifecycle (mirrors the CLI checkpoints, which stay human-editable):
 Data layout under $DATA_DIR/projects/<id>/:
     meta.json  tender/*.pdf  bids/<tenderer>/*.pdf
     work/{rubric.json, bids/<tenderer>.json, evaluation.json, reports/*.docx, cache/}
+meta.json carries "synthetic": true for fully synthetic/sanitized sets — the only
+projects the MCP server (mcp_server/) will show to a cloud-driven client.
 
 Auth: if the API_KEY env var is set, every request (except /health) must send it in the
 X-API-Key header. Always set it on any machine that is not localhost-only.
@@ -192,6 +194,10 @@ def health() -> dict:
 
 class NewProject(BaseModel):
     name: str
+    # Fully synthetic / sanitized documents. The MCP server (mcp_server/) serves a
+    # project to cloud-driven clients ONLY when this is set — real documents never
+    # leave the machine.
+    synthetic: bool = False
 
 
 @api.post("/projects")
@@ -202,9 +208,10 @@ def create_project(req: NewProject) -> dict:
     (pdir / "tender").mkdir(parents=True)
     (pdir / "bids").mkdir()
     (pdir / "work" / "bids").mkdir(parents=True)
-    _write_json(pdir / "meta.json", {"id": pid, "name": req.name, "created": time.time()})
+    _write_json(pdir / "meta.json", {"id": pid, "name": req.name, "created": time.time(),
+                                     "synthetic": req.synthetic})
     _set_status(pdir, "idle")
-    return {"id": pid, "name": req.name}
+    return {"id": pid, "name": req.name, "synthetic": req.synthetic}
 
 
 @api.get("/projects")

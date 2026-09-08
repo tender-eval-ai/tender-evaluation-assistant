@@ -85,8 +85,13 @@ names = {f"{p['name']} ({p['id']})": p["id"] for p in projects}
 choice = st.sidebar.selectbox("Project", ["— create new —"] + list(names))
 if choice == "— create new —":
     new_name = st.sidebar.text_input("New project name", placeholder="e.g. Tender 1")
+    synthetic = st.sidebar.checkbox(
+        "Synthetic / sanitized documents", value=False,
+        help="Tick only for fully synthetic or sanitized document sets. Cloud-driven "
+             "MCP clients (Claude Desktop, Cursor) can read projects flagged this way "
+             "and no others; real tender/bid documents stay on this machine.")
     if st.sidebar.button("Create project", type="primary", disabled=not new_name):
-        created = call("POST", "/projects", json={"name": new_name}).json()
+        created = call("POST", "/projects", json={"name": new_name, "synthetic": synthetic}).json()
         st.sidebar.success(f"Created {created['id']}")
         st.rerun()
     st.info("Create or select a project to begin.")
@@ -97,7 +102,8 @@ project = call("GET", f"/projects/{pid}").json()
 st.sidebar.caption(
     f"Tender files: {len(project['tender_files'])} · Bidders: {len(project['bidders'])} · "
     f"Rubric: {'✓' if project['has_rubric'] else '—'} · "
-    f"Evaluation: {'✓' if project['has_evaluation'] else '—'}")
+    f"Evaluation: {'✓' if project['has_evaluation'] else '—'}"
+    f"{' · 🧪 synthetic' if project.get('synthetic') else ''}")
 
 with st.sidebar.expander("Danger zone"):
     sure = st.checkbox("Yes, delete this project and all its files", key="del_confirm")

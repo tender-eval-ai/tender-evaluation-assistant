@@ -4,3 +4,5 @@
 -r frontend/requirements.txt
 pytest>=8.0
 httpx>=0.27
+# MCP server + local-model client (mcp_server/); not part of the service images.
+mcp==2.2.0

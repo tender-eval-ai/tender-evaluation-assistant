@@ -60,7 +60,7 @@ def main() -> int:
     print(f"Backend models: text={health['text_model']} vision={health['vision_model']}")
 
     t_start = time.time()
-    pid = requests.post(f"{base}/projects", json={"name": args.name},
+    pid = requests.post(f"{base}/projects", json={"name": args.name, "synthetic": True},
                         headers=headers, timeout=30).json()["id"]
     upload(base, headers, f"/projects/{pid}/tender", sorted((case / "tender").glob("*.pdf")))
     for bidder in bidders:

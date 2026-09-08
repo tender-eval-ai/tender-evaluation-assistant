@@ -257,3 +257,14 @@ def test_orchestrated_run_pauses_at_both_checkpoints_and_honours_edits(tmp_path,
     assert client.get(f"/projects/{pid}/bids/Bidder A/agent").status_code == 404
     assert sorted(client.get(f"/projects/{pid}/reports").json()) == [
         "evaluation_record.docx", "price_summary.docx", "summary_list.docx"]
+
+
+def test_project_synthetic_flag(tmp_path, monkeypatch):
+    # The flag the MCP server keys its confidentiality guard on: explicit at creation,
+    # off by default, visible on the project.
+    client = make_client(tmp_path, monkeypatch)
+    real = client.post("/projects", json={"name": "Real Tender"}).json()
+    demo = client.post("/projects", json={"name": "Demo Case", "synthetic": True}).json()
+    assert real["synthetic"] is False and demo["synthetic"] is True
+    assert client.get(f"/projects/{real['id']}").json()["synthetic"] is False
+    assert client.get(f"/projects/{demo['id']}").json()["synthetic"] is True

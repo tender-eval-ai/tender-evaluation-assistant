@@ -119,42 +119,62 @@ def _page_has_image(page) -> bool:
         return True  # malformed resources — assume it is worth OCR'ing
 
 
+def _ocr_cache_file(path: Path, page_index: int, cfg: Config, sha: str | None = None) -> Path:
+    return cfg.cache_dir / (sha or _file_sha(path)) / f"page_{page_index + 1:04d}.md"
+
+
+def cached_ocr(path: Path, page_index: int, cfg: Config, sha: str | None = None) -> str | None:
+    """A page's cached transcription, or None if it was never OCR'd."""
+    cached = _ocr_cache_file(path, page_index, cfg, sha)
+    return cached.read_text() if cached.is_file() else None
+
+
 def ocr_single_page(path: Path, page_index: int, cfg: Config, llm: LLM) -> str:
     """OCR one page through the vision chain, with the per-page on-disk cache. Also
     used by the evidence-search agent to read pages beyond the initial OCR cap."""
-    cache = cfg.cache_dir / _file_sha(path)
-    cached = cache / f"page_{page_index + 1:04d}.md"
+    cached = _ocr_cache_file(path, page_index, cfg)
     if cached.is_file():
         return cached.read_text()
     text = llm.ocr_page(render_page_png(path, page_index))
-    cache.mkdir(parents=True, exist_ok=True)
+    cached.parent.mkdir(parents=True, exist_ok=True)
     cached.write_text(text)
     return text
 
 
-def load_pdf(path: Path, cfg: Config, llm: LLM | None = None) -> Document:
+def load_pdf(path: Path, cfg: Config, llm: LLM | None = None,
+             cached_only: bool = False) -> Document:
     """Load a PDF as per-page text. The text-vs-scan decision is made PER PAGE: pages
     with a usable text layer are read directly, sparse pages that carry an image are
     OCR'd through the vision model (on-disk cache). So a digital document with a
     scanned annex, or a scan with an embedded OCR layer on some pages, both get the
     cheap path wherever possible. Imageless sparse pages in a text document (blank
     separators, short cover pages) keep their text — there is nothing more to read.
-    At most cfg.max_ocr_pages pages per document are OCR'd; the rest are skipped."""
+    At most cfg.max_ocr_pages pages per document are OCR'd; the rest are skipped.
+
+    `cached_only` (the MCP server's mode) never calls the vision model: a page that
+    would need OCR takes its cached transcription if the pipeline already produced
+    one, otherwise it is marked `skipped` for on-demand `ocr_page`."""
     kind = classify_pdf(path)
     doc = Document(path=path, kind=kind)
     reader = PdfReader(str(path))
 
-    if kind == "scanned" and llm is None:
+    if kind == "scanned" and llm is None and not cached_only:
         raise RuntimeError(f"{path.name} is a scanned PDF; OCR requires an LLM client.")
 
-    ocr_used = 0
+    ocr_used, sha = 0, None
     for i, page in enumerate(reader.pages):
         text = page.extract_text() or ""
         if len(text) >= SCAN_THRESHOLD:
             doc.pages.append(Page(number=i + 1, text=text, source="text"))
             continue
-        if kind == "text" and (llm is None or not _page_has_image(page)):
+        if kind == "text" and ((llm is None and not cached_only) or not _page_has_image(page)):
             doc.pages.append(Page(number=i + 1, text=text, source="text"))
+            continue
+        if cached_only:
+            sha = sha or _file_sha(path)
+            cached = cached_ocr(path, i, cfg, sha)
+            doc.pages.append(Page(number=i + 1, text=cached, source="ocr") if cached is not None
+                             else Page(number=i + 1, text="", source="skipped"))
             continue
         if ocr_used >= cfg.max_ocr_pages:
             doc.pages.append(Page(number=i + 1, text="", source="skipped"))
@@ -165,6 +185,7 @@ def load_pdf(path: Path, cfg: Config, llm: LLM | None = None) -> Document:
     return doc
 
 
-def load_folder(folder: Path, cfg: Config, llm: LLM | None = None) -> list[Document]:
+def load_folder(folder: Path, cfg: Config, llm: LLM | None = None,
+                cached_only: bool = False) -> list[Document]:
     pdfs = sorted(p for p in folder.rglob("*.pdf") if not p.name.startswith("~$"))
-    return [load_pdf(p, cfg, llm) for p in pdfs]
+    return [load_pdf(p, cfg, llm, cached_only=cached_only) for p in pdfs]
