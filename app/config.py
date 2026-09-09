@@ -82,6 +82,11 @@ class Config:
         default_factory=lambda: os.environ.get("VERIFY_FINDINGS", "1").lower()
         not in ("0", "false", "no"))
 
+    # Per-request timeout for model calls. The OpenAI client's default (600 s) is
+    # plenty for cloud endpoints; a local vision model under load (several bids in
+    # parallel on one GPU) can legitimately take longer per page.
+    request_timeout: float = field(
+        default_factory=lambda: float(os.environ.get("LLM_TIMEOUT_S", "600")))
     # USD per 1M tokens, overriding app.usage.DEFAULT_PRICES: MODEL_PRICES='{"m": {"in":
     # 0.3, "out": 2.5, "cached_in": 0.01}}'. Recorded next to every published cost.
     model_prices_json: str | None = field(default_factory=lambda: os.environ.get("MODEL_PRICES"))

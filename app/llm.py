@@ -67,7 +67,8 @@ class LLM:
     def _client(self, base_url: str) -> OpenAI:
         if base_url not in self._clients:
             self._clients[base_url] = OpenAI(
-                base_url=base_url, api_key=self.cfg.key_for(base_url) or "local")
+                base_url=base_url, api_key=self.cfg.key_for(base_url) or "local",
+                timeout=getattr(self.cfg, "request_timeout", 600.0))
         client = self._clients[base_url]
         if is_vertex(base_url):
             # OAuth bearer token, refreshed ahead of expiry (thread-safe provider).

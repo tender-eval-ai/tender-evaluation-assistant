@@ -97,3 +97,11 @@ def test_reasoning_models_get_no_temperature():
     assert LLM._params("openai/gpt-4.1", [], json_mode=True)["temperature"] == 0
     assert LLM._params("openai/gpt-4.1", [], json_mode=True)["response_format"] == {"type": "json_object"}
     assert "response_format" not in LLM._params("openai/gpt-4.1", [], json_mode=False)
+
+
+def test_request_timeout_is_configurable(monkeypatch):
+    monkeypatch.setenv("LLM_TIMEOUT_S", "1800")
+    cfg = Config(token="unused")
+    assert cfg.request_timeout == 1800.0
+    client = LLM(cfg)._client("http://ollama.test/v1")
+    assert client.timeout == 1800.0

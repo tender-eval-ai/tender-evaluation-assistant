@@ -55,8 +55,20 @@ def cited_ok(page: int | None, quote: str | None, docs: list[Document],
     return quote_on_page(quote or "", text) if require_quote else True
 
 
+CONTENTS_RE = re.compile(r"\b(table of contents|contents (entry|page|list)|index entry)\b", re.I)
+
+
+def cites_contents_entry(note: str | None) -> bool:
+    """The model itself says its evidence is a contents/index entry. The prompts state
+    that a contents entry is not evidence; an 8B local model was seen ignoring that,
+    so the rule is enforced here — a listing proves the document was planned, not
+    that it is in the offer."""
+    return bool(note) and bool(CONTENTS_RE.search(note))
+
+
 def ground_extraction(extraction: BidExtraction, docs: list[Document]) -> list[str]:
-    """Demote first-pass findings that cite pages nobody read. Returns amendment notes."""
+    """Demote first-pass findings that cite pages nobody read, or whose stated
+    evidence is a contents entry. Returns amendment notes."""
     read = readable_pages(docs)
     if not docs:
         return []
@@ -67,6 +79,10 @@ def ground_extraction(extraction: BidExtraction, docs: list[Document]) -> list[s
             d.note = (f"first pass cited unread page {d.page} — not accepted as evidence"
                       + (f"; it said: {d.note[:150]}" if d.note else ""))
             notes.append(f"{d.checklist_id}: 'present' cited unread p.{d.page} — demoted to missing")
+        elif d.present and cites_contents_entry(d.note):
+            d.present = False
+            d.note = f"first pass cited a contents entry — not evidence; it said: {d.note[:150]}"
+            notes.append(f"{d.checklist_id}: 'present' cited a contents entry — demoted to missing")
     for c in extraction.compliance:
         if c.complies in ("yes", "no") and c.page is not None and c.page not in read:
             was = c.complies

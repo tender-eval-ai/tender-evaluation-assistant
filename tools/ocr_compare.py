@@ -31,6 +31,7 @@ from pypdf import PdfReader  # noqa: E402
 
 
 def _norm(t: str) -> str:
+    t = re.sub(r"(?<=\d),(?=\d)", "", t)          # 518,500.00 == 518500.00
     return re.sub(r"[^a-z0-9.]+", " ", t.lower()).strip()
 
 
@@ -77,10 +78,12 @@ def run_chain(label: str, entry: str, pdfs: list[Path], out: Path) -> dict:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--case", default="buried_case")
-    ap.add_argument("--a", required=True, help="vision chain entry A (model[@base_url])")
-    ap.add_argument("--b", required=True, help="vision chain entry B")
+    ap.add_argument("--a", help="vision chain entry A (model[@base_url])")
+    ap.add_argument("--b", help="vision chain entry B")
     ap.add_argument("--out", default="output/ocr_compare")
     ap.add_argument("--bidders", type=int, default=0, help="limit to the first N bidders (0 = all)")
+    ap.add_argument("--rescore", action="store_true",
+                    help="re-score from <out>/transcripts.json + report.json without calling any model")
     args = ap.parse_args()
     load_dotenv(ROOT / ".env")
 
@@ -88,16 +91,27 @@ def main() -> int:
     out = ROOT / args.out
     out.mkdir(parents=True, exist_ok=True)
     truth = json.loads((case / "ground_truth.json").read_text()) if (case / "ground_truth.json").is_file() else {}
-    bidders = sorted(d for d in (case / "bids").iterdir() if d.is_dir())
-    if args.bidders:
-        bidders = bidders[:args.bidders]
-    pdfs = [p for b in bidders for p in sorted(b.glob("*.pdf"))]
-    n_pages = sum(len(PdfReader(str(p)).pages) for p in pdfs)
-    print(f"{len(pdfs)} offer(s), {n_pages} pages; A={args.a}  B={args.b}", file=sys.stderr)
 
-    res = {"a": run_chain("a", args.a, pdfs, out), "b": run_chain("b", args.b, pdfs, out)}
+    if args.rescore:
+        prev = json.loads((out / "report.json").read_text())
+        pages = json.loads((out / "transcripts.json").read_text())
+        res = {k: {"entry": prev["chains"][k]["entry"], "pages": pages[k], "seconds": prev["chains"][k]["seconds"],
+                   "usage": {"usd": prev["chains"][k]["usd"], "prompt_tokens": prev["chains"][k]["tokens"],
+                             "output_tokens": 0, "failed": prev["chains"][k]["failed_calls"]},
+                   "served": prev["chains"][k]["served"]} for k in ("a", "b")}
+        n_pages = prev["pages"]
+    else:
+        bidders = sorted(d for d in (case / "bids").iterdir() if d.is_dir())
+        if args.bidders:
+            bidders = bidders[:args.bidders]
+        pdfs = [p for b in bidders for p in sorted(b.glob("*.pdf"))]
+        n_pages = sum(len(PdfReader(str(p)).pages) for p in pdfs)
+        print(f"{len(pdfs)} offer(s), {n_pages} pages; A={args.a}  B={args.b}", file=sys.stderr)
+        res = {"a": run_chain("a", args.a, pdfs, out), "b": run_chain("b", args.b, pdfs, out)}
 
     sims, fact_rows = [], []
+    empty = {k: [f"{n} p.{p}" for n, pg in res[k]["pages"].items() for p, t in pg.items() if not _norm(t)]
+             for k in ("a", "b")}
     for name in res["a"]["pages"]:
         for pno, ta in res["a"]["pages"][name].items():
             tb = res["b"]["pages"][name].get(pno, "")
@@ -114,6 +128,7 @@ def main() -> int:
                   "a_found": sum(1 for r in fact_rows if r[2]), "b_found": sum(1 for r in fact_rows if r[3]),
                   "missed_by_a": [f"{n}: {l}" for n, l, a, b in fact_rows if not a],
                   "missed_by_b": [f"{n}: {l}" for n, l, a, b in fact_rows if not b]},
+        "empty_transcripts": empty,
         "chains": {k: {"entry": v["entry"], "served": v["served"], "seconds": v["seconds"],
                        "seconds_per_page": round(v["seconds"] / n_pages, 1),
                        "usd": v["usage"]["usd"], "usd_per_page": round(v["usage"]["usd"] / n_pages, 5),

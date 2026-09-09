@@ -45,3 +45,24 @@ def test_cited_ok_requires_read_page_and_optionally_quote():
     assert cited_ok(2, "Tender Form signed.", docs, require_quote=True)
     assert not cited_ok(2, "Certificate enclosed", docs, require_quote=True)
     assert not cited_ok(None, "x", docs, require_quote=False)
+
+
+def test_contents_entry_is_not_evidence():
+    # Seen on a local 8B model: "present, page 1 — Table of Contents entry for
+    # '11 Certificates and Declarations'". Page 1 was read, so the unread-page rule
+    # cannot fire; the contents rule must.
+    from app.grounding import cites_contents_entry, ground_extraction
+    from app.ingest import Document, Page
+    from app.schemas import BidExtraction, BidPrice, DocumentPresence
+    docs = [Document(path=Path("offer.pdf"), kind="scanned", pages=[
+        Page(1, "Offer. Table of Contents: 11 Certificates and Declarations", "ocr"),
+        Page(11, "", "skipped")])]
+    ext = BidExtraction(tenderer="T", compliance=[], price=BidPrice(), documents=[
+        DocumentPresence(checklist_id="S1-04", present=True, page=1,
+                         note="Table of Contents entry for '11 Certificates and Declarations'"),
+        DocumentPresence(checklist_id="S1-01", present=True, page=1, note="signed tender form on page 1")])
+    notes = ground_extraction(ext, docs)
+    assert ext.documents[0].present is False and "contents entry" in ext.documents[0].note
+    assert ext.documents[1].present is True                      # ordinary citation untouched
+    assert notes == ["S1-04: 'present' cited a contents entry — demoted to missing"]
+    assert cites_contents_entry("listed in the contents page") and not cites_contents_entry("signed on p.3")

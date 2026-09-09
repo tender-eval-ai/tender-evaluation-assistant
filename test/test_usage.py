@@ -135,9 +135,11 @@ def test_vertex_entries_take_no_key_but_a_fresh_token_per_call(monkeypatch):
 # ---------------------------------------------------------------- ground truth + scorer
 
 def _evaluation_from_truth(truth: dict) -> dict:
+    # Like the evaluator: Stage II rows exist only for bids that passed Stage I.
     return {
         "stage1": [{"tenderer": n, "passed": t["certificate"]} for n, t in truth.items()],
-        "stage2": [{"tenderer": n, "passed": t["shelf_life_months"] >= 12} for n, t in truth.items()],
+        "stage2": [{"tenderer": n, "passed": t["shelf_life_months"] >= 12}
+                   for n, t in truth.items() if t["certificate"]],
         "price_rows": [{"tenderer": n, "arithmetic_ok": not t["arithmetic_error"],
                         "unit_price": t["unit_price"]} for n, t in truth.items()],
     }
@@ -149,7 +151,8 @@ def test_seeded_defects_are_scored_against_ground_truth():
     assert [n for n, t in truth.items() if t["shelf_life_months"] < 12] == ["Tenderer_05", "Tenderer_16", "Tenderer_27"]
     assert [n for n, t in truth.items() if t["arithmetic_error"]] == ["Tenderer_04", "Tenderer_13", "Tenderer_22"]
     perfect = score(_evaluation_from_truth(truth), truth)
-    assert perfect["overall"] == {"agree": 120, "of": 120, "pct": 100.0}
+    assert perfect["stage2"]["of"] == 26                  # 4 Stage I failures have no Stage II row
+    assert perfect["overall"] == {"agree": 116, "of": 116, "pct": 100.0}
 
     ev = _evaluation_from_truth(truth)
     ev["stage1"][2]["passed"] = True                      # Tenderer_03's missing cert not caught
@@ -157,4 +160,4 @@ def test_seeded_defects_are_scored_against_ground_truth():
     s = score(ev, truth)
     assert s["stage1"]["agree"] == 29 and s["stage1"]["disagreements"] == ["Tenderer_03: passed=True truth cert=False"]
     assert s["unit_price"]["disagreements"] == ["Tenderer_01: got=10.38 truth=10.37"]
-    assert s["overall"]["agree"] == 118
+    assert s["overall"]["agree"] == 114

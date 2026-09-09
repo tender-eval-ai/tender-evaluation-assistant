@@ -32,8 +32,9 @@ def score(evaluation: dict, truth: dict) -> dict:
                                  f"passed={s1[name]['passed']} truth cert={t['certificate']}"))
         if "shelf_life_months" in t and "arithmetic_error" in t:
             want = t["shelf_life_months"] >= 12
-            checks["stage2"].append((name, s2[name]["passed"] == want,
-                                     f"passed={s2[name]['passed']} truth shelf={t['shelf_life_months']}"))
+            if name in s2:      # Stage II is only assessed for bids that passed Stage I
+                checks["stage2"].append((name, s2[name]["passed"] == want,
+                                         f"passed={s2[name]['passed']} truth shelf={t['shelf_life_months']}"))
             got = price[name].get("arithmetic_ok") is False
             checks["arithmetic"].append((name, got == t["arithmetic_error"],
                                          f"flagged={got} truth={t['arithmetic_error']}"))
