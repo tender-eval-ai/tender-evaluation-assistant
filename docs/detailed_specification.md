@@ -1,8 +1,8 @@
 # Tender Evaluation Assistant — Detailed Specification
 
-*Last updated: 2026-09-08 (after the MCP step). Numbers in this document are
-measured, not estimated: 75 tracked files, ~4,500 lines of Python plus ~1,600 lines
-of tests, 81 offline tests, CI on every push.*
+*Last updated: 2026-09-09 (after the Vertex AI / cost-accounting step). Numbers in
+this document are measured, not estimated: 81 tracked files, ~5,200 lines of Python
+plus ~1,800 lines of tests, 91 offline tests, CI on every push.*
 
 ---
 
@@ -100,16 +100,16 @@ The frontend never imports pipeline code and never touches documents (except the
 browser-direct folder upload, which posts straight to the API). Requirements are split
 per service; the root `requirements.txt` is the dev aggregate (both + pytest).
 
-## 4. Repository inventory (75 tracked files)
+## 4. Repository inventory (81 tracked files)
 
 | Path | Files | LOC (py) | Contents |
 | --- | --- | --- | --- |
-| `app/` | 17 | ~1,920 | Pipeline library (16 modules + `__init__`) incl. graph, agent, tools, grounding |
-| `backend/` | 4 | 600 | `api.py`, Dockerfile, requirements, `__init__` |
-| `frontend/` | 3 | 672 | `ui.py`, Dockerfile, requirements |
+| `app/` | 19 | ~2,270 | Pipeline library (18 modules + `__init__`) incl. graph, agent, tools, grounding, gcp, usage |
+| `backend/` | 4 | 611 | `api.py`, Dockerfile, requirements, `__init__` |
+| `frontend/` | 3 | 683 | `ui.py`, Dockerfile, requirements |
 | `mcp_server/` | 3 | ~630 | MCP server (393), local-model client (237), `__init__` |
-| `test/` | 20 | ~1,650 | 14 test modules, 81 tests, fixtures, conftest |
-| `tools/` | 5 | ~590 | Case generator (incl. `--buried`), PDF generator, stress driver, evidence-search benchmark |
+| `test/` | 21 | ~1,810 | 15 test modules, 91 tests, fixtures, conftest |
+| `tools/` | 8 | ~930 | Case generator (incl. `--buried`, ground truth), PDF generator, stress driver, evidence-search benchmark, case scorer, OCR comparison, results tables |
 | `demo_case/` | 5 | — | Committed synthetic demo PDFs (2 tender, 3 bids) |
 | `docs/` | 9 | — | `plan.md` (product plan, agent upgrade, experiments, next steps), interview prep, this spec, `mcp_traces/` (5 experiment traces + index) |
 | root | 9 | 85 | `run_demo.py` CLI, compose file, CI workflow, `.env.example`, `.streamlit/config.toml`, README, ignore files |
@@ -265,6 +265,29 @@ console `summarize`. Checkpoint files (`rubric.json`, `bids/*.json`,
 `agent/*.json`, `evaluation.json`, `reports/`) are human-editable between runs;
 delete one to redo that step.
 
+### `app/gcp.py` (54 LOC) — Vertex AI auth
+Vertex AI's OpenAI-compatible endpoint takes no API key: `ADCToken` wraps Google
+Application Default Credentials (workstation login or the attached service account
+on Cloud Run) and hands out a bearer token, refreshing it under a lock five minutes
+before expiry — the parallel fan-out calls the model from several threads. `LLM`
+detects `aiplatform.googleapis.com` entries and sets the token on the client before
+each call; `Config.key_for()` returns nothing for that host so the AI Studio key
+(`GEMINI_API_KEY`, `generativelanguage.googleapis.com`) can never be sent to Vertex.
+`google-auth` is imported lazily, so it is only needed when a Vertex entry is in a chain.
+
+### `app/usage.py` (199 LOC) — token, call and cost accounting
+`UsageLedger` lives on the `LLM` client and records every call under the current
+*scope* (a thread-local set by `llm.scope(name)` — one bid, or "rubric") and chain
+entry, with the model the provider says it served: calls, failed calls, prompt /
+cached / billable output tokens, seconds, USD. Billable output is `total − prompt`
+when the provider reports a total (Gemini bills its thinking tokens as output);
+DeepSeek's cache-hit tokens are priced at the cached rate. Prices are USD per 1M
+tokens from `DEFAULT_PRICES` (verified 2026-09-09 against the providers' pages),
+overridable via `MODEL_PRICES`; unknown (local) models cost $0. `write_usage` and
+`summarize_usage` produce `work/usage/<bid>.json` and `summary.json` — $ per bid
+(mean, median), tokens and calls per bid, median model seconds per bid, failed
+calls, served models — which the API and UI expose.
+
 ### `mcp_server/server.py` (393 LOC) — the tools as an MCP server
 `MCPServer` from the official `mcp` SDK 2.2 exposing nine read-only tools (all
 annotated `readOnlyHint`): navigation — `list_projects`, `list_bids(project)`,
@@ -301,7 +324,7 @@ quote appears on a page this client read through `read_page`/`ocr_page`; otherwi
 the step is rejected and the model must read the page or finish with `found=false`.
 Output: answer, page, quote, step count, seconds and the full trace (`--trace`).
 
-## 6. Backend service — `backend/api.py` (600 LOC)
+## 6. Backend service — `backend/api.py` (611 LOC)
 
 Project-based REST API. Data layout: `$DATA_DIR/projects/<id>/` with `meta.json`,
 `tender/*.pdf`, `bids/<tenderer>/*.pdf`, and `work/` (rubric, extractions, evaluation,
@@ -381,8 +404,18 @@ stay visible — an early bug hid it behind an immediate rerun).
 - `tools/benchmark_buried.py` — runs the case with the agent off and on (shared OCR
   cache) and prints the scored table (§11).
 - `tools/stress_test.py` — API driver that runs an N-bidder case through
-  run → resume → resume and reports per-phase timings.
-- `test/` — **81 tests, all offline** (no network, no tokens, no client data): unit
+  run → resume → resume and reports per-phase timings, ground-truth agreement
+  (`tools/score_case.py`) and model cost; `--out` writes a results file.
+- `tools/score_case.py` — scores an `evaluation.json` against a case's
+  `ground_truth.json` (Stage I verdicts, Stage II verdicts for Stage I passers,
+  arithmetic flags, unit prices) — agreement is computed, not eyeballed; the
+  generator now writes ground truth for the N-bidder case as well.
+- `tools/ocr_compare.py` — transcribes every scanned page of a case with two vision
+  chains (separate caches) and reports transcript similarity, ground-truth facts
+  found by each, seconds and $ per page.
+- `tools/compare_runs.py` — renders the stress / benchmark / OCR result files as the
+  Markdown tables published in the README.
+- `test/` — **91 tests, all offline** (no network, no tokens, no client data): unit
   tests for pricing/rounding, evaluation, retrieval, verification (incl. grounded
   refutations), grounding, report rendering, per-page OCR routing (mixed text+image
   PDFs), LLM fallback chains (stubbed clients); graph tests (byte-identical
@@ -417,6 +450,8 @@ stay visible — an early bug hid it behind an immediate rerun).
 | `API_KEY` | Enables auth; required on any shared machine |
 | `DATA_DIR`, `INBOX_DIR` | Storage roots (bind-mounted in Docker) |
 | `PUBLIC_BACKEND_URL` | What the *browser* can reach (folder upload + evidence links) |
+| `MODEL_PRICES` | JSON, USD per 1M tokens per model (`in`, `out`, `cached_in`), overriding the built-in table used for $ per bid |
+| *(Vertex entries)* | `google/gemini-2.5-flash@https://<region>-aiplatform.googleapis.com/v1/projects/<project>/locations/<region>/endpoints/openapi` as `TEXT_MODEL` / `VISION_MODEL`; auth via `gcloud auth application-default login`, no key |
 | `MCP_LOCAL_MODEL` | `1` declares an on-premises MCP client: unflagged (real) projects are served over stdio; the local client sets it itself — never for Claude Desktop |
 | `ALLOW_CLOUD_CLIENTS`, `MCP_PORT` | Enable the MCP HTTP transport (loopback, `X-API-Key`, synthetic projects only) and its port (8765) |
 | `LOCAL_TEXT_MODEL` | Model the local MCP client drives the tools with (must be a local endpoint; default `qwen3:8b@http://localhost:11434/v1`) |
@@ -432,6 +467,9 @@ stay visible — an early bug hid it behind an immediate rerun).
 - Auth: `X-API-Key` on all data endpoints; image endpoints additionally accept a
   query key (scoped — tested to not unlock the data API). Keep :8000 firewalled in
   production; users only need the UI on :8501.
+- Vertex AI is a cloud path like DeepSeek: synthetic or sanitized documents only.
+  Its credentials are OAuth tokens from the operator's own login, never a key in
+  `.env`; the project is a personal free-trial project with a budget alert.
 - MCP egress: an MCP server only moves tool execution on-premises — every tool
   result goes to the model driving the client, so cloud-driven clients (Claude
   Desktop, Cursor) equal cloud egress. Enforced in code: projects are served only if
@@ -456,6 +494,9 @@ stay visible — an early bug hid it behind an immediate rerun).
 | Mid-project provider retirement (GitHub Models, HTTP 410) | Survived via fallback chain → local Ollama, zero code change |
 | MCP tools, same question two ways (`--buried` project, first pass cached pp. 1–4, agent off) | cloud driver (DeepSeek): certificate **found p.11** in 3 steps / 32 s, absent one **not found** in 7 steps; local driver (`qwen3:8b`, cold cache): **found p.11** in 4 steps / 111 s, absent one not found in 3 steps; no run ever produced an unverified citation |
 | MCP guard, live | HTTP refused to start without opt-in or key; 401 without key; unflagged project refused even with `MCP_LOCAL_MODEL=1`; synthetic served |
+| Three backends, 30-bidder case (Vertex Gemini / DeepSeek + local OCR / fully local) | agreement **100% / 100% / 100%**; wall clock **83 s / 115 s / 45 min (two passes)**; cost **$0.16 / $0.03 / $0** ($0.005 / $0.001 / $0 per bid) |
+| Three backends, buried benchmark | Vertex 2/2 certs, 0 false, 3/3 prices, 9/9 evidence in 228 s ($0.12); DeepSeek + local OCR 2/2, 0, 3/3, 6/9 in 856 s ($0.02); fully local baseline 1106 s, 1 first-pass false positive (contents entry → new grounding rule) |
+| OCR page by page (36 pages) | qwen3-vl 48.7 s/page, Gemini 3.8 s/page ($0.001); both recover all 14 ground-truth facts; 1 blank local transcript |
 
 ## 12. Demo → production mapping and roadmap
 

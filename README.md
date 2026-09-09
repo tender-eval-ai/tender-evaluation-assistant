@@ -134,6 +134,8 @@ app/                the pipeline library (shared by CLI and backend)
   grounding.py      citation grounding: unread-page citations are not evidence
   tools.py          the agent's read-only tools, incl. on-demand OCR with a budget
   agent.py          bounded evidence-search agent: structured actions, budgets, trace
+  gcp.py            Vertex AI auth: OAuth token provider over Application Default Credentials
+  usage.py          per-bid token / call / $ accounting, price table, run summaries
   graph.py          LangGraph orchestration: state, checkpoints, interrupts, Send fan-out
   pipeline.py       bidder discovery, offline (fixture) run, console summary
 backend/            FastAPI service (projects, uploads, jobs, reports API) + Dockerfile
@@ -141,9 +143,10 @@ frontend/           Streamlit review UI (HTTP client of the backend only) + Dock
 mcp_server/         MCP server over the read-only tools + local-model MCP client
 docker-compose.yml  runs both services together
 run_demo.py         CLI (offline demo + orchestrated run over real folders)
-test/               81 offline tests incl. API, graph, agent, MCP (no network, no client data)
-tools/              case generator (incl. --buried benchmark case), PDF generator,
-                    stress driver, evidence-search benchmark
+test/               91 offline tests incl. API, graph, agent, MCP, cost ledger (no network, no client data)
+tools/              case generator (incl. --buried benchmark case, ground truth), PDF
+                    generator, stress driver, evidence-search benchmark, case scorer,
+                    OCR comparison, results tables
 ```
 
 ## Service mode — frontend + backend
@@ -282,6 +285,77 @@ driver here plays the role of Claude Desktop — structurally the same egress �
 a project created with the *synthetic* flag; unflagged projects are refused (tested
 live over HTTP: no key → 401, unflagged → refused, synthetic → served).
 
+## Measured across providers — Gemini on Vertex AI, DeepSeek, fully local
+
+"Provider-agnostic" is a claim until it is measured. The model layer takes any
+OpenAI-compatible endpoint per chain entry (`model@base_url`), and step 2 of the plan
+added the two things a real comparison needs:
+
+- **Vertex AI auth.** Google's OpenAI-compatible endpoint takes no API key: requests
+  carry a short-lived OAuth token from Application Default Credentials
+  (`gcloud auth application-default login`). `app/gcp.py` refreshes it ahead of
+  expiry under a lock, because the parallel fan-out calls the model from several
+  threads; `key_for()` never hands the AI Studio key to a Vertex host.
+- **Cost accounting.** Every call is recorded per bid and per served model — prompt,
+  cached and billable output tokens (Gemini's thinking tokens are billed as output,
+  DeepSeek's cache hits are cheaper), seconds, dollars from a price table verified
+  on the day (`app/usage.py`, overridable with `MODEL_PRICES`). The graph writes
+  `work/usage/<bid>.json` and a `summary.json`; `GET /projects/{id}/usage` and the
+  evaluation page show **$ per bid**; failed calls (fallbacks) are counted so a
+  provider that silently shifted work to the local model cannot skew a number.
+
+Same synthetic cases, same code, three configurations (`tools/stress_test.py --out`,
+`tools/benchmark_buried.py`, `tools/ocr_compare.py`, tables by
+`tools/compare_runs.py`; prices of 2026-09-09, standard tier):
+
+<!-- STEP2_TABLES_START -->
+**30-bidder stress case** (two scan-only bids; agreement = 116 checks against the seeded
+ground truth: Stage I and II verdicts, arithmetic flags, unit prices):
+
+| configuration | agreement | wall clock | rubric | extraction | $ total | $ / bid (mean · median) | tokens / bid | model s / bid (median) | failed calls |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Gemini 2.5 Flash on Vertex AI (text + OCR) | 116/116 (100.0%) | 82.6 s | 8.0 s | 72.4 s | $0.1621 | $0.0053 · $0.0047 | 4788 | 6.8 s | 0 |
+| DeepSeek-V4-Flash + local qwen3-vl OCR | 116/116 (100.0%) | 115.2 s | 4.0 s | 109.0 s | $0.0303 | $0.001 · $0.0008 | 3294 | 2.9 s | 0 |
+| fully local qwen3:8b + qwen3-vl:8b (laptop) | 116/116 (100.0%) | 2731.4 s | 98.4 s | 2631 s | $0.0 | $0.0 · $0.0 | 4145 | 131.3 s | 0 |
+
+**Buried-evidence benchmark** (12-page scan-only offers, schedules on pages 9–12, first
+pass capped at 4 pages):
+
+| configuration | run | certificate recall | false restores | price extracted | unclear w/ evidence | agent OCR pages | time | $ |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Vertex Gemini | baseline | 0/2 | 0 | 0/3 | 0/9 | 0 | 30 s | $0.0323 |
+| Vertex Gemini | agent | 2/2 | 0 | 3/3 | 9/9 | 15 | 228 s | $0.1209 |
+| DeepSeek + local OCR | baseline | 0/2 | 0 | 0/3 | 0/9 | 0 | 585 s | $0.0038 |
+| DeepSeek + local OCR | agent | 2/2 | 0 | 3/3 | 6/9 | 16 | 856 s | $0.0162 |
+| fully local | baseline | 0/2 | 0 | 0/3 | 0/9 | 0 | 1106 s | $0.0 |
+
+*Fully local agent run: the 3-way-parallel attempt aborted on a 600 s timeout of a `qwen3:8b` verification call; a sequential rerun is in progress and will be added here.*
+
+**OCR, page by page** (the benchmark's 36 scanned pages, separate caches):
+
+| chain | served | s / page | $ / page | ground-truth facts found | failed calls |
+| --- | --- | --- | --- | --- | --- |
+| A `qwen3-vl:8b` | qwen3-vl:8b | 48.7 | $0.0 | 14/14 | 0 |
+| B `google/gemini-2.5-flash` | google/gemini-2.5-flash | 3.8 | $0.00105 | 14/14 | 0 |
+
+Transcript similarity A vs B over 36 pages: mean 0.952, median 1.0, min 0.0. Missed by A: none. Missed by B: none. Empty transcripts — A: ['Tenderer_01 p.6']; B: none.
+
+What the numbers say. All three configurations reach the **same verdicts** on both
+cases — the deterministic layers decide, the model only extracts. Cloud models finish
+30 bidders in under two minutes for **cents per tender** (Gemini ≈ $0.005 per bid,
+DeepSeek ≈ $0.001, the rubric included); the fully local 8B stack reaches the same
+100% for $0 but took **45 minutes in two passes** on the laptop: with four bids in
+parallel a local OCR page exceeded the 10-minute client timeout at bid 29/30, and the
+run was resumed from its checkpoints sequentially (`MAX_PARALLEL_BIDS=1`,
+`LLM_TIMEOUT_S`) — the checkpointing did exactly what it is for. The local 8B model
+also needed one more deterministic guard: it cited a contents entry as evidence for
+three checklist items, which grounding now demotes in code. Local OCR recovered every
+ground-truth fact Gemini did, blanked one filler page, and is 13× slower per page.
+These laptop numbers bound the *demo*; production inference on the client's DGX is a
+different class of hardware. Metered spend for the whole step: **$0.35** (Vertex) +
+**$0.05** (DeepSeek).
+<!-- STEP2_TABLES_END -->
+
 ## Client-site (production) deployment
 
 The product is NDA-bound to **local** deployment — real tender/bid documents never
@@ -296,8 +370,8 @@ thing users need.
 
 | Demo (this repo)                      | Production (client site)                          |
 | ------------------------------------- | ------------------------------------------------- |
-| DeepSeek API `deepseek-chat` (text)   | Qwen3.6-35B-A3B / DeepSeek-V4-Flash via vLLM      |
-| Ollama `qwen3-vl:8b` vision OCR       | Qwen3-VL-30B-A3B (MoE) page OCR, batched          |
+| DeepSeek API `deepseek-chat` (text), or Gemini 2.5 Flash on Vertex AI | Qwen3.6-35B-A3B / DeepSeek-V4-Flash via vLLM |
+| Ollama `qwen3-vl:8b` vision OCR, or Gemini 2.5 Flash on Vertex AI | Qwen3-VL-30B-A3B (MoE) page OCR, batched |
 | Docker on a laptop (x86/arm)          | Same compose stack on DGX Spark GB10 (arm64)      |
 | Synthetic fixtures                    | Real tender/bid sets, fully local                 |
 

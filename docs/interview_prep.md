@@ -26,10 +26,11 @@ honest version is the strong version.*
 >   highlighted — **100% agreement with seeded ground truth on a 30-bidder stress
 >   test (now 116 s end-to-end)**.
 > - Designed for strict confidentiality (NDA): OpenAI-compatible client with
->   cross-provider fallback chains (`model@endpoint`, per-hostname API keys); when the
->   original cloud provider was **retired mid-project**, the pipeline fell back to
->   local Ollama models with zero code change — the same one-line config swap targets
->   vLLM on the client's DGX workstation for fully local production.
+>   cross-provider fallback chains (`model@endpoint`, per-host credentials incl.
+>   OAuth for **Gemini on Vertex AI**); when the original cloud provider was
+>   **retired mid-project**, the pipeline fell back to local Ollama models with zero
+>   code change. Measured the same 30-bidder case on three backends (Vertex Gemini,
+>   DeepSeek, fully local) with per-bid **token and cost accounting**: **100% ground-truth agreement on all three**, Gemini ≈ $0.005 per bid in 83 s end to end, DeepSeek ≈ $0.001 in 115 s, fully local $0 but 45 min on a laptop.
 > - Orchestrated the pipeline as a **LangGraph state graph** with durable per-project
 >   checkpoints, human-in-the-loop `interrupt()`s at the two review points and
 >   parallel per-bid fan-out; added a **bounded tool-using agent** (schema-validated
@@ -42,7 +43,7 @@ honest version is the strong version.*
 >   (Claude Desktop) see synthetic projects only.
 > - Shipped as a two-service Docker Compose stack (FastAPI backend with run/resume
 >   jobs; Streamlit review UI with triaged review, evidence highlighting and one-click
->   folder upload) with **81 fully-offline tests** and CI on every push; 30 bidders
+>   folder upload) with **91 fully-offline tests** and CI on every push; 30 bidders
 >   evaluated end to end in 116 s.
 
 ### One-line version (for a crowded resume)
@@ -51,7 +52,7 @@ honest version is the strong version.*
 > that drafts public tender-evaluation reports from scanned bids (OCR → rubric
 > derivation → cited extraction → deterministic scoring → Word); 100% ground-truth
 > agreement on a 30-bidder case, 0→100% buried-evidence recall with zero false
-> positives; tools also served over MCP with a local-model client; 81-test CI;
+> positives; tools also served over MCP with a local-model client; measured on three providers; 91-test CI;
 > Dockerized, runs fully local for confidentiality.
 
 **Tailoring tips**: applying for an *AI/LLM/agent engineer* role → lead with bullets
@@ -120,12 +121,15 @@ bullet 5 and be ready for the egress question below.
 | **20–60** | Bidders per tender in production; hundreds of pages each |
 | **30 / 116 s / 100%** | Stress test through the graph: bidders / end-to-end time / ground-truth agreement (287 s before parallel fan-out) |
 | **4/4, 3/3, 3/3** | Missing certs (one inside a scan), shelf-life breaches, arithmetic errors — all caught |
-| **81** | Fully-offline tests in CI (incl. graph, agent, grounding, MCP) |
+| **91** | Fully-offline tests in CI (incl. graph, agent, grounding, MCP, cost ledger) |
 | **9 / 3** | MCP tools exposed (all read-only) / policies the guard distinguishes (stdio default, on-premises client, HTTP) |
+| **83 s / 115 s / 45 min** | 30-bidder run on Vertex Gemini / DeepSeek + local OCR / fully local (laptop) — 100% agreement on all three |
+| **$0.16 / $0.03 / $0** | Cost of that run ($0.005 / $0.001 / $0 per bid); whole step 2: $0.40 |
+| **3.8 s vs 49 s** | OCR per page, Gemini vs local qwen3-vl — same 14/14 facts recovered |
 | **0/2 → 2/2, 0 false, 0/3 → 3/3** | Agent benchmark: buried certificate recall, false restores, buried prices |
 | **6 s vs 133 s** | Rubric derivation, DeepSeek vs local qwen3:8b (same verdicts) |
 | **55 s vs ~337 s** | 3-bid case with parallel extraction + cloud text vs sequential local |
-| **~4,500 + 1,600** | Lines of Python (app, services, MCP, tools) + tests, across 69 files (16-module library + 2 services + MCP surface) |
+| **~5,200 + 1,800** | Lines of Python (app, services, MCP, tools) + tests, across 81 files (18-module library + 2 services + MCP surface) |
 | **2** | Human checkpoints (rubric confirm; extraction correction — corrections are final) |
 
 ---
@@ -231,6 +235,34 @@ A: It cannot flip "unclear" to "compliant", cannot cite a page it hasn't read, c
 exceed its OCR budget, and cannot invent a quote — every finish is checked against the
 page text in code. Those limits are the design: the agent proposes evidence, the
 deterministic evaluator and the human decide.
+
+### Providers, cloud and cost
+
+**Q: Why put anything on Google Cloud when production is local?**
+A: Production is local by requirement — the documents are under NDA and inference
+runs on the client's DGX. The cloud work is deliberate and separate: the model layer
+is provider-agnostic, and that claim is worthless until measured, so I ran the same
+pipeline on Gemini via Vertex AI, on DeepSeek, and fully local, and recorded
+agreement, latency and dollars per bid on synthetic data. The numbers cut both ways:
+the cloud runs finish 30 bidders in under two minutes for 3 to 16 cents with identical verdicts, while the fully local 8B stack on my laptop reaches the same 100% for free but takes 45 minutes and needed sequential bids and a longer timeout — which is precisely the sizing argument for the client's DGX. And the boundary is enforced in code — cloud paths and MCP clients
+only ever see projects flagged synthetic.
+
+**Q: What was different about Vertex compared with an API key?**
+A: Auth. Vertex's OpenAI-compatible endpoint takes OAuth bearer tokens from
+Application Default Credentials, which expire hourly, and my extraction fan-out
+calls the model from several threads — so the token provider refreshes ahead of
+expiry under a lock, and the client sets the token per call. The other trap is
+credential routing: two Google hosts contain "googleapis", and only one takes the AI
+Studio key, so the key lookup has to refuse the Vertex host explicitly.
+
+**Q: How do you know the cost numbers are right?**
+A: Every call records the tokens the provider reports, keyed by the model it says it
+served — not the one I asked for — and dollars come from a price table I verified on
+the day and recorded next to the results. Two details matter: Gemini bills thinking
+tokens as output, so billable output is total minus prompt, not `completion_tokens`;
+and DeepSeek's cached prompt tokens cost thirty times less, so they are priced
+separately. Failed calls are counted per entry, so a provider that fell back to the
+local model cannot make itself look faster or cheaper.
 
 ### MCP
 

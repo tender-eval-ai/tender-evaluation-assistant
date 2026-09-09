@@ -62,6 +62,9 @@ def main() -> int:
     ap.add_argument("--out", default="output/bench")
     ap.add_argument("--max-ocr-pages", type=int, default=4,
                     help="initial OCR cap per document (the agent may read more)")
+    ap.add_argument("--modes", default="baseline,agent",
+                    help="which runs to (re)do, e.g. 'agent' to redo only the agent run and "
+                         "keep an existing baseline (its rubric and OCR cache are reused)")
     args = ap.parse_args()
 
     load_dotenv(ROOT / ".env")
@@ -70,7 +73,9 @@ def main() -> int:
     out = ROOT / args.out
     from app.llm import LLM
     results = {}
-    for mode in ("baseline", "agent"):
+    if (out / "results.json").is_file():
+        results = json.loads((out / "results.json").read_text())       # keep modes not redone
+    for mode in [m.strip() for m in args.modes.split(",") if m.strip()]:
         cfg = Config()
         cfg.max_ocr_pages = args.max_ocr_pages
         cfg.cache_dir = out / "cache"          # shared: agent run re-uses first-pass OCR

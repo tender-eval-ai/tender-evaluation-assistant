@@ -95,9 +95,13 @@ All on synthetic, deterministic cases with seeded ground truth (never client dat
 | 8 | Run 3, final | Grounding on; agent off vs on | off: certificate recall 0/2, prices 0/3, unclear findings with evidence 0/9 → on: **2/2, 0 false restores, 3/3, 8/9**; 17 OCR pages (~6 per bid) |
 | 9 | 30-bidder regression through the graph, agent on | Same seeded case as #1 | **116 s**; all seeded defects matched exactly; agent ran for the 4 truly-missing-certificate bids and restored nothing |
 | 10 | Orchestrated run/resume flow, live | Native services, then the rebuilt Docker stack | Rubric derived + paused **4 s**; 3 bids in parallel incl. OCR + agent **54 s**; evaluation + reports **2 s**; edits made while paused honoured |
-| 11 | Offline test suite | Grown across phases | 22 → 30 → 45 → 50 → 69 → **81** tests, all offline, CI on every push |
+| 11 | Offline test suite | Grown across phases | 22 → 30 → 45 → 50 → 69 → 81 → **91** tests, all offline, CI on every push |
 | 12 | MCP tools, two drivers (2026-09-08) | `buried_case` as a synthetic project, first pass cached pages 1–4 only, agent off (pipeline says "certificate missing" for all three bidders); same question, same tools over the MCP server; cloud driver = DeepSeek through the local client with `--allow-cloud-model` (Claude Desktop is not installed on this Mac; structurally the same egress), local driver = `qwen3:8b` on Ollama | Cloud: Tenderer_01 **found p.11** in 3 steps / 32 s, Tenderer_03 **not found** (correct) in 7 steps / 127 s. Local, cold cache: Tenderer_02 **found p.11** in 4 steps / 111 s (one rejected finish — it omitted `page`); Tenderer_03 **not found** in 3 steps. Both followed the contents page → page 11 path. One local run before the rejection message was made explicit exhausted its 10 steps (six `finish` attempts without `page`) — no fabricated citation. Traces in `docs/mcp_traces/` |
 | 13 | MCP confidentiality guard, live | HTTP transport without `ALLOW_CLOUD_CLIENTS` / without `API_KEY`; guarded server probed with and without the key on an unflagged and a synthetic project (`MCP_LOCAL_MODEL=1` also set) | Refused to start (exit 2) in both misconfigurations; no key → 401; unflagged project → refused even with the local flag; synthetic project → served. `--list` withholds the 8 unflagged projects on this machine (count only) |
+| 14 | Three backends, 30-bidder stress (2026-09-09) | Same case and code; Gemini 2.5 Flash on Vertex AI (text + OCR, OAuth via ADC), DeepSeek-V4-Flash + local qwen3-vl OCR, fully local qwen3:8b + qwen3-vl:8b; agreement scored by `tools/score_case.py` against seeded ground truth; cost from the per-call ledger | **116/116 (100%) on all three.** Vertex **82.6 s**, $0.162 ($0.005/bid, 4.8k tokens/bid, 6.8 s model time/bid); DeepSeek **115 s**, $0.030 ($0.001/bid); fully local **2731 s in two passes** (first pass aborted at bid 29/30 on a 600 s OCR timeout under 4-way contention, resumed from checkpoints sequentially), $0, 131 s model time/bid; 0 failed calls on the cloud runs |
+| 15 | Three backends, buried benchmark | `--buried` case, first pass capped at 4 pages, agent off vs on | Vertex: 0/2→**2/2** certs, 0 false restores, 0/3→**3/3** prices, 0/9→**9/9** evidence, 30 s / 228 s, $0.03 / $0.12. DeepSeek + local OCR: 2/2, 0 false, 3/3, **6/9**, 585 s / 856 s, $0.004 / $0.016. Fully local baseline 1106 s with **1 first-pass false positive** (contents entry cited as evidence — now a deterministic grounding rule); agent run aborted under 3-way parallelism (600 s timeout on a `qwen3:8b` call); sequential rerun pending |
+| 16 | OCR comparison, 36 scanned pages | `tools/ocr_compare.py`: qwen3-vl:8b (Ollama) vs Gemini 2.5 Flash (Vertex), separate caches, ground-truth facts (prices, totals, certificate lines, delivery, shelf life) | Both **14/14 facts**; transcript similarity mean 0.95, median 1.0; local blanked 1 filler page; **48.7 s vs 3.8 s per page**; $0 vs $0.00105 per page ($0.038 for all 36) |
+| 17 | Local failure modes | Parallel fan-out on one laptop GPU | Two timeouts (OCR page, then a text call) at the 600 s client default → `LLM_TIMEOUT_S` knob and sequential bids for local; run/resume recovery kept 29 finished bids; the 8B text model ignored the "contents entry is not evidence" prompt rule → enforced in `app/grounding.py` |
 
 ## 4. Next plan — MCP server, Vertex AI Gemini backend, Cloud Run
 
@@ -187,7 +191,15 @@ model *for synthetic demos only*); an 8B local model drives the tools less relia
 than Claude — the local client keeps the step budget and the quote-on-page check, so
 the failure mode is "not found", never a fabricated citation.
 
-### 4.2 Step 2 — Vertex AI Gemini as a measured fourth backend (1.5–2 days)
+### 4.2 Step 2 — Vertex AI Gemini as a measured fourth backend (1.5–2 days) — DONE 2026-09-09
+
+*Status: implemented and measured on the owner's GCP project (free trial, Vertex AI
+API, `us-central1`, Application Default Credentials; no service account needed on the
+laptop). Delivered as planned: `app/gcp.py` token provider, Vertex entries for text
+and vision, `app/usage.py` cost ledger with a verified price table, per-bid usage
+files and `GET /usage`, ground truth for the N-bidder case plus `tools/score_case.py`
+so agreement is computed rather than eyeballed, `tools/ocr_compare.py`, and
+`tools/compare_runs.py` for the tables. Results in §3 rows 14–17. Spend: $0.40 metered ($0.35 Vertex, $0.05 DeepSeek).*
 
 **Steps**
 1. Auth: Vertex's OpenAI-compatible endpoint
@@ -280,7 +292,7 @@ Q&As, cost-per-bid numbers), this file (results into §3).
 | Step | Effort | Spend | Needs from the owner |
 | --- | --- | --- | --- |
 | 1 MCP server + local-model client — **done** | 1 day | $0 (a few DeepSeek cents for the cloud-driver run) | — |
-| 2 Vertex AI Gemini + measurement | 1.5–2 days | ≤ $5 | GCP project with billing, Vertex API on, ADC login, region |
+| 2 Vertex AI Gemini + measurement — **done** | 1 day | $0.40 metered ($0.35 Vertex, $0.05 DeepSeek) (of ≤ $5 budgeted) | GCP project with billing, Vertex API on, ADC login, region |
 | 3 Cloud Run | 1.5–2 days | ≈ $5–10 | same project, budget alert |
 | 4 Docs | 0.5 day | $0 | — |
 
