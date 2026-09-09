@@ -16,6 +16,7 @@ stored rubric / extraction is never re-derived or re-extracted. Human checkpoint
 from __future__ import annotations
 
 import json
+from contextlib import nullcontext
 from pathlib import Path
 from typing import Annotated, TypedDict
 
@@ -32,6 +33,7 @@ from .llm import LLM
 from .pipeline import discover_bidders
 from .report import render_all
 from .rubric import derive_rubric
+from .usage import summarize_usage, write_usage
 from .schemas import BidExtraction, EvaluationResult, Rubric
 from .verify import verify_extraction
 
@@ -99,11 +101,21 @@ def build_graph(cfg: Config, llm: LLM | None, checkpointer=None, interactive: bo
             log(line)
         return update
 
+    def _scope(name: str):
+        """Attribute model calls to a bid / the rubric (stub LLMs in tests have no ledger)."""
+        return llm.scope(name) if hasattr(llm, "scope") else nullcontext()
+
+    def _save_usage(state_out: Path, name: str) -> None:
+        if hasattr(llm, "usage"):
+            write_usage(state_out / "usage" / f"{name}.json", llm.usage, name)
+
     def derive_rubric_node(state: PipelineState) -> dict:
         log(f"[rubric] deriving from {state['tender_dir']} ...")
-        docs = load_folder(Path(state["tender_dir"]), cfg, llm)
-        rubric = derive_rubric(docs, cfg, llm)
+        with _scope("rubric"):
+            docs = load_folder(Path(state["tender_dir"]), cfg, llm)
+            rubric = derive_rubric(docs, cfg, llm)
         (out(state) / "rubric.json").write_text(rubric.model_dump_json(indent=2))
+        _save_usage(out(state), "rubric")
         log("[rubric] saved rubric.json")
         return {"rubric": rubric.model_dump(mode="json"), "progress": ["rubric derived"]}
 
@@ -126,20 +138,22 @@ def build_graph(cfg: Config, llm: LLM | None, checkpointer=None, interactive: bo
     def extract_bid_node(bid: BidState) -> dict:
         name, path = bid["tenderer"], Path(bid["path"])
         rubric = Rubric.model_validate(bid["rubric"])
-        docs = load_folder(path, cfg, llm) if path.is_dir() else [load_pdf(path, cfg, llm)]
-        extraction = extract_bid(name, docs, rubric, cfg, llm)
-        if cfg.verify_findings:
-            extraction, _ = verify_extraction(extraction, docs, rubric, cfg, llm)
-        if cfg.agent_enabled:
-            extraction, report = evidence_search(extraction, docs, rubric, cfg, llm)
-            if report["findings"]:
-                agent_dir = Path(bid["out_dir"]) / "agent"
-                agent_dir.mkdir(exist_ok=True)
-                (agent_dir / f"{name}.json").write_text(json.dumps(report, indent=2))
-                for note in report["amendments"]:
-                    log(f"[agent] {name}: {note}")
+        with _scope(name):
+            docs = load_folder(path, cfg, llm) if path.is_dir() else [load_pdf(path, cfg, llm)]
+            extraction = extract_bid(name, docs, rubric, cfg, llm)
+            if cfg.verify_findings:
+                extraction, _ = verify_extraction(extraction, docs, rubric, cfg, llm)
+            if cfg.agent_enabled:
+                extraction, report = evidence_search(extraction, docs, rubric, cfg, llm)
+                if report["findings"]:
+                    agent_dir = Path(bid["out_dir"]) / "agent"
+                    agent_dir.mkdir(exist_ok=True)
+                    (agent_dir / f"{name}.json").write_text(json.dumps(report, indent=2))
+                    for note in report["amendments"]:
+                        log(f"[agent] {name}: {note}")
         (Path(bid["out_dir"]) / "bids" / f"{name}.json").write_text(
             extraction.model_dump_json(indent=2))
+        _save_usage(Path(bid["out_dir"]), name)
         log(f"[extract] {name}: extracted ({len(docs)} file(s))")
         return {"extractions": {name: extraction.model_dump(mode="json")},
                 "progress": [f"extracted {name}"]}
@@ -171,6 +185,13 @@ def build_graph(cfg: Config, llm: LLM | None, checkpointer=None, interactive: bo
                 for n in sorted(state["extractions"])]
         result = evaluate(rubric, bids)
         (out(state) / "evaluation.json").write_text(result.model_dump_json(indent=2))
+        usage_dir = out(state) / "usage"
+        if usage_dir.is_dir():
+            summary = summarize_usage(usage_dir, sorted(state["extractions"]))
+            (usage_dir / "summary.json").write_text(json.dumps(summary, indent=2))
+            if summary["bids"]:
+                log(f"[usage] ${summary['usd_total']} total, ${summary['usd_per_bid_mean']} per bid "
+                    f"({summary['bids']} bid(s) with model calls, {summary['failed_calls']} failed call(s))")
         log("[evaluate] deterministic evaluation complete")
         return {"evaluation": result.model_dump(mode="json"), "progress": ["evaluated"]}
 

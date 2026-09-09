@@ -82,10 +82,18 @@ class Config:
         default_factory=lambda: os.environ.get("VERIFY_FINDINGS", "1").lower()
         not in ("0", "false", "no"))
 
+    # USD per 1M tokens, overriding app.usage.DEFAULT_PRICES: MODEL_PRICES='{"m": {"in":
+    # 0.3, "out": 2.5, "cached_in": 0.01}}'. Recorded next to every published cost.
+    model_prices_json: str | None = field(default_factory=lambda: os.environ.get("MODEL_PRICES"))
+
     def key_for(self, base_url: str) -> str | None:
         """API key for an endpoint, selected by hostname — lets fallback-chain entries
         span providers with different credentials. Local servers (Ollama, vLLM) accept
-        any non-empty placeholder."""
+        any non-empty placeholder. Vertex AI (aiplatform.googleapis.com) takes no key
+        at all: the client fetches OAuth tokens through app.gcp.ADCToken — so it must
+        not fall through to the GEMINI_API_KEY (AI Studio) rule below."""
+        if "aiplatform.googleapis.com" in base_url:
+            return None
         for marker, env_var in (("deepseek", "DEEPSEEK_API_KEY"),
                                 ("googleapis", "GEMINI_API_KEY"),
                                 ("dashscope", "DASHSCOPE_API_KEY"),

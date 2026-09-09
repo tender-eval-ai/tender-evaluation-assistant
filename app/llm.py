@@ -8,12 +8,15 @@ from __future__ import annotations
 import base64
 import json
 import sys
+import time
 from typing import Type, TypeVar
 
 from openai import OpenAI, OpenAIError
 from pydantic import BaseModel, ValidationError
 
 from .config import Config
+from .gcp import ADCToken, is_vertex
+from .usage import UsageLedger, load_prices
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -34,9 +37,10 @@ def _is_reasoning_model(model: str) -> bool:
 class LLM:
     """Chain entries are "model" (served from cfg.base_url) or "model@base_url" —
     the @ form lets a fallback live on a different endpoint entirely, e.g. a cloud
-    primary with a local Ollama/vLLM safety net."""
+    primary with a local Ollama/vLLM safety net. Every call is recorded in `usage`
+    (tokens, seconds, USD) under the current scope — see `scope()`."""
 
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config, token_provider: ADCToken | None = None):
         # Local OpenAI-compatible servers (Ollama, vLLM) need no real key; hosted
         # endpoints like GitHub Models do.
         if not cfg.token and "github" in cfg.base_url:
@@ -48,6 +52,13 @@ class LLM:
         self._clients: dict[str, OpenAI] = {}
         self.text_chain = [cfg.text_model] + cfg.text_fallbacks
         self.vision_chain = [cfg.vision_model] + cfg.vision_fallbacks
+        self._adc = token_provider          # built on first Vertex call
+        self.usage = UsageLedger(load_prices(getattr(cfg, "model_prices_json", None)))
+
+    def scope(self, name: str):
+        """Context manager attributing the calls made inside it (this thread) to
+        `name` — one bid, or "rubric"."""
+        return self.usage.scoped(name)
 
     def _split(self, entry: str) -> tuple[str, str]:
         model, _, url = entry.partition("@")
@@ -57,7 +68,13 @@ class LLM:
         if base_url not in self._clients:
             self._clients[base_url] = OpenAI(
                 base_url=base_url, api_key=self.cfg.key_for(base_url) or "local")
-        return self._clients[base_url]
+        client = self._clients[base_url]
+        if is_vertex(base_url):
+            # OAuth bearer token, refreshed ahead of expiry (thread-safe provider).
+            if self._adc is None:
+                self._adc = ADCToken()
+            client.api_key = self._adc.token()
+        return client
 
     @staticmethod
     def _params(model: str, messages: list, json_mode: bool) -> dict:
@@ -73,14 +90,19 @@ class LLM:
         last_err: OpenAIError | None = None
         for i, entry in enumerate(chain):
             model, base_url = self._split(entry)
+            t0 = time.time()
             try:
                 resp = self._client(base_url).chat.completions.create(
                     **self._params(model, messages, json_mode))
-                return resp.choices[0].message.content or ""
             except OpenAIError as err:
                 last_err = err
+                self.usage.fail(entry, f"{err.__class__.__name__}: {err}")
                 nxt = f"; falling back to {chain[i + 1]}" if i + 1 < len(chain) else ""
                 print(f"[llm] {entry} failed ({err.__class__.__name__}){nxt}", file=sys.stderr)
+                continue
+            self.usage.record(entry, getattr(resp, "model", None), getattr(resp, "usage", None),
+                              time.time() - t0)
+            return resp.choices[0].message.content or ""
         raise RuntimeError(f"All models in chain failed ({' -> '.join(chain)}): {last_err}")
 
     # ---------------------------------------------------------------- JSON extraction

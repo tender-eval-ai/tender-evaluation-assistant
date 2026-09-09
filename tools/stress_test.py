@@ -10,6 +10,7 @@ that answer "does this hold up at a realistic 20-60 bidder scale?".
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 import time
@@ -18,6 +19,9 @@ from pathlib import Path
 import requests
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from tools.score_case import score  # noqa: E402
 
 
 def wait_for_job(base: str, headers: dict, pid: str, poll: float = 2.0,
@@ -48,6 +52,7 @@ def main() -> int:
     parser.add_argument("--case", default="demo_case_stress",
                         help="case folder (relative to repo root) from make_demo_case.py")
     parser.add_argument("--name", default="stress test")
+    parser.add_argument("--out", help="write the summary (timings, agreement, usage) to this JSON file")
     args = parser.parse_args()
 
     base = args.backend.rstrip("/")
@@ -113,6 +118,33 @@ def main() -> int:
     print(f"Arithmetic errors:  {', '.join(arith) or 'none'}")
     print(f"Recommended:        {ev.get('recommended')}")
     print(f"Reports:            {requests.get(f'{base}/projects/{pid}/reports', headers=headers, timeout=30).json()}")
+
+    agreement = None
+    if (case / "ground_truth.json").is_file():
+        agreement = score(ev, json.loads((case / "ground_truth.json").read_text()))
+        o = agreement["overall"]
+        print(f"Agreement:          {o['agree']}/{o['of']} checks ({o['pct']}%)")
+        for k, v in agreement.items():
+            if k != "overall" and v["disagreements"]:
+                print(f"  {k}: {v['disagreements']}")
+    usage = requests.get(f"{base}/projects/{pid}/usage", headers=headers, timeout=30)
+    usage = usage.json() if usage.status_code == 200 else None
+    if usage:
+        print(f"Model cost:         ${usage['usd_total']} total, ${usage['usd_per_bid_mean']} mean / "
+              f"${usage['usd_per_bid_median']} median per bid; {usage['tokens_per_bid']} tokens and "
+              f"{usage['calls_per_bid']} calls per bid; median model time per bid "
+              f"{usage['model_seconds_per_bid_median']} s; failed calls {usage['failed_calls']}")
+        print(f"Models served:      {usage['models']}")
+    if args.out:
+        Path(args.out).write_text(json.dumps({
+            "project": pid, "case": case.name, "bidders": len(bidders),
+            "models": {"text": health["text_model"], "vision": health["vision_model"]},
+            "seconds": {"upload": round(t_upload, 1), "rubric": round(t_rubric, 1),
+                        "extract": round(t_extract, 1), "evaluate": round(t_final, 1),
+                        "total": round(time.time() - t_start, 1)},
+            "stage1_passed": s1_pass, "stage2_passed": s2_pass, "arithmetic_errors": arith,
+            "recommended": ev.get("recommended"), "agreement": agreement, "usage": usage,
+        }, indent=2))
     return 0
 
 

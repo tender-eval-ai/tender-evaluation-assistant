@@ -16,6 +16,7 @@ Project lifecycle (mirrors the CLI checkpoints, which stay human-editable):
                                             (deterministic; no LLM)
     GET  /projects/{id}/status              poll background job state
     GET  /projects/{id}/evaluation          full EvaluationResult JSON
+    GET  /projects/{id}/usage               tokens, calls, seconds and $ per bid
     GET  /projects/{id}/reports[/{name}]    list / download the Word deliverables
     PUT  /projects/{id}/bids/{tenderer}/extraction   inject or correct an extraction
 
@@ -570,6 +571,16 @@ def run_evaluation(pid: str) -> dict:
 @api.get("/projects/{pid}/status")
 def status(pid: str) -> dict:
     return _get_status(_project_dir(pid))
+
+
+@api.get("/projects/{pid}/usage")
+def get_usage(pid: str) -> dict:
+    """Model usage and cost for the last run: totals, $ per bid, per-bid and per-model
+    breakdown, failed calls (fallbacks) — written by the graph next to evaluation.json."""
+    path = _project_dir(pid) / "work" / "usage" / "summary.json"
+    if not path.is_file():
+        raise HTTPException(404, "no usage summary yet (written when the evaluation runs)")
+    return _read_json(path)
 
 
 @api.get("/projects/{pid}/evaluation")

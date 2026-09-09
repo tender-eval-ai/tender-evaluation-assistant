@@ -619,6 +619,17 @@ if page == NAV[3]:
         st.markdown(f"**{rubric['tender_ref']}** — {rubric['subject']}")
         if ev.get("recommended"):
             st.success(f"Recommended offer: **{ev['recommended']}**")
+        try:
+            u = call("GET", f"/projects/{pid}/usage").json()
+        except RuntimeError:              # 404: no model calls in this run (stored extractions)
+            u = {"bids": 0}
+        if u["bids"]:
+            served = ", ".join(sorted(set(u["models"].values()))) if u.get("models") else ""
+            st.caption(f"Model usage for this run: **${u['usd_total']}** total, "
+                       f"${u['usd_per_bid_mean']} per bid (median ${u['usd_per_bid_median']}), "
+                       f"{u['tokens_per_bid']} tokens and {u['calls_per_bid']} calls per bid, "
+                       f"{u['failed_calls']} failed call(s)"
+                       + (f" — served by {served}" if served else "") + ".")
 
         st.markdown("#### Stage I — Completeness")
         items = [i["id"] for i in rubric["stage1_checklist"]]

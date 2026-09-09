@@ -149,20 +149,26 @@ purchase order is confirmed.
 CERT_LINE = "\nNon-collusive Tendering Certificate: completed and signed.\n"
 
 
+def synth_truth(i: int) -> dict:
+    """Ground truth for varied bidder i (the seeded-defect rules in one place)."""
+    unit = 10.0 + ((i * 37) % 500) / 100          # HK$10.00 - 14.99, spread
+    arithmetic_error = i % 9 == 4
+    shelf = 6 if i % 11 == 5 else 12 + (i % 3) * 6  # 6 fails; 12/18/24 comply
+    return {"certificate": i % 7 != 3, "unit_price": round(unit, 2),
+            "quoted_total": round(unit * 50_000 + (500.0 if arithmetic_error else 0.0), 2),
+            "arithmetic_error": arithmetic_error, "shelf_life_months": shelf,
+            "delivery_days": 25 + (i % 15), "scanned": i in (2, 17)}
+
+
 def synth_offer(i: int) -> tuple[str, str, bool]:
     """Deterministic varied offer for bidder i. Returns (name, text, scanned)."""
     name = f"Tenderer_{i:02d}"
-    unit = 10.0 + ((i * 37) % 500) / 100          # HK$10.00 - 14.99, spread
-    total = unit * 50_000
-    if i % 9 == 4:
-        total += 500.0                             # arithmetic error to be flagged
-    missing_cert = i % 7 == 3                      # Stage I failure
-    shelf = 6 if i % 11 == 5 else 12 + (i % 3) * 6  # 6 fails; 12/18/24 comply
+    t = synth_truth(i)
     text = OFFER_TEMPLATE.format(
-        name=name, day=10 + (i % 18), unit=unit, total=total,
-        product=f"CleanSolv {100 + i}", shelf=shelf,
-        cert="" if missing_cert else CERT_LINE, delivery=25 + (i % 15))
-    return name, text, i in (2, 17)
+        name=name, day=10 + (i % 18), unit=t["unit_price"], total=t["quoted_total"],
+        product=f"CleanSolv {100 + i}", shelf=t["shelf_life_months"],
+        cert=CERT_LINE if t["certificate"] else "", delivery=t["delivery_days"])
+    return name, text, t["scanned"]
 
 
 def _pad_pages(pages: list[str]) -> list[str]:
@@ -265,6 +271,8 @@ def main() -> None:
                   ("Tenderer_C", OFFER_C, True)]
     else:
         offers = [synth_offer(i) for i in range(1, args.bidders + 1)]
+        truth = {f"Tenderer_{i:02d}": synth_truth(i) for i in range(1, args.bidders + 1)}
+        (base / "ground_truth.json").write_text(json.dumps(truth, indent=2))
 
     scanned = []
     for name, offer, scan in offers:
