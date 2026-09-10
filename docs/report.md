@@ -584,8 +584,23 @@ All four measured runs found the same 4 missing certificates, 3 shelf-life breac
   (→ 16k model variant, `LLM_CONTEXT_TOKENS`); a runaway 14k-token generation (→
   `LLM_MAX_TOKENS`); a first-pass "present on page 11" without reading page 11 (→
   grounding).
-- **No error analysis exists on real documents**, and none of the synthetic cases
-  contains OCR noise, handwriting, rotated pages, multi-file bids or foreign currency.
+- **One redacted client sample was run end to end on the Cloud Run deployment
+  (2026-09-10), unscored.** A real tender set of 12 files with one scanned offer, the
+  sensitive content redacted by the client before hand-over. The pipeline derived a
+  rubric of 10 checklist items and 5 essential requirements, reported the offer as
+  **failing Stage I with 3 of 10 required documents missing**, extracted the unit price
+  and quoted total and passed the arithmetic tally; the agent searched 6 findings and
+  read 6 pages on demand; 61 model calls, 327k tokens, 486 s of model time, $0.34 on
+  Gemini (`output/step4/test1_sample/usage.json`). Whether the three "missing"
+  documents are truly absent, were removed by the redaction, or were missed by the
+  pipeline is precisely what the P4 regression must establish: the panel's own report
+  for this case is in the client materials and has not been compared. This is the only
+  real-document run and the only one with multi-file input and real OCR noise; its
+  outputs are saved under `output/step4/test1_sample/` (gitignored) and the project was
+  then removed from the deployment, which again holds synthetic data only.
+- **No scored error analysis exists on real documents**, and none of the synthetic
+  cases contains OCR noise, handwriting, rotated pages, multi-file bids or foreign
+  currency.
 
 ### 7.7 Inconsistent, outdated or suspicious results — what the audit found
 
@@ -712,8 +727,9 @@ tools; private scale-to-zero Cloud Run deployment; 102 offline tests; CI.
 **10.2 Partially complete.** Schema-enforced output and the context guard exist but were
 not part of any measured run (off by default); the fully local configuration is
 measured only on an 8B laptop model; `LLM_MAX_TOKENS` was added after a runaway and not
-re-measured; the Cloud Run demo has no UI screenshot (headless Chrome captured only
-Streamlit's loading skeleton).
+re-measured; one redacted client sample has been run end to end but not scored against
+the panel's report (§7.6); the Cloud Run demo has no UI screenshot (headless Chrome
+captured only Streamlit's loading skeleton).
 
 **10.3 Missing.** Stages III–V; production inference on the DGX; regression on real
 cases; Word template fidelity; batch queue; user management; a `LICENSE`; a lockfile;
@@ -791,7 +807,7 @@ number without an artifact.
 
 | Priority | Issue | Evidence | Impact | Recommended fix |
 | --- | --- | --- | --- | --- |
-| **High** | All accuracy is on templated synthetic documents; prompts, keyword lists and the contents-entry rule were tuned on them | §5.5; `tools/make_demo_case.py`, `app/retrieval.py`, `docs/plan.md` §3 row 7 | The 100% figures may not transfer to real offers (OCR noise, varied wording, multi-file bids); a false "missing" on a real bid is the product's costliest error | Build a sanitised regression set from the client's three historical cases (P4), score with `tools/score_case.py`, and freeze the buried case as a held-out benchmark while iterating rules on a separate development case |
+| **High** | All scored accuracy is on templated synthetic documents; prompts, keyword lists and the contents-entry rule were tuned on them. The one redacted real case reported 3 of 10 documents missing, unverified | §5.5, §7.6; `tools/make_demo_case.py`, `app/retrieval.py`, `docs/plan.md` §3 row 7; `output/step4/test1_sample/` | The 100% figures may not transfer to real offers (OCR noise, varied wording, multi-file bids); a false "missing" on a real bid is the product's costliest error | Build a sanitised regression set from the client's three historical cases (P4), score with `tools/score_case.py`, and freeze the buried case as a held-out benchmark while iterating rules on a separate development case |
 | **High** | The production inference path (vLLM on the DGX, 30B-class models) is unmeasured; the only local measurement is an 8B laptop model that could not drive the agent | `output/step2/bench_local/results.json`; `docs/plan.md` P3 | Latency, throughput and agent reliability for the real deployment are unknown; the sizing argument rests on inference | Rent one L4/A10 GPU for a day, serve `qwen3:30b`-class text and Qwen3-VL via vLLM with `LLM_JSON_SCHEMA=1` and `LLM_CONTEXT_TOKENS`, rerun the stress and buried benchmarks |
 | **High** | First-pass visibility caps: 8 OCR pages and 15k/45k characters; real bids are 60–400 pages | `app/config.py`, `app/retrieval.py`, `app/ingest.py` | Correctness on long bids depends on keyword retrieval plus a 6-page agent budget; a Price Schedule phrased unusually is invisible | Batched OCR of whole bids on the DGX (P3), a page index (BM25 or embeddings) for `search_pages`, and budgets expressed per bid rather than per document |
 | **Medium** | Single shared API key; key in evidence-link query strings and in the UI's inline script; `CORS_ORIGINS=*` default; unbounded upload size | `backend/api.py: require_key_or_query`, `frontend/ui.py: page_url`, `_save_pdfs` | Acceptable on a private network or behind Cloud Run IAM; not for a multi-user or internet-facing deployment | Short-lived signed URLs for page images, per-user tokens or the client's SSO, explicit `CORS_ORIGINS`, an upload cap and magic-byte check |
@@ -984,6 +1000,8 @@ gap between the two is well understood and written down.
    and is a rented GPU acceptable as an interim measurement platform?
 3. Is the "27 and 37 minutes per bid" local-agent figure worth keeping without an
    artifact, or should the row be dropped until re-measured?
+3a. For the redacted sample run (§7.6): does the panel's report for that case confirm
+   the three missing documents, and can that comparison be the first P4 regression?
 4. Should the Cloud Run demo become shareable (console-created OAuth client for IAP, or
    a public URL behind the key), and for how long should it stay deployed?
 5. Is `GITHUB_MODELS_BASE_URL` to be renamed now (with an alias) or kept until the DGX
