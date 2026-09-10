@@ -93,10 +93,11 @@ def test_ocr_uses_vision_chain():
 
 def test_reasoning_models_get_no_temperature():
     # o-series models reject the temperature parameter; others pin temperature=0.
-    assert "temperature" not in LLM._params("openai/o3", [], json_mode=True)
-    assert LLM._params("openai/gpt-4.1", [], json_mode=True)["temperature"] == 0
-    assert LLM._params("openai/gpt-4.1", [], json_mode=True)["response_format"] == {"type": "json_object"}
-    assert "response_format" not in LLM._params("openai/gpt-4.1", [], json_mode=False)
+    params = LLM(Config(token="unused"))._params
+    assert "temperature" not in params("openai/o3", [], json_mode=True)
+    assert params("openai/gpt-4.1", [], json_mode=True)["temperature"] == 0
+    assert params("openai/gpt-4.1", [], json_mode=True)["response_format"] == {"type": "json_object"}
+    assert "response_format" not in params("openai/gpt-4.1", [], json_mode=False)
 
 
 def test_request_timeout_is_configurable(monkeypatch):
@@ -105,3 +106,12 @@ def test_request_timeout_is_configurable(monkeypatch):
     assert cfg.request_timeout == 1800.0
     client = LLM(cfg)._client("http://ollama.test/v1")
     assert client.timeout == 1800.0
+
+
+def test_max_tokens_cap_is_optional(monkeypatch):
+    monkeypatch.delenv("LLM_MAX_TOKENS", raising=False)
+    llm = LLM(Config(token="unused"))
+    assert "max_tokens" not in llm._params("m", [], True)
+    monkeypatch.setenv("LLM_MAX_TOKENS", "4096")
+    llm = LLM(Config(token="unused"))
+    assert llm._params("m", [], True)["max_tokens"] == 4096

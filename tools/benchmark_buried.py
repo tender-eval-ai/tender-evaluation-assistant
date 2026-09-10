@@ -62,6 +62,9 @@ def main() -> int:
     ap.add_argument("--out", default="output/bench")
     ap.add_argument("--max-ocr-pages", type=int, default=4,
                     help="initial OCR cap per document (the agent may read more)")
+    ap.add_argument("--keep", action="store_true",
+                    help="do not clear a mode's run dir: bids already extracted there are kept "
+                         "and only the missing ones run (the graph resumes from bids/*.json)")
     ap.add_argument("--modes", default="baseline,agent",
                     help="which runs to (re)do, e.g. 'agent' to redo only the agent run and "
                          "keep an existing baseline (its rubric and OCR cache are reused)")
@@ -81,8 +84,9 @@ def main() -> int:
         cfg.cache_dir = out / "cache"          # shared: agent run re-uses first-pass OCR
         cfg.agent_enabled = mode == "agent"
         run_dir = out / mode
-        shutil.rmtree(run_dir, ignore_errors=True)
-        run_dir.mkdir(parents=True)
+        if not args.keep:
+            shutil.rmtree(run_dir, ignore_errors=True)
+        run_dir.mkdir(parents=True, exist_ok=True)
         if mode == "agent" and (out / "baseline" / "rubric.json").is_file():
             shutil.copy(out / "baseline" / "rubric.json", run_dir / "rubric.json")  # same rubric
         llm = LLM(cfg)

@@ -87,6 +87,12 @@ class Config:
     # parallel on one GPU) can legitimately take longer per page.
     request_timeout: float = field(
         default_factory=lambda: float(os.environ.get("LLM_TIMEOUT_S", "600")))
+    # Cap on generated tokens per call (LLM_MAX_TOKENS; unset = provider default). The
+    # pipeline's JSON outputs are small; the cap exists because a local 8B model in
+    # JSON mode was seen generating 14k tokens without stopping. Thinking models count
+    # their reasoning against it, so keep it generous (4096+) if set.
+    max_tokens: int | None = field(
+        default_factory=lambda: int(os.environ["LLM_MAX_TOKENS"]) if os.environ.get("LLM_MAX_TOKENS") else None)
     # USD per 1M tokens, overriding app.usage.DEFAULT_PRICES: MODEL_PRICES='{"m": {"in":
     # 0.3, "out": 2.5, "cached_in": 0.01}}'. Recorded next to every published cost.
     model_prices_json: str | None = field(default_factory=lambda: os.environ.get("MODEL_PRICES"))

@@ -244,7 +244,7 @@ runs on the client's DGX. The cloud work is deliberate and separate: the model l
 is provider-agnostic, and that claim is worthless until measured, so I ran the same
 pipeline on Gemini via Vertex AI, on DeepSeek, and fully local, and recorded
 agreement, latency and dollars per bid on synthetic data. The numbers cut both ways:
-the cloud runs finish 30 bidders in under two minutes for 3 to 16 cents with identical verdicts, while the fully local 8B stack on my laptop reaches the same 100% for free but takes 45 minutes and needed sequential bids and a longer timeout — which is precisely the sizing argument for the client's DGX. And the boundary is enforced in code — cloud paths and MCP clients
+the cloud runs finish 30 bidders in under two minutes for 3 to 16 cents with identical verdicts, while the fully local 8B stack on my laptop reaches the same 100% for free but takes 45 minutes and needed sequential bids and a longer timeout — which is precisely the sizing argument for the client's DGX. The same 8B model could not drive the evidence-search agent at all on the laptop — it found neither buried certificate and one bid ran away for 14k tokens — but it never fabricated a citation, which is the property the guardrails are for. And the boundary is enforced in code — cloud paths and MCP clients
 only ever see projects flagged synthetic.
 
 **Q: What was different about Vertex compared with an API key?**

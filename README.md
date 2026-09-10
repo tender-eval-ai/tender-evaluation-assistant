@@ -328,8 +328,9 @@ pass capped at 4 pages):
 | DeepSeek + local OCR | baseline | 0/2 | 0 | 0/3 | 0/9 | 0 | 585 s | $0.0038 |
 | DeepSeek + local OCR | agent | 2/2 | 0 | 3/3 | 6/9 | 16 | 856 s | $0.0162 |
 | fully local | baseline | 0/2 | 0 | 0/3 | 0/9 | 0 | 1106 s | $0.0 |
+| fully local | agent (bids 1–2 of 3; 3rd ran away) | 0/2 | 0 | 1/2 | 0/6 | 10 | 3818 s | $0 |
 
-*Fully local agent run: the 3-way-parallel attempt aborted on a 600 s timeout of a `qwen3:8b` verification call; a sequential rerun is in progress and will be added here.*
+*Fully local agent run: the 3-way-parallel attempt aborted on a 600 s timeout; run sequentially, the 8B model drove the tools for 27 and 37 minutes on bids 1–2 without finding either certificate (both exist on page 11) and restored one price; the third bid — the one with no certificate, where the search must exhaust its budget — ran away twice (14k generated tokens per request, with a 4k and then a 16k context) and was stopped. 0 false restores, no fabricated citation: the guardrails held, the search did not.*
 
 **OCR, page by page** (the benchmark's 36 scanned pages, separate caches):
 
@@ -349,7 +350,10 @@ parallel a local OCR page exceeded the 10-minute client timeout at bid 29/30, an
 run was resumed from its checkpoints sequentially (`MAX_PARALLEL_BIDS=1`,
 `LLM_TIMEOUT_S`) — the checkpointing did exactly what it is for. The local 8B model
 also needed one more deterministic guard: it cited a contents entry as evidence for
-three checklist items, which grounding now demotes in code. Local OCR recovered every
+three checklist items, which grounding now demotes in code — and it cannot drive the
+evidence-search agent on this laptop (see the benchmark note; `LLM_MAX_TOKENS` now
+bounds a runaway generation, and Ollama's default 4k context, which silently
+truncated the agent's transcripts, needs a 16k model variant). Local OCR recovered every
 ground-truth fact Gemini did, blanked one filler page, and is 13× slower per page.
 These laptop numbers bound the *demo*; production inference on the client's DGX is a
 different class of hardware. Metered spend for the whole step: **$0.35** (Vertex) +

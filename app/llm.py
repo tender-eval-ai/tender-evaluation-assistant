@@ -77,13 +77,14 @@ class LLM:
             client.api_key = self._adc.token()
         return client
 
-    @staticmethod
-    def _params(model: str, messages: list, json_mode: bool) -> dict:
+    def _params(self, model: str, messages: list, json_mode: bool) -> dict:
         params: dict = {"model": model, "messages": messages}
         if not _is_reasoning_model(model):
             params["temperature"] = 0
         if json_mode:
             params["response_format"] = {"type": "json_object"}
+        if getattr(self.cfg, "max_tokens", None):
+            params["max_tokens"] = self.cfg.max_tokens
         return params
 
     def _complete(self, chain: list[str], messages: list, json_mode: bool = False) -> str:

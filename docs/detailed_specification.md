@@ -450,6 +450,9 @@ stay visible — an early bug hid it behind an immediate rerun).
 | `API_KEY` | Enables auth; required on any shared machine |
 | `DATA_DIR`, `INBOX_DIR` | Storage roots (bind-mounted in Docker) |
 | `PUBLIC_BACKEND_URL` | What the *browser* can reach (folder upload + evidence links) |
+| *(Ollama context)* | Ollama serves a 4k context by default and truncates longer prompts silently; use a 16k model variant for the text model (`ollama create qwen3:8b-16k`, see `.env.example`) or `OLLAMA_CONTEXT_LENGTH` |
+| `LLM_TIMEOUT_S` | Per-request model timeout (default 600 s); raise for local vision models under load |
+| `LLM_MAX_TOKENS` | Optional cap on generated tokens per call (unset by default); bounds a runaway local generation |
 | `MODEL_PRICES` | JSON, USD per 1M tokens per model (`in`, `out`, `cached_in`), overriding the built-in table used for $ per bid |
 | *(Vertex entries)* | `google/gemini-2.5-flash@https://<region>-aiplatform.googleapis.com/v1/projects/<project>/locations/<region>/endpoints/openapi` as `TEXT_MODEL` / `VISION_MODEL`; auth via `gcloud auth application-default login`, no key |
 | `MCP_LOCAL_MODEL` | `1` declares an on-premises MCP client: unflagged (real) projects are served over stdio; the local client sets it itself — never for Claude Desktop |
@@ -495,7 +498,7 @@ stay visible — an early bug hid it behind an immediate rerun).
 | MCP tools, same question two ways (`--buried` project, first pass cached pp. 1–4, agent off) | cloud driver (DeepSeek): certificate **found p.11** in 3 steps / 32 s, absent one **not found** in 7 steps; local driver (`qwen3:8b`, cold cache): **found p.11** in 4 steps / 111 s, absent one not found in 3 steps; no run ever produced an unverified citation |
 | MCP guard, live | HTTP refused to start without opt-in or key; 401 without key; unflagged project refused even with `MCP_LOCAL_MODEL=1`; synthetic served |
 | Three backends, 30-bidder case (Vertex Gemini / DeepSeek + local OCR / fully local) | agreement **100% / 100% / 100%**; wall clock **83 s / 115 s / 45 min (two passes)**; cost **$0.16 / $0.03 / $0** ($0.005 / $0.001 / $0 per bid) |
-| Three backends, buried benchmark | Vertex 2/2 certs, 0 false, 3/3 prices, 9/9 evidence in 228 s ($0.12); DeepSeek + local OCR 2/2, 0, 3/3, 6/9 in 856 s ($0.02); fully local baseline 1106 s, 1 first-pass false positive (contents entry → new grounding rule) |
+| Three backends, buried benchmark | Vertex 2/2 certs, 0 false, 3/3 prices, 9/9 evidence in 228 s ($0.12); DeepSeek + local OCR 2/2, 0, 3/3, 6/9 in 856 s ($0.02); fully local baseline 1106 s, 1 first-pass false positive (contents entry → new grounding rule); fully local agent: 0/2 certificates found on the two bids that completed (27–37 min each), 0 false restores, third bid ran away and was stopped |
 | OCR page by page (36 pages) | qwen3-vl 48.7 s/page, Gemini 3.8 s/page ($0.001); both recover all 14 ground-truth facts; 1 blank local transcript |
 
 ## 12. Demo → production mapping and roadmap
