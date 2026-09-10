@@ -104,11 +104,11 @@ per service; the root `requirements.txt` is the dev aggregate (both + pytest).
 
 | Path | Files | LOC (py) | Contents |
 | --- | --- | --- | --- |
-| `app/` | 19 | ~2,270 | Pipeline library (18 modules + `__init__`) incl. graph, agent, tools, grounding, gcp, usage |
+| `app/` | 19 | ~2,350 | Pipeline library (18 modules + `__init__`) incl. graph, agent, tools, grounding, gcp, usage |
 | `backend/` | 4 | 697 | `api.py`, Dockerfile, requirements, `__init__` |
 | `frontend/` | 3 | 683 | `ui.py`, Dockerfile, requirements |
-| `mcp_server/` | 3 | ~630 | MCP server (393), local-model client (237), `__init__` |
-| `test/` | 21 | ~1,980 | 15 test modules, 103 tests, fixtures, conftest |
+| `mcp_server/` | 3 | ~670 | MCP server (404), local-model client (261), `__init__` |
+| `test/` | 21 | ~1,990 | 15 test modules, 103 tests, fixtures, conftest |
 | `deploy/cloudrun/` | 5 | — | Private Cloud Run packaging: nginx ingress config + Dockerfile, `cloudbuild.yaml`, idempotent `setup.sh`, `deploy.sh` |
 | `tools/` | 8 | ~930 | Case generator (incl. `--buried`, ground truth), PDF generator, stress driver, evidence-search benchmark, case scorer, OCR comparison, results tables |
 | `demo_case/` | 5 | — | Committed synthetic demo PDFs (2 tender, 3 bids) |
@@ -120,7 +120,7 @@ regenerable `buried_case/` and `demo_case_stress/`.
 
 ## 5. The pipeline library — module by module
 
-### `app/config.py` (125 LOC)
+### `app/config.py` (120 LOC)
 Environment loading and model configuration. `Config` dataclass fields: `base_url`
 (default from `GITHUB_MODELS_BASE_URL` — historic name, now usually the local Ollama
 URL), `text_model` / `vision_model` + `*_fallbacks` lists, `cache_dir`, prompt budgets
@@ -132,7 +132,7 @@ URL), `text_model` / `vision_model` + `*_fallbacks` lists, `cache_dir`, prompt b
   (`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `DASHSCOPE_API_KEY`, `ZHIPU_API_KEY`,
   no key at all for Vertex), so one fallback chain can span providers with different credentials.
 
-### `app/llm.py` (197 LOC)
+### `app/llm.py` (193 LOC)
 The only file that talks to a model. One `LLM` class over the OpenAI SDK:
 - **Chain entries** are `"model"` (served from `cfg.base_url`) or `"model@base_url"`
   — the `@` form lets a fallback live on a different endpoint entirely (cloud primary,
@@ -325,7 +325,7 @@ only regardless. The server writes nothing but the OCR cache and never prints to
 stdout (the stdio transport owns it; logs go to stderr). `--list` prints what the
 current policy would serve.
 
-### `mcp_server/local_client.py` (255 LOC) — the production-compatible client
+### `mcp_server/local_client.py` (261 LOC) — the production-compatible client
 Launches the server as a stdio subprocess with `MCP_LOCAL_MODEL=1` and drives the
 tools with the project's own `LLM` class on a *local* endpoint (default
 `qwen3:8b@http://localhost:11434/v1`; cloud endpoints are refused unless

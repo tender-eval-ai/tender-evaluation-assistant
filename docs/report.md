@@ -142,7 +142,7 @@ Line counts are `wc -l` on tracked `.py` files.
 
 ```
 tender_evaluation_assistant/
-├── app/                         core pipeline library (18 modules, ~2,360 lines)
+├── app/                         core pipeline library (18 modules, ~2,350 lines)
 │   ├── config.py                env → Config dataclass; per-host key selection (key_for)
 │   ├── llm.py                   OpenAI-compatible client: chains, JSON mode, OCR, usage
 │   ├── gcp.py                   Vertex AI OAuth token provider (ADC)
@@ -163,7 +163,7 @@ tender_evaluation_assistant/
 │   └── pipeline.py              bidder discovery, offline fixture run, console summary
 ├── backend/                     serving: FastAPI project API (api.py, 697 lines), Dockerfile, requirements
 ├── frontend/                    serving: Streamlit review UI (ui.py, 683 lines), Dockerfile, requirements
-├── mcp_server/                  serving: MCP server over the tools (server.py, 404) + local-model client (255)
+├── mcp_server/                  serving: MCP server over the tools (server.py, 404) + local-model client (261)
 ├── deploy/cloudrun/             infrastructure: nginx ingress sidecar, Cloud Build config, setup.sh, deploy.sh
 ├── docker-compose.yml           infrastructure: two-service local stack
 ├── .github/workflows/ci.yml     CI: pytest on every push and PR
@@ -171,7 +171,7 @@ tender_evaluation_assistant/
 │                                (make_demo_case.py), PDF writer (pdfgen.py), stress driver,
 │                                buried-evidence benchmark, ground-truth scorer, OCR comparison,
 │                                results tables
-├── test/                        103 offline tests (15 modules, ~1,980 lines) + JSON fixtures
+├── test/                        103 offline tests (15 modules, ~1,990 lines) + JSON fixtures
 ├── demo_case/                   committed synthetic 3-bidder case (5 one-page PDFs)
 ├── docs/                        plan.md, detailed_specification.md, interview_prep.md, this report,
 │                                mcp_traces/ (5 experiment traces)
@@ -777,7 +777,7 @@ projects. None affects the tracked code.
   `shutil.rmtree` of the data directory); constant-time API key comparison; jobs left
   at "running" by a restart now flip to an error at startup; OCR cache written
   atomically; the inbox/UI PDF listing now recurses like ingestion; the `gh` token
-  lookup is cached instead of spawning a subprocess per request; a usage-ledger
+  lookup was cached instead of spawning a subprocess per request (and later removed with the rest of the GitHub token plumbing); a usage-ledger
   summation moved inside its lock.
 
 **10.8 Remaining mismatches [verified].** `GITHUB_MODELS_BASE_URL` is the name of the
