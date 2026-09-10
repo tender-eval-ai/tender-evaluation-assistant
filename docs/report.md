@@ -410,7 +410,8 @@ set of rules that decide what a model output is allowed to mean.
 - **Credentials.** `Config.key_for` picks a key by hostname (DeepSeek, AI Studio,
   DashScope, Zhipu); Vertex hosts get no key and `app/gcp.py: ADCToken` supplies an OAuth
   bearer refreshed five minutes before expiry under a lock; every other host receives a
-  placeholder, never the GitHub token.
+  placeholder. The GitHub Models token plumbing was removed after the audit (provider
+  retired).
 - **Why.** The NDA forces a base-URL swap between demo (cloud, synthetic) and production
   (vLLM); an OpenAI-compatible client is the one interface all four providers share.
 
@@ -762,8 +763,9 @@ projects. None affects the tracked code.
 - Defaults in `app/config.py` pointed at the retired GitHub Models endpoint and
   `openai/gpt-4o-mini`; now the keyless Ollama pair that `.env.example` ships.
 - `Config.key_for` handed the GitHub token to every unrecognised host, including a local
-  or on-premises server, contrary to `.env.example`; now only GitHub hosts get it (test
-  added).
+  or on-premises server, contrary to `.env.example`; the GitHub token plumbing
+  (`GITHUB_TOKEN`, the `gh auth token` subprocess fallback) was then removed entirely,
+  so unknown hosts only ever get a placeholder (test added).
 - `run_demo.py`'s confidentiality warning, `docker-compose.yml`'s header and the
   README's quickstart named GitHub Models / `GITHUB_TOKEN` / an EC2 security group.
 - The README `run` example broke on a comment after a backslash; the bare

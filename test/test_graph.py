@@ -19,7 +19,7 @@ FIXTURE_BIDS = {e.tenderer: e for e in (BidExtraction.model_validate_json(p.read
 
 
 def _cfg(tmp_path) -> Config:
-    cfg = Config(token="unused")
+    cfg = Config()
     cfg.cache_dir = tmp_path / "cache"
     cfg.verify_findings = False
     cfg.agent_enabled = False      # LLM steps are stubbed; no model available here

@@ -55,7 +55,7 @@ def run(verdicts):
     rubric = load_rubric(FIXTURES / "rubric.json")
     llm = ScriptedLLM(verdicts)
     ext, amendments = verify_extraction(make_extraction(), make_docs(), rubric,
-                                        Config(token="t"), llm)
+                                        Config(), llm)
     return ext, amendments, llm
 
 

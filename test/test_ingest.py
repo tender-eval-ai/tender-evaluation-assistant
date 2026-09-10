@@ -14,7 +14,7 @@ def test_text_pdf_classified_and_extracted(tmp_path):
     pdf = tmp_path / "terms.pdf"
     make_text_pdf(pdf, TEXT)
     assert classify_pdf(pdf) == "text"
-    doc = load_pdf(pdf, Config(token="unused"))
+    doc = load_pdf(pdf, Config())
     assert doc.kind == "text"
     assert "essential requirement" in doc.pages[0].text
     assert "[Page 1]" in doc.joined()
@@ -31,7 +31,7 @@ def test_scanned_pdf_requires_llm(tmp_path):
         writer.write(f)
     assert classify_pdf(pdf) == "scanned"
     with pytest.raises(RuntimeError, match="OCR requires"):
-        load_pdf(pdf, Config(token="unused"))
+        load_pdf(pdf, Config())
 
 
 def _tiny_jpeg() -> bytes:
@@ -63,7 +63,7 @@ def test_mixed_pdf_ocrs_only_the_scanned_page(tmp_path):
     make_text_pdf(pdf, ["Tender terms and conditions apply. " * 10] + [""] * 48,
                   images={1: _tiny_jpeg()})
     assert classify_pdf(pdf) == "text"
-    cfg = Config(token="unused")
+    cfg = Config()
     cfg.cache_dir = tmp_path / "cache"
     llm = _OCRStub()
     doc = load_pdf(pdf, cfg, llm)
@@ -80,5 +80,5 @@ def test_text_pdf_blank_page_not_ocred(tmp_path):
     # an OCR call — there is nothing on it to read.
     pdf = tmp_path / "report.pdf"
     make_text_pdf(pdf, ["Substantive tender content here. " * 10] + [""] * 48)
-    doc = load_pdf(pdf, Config(token="unused"), _NoOCR())
+    doc = load_pdf(pdf, Config(), _NoOCR())
     assert [p.source for p in doc.pages] == ["text", "text"]

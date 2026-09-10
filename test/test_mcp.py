@@ -71,7 +71,7 @@ def make_server(root, transport="stdio", local_model=False, ocr_budget=1):
     ocr = OCRStub()
 
     def cfg_factory(pdir):
-        cfg = Config(token="unused")
+        cfg = Config()
         cfg.cache_dir = pdir / "work" / "cache"
         cfg.agent_ocr_pages = ocr_budget
         return cfg

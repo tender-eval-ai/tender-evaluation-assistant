@@ -51,7 +51,7 @@ def _docs(tmp_path) -> list[Document]:
 
 
 def _cfg(tmp_path, steps=6, ocr=2) -> Config:
-    cfg = Config(token="unused")
+    cfg = Config()
     cfg.cache_dir = tmp_path / "cache"
     cfg.agent_max_steps, cfg.agent_ocr_pages = steps, ocr
     return cfg

@@ -130,7 +130,7 @@ URL), `text_model` / `vision_model` + `*_fallbacks` lists, `cache_dir`, prompt b
 - `load_dotenv()` — minimal `.env` parser, never overrides existing env vars.
 - `Config.key_for(base_url)` — **API key selected by endpoint hostname**
   (`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `DASHSCOPE_API_KEY`, `ZHIPU_API_KEY`,
-  `GITHUB_TOKEN`), so one fallback chain can span providers with different credentials.
+  no key at all for Vertex), so one fallback chain can span providers with different credentials.
 
 ### `app/llm.py` (197 LOC)
 The only file that talks to a model. One `LLM` class over the OpenAI SDK:
@@ -483,7 +483,7 @@ stay visible — an early bug hid it behind an immediate rerun).
 | `GITHUB_MODELS_BASE_URL` | Default endpoint for unqualified model names (historic name; typically local Ollama, production vLLM) |
 | `TEXT_MODEL`, `VISION_MODEL` | Primary chain entries, `model` or `model@base_url` |
 | `TEXT_MODEL_FALLBACKS`, `VISION_MODEL_FALLBACKS` | Comma-separated fallback entries |
-| `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `DASHSCOPE_API_KEY`, `ZHIPU_API_KEY`, `GITHUB_TOKEN` | Per-provider keys, matched to endpoints by hostname |
+| `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `DASHSCOPE_API_KEY`, `ZHIPU_API_KEY` | Per-provider keys, matched to endpoints by hostname; any other host gets a placeholder |
 | `VERIFY_FINDINGS` | `0` disables the adversarial pass |
 | `AGENT_SEARCH`, `AGENT_MAX_STEPS`, `AGENT_OCR_PAGES` | Evidence-search agent on/off (default on), step budget per finding (8), on-demand OCR pages per bid (6) |
 | `MAX_OCR_PAGES` | OCR cap per document (demo 8) |

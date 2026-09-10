@@ -48,7 +48,7 @@ class RecordingClients(dict):
 
 def make_llm(fail_models: set[str], content: str = '{"ok": true}', reject_schema: bool = False,
              **cfg_overrides):
-    defaults = dict(token="test-token", base_url=PRIMARY_URL,
+    defaults = dict(base_url=PRIMARY_URL,
                     text_model="openai/primary", text_fallbacks=["openai/fb1", "openai/fb2"],
                     vision_model="openai/vision", vision_fallbacks=["openai/vfb"])
     cfg = Config(**{**defaults, **cfg_overrides})
@@ -100,7 +100,7 @@ def test_ocr_uses_vision_chain():
 
 def test_reasoning_models_get_no_temperature():
     # o-series models reject the temperature parameter; others pin temperature=0.
-    params = LLM(Config(token="unused"))._params
+    params = LLM(Config())._params
     assert "temperature" not in params("openai/o3", [], json_mode=True)
     assert params("openai/gpt-4.1", [], json_mode=True)["temperature"] == 0
     assert params("openai/gpt-4.1", [], json_mode=True)["response_format"] == {"type": "json_object"}
@@ -109,7 +109,7 @@ def test_reasoning_models_get_no_temperature():
 
 def test_request_timeout_is_configurable(monkeypatch):
     monkeypatch.setenv("LLM_TIMEOUT_S", "1800")
-    cfg = Config(token="unused")
+    cfg = Config()
     assert cfg.request_timeout == 1800.0
     client = LLM(cfg)._client("http://ollama.test/v1")
     assert client.timeout == 1800.0
@@ -117,10 +117,10 @@ def test_request_timeout_is_configurable(monkeypatch):
 
 def test_max_tokens_cap_is_optional(monkeypatch):
     monkeypatch.delenv("LLM_MAX_TOKENS", raising=False)
-    llm = LLM(Config(token="unused"))
+    llm = LLM(Config())
     assert "max_tokens" not in llm._params("m", [], True)
     monkeypatch.setenv("LLM_MAX_TOKENS", "4096")
-    llm = LLM(Config(token="unused"))
+    llm = LLM(Config())
     assert llm._params("m", [], True)["max_tokens"] == 4096
 
 
@@ -175,17 +175,19 @@ def test_estimate_tokens_counts_text_parts_only():
     assert estimate_tokens(mixed) == 10
 
 
-def test_github_token_never_reaches_a_local_or_on_prem_endpoint():
-    """The GitHub PAT is only for GitHub hosts; Ollama and the client's vLLM get the
-    placeholder. Provider keys are matched by hostname (see test_usage for Vertex)."""
-    cfg = Config(token="ghp_secret")
+def test_unknown_hosts_only_ever_get_a_placeholder_key(monkeypatch):
+    """Provider keys are matched by hostname; Ollama, the client's vLLM or any other
+    host gets the placeholder — never a real credential (Vertex: see test_usage)."""
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "ds-secret")
+    cfg = Config()
+    assert cfg.key_for("https://api.deepseek.com/v1") == "ds-secret"
     assert cfg.key_for("http://localhost:11434/v1") == "local"
     assert cfg.key_for("http://dgx.internal:8000/v1") == "local"
-    assert cfg.key_for("https://models.github.ai/inference") == "ghp_secret"
+    assert cfg.key_for("https://models.github.ai/inference") == "local"
 
 
 def test_prompt_budgets_are_configurable(monkeypatch):
     monkeypatch.setenv("MAX_DOC_CHARS", "1000")
     monkeypatch.setenv("MAX_TOTAL_CHARS", "3000")
-    cfg = Config(token="unused")
+    cfg = Config()
     assert (cfg.max_doc_chars, cfg.max_total_chars) == (1000, 3000)

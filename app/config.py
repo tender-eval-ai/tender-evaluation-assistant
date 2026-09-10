@@ -7,9 +7,7 @@ DeepSeek — same client, different BASE_URL and model names.
 from __future__ import annotations
 
 import os
-import subprocess
 from dataclasses import dataclass, field
-from functools import lru_cache
 from pathlib import Path
 
 # Defaults = a keyless local Ollama (what .env.example ships); .env overrides. The
@@ -38,26 +36,11 @@ def load_dotenv(path: str | Path = ".env") -> None:
         os.environ.setdefault(key, value)
 
 
-@lru_cache(maxsize=1)
-def github_token() -> str | None:
-    """GITHUB_TOKEN env var, falling back to the gh CLI's stored token. Cached: Config()
-    is built per request/job and the gh lookup is a subprocess."""
-    token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_MODELS_TOKEN")
-    if token:
-        return token
-    try:
-        out = subprocess.run(["gh", "auth", "token"], capture_output=True, text=True, timeout=10)
-        if out.returncode == 0 and out.stdout.strip():
-            return out.stdout.strip()
-    except (OSError, subprocess.TimeoutExpired):
-        pass
-    return None
-
-
 @dataclass
 class Config:
+    # Historic name (the first demo provider was GitHub Models, retired 2026-08); it is
+    # simply "the base URL for unqualified model names".
     base_url: str = field(default_factory=lambda: os.environ.get("GITHUB_MODELS_BASE_URL", DEFAULT_BASE_URL))
-    token: str | None = field(default_factory=github_token)
     text_model: str = field(default_factory=lambda: os.environ.get("TEXT_MODEL", DEFAULT_TEXT_MODEL))
     vision_model: str = field(default_factory=lambda: os.environ.get("VISION_MODEL", DEFAULT_VISION_MODEL))
     # Tried in order when the model before them fails (rate limit, outage, bad request).
@@ -117,10 +100,11 @@ class Config:
 
     def key_for(self, base_url: str) -> str | None:
         """API key for an endpoint, selected by hostname — lets fallback-chain entries
-        span providers with different credentials. Local servers (Ollama, vLLM) accept
-        any non-empty placeholder. Vertex AI (aiplatform.googleapis.com) takes no key
-        at all: the client fetches OAuth tokens through app.gcp.ADCToken — so it must
-        not fall through to the GEMINI_API_KEY (AI Studio) rule below."""
+        span providers with different credentials. Vertex AI (aiplatform.googleapis.com)
+        takes no key at all: the client fetches OAuth tokens through app.gcp.ADCToken —
+        so it must not fall through to the GEMINI_API_KEY (AI Studio) rule below. Any
+        other host — local Ollama, the client's vLLM — gets a non-empty placeholder and
+        never a real credential."""
         if "aiplatform.googleapis.com" in base_url:
             return None
         for marker, env_var in (("deepseek", "DEEPSEEK_API_KEY"),
@@ -129,6 +113,4 @@ class Config:
                                 ("bigmodel", "ZHIPU_API_KEY")):
             if marker in base_url:
                 return os.environ.get(env_var)
-        # Only a GitHub host gets the GitHub token; a local/on-premises server (Ollama,
-        # the client's vLLM) must never receive it.
-        return (self.token or "local") if "github" in base_url else "local"
+        return "local"

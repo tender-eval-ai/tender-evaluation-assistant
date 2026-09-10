@@ -42,7 +42,7 @@ def test_model_prices_env_override():
     prices = load_prices(json.dumps({"deepseek-chat": {"in": 0.22, "out": 0.66}, "mine": {"in": 1, "out": 2}}))
     assert prices["deepseek-chat"] == {"in": 0.22, "cached_in": 0.014, "out": 0.66}   # merged
     assert cost_usd("mine", {"prompt_tokens": 1_000_000, "cached_tokens": 0, "output_tokens": 0}, prices) == 1.0
-    cfg = Config(token="unused")
+    cfg = Config()
     cfg.model_prices_json = json.dumps({"x": {"in": 5, "out": 5}})
     from app.llm import LLM
     assert LLM(cfg).usage.prices["x"] == {"in": 5, "out": 5}
@@ -117,7 +117,7 @@ def test_adc_token_refreshes_only_when_stale():
 
 def test_vertex_entries_take_no_key_but_a_fresh_token_per_call(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "ai-studio-key")
-    cfg = Config(token="unused")
+    cfg = Config()
     assert cfg.key_for(VERTEX) is None                                  # never the AI Studio key
     assert cfg.key_for("https://generativelanguage.googleapis.com/v1beta/openai") == "ai-studio-key"
 

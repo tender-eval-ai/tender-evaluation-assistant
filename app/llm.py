@@ -66,12 +66,7 @@ class LLM:
 
     def __init__(self, cfg: Config, token_provider: ADCToken | None = None):
         # Local OpenAI-compatible servers (Ollama, vLLM) need no real key; hosted
-        # endpoints do (per-host lookup in Config.key_for; GitHub hosts need the PAT).
-        if not cfg.token and "github" in cfg.base_url:
-            raise RuntimeError(
-                "No GitHub token found. Set GITHUB_TOKEN (fine-grained PAT with "
-                "'Models: read' permission) or run `gh auth login`. See .env.example."
-            )
+        # endpoints do (per-host lookup in Config.key_for).
         self.cfg = cfg
         self._clients: dict[str, OpenAI] = {}
         self.text_chain = [cfg.text_model] + cfg.text_fallbacks

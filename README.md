@@ -113,7 +113,7 @@ such as DeepSeek (`TEXT_MODEL=deepseek-chat@https://api.deepseek.com/v1` +
 `DEEPSEEK_API_KEY`) with local Ollama as automatic fallback — synthetic/sanitized
 documents only on any cloud path. Hosted endpoints pick their key by hostname
 (`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `DASHSCOPE_API_KEY`, `ZHIPU_API_KEY`,
-`GITHUB_TOKEN`), so a fallback chain can span providers. Chains
+), so a fallback chain can span providers. Chains
 (`*_MODEL_FALLBACKS`) are tried automatically when the model before them fails.
 Production swaps the base URL for vLLM on the client's hardware. (The original demo
 backend, GitHub Models, was retired in 2026.)
