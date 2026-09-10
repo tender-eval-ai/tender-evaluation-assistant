@@ -43,8 +43,10 @@ honest version is the strong version.*
 >   (Claude Desktop) see synthetic projects only.
 > - Shipped as a two-service Docker Compose stack (FastAPI backend with run/resume
 >   jobs; Streamlit review UI with triaged review, evidence highlighting and one-click
->   folder upload) with **91 fully-offline tests** and CI on every push; 30 bidders
->   evaluated end to end in 116 s.
+>   folder upload) with **98 fully-offline tests** and CI on every push, and as a
+>   **private, scale-to-zero Cloud Run service** (nginx ingress sidecar, GCS-mounted
+>   data with a checkpoint sync that survives instance restarts, Vertex AI via service
+>   account, Cloud Build) — same 30-bidder result, 101 s end to end, $0 idle.
 
 ### One-line version (for a crowded resume)
 
@@ -52,7 +54,7 @@ honest version is the strong version.*
 > that drafts public tender-evaluation reports from scanned bids (OCR → rubric
 > derivation → cited extraction → deterministic scoring → Word); 100% ground-truth
 > agreement on a 30-bidder case, 0→100% buried-evidence recall with zero false
-> positives; tools also served over MCP with a local-model client; measured on three providers; 91-test CI;
+> positives; tools also served over MCP with a local-model client; measured on three providers and deployed privately on Cloud Run; 98-test CI;
 > Dockerized, runs fully local for confidentiality.
 
 **Tailoring tips**: applying for an *AI/LLM/agent engineer* role → lead with bullets
@@ -121,7 +123,8 @@ bullet 5 and be ready for the egress question below.
 | **20–60** | Bidders per tender in production; hundreds of pages each |
 | **30 / 116 s / 100%** | Stress test through the graph: bidders / end-to-end time / ground-truth agreement (287 s before parallel fan-out) |
 | **4/4, 3/3, 3/3** | Missing certs (one inside a scan), shelf-life breaches, arithmetic errors — all caught |
-| **91** | Fully-offline tests in CI (incl. graph, agent, grounding, MCP, cost ledger) |
+| **98** | Fully-offline tests in CI (incl. graph, agent, grounding, MCP, cost ledger, Cloud Run checkpoint sync) |
+| **101 s / 116/116 / $0.16** | The same 30-bidder run on the private Cloud Run deployment, driven through the IAM proxy (12.8 s of it upload); $0 while idle |
 | **9 / 3** | MCP tools exposed (all read-only) / policies the guard distinguishes (stdio default, on-premises client, HTTP) |
 | **83 s / 115 s / 45 min** | 30-bidder run on Vertex Gemini / DeepSeek + local OCR / fully local (laptop) — 100% agreement on all three |
 | **$0.16 / $0.03 / $0** | Cost of that run ($0.005 / $0.001 / $0 per bid); whole step 2: $0.40 |
@@ -246,6 +249,25 @@ pipeline on Gemini via Vertex AI, on DeepSeek, and fully local, and recorded
 agreement, latency and dollars per bid on synthetic data. The numbers cut both ways:
 the cloud runs finish 30 bidders in under two minutes for 3 to 16 cents with identical verdicts, while the fully local 8B stack on my laptop reaches the same 100% for free but takes 45 minutes and needed sequential bids and a longer timeout — which is precisely the sizing argument for the client's DGX. The same 8B model could not drive the evidence-search agent at all on the laptop — it found neither buried certificate and one bid ran away for 14k tokens — but it never fabricated a citation, which is the property the guardrails are for. And the boundary is enforced in code — cloud paths and MCP clients
 only ever see projects flagged synthetic.
+
+**Q: You deployed it on Cloud Run — what did that involve, and what would you warn me about?**
+A: One private service with three containers: an nginx ingress that routes `/api` to
+the FastAPI backend and everything else to Streamlit, so the browser's direct uploads
+and evidence links stay same-origin and the API never gets its own public URL. Access
+is IAM-only through the Cloud Run proxy, the key comes from Secret Manager, and the
+model is Gemini on Vertex with the service account's own credentials — there is no
+provider key anywhere in the cloud. Data lives on a GCS bucket mounted with FUSE,
+and that is where the warnings are. SQLite needs locks the mount doesn't have, so the
+LangGraph checkpoint is worked on locally and copied to the bucket after every job — I
+tested that by wiping the local copy between the two human checkpoints and resuming.
+And python-docx's zip writer seeks backwards, which the mount only tolerates through a
+slow fallback, so reports are now one sequential write. The other decision was
+scale-to-zero: the owner wanted it up for months on trial credits, so idle has to be
+$0; that is safe because the UI polls while a job runs and the checkpoint sync makes
+restarts lossless. Measured through the proxy it reproduced the laptop run exactly —
+116 of 116 checks, 16 cents, 101 seconds with 13 of them upload. I also tried
+Identity-Aware Proxy for a browser-openable private URL and reverted it: on a
+personal project without an organisation there is no OAuth client for it.
 
 **Q: What was different about Vertex compared with an API key?**
 A: Auth. Vertex's OpenAI-compatible endpoint takes OAuth bearer tokens from

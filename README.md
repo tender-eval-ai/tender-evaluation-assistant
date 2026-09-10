@@ -142,8 +142,9 @@ backend/            FastAPI service (projects, uploads, jobs, reports API) + Doc
 frontend/           Streamlit review UI (HTTP client of the backend only) + Dockerfile
 mcp_server/         MCP server over the read-only tools + local-model MCP client
 docker-compose.yml  runs both services together
+deploy/cloudrun/    private Cloud Run packaging: nginx ingress sidecar, Cloud Build, setup/deploy scripts
 run_demo.py         CLI (offline demo + orchestrated run over real folders)
-test/               91 offline tests incl. API, graph, agent, MCP, cost ledger (no network, no client data)
+test/               98 offline tests incl. API, graph, agent, MCP, cost ledger, Cloud Run scratch sync (no network, no client data)
 tools/              case generator (incl. --buried benchmark case, ground truth), PDF
                     generator, stress driver, evidence-search benchmark, case scorer,
                     OCR comparison, results tables
@@ -317,6 +318,7 @@ ground truth: Stage I and II verdicts, arithmetic flags, unit prices):
 | Gemini 2.5 Flash on Vertex AI (text + OCR) | 116/116 (100.0%) | 82.6 s | 8.0 s | 72.4 s | $0.1621 | $0.0053 · $0.0047 | 4788 | 6.8 s | 0 |
 | DeepSeek-V4-Flash + local qwen3-vl OCR | 116/116 (100.0%) | 115.2 s | 4.0 s | 109.0 s | $0.0303 | $0.001 · $0.0008 | 3294 | 2.9 s | 0 |
 | fully local qwen3:8b + qwen3-vl:8b (laptop) | 116/116 (100.0%) | 2731.4 s | 98.4 s | 2631 s | $0.0 | $0.0 · $0.0 | 4145 | 131.3 s | 0 |
+| Gemini on Vertex AI, **deployed on Cloud Run** (driven from the laptop through the IAM proxy, 2026-09-10) | 116/116 (100.0%) | 100.9 s (12.8 s of it upload) | 11.0 s | 76.0 s | $0.1621 | $0.0053 · $0.0047 | 4788 | 6.4 s | 0 |
 
 **Buried-evidence benchmark** (12-page scan-only offers, schedules on pages 9–12, first
 pass capped at 4 pages):
@@ -359,6 +361,63 @@ These laptop numbers bound the *demo*; production inference on the client's DGX 
 different class of hardware. Metered spend for the whole step: **$0.35** (Vertex) +
 **$0.05** (DeepSeek).
 <!-- STEP2_TABLES_END -->
+
+## Deployed on Google Cloud Run — private, scale-to-zero
+
+The service stack also runs as **one private Cloud Run service** (`deploy/cloudrun/`),
+measured on the same 30-bidder case: **116/116 agreement, 100.9 s end to end
+including a 12.8 s upload through the proxy, $0.16 of model time** — the laptop→Vertex
+run's numbers, plus network. What it is:
+
+- **One service, three containers.** An nginx ingress sidecar (`/api/*` → FastAPI on
+  :8000, everything else → Streamlit on :8501, websocket upgrade passed through) so
+  the UI's browser-direct folder uploads and evidence links (`PUBLIC_BACKEND_URL=/api`,
+  a relative path) hit the *same origin* — no CORS, no second public URL, and the
+  API is never reachable except through the gate below. `max-instances=1`,
+  CPU always allocated (the graph runs in a background thread between the UI's polls),
+  request timeout 60 min for the websocket, `min-instances=0`.
+- **Private by IAM.** `--no-allow-unauthenticated`; the owner is the only
+  `run.invoker`. Open it with the Cloud Run proxy, which attaches your identity:
+  `gcloud run services proxy tender-demo --region us-central1 --port 8080` →
+  http://localhost:8080. Anonymous requests get 403 before reaching the containers;
+  the API additionally requires `X-API-Key` (Secret Manager → env, never in an image).
+  Identity-Aware Proxy would give a browser-openable URL with Google login, but on a
+  personal project without an organisation IAP needs an OAuth consent screen and
+  client created by hand in the console (tried: IAP answered *"Empty Google Account
+  OAuth client ID(s)"*, reverted). Sharing later = that console step, or a public URL
+  with the key.
+- **Storage: a GCS bucket FUSE-mounted at `/data`** (projects, uploads, OCR cache,
+  reports, the seeded inbox with both synthetic cases). Two FUSE traps handled in
+  code: SQLite needs POSIX locks the mount does not have, so the LangGraph checkpoint
+  DB is *worked on* under `GRAPH_DB_SCRATCH_DIR` (instance-local) and copied to the
+  bucket after every job — an instance restart between the two human checkpoints
+  loses nothing (tested by wiping the scratch dir mid-run); and python-docx's zip
+  writer seeks backwards, which the mount logs as out-of-order writes and recovers
+  slowly, so reports are now written in one sequential write.
+- **Models: Gemini 2.5 Flash on Vertex AI** with the service account's own
+  credentials — no provider key exists anywhere in the cloud. Roles are minimal
+  (Vertex AI user, object admin on that bucket only, accessor on that secret only).
+- **Builds on Cloud Build** (`cloudbuild.yaml`, three `linux/amd64` images in
+  parallel, ~2 min) — no cross-architecture build on the arm64 laptop; `.gcloudignore`
+  keeps data, keys, docs and tests out of the upload (35 files, 178 KiB).
+- **Cost.** Nothing while idle (scale to zero; the bucket holds ~1.4 MB). While an
+  instance is up (3 vCPU, 3.25 GiB, instance-based billing at Tier-1 list prices,
+  $0.000018 per vCPU-second and $0.000002 per GiB-second, read from the Billing Catalog API on 2026-09-10) ≈ **$0.22 per hour**, i.e. a demo session plus its 15-minute idle
+  tail ≈ $0.30, plus $0.16 of Gemini per 30-bidder run. Cloud Build's and Artifact
+  Registry's free tiers cover the rest.
+
+```bash
+bash deploy/cloudrun/setup.sh    # once: APIs, registry, bucket, service account, secret, inbox
+bash deploy/cloudrun/deploy.sh   # build (Cloud Build) + deploy; --no-build redeploys the last images
+gcloud run services proxy tender-demo --region us-central1 --port 8080   # open http://localhost:8080
+API_KEY=$(gcloud secrets versions access latest --secret=tender-api-key) \
+  python tools/stress_test.py --backend http://localhost:8080/api --out output/stress_cloudrun.json
+```
+
+Confidentiality is unchanged: the deployed instance only ever holds **synthetic**
+projects (the bucket is single-region, private, no public access), and production
+stays on the client's DGX — this deployment exists to prove the stack is portable
+and to give a reviewer something to click, not to process real documents.
 
 ## Client-site (production) deployment
 

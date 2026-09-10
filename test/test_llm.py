@@ -3,11 +3,11 @@ from types import SimpleNamespace
 
 import httpx
 import pytest
-from openai import APIConnectionError
+from openai import APIConnectionError, BadRequestError
 from pydantic import BaseModel
 
 from app.config import Config
-from app.llm import LLM
+from app.llm import LLM, estimate_tokens
 
 
 class Out(BaseModel):
@@ -22,9 +22,11 @@ class RecordingClients(dict):
     """Stands in for LLM._clients: serves a fake client for every base_url and
     records (model, url) per call; models in fail_models raise a retryable error."""
 
-    def __init__(self, calls: list, fail_models: set[str], content: str):
+    def __init__(self, calls: list, fail_models: set[str], content: str,
+                 reject_schema: bool = False):
         super().__init__()
         self.calls, self.fail_models, self.content = calls, fail_models, content
+        self.reject_schema = reject_schema      # endpoint without json_schema support
 
     def __contains__(self, key):
         return True
@@ -34,20 +36,25 @@ class RecordingClients(dict):
             self.calls.append((kwargs["model"], url, kwargs))
             if kwargs["model"] in self.fail_models:
                 raise APIConnectionError(request=httpx.Request("POST", url))
+            if self.reject_schema and kwargs.get("response_format", {}).get("type") == "json_schema":
+                request = httpx.Request("POST", url)
+                raise BadRequestError("response_format json_schema is not supported",
+                                      response=httpx.Response(400, request=request), body=None)
             return SimpleNamespace(choices=[SimpleNamespace(
                 message=SimpleNamespace(content=self.content))])
 
         return SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
 
 
-def make_llm(fail_models: set[str], content: str = '{"ok": true}', **cfg_overrides):
+def make_llm(fail_models: set[str], content: str = '{"ok": true}', reject_schema: bool = False,
+             **cfg_overrides):
     defaults = dict(token="test-token", base_url=PRIMARY_URL,
                     text_model="openai/primary", text_fallbacks=["openai/fb1", "openai/fb2"],
                     vision_model="openai/vision", vision_fallbacks=["openai/vfb"])
     cfg = Config(**{**defaults, **cfg_overrides})
     llm = LLM(cfg)
     calls: list = []
-    llm._clients = RecordingClients(calls, fail_models, content)
+    llm._clients = RecordingClients(calls, fail_models, content, reject_schema)
     return llm, calls
 
 
@@ -115,3 +122,54 @@ def test_max_tokens_cap_is_optional(monkeypatch):
     monkeypatch.setenv("LLM_MAX_TOKENS", "4096")
     llm = LLM(Config(token="unused"))
     assert llm._params("m", [], True)["max_tokens"] == 4096
+
+
+def test_json_schema_mode_sends_the_pydantic_schema(monkeypatch):
+    """LLM_JSON_SCHEMA=1: the response_format carries the output model's schema, so a
+    server with guided decoding (vLLM, Ollama, Gemini) enforces it as a grammar."""
+    monkeypatch.setenv("LLM_JSON_SCHEMA", "1")
+    llm, calls = make_llm(set())
+    assert llm.chat_json("sys", "user", Out) == Out(ok=True)
+    fmt = calls[0][2]["response_format"]
+    assert fmt["type"] == "json_schema"
+    assert fmt["json_schema"]["name"] == "Out"
+    assert fmt["json_schema"]["schema"]["properties"]["ok"]["type"] == "boolean"
+    # OCR (no schema) is unaffected.
+    llm.ocr_page(b"\x89PNG")
+    assert "response_format" not in calls[-1][2]
+
+
+def test_json_schema_rejected_by_endpoint_falls_back_to_json_object(monkeypatch):
+    """An endpoint without json_schema support (DeepSeek) answers 400: the same model
+    is retried once as json_object instead of falling through the chain."""
+    monkeypatch.setenv("LLM_JSON_SCHEMA", "1")
+    llm, calls = make_llm(set(), reject_schema=True)
+    assert llm.chat_json("sys", "user", Out) == Out(ok=True)
+    assert [(m, c["response_format"]["type"]) for m, _, c in calls] == [
+        ("openai/primary", "json_schema"), ("openai/primary", "json_object")]
+
+
+def test_json_object_stays_the_default(monkeypatch):
+    monkeypatch.delenv("LLM_JSON_SCHEMA", raising=False)
+    llm, calls = make_llm(set())
+    llm.chat_json("sys", "user", Out)
+    assert calls[0][2]["response_format"] == {"type": "json_object"}
+
+
+def test_context_guard_refuses_prompts_above_the_window(monkeypatch):
+    """LLM_CONTEXT_TOKENS: an oversized prompt is refused before any request — the
+    alternative (Ollama's default) is silent truncation and a confidently wrong answer."""
+    monkeypatch.setenv("LLM_CONTEXT_TOKENS", "200")
+    llm, calls = make_llm(set())
+    with pytest.raises(RuntimeError, match="exceeds LLM_CONTEXT_TOKENS=200"):
+        llm.chat_json("sys", "word " * 500, Out)
+    assert calls == []
+    assert llm.chat_json("sys", "short question", Out) == Out(ok=True)
+
+
+def test_estimate_tokens_counts_text_parts_only():
+    assert estimate_tokens([{"role": "user", "content": "投標文件" * 10}]) == 40
+    mixed = [{"role": "user", "content": [
+        {"type": "text", "text": "a" * 35},
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}]}]
+    assert estimate_tokens(mixed) == 10

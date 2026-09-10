@@ -7,11 +7,12 @@ from __future__ import annotations
 
 import base64
 import json
+import re
 import sys
 import time
 from typing import Type, TypeVar
 
-from openai import OpenAI, OpenAIError
+from openai import BadRequestError, OpenAI, OpenAIError
 from pydantic import BaseModel, ValidationError
 
 from .config import Config
@@ -32,6 +33,28 @@ OCR_SYSTEM = (
 def _is_reasoning_model(model: str) -> bool:
     """o-series models (o1/o3/o4-...) reject the temperature parameter."""
     return model.split("/")[-1].startswith("o")
+
+
+_CJK = re.compile(r"[\u3000-\u9fff\uf900-\ufaff\uff00-\uffef]")
+
+
+def estimate_tokens(messages: list) -> int:
+    """Approximate prompt size from the text parts (images excluded): about one
+    token per CJK character, about 3.5 characters per token for everything else.
+    Used only for the context-window guard, where a rough number is enough to catch
+    the failure that matters — a prompt several times larger than the window."""
+    total = 0
+    for message in messages:
+        content = message.get("content")
+        if isinstance(content, str):
+            texts = [content]
+        else:
+            texts = [part.get("text", "") for part in (content or [])
+                     if isinstance(part, dict) and part.get("type") == "text"]
+        for text in texts:
+            cjk = len(_CJK.findall(text))
+            total += cjk + int((len(text) - cjk) / 3.5)
+    return total
 
 
 class LLM:
@@ -77,25 +100,55 @@ class LLM:
             client.api_key = self._adc.token()
         return client
 
-    def _params(self, model: str, messages: list, json_mode: bool) -> dict:
+    def _params(self, model: str, messages: list, json_mode: bool,
+                schema: dict | None = None) -> dict:
         params: dict = {"model": model, "messages": messages}
         if not _is_reasoning_model(model):
             params["temperature"] = 0
-        if json_mode:
+        if json_mode and schema is not None and getattr(self.cfg, "json_schema_mode", False):
+            params["response_format"] = {"type": "json_schema", "json_schema": {
+                "name": schema.get("title", "output"), "schema": schema}}
+        elif json_mode:
             params["response_format"] = {"type": "json_object"}
         if getattr(self.cfg, "max_tokens", None):
             params["max_tokens"] = self.cfg.max_tokens
         return params
 
-    def _complete(self, chain: list[str], messages: list, json_mode: bool = False) -> str:
+    def _attempt(self, entry: str, messages: list, json_mode: bool, schema: dict | None):
+        """One request to one chain entry. A json_schema response_format the endpoint
+        rejects (HTTP 400) is retried once as plain json_object — the same request the
+        pipeline made before LLM_JSON_SCHEMA existed."""
+        model, base_url = self._split(entry)
+        client = self._client(base_url)
+        try:
+            return client.chat.completions.create(**self._params(model, messages, json_mode, schema))
+        except BadRequestError:
+            if schema is None or not getattr(self.cfg, "json_schema_mode", False):
+                raise
+            print(f"[llm] {entry} rejected the json_schema response_format; "
+                  "retrying as json_object", file=sys.stderr)
+            return client.chat.completions.create(**self._params(model, messages, json_mode, None))
+
+    def _guard_context(self, messages: list) -> None:
+        limit = getattr(self.cfg, "context_tokens", None)
+        if not limit:
+            return
+        est = estimate_tokens(messages)
+        if est > limit:
+            raise RuntimeError(
+                f"prompt of ~{est} tokens exceeds LLM_CONTEXT_TOKENS={limit}; the server "
+                "would truncate it silently. Raise the model's context (Ollama num_ctx, "
+                "vLLM --max-model-len) or lower MAX_DOC_CHARS / MAX_TOTAL_CHARS.")
+
+    def _complete(self, chain: list[str], messages: list, json_mode: bool = False,
+                  schema: dict | None = None) -> str:
         """Try each chain entry (model, endpoint) until one answers."""
+        self._guard_context(messages)
         last_err: OpenAIError | None = None
         for i, entry in enumerate(chain):
-            model, base_url = self._split(entry)
             t0 = time.time()
             try:
-                resp = self._client(base_url).chat.completions.create(
-                    **self._params(model, messages, json_mode))
+                resp = self._attempt(entry, messages, json_mode, schema)
             except OpenAIError as err:
                 last_err = err
                 self.usage.fail(entry, f"{err.__class__.__name__}: {err}")
@@ -113,12 +166,13 @@ class LLM:
         """Chat with JSON-mode output, validated against `out_model`; one retry with
         the validation error fed back to the model."""
         chain = chain or self.text_chain
-        schema = json.dumps(out_model.model_json_schema(), ensure_ascii=False)
-        system = f"{system}\n\nRespond with a single JSON object matching this JSON Schema:\n{schema}"
+        schema = out_model.model_json_schema()
+        system = (f"{system}\n\nRespond with a single JSON object matching this JSON Schema:\n"
+                  f"{json.dumps(schema, ensure_ascii=False)}")
         messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
         last_err: Exception | None = None
         for _ in range(2):
-            content = self._complete(chain, messages, json_mode=True)
+            content = self._complete(chain, messages, json_mode=True, schema=schema)
             try:
                 return out_model.model_validate_json(content)
             except ValidationError as err:

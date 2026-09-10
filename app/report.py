@@ -5,6 +5,7 @@
 """
 from __future__ import annotations
 
+import io
 from pathlib import Path
 
 from docx import Document as Docx
@@ -120,6 +121,15 @@ def _price_notes(doc: Docx, result: EvaluationResult) -> None:
         doc.add_paragraph(f"({i}) {note}")
 
 
+def _save(doc, out_path: Path) -> None:
+    """Write the document with one sequential write. python-docx's zip writer seeks
+    back to patch headers, which network/FUSE filesystems (Cloud Run's GCS mount)
+    reject as out-of-order writes and only recover through a slow fallback."""
+    buf = io.BytesIO()
+    doc.save(buf)
+    out_path.write_bytes(buf.getvalue())
+
+
 def render_price_summary(result: EvaluationResult, out_path: Path) -> None:
     doc = Docx()
     _title(doc, result, "Summary of Cost-effectiveness"
@@ -129,7 +139,7 @@ def render_price_summary(result: EvaluationResult, out_path: Path) -> None:
     else:
         _pq_table(doc, result)
     _price_notes(doc, result)
-    doc.save(str(out_path))
+    _save(doc, out_path)
 
 
 # ---------------------------------------------------------------- summary list
@@ -151,7 +161,7 @@ def render_summary_list(result: EvaluationResult, out_path: Path) -> None:
             f"Based on the above evaluation results, the TAP found that {result.recommended}'s "
             f"offer fully complied with all the procedural and essential requirements, and "
             f"recommended acceptance of {result.recommended}'s offer with {metric}.")
-    doc.save(str(out_path))
+    _save(doc, out_path)
 
 
 # ---------------------------------------------------------------- evaluation record
@@ -193,7 +203,7 @@ def render_evaluation_record(result: EvaluationResult, out_path: Path) -> None:
                 str(f.page) if f.page else "—",
             ])
         doc.add_paragraph()
-    doc.save(str(out_path))
+    _save(doc, out_path)
 
 
 def render_all(result: EvaluationResult, out_dir: Path) -> list[Path]:

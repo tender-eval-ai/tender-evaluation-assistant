@@ -93,6 +93,17 @@ class Config:
     # their reasoning against it, so keep it generous (4096+) if set.
     max_tokens: int | None = field(
         default_factory=lambda: int(os.environ["LLM_MAX_TOKENS"]) if os.environ.get("LLM_MAX_TOKENS") else None)
+    # Structured output as a server-enforced grammar: LLM_JSON_SCHEMA=1 sends the
+    # Pydantic schema as response_format={"type": "json_schema"} (vLLM guided decoding,
+    # Ollama structured outputs, Gemini) — the model then cannot emit a malformed object
+    # or run away. Endpoints that reject it (DeepSeek) fall back to json_object.
+    json_schema_mode: bool = field(
+        default_factory=lambda: os.environ.get("LLM_JSON_SCHEMA", "0").lower() in ("1", "true", "yes"))
+    # The server's context window in tokens (Ollama num_ctx, vLLM --max-model-len).
+    # When set, a prompt estimated above it is refused with a clear error instead of
+    # being truncated silently (what Ollama does by default — wrong answers, no signal).
+    context_tokens: int | None = field(
+        default_factory=lambda: int(os.environ["LLM_CONTEXT_TOKENS"]) if os.environ.get("LLM_CONTEXT_TOKENS") else None)
     # USD per 1M tokens, overriding app.usage.DEFAULT_PRICES: MODEL_PRICES='{"m": {"in":
     # 0.3, "out": 2.5, "cached_in": 0.01}}'. Recorded next to every published cost.
     model_prices_json: str | None = field(default_factory=lambda: os.environ.get("MODEL_PRICES"))

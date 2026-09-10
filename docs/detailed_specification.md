@@ -1,8 +1,8 @@
 # Tender Evaluation Assistant — Detailed Specification
 
-*Last updated: 2026-09-09 (after the Vertex AI / cost-accounting step). Numbers in
-this document are measured, not estimated: 81 tracked files, ~5,200 lines of Python
-plus ~1,800 lines of tests, 91 offline tests, CI on every push.*
+*Last updated: 2026-09-10 (after the Cloud Run step). Numbers in this document are
+measured, not estimated: 87 tracked files, ~5,400 lines of Python plus ~1,900 lines of
+tests, 98 offline tests, CI on every push.*
 
 ---
 
@@ -100,19 +100,20 @@ The frontend never imports pipeline code and never touches documents (except the
 browser-direct folder upload, which posts straight to the API). Requirements are split
 per service; the root `requirements.txt` is the dev aggregate (both + pytest).
 
-## 4. Repository inventory (81 tracked files)
+## 4. Repository inventory (87 tracked files)
 
 | Path | Files | LOC (py) | Contents |
 | --- | --- | --- | --- |
 | `app/` | 19 | ~2,270 | Pipeline library (18 modules + `__init__`) incl. graph, agent, tools, grounding, gcp, usage |
-| `backend/` | 4 | 611 | `api.py`, Dockerfile, requirements, `__init__` |
+| `backend/` | 4 | 664 | `api.py`, Dockerfile, requirements, `__init__` |
 | `frontend/` | 3 | 683 | `ui.py`, Dockerfile, requirements |
 | `mcp_server/` | 3 | ~630 | MCP server (393), local-model client (237), `__init__` |
-| `test/` | 21 | ~1,810 | 15 test modules, 91 tests, fixtures, conftest |
+| `test/` | 21 | ~1,930 | 15 test modules, 98 tests, fixtures, conftest |
+| `deploy/cloudrun/` | 5 | — | Private Cloud Run packaging: nginx ingress config + Dockerfile, `cloudbuild.yaml`, idempotent `setup.sh`, `deploy.sh` |
 | `tools/` | 8 | ~930 | Case generator (incl. `--buried`, ground truth), PDF generator, stress driver, evidence-search benchmark, case scorer, OCR comparison, results tables |
 | `demo_case/` | 5 | — | Committed synthetic demo PDFs (2 tender, 3 bids) |
 | `docs/` | 9 | — | `plan.md` (product plan, agent upgrade, experiments, next steps), interview prep, this spec, `mcp_traces/` (5 experiment traces + index) |
-| root | 9 | 85 | `run_demo.py` CLI, compose file, CI workflow, `.env.example`, `.streamlit/config.toml`, README, ignore files |
+| root | 10 | 85 | `run_demo.py` CLI, compose file, CI workflow, `.env.example`, `.streamlit/config.toml`, README, ignore files (incl. `.gcloudignore`) |
 
 Not tracked: `data/` (projects), `inbox/`, `cache/`, `output/`, `.env`, the
 regenerable `buried_case/` and `demo_case_stress/`.
@@ -131,7 +132,7 @@ URL), `text_model` / `vision_model` + `*_fallbacks` lists, `cache_dir`, prompt b
   (`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `DASHSCOPE_API_KEY`, `ZHIPU_API_KEY`,
   `GITHUB_TOKEN`), so one fallback chain can span providers with different credentials.
 
-### `app/llm.py` (119 LOC)
+### `app/llm.py` (197 LOC)
 The only file that talks to a model. One `LLM` class over the OpenAI SDK:
 - **Chain entries** are `"model"` (served from `cfg.base_url`) or `"model@base_url"`
   — the `@` form lets a fallback live on a different endpoint entirely (cloud primary,
@@ -143,6 +144,15 @@ The only file that talks to a model. One `LLM` class over the OpenAI SDK:
   retry. The pydantic schema itself is embedded in the system prompt.
 - `ocr_page(png_bytes)` — one page transcription to Markdown via the vision chain
   (prompt forbids translation/summarising/inventing; `[REDACTED]` convention).
+- **Schema-enforced output** (`LLM_JSON_SCHEMA=1`): the pydantic schema is sent as
+  `response_format={"type": "json_schema"}` so a server with guided decoding (vLLM,
+  Ollama, Gemini) cannot emit a malformed object or run away; an endpoint that rejects
+  it (HTTP 400 — DeepSeek) is retried once as `json_object` on the same model rather
+  than falling through the chain. Off by default so the measured runs stay comparable.
+- **Context guard** (`LLM_CONTEXT_TOKENS`): `estimate_tokens()` (≈1 token per CJK
+  character, 3.5 characters per token otherwise, text parts only) refuses a prompt
+  above the server's window with a clear error before any request — the alternative,
+  Ollama's default, is silent truncation and a confidently wrong answer (§11).
 
 ### `app/schemas.py` (131 LOC)
 All data contracts, in pydantic v2. LLM-facing models double as the JSON Schema sent
@@ -207,11 +217,14 @@ arithmetic tally check (quoted total vs computed, tolerance 0.5), and ranking �
 **non-conforming bids are still ranked** but never recommended; the recommended offer
 is the best-ranked *conforming* one.
 
-### `app/report.py` (206 LOC)
+### `app/report.py` (216 LOC)
 python-docx rendering of the three deliverables: `price_summary.docx` (two formats —
 cost-effectiveness table or unit-price/estimated-goods-price table), `summary_list.docx`
 (Stage I/II conclusions), `evaluation_record.docx` (per-tenderer evidence sheet).
-Notes (arithmetic errors, non-conforming ranks) are auto-generated.
+Notes (arithmetic errors, non-conforming ranks) are auto-generated. Documents are
+rendered to memory and written with one sequential `write_bytes` — python-docx's zip
+writer seeks backwards, which a FUSE-mounted bucket (Cloud Run) only accepts through a
+slow out-of-order-write fallback.
 
 ### `app/grounding.py` (77 LOC)
 The deterministic guardrail behind every citation. `readable_pages()` is the set of
@@ -324,7 +337,7 @@ quote appears on a page this client read through `read_page`/`ocr_page`; otherwi
 the step is rejected and the model must read the page or finish with `found=false`.
 Output: answer, page, quote, step count, seconds and the full trace (`--trace`).
 
-## 6. Backend service — `backend/api.py` (611 LOC)
+## 6. Backend service — `backend/api.py` (664 LOC)
 
 Project-based REST API. Data layout: `$DATA_DIR/projects/<id>/` with `meta.json`,
 `tender/*.pdf`, `bids/<tenderer>/*.pdf`, and `work/` (rubric, extractions, evaluation,
@@ -356,7 +369,33 @@ Operational design points:
 - **Auth**: optional `API_KEY` → `X-API-Key` header on everything except `/health`.
   The two page-image endpoints also accept `?key=` (browser-tab links can't send
   headers); a test pins that the query key does **not** unlock the data API.
-- **CORS** open (configurable) because the UI's folder picker uploads browser→API.
+- **CORS** open (configurable) because the UI's folder picker uploads browser→API
+  (moot on Cloud Run, where the nginx sidecar serves UI and API from one origin).
+- **Checkpoint DB on network storage** (`GRAPH_DB_SCRATCH_DIR`): SQLite needs POSIX
+  locks and random writes that a FUSE-mounted bucket does not provide, so with the
+  variable set the graph's `graph.sqlite` is opened from an instance-local working
+  copy — refreshed from the canonical file under `work/` whenever that is newer
+  (fresh instance, or scratch disk lost) — and copied back (temp file + rename) after
+  every job, in a `finally`. A test wipes the scratch dir between the two human
+  checkpoints and resumes without loss.
+
+### Cloud Run packaging — `deploy/cloudrun/`
+
+One private service, three containers sharing localhost: `proxy` (nginx, the only
+container with a port; `/api/*` → backend with the prefix stripped, `/*` → Streamlit
+with websocket upgrade headers; 512 MB upload limit), `backend` (FastAPI; env:
+`DATA_DIR=/data` on the GCS volume, `INBOX_DIR=/data/inbox`, `GRAPH_DB_SCRATCH_DIR`,
+Vertex base URL + model names, `API_KEY` from Secret Manager; startup probe on
+`/health`) and `frontend` (Streamlit; `BACKEND_URL=http://127.0.0.1:8000`,
+`PUBLIC_BACKEND_URL=/api`, CORS/XSRF checks off because nginx forwards the browser's
+host). Service settings: `--no-allow-unauthenticated`, custom service account,
+`--no-cpu-throttling` (the graph runs in a thread between requests), `min 0 / max 1`
+instances, 60-minute request timeout, session affinity, `--depends-on` so nginx starts
+last. `setup.sh` is idempotent (APIs, Artifact Registry repo, private single-region
+bucket, service account with three scoped roles, random secret never printed, Cloud
+Build permissions, inbox seeded with the synthetic cases); `deploy.sh` runs Cloud
+Build (`cloudbuild.yaml`, three images in parallel, git-sha tags) and the deploy, then
+grants the owner `run.invoker`. Access is through `gcloud run services proxy`.
 
 ## 7. Frontend — `frontend/ui.py` (666 LOC)
 
@@ -415,17 +454,19 @@ stay visible — an early bug hid it behind an immediate rerun).
   found by each, seconds and $ per page.
 - `tools/compare_runs.py` — renders the stress / benchmark / OCR result files as the
   Markdown tables published in the README.
-- `test/` — **91 tests, all offline** (no network, no tokens, no client data): unit
+- `test/` — **98 tests, all offline** (no network, no tokens, no client data): unit
   tests for pricing/rounding, evaluation, retrieval, verification (incl. grounded
   refutations), grounding, report rendering, per-page OCR routing (mixed text+image
-  PDFs), LLM fallback chains (stubbed clients); graph tests (byte-identical
+  PDFs), LLM fallback chains (stubbed clients), schema-enforced output and its
+  json_object fallback on a 400, the context guard; graph tests (byte-identical
   evaluation vs the offline fixture run, stored checkpoints skipping the LLM,
   pause/resume with edits from payload and from disk, crash recovery mid fan-out);
   agent tests (buried document found via on-demand OCR, unverifiable quote rejected,
   step budget, unclear stays unclear, price re-extraction, zero calls when nothing is
   unresolved); API tests covering the full run/resume flow with stubbed models,
-  inbox import, evidence pages with highlighting, auth scoping and the project
-  `synthetic` flag; MCP tests (`test/test_mcp.py`, 11): every tool over an
+  inbox import, evidence pages with highlighting, auth scoping, the project
+  `synthetic` flag and the checkpoint scratch sync surviving a wiped scratch disk
+  twice mid-run; MCP tests (`test/test_mcp.py`, 11): every tool over an
   in-process client, on-demand OCR budget and shared cache, "nothing written but the
   cache", the synthetic-only guard in all three policies, the API-key-guarded HTTP
   transport on a real socket, the real server as a stdio subprocess, an OCR outage
@@ -454,6 +495,9 @@ stay visible — an early bug hid it behind an immediate rerun).
 | `LLM_TIMEOUT_S` | Per-request model timeout (default 600 s); raise for local vision models under load |
 | `LLM_MAX_TOKENS` | Optional cap on generated tokens per call (unset by default); bounds a runaway local generation |
 | `MODEL_PRICES` | JSON, USD per 1M tokens per model (`in`, `out`, `cached_in`), overriding the built-in table used for $ per bid |
+| `LLM_JSON_SCHEMA` | `1` sends the pydantic schema as a `json_schema` response format (server-enforced grammar on vLLM/Ollama/Gemini); endpoints that reject it fall back to `json_object` |
+| `LLM_CONTEXT_TOKENS` | The server's context window; a prompt estimated above it is refused with a clear error instead of being silently truncated |
+| `GRAPH_DB_SCRATCH_DIR` | Instance-local working dir for the LangGraph SQLite DB when `DATA_DIR` is a FUSE/network mount (Cloud Run); synced back after every job |
 | *(Vertex entries)* | `google/gemini-2.5-flash@https://<region>-aiplatform.googleapis.com/v1/projects/<project>/locations/<region>/endpoints/openapi` as `TEXT_MODEL` / `VISION_MODEL`; auth via `gcloud auth application-default login`, no key |
 | `MCP_LOCAL_MODEL` | `1` declares an on-premises MCP client: unflagged (real) projects are served over stdio; the local client sets it itself — never for Claude Desktop |
 | `ALLOW_CLOUD_CLIENTS`, `MCP_PORT` | Enable the MCP HTTP transport (loopback, `X-API-Key`, synthetic projects only) and its port (8765) |
@@ -473,6 +517,12 @@ stay visible — an early bug hid it behind an immediate rerun).
 - Vertex AI is a cloud path like DeepSeek: synthetic or sanitized documents only.
   Its credentials are OAuth tokens from the operator's own login, never a key in
   `.env`; the project is a personal free-trial project with a budget alert.
+- Cloud Run demo: IAM-only ingress (owner is the sole invoker; anonymous → 403
+  before the containers), the API behind `X-API-Key` from Secret Manager on top; the
+  runtime service account holds three scoped roles (Vertex user, object admin on the
+  one private single-region bucket, accessor on the one secret); no provider key
+  exists in the cloud; images are built from a whitelisted upload (no data, keys,
+  docs or tests). Synthetic projects only — the bucket never holds client documents.
 - MCP egress: an MCP server only moves tool execution on-premises — every tool
   result goes to the model driving the client, so cloud-driven clients (Claude
   Desktop, Cursor) equal cloud egress. Enforced in code: projects are served only if
@@ -499,6 +549,7 @@ stay visible — an early bug hid it behind an immediate rerun).
 | MCP guard, live | HTTP refused to start without opt-in or key; 401 without key; unflagged project refused even with `MCP_LOCAL_MODEL=1`; synthetic served |
 | Three backends, 30-bidder case (Vertex Gemini / DeepSeek + local OCR / fully local) | agreement **100% / 100% / 100%**; wall clock **83 s / 115 s / 45 min (two passes)**; cost **$0.16 / $0.03 / $0** ($0.005 / $0.001 / $0 per bid) |
 | Three backends, buried benchmark | Vertex 2/2 certs, 0 false, 3/3 prices, 9/9 evidence in 228 s ($0.12); DeepSeek + local OCR 2/2, 0, 3/3, 6/9 in 856 s ($0.02); fully local baseline 1106 s, 1 first-pass false positive (contents entry → new grounding rule); fully local agent: 0/2 certificates found on the two bids that completed (27–37 min each), 0 false restores, third bid ran away and was stopped |
+| Cloud Run deployment, same 30-bidder case through the IAM proxy | **116/116**, **100.9 s** end to end (12.8 s upload, 11.0 s rubric, 76.0 s extraction + evaluation), **$0.162**, 0 failed calls; checkpoint DB synced to the bucket; evidence image 0.8 s; websocket 101; FUSE out-of-order writes on `.docx` (fixed) |
 | OCR page by page (36 pages) | qwen3-vl 48.7 s/page, Gemini 3.8 s/page ($0.001); both recover all 14 ground-truth facts; 1 blank local transcript |
 
 ## 12. Demo → production mapping and roadmap
@@ -508,6 +559,7 @@ stay visible — an early bug hid it behind an immediate rerun).
 | DeepSeek API `deepseek-chat` (text) | Qwen3.6-35B-A3B / DeepSeek-V4-Flash via vLLM |
 | Ollama `qwen3-vl:8b` OCR | Qwen3-VL-30B-A3B page OCR, batched |
 | Docker on a laptop | Same compose stack on DGX Spark GB10 (arm64) |
+| Private, scale-to-zero Cloud Run service (portability proof, reviewer demo) | Not applicable — production is on-premises by contract |
 | Synthetic fixtures | Real tender/bid sets, fully local |
 
 Next milestones: vLLM bring-up on the DGX; golden regression against three real

@@ -1,0 +1,33 @@
+# Builds the three images (linux/amd64, natively — no cross-build on the arm64 Mac)
+# and pushes them to Artifact Registry. Run from the repo root:
+#   gcloud builds submit --config deploy/cloudrun/cloudbuild.yaml \
+#       --substitutions _REPO=<region>-docker.pkg.dev/<project>/tender,_TAG=<git sha> .
+# .gcloudignore keeps data, keys, caches and docs out of the uploaded source.
+steps:
+  - id: backend
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
+    args: [build, -f, backend/Dockerfile,
+           -t, "${_REPO}/backend:${_TAG}", -t, "${_REPO}/backend:latest", "."]
+  - id: frontend
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
+    args: [build, -f, frontend/Dockerfile,
+           -t, "${_REPO}/frontend:${_TAG}", -t, "${_REPO}/frontend:latest", "."]
+  - id: proxy
+    name: gcr.io/cloud-builders/docker
+    waitFor: ["-"]
+    args: [build, -f, deploy/cloudrun/proxy.Dockerfile,
+           -t, "${_REPO}/proxy:${_TAG}", -t, "${_REPO}/proxy:latest", deploy/cloudrun]
+images:
+  - "${_REPO}/backend:${_TAG}"
+  - "${_REPO}/backend:latest"
+  - "${_REPO}/frontend:${_TAG}"
+  - "${_REPO}/frontend:latest"
+  - "${_REPO}/proxy:${_TAG}"
+  - "${_REPO}/proxy:latest"
+substitutions:
+  _REPO: us-central1-docker.pkg.dev/tender-assist-508119/tender
+  _TAG: manual
+options:
+  logging: CLOUD_LOGGING_ONLY

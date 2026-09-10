@@ -64,6 +64,10 @@ API_KEY = os.environ.get("API_KEY", "")
 # Server-side folder imports: case folders placed here (host ./inbox, mounted
 # read-only in Docker) can be imported into a project with one click.
 INBOX_DIR = Path(os.environ.get("INBOX_DIR", "inbox"))
+# Where the LangGraph SQLite checkpoint DB is *worked on* when DATA_DIR is a network
+# or FUSE mount (Cloud Run + GCS: no POSIX locks, random writes unsupported — SQLite
+# there is unsafe). Unset = the DB lives in the project's work/ dir directly.
+GRAPH_DB_SCRATCH = os.environ.get("GRAPH_DB_SCRATCH_DIR")
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 
@@ -250,6 +254,9 @@ def delete_project(pid: str) -> dict:
         if pid in _running:
             raise HTTPException(409, "a job is running for this project; wait for it to finish")
     shutil.rmtree(pdir)
+    scratch = _graph_db_scratch(pdir)
+    if scratch is not None:
+        shutil.rmtree(scratch.parent, ignore_errors=True)
     return {"deleted": pid}
 
 
@@ -462,14 +469,57 @@ WAITING_DETAIL = {
 }
 
 
+def _graph_db_canonical(pdir: Path) -> Path:
+    return pdir / "work" / "graph.sqlite"
+
+
+def _graph_db_scratch(pdir: Path) -> Path | None:
+    return Path(GRAPH_DB_SCRATCH) / pdir.name / "graph.sqlite" if GRAPH_DB_SCRATCH else None
+
+
 def _graph_db(pdir: Path) -> str:
-    (pdir / "work").mkdir(parents=True, exist_ok=True)
-    return str(pdir / "work" / "graph.sqlite")
+    """Path to open the project's graph checkpoint DB at. With GRAPH_DB_SCRATCH_DIR
+    set, that is a local working copy, refreshed from the canonical file under work/
+    whenever the canonical one is newer (first use on a fresh instance, or after the
+    scratch disk was lost); _graph_db_publish() copies it back after every job. So an
+    instance restart between two human checkpoints loses nothing: the pause state is
+    on the bucket, not only on the disk that went away."""
+    canonical = _graph_db_canonical(pdir)
+    canonical.parent.mkdir(parents=True, exist_ok=True)
+    scratch = _graph_db_scratch(pdir)
+    if scratch is None:
+        return str(canonical)
+    scratch.parent.mkdir(parents=True, exist_ok=True)
+    if canonical.is_file() and (not scratch.is_file()
+                                or canonical.stat().st_mtime > scratch.stat().st_mtime):
+        shutil.copyfile(canonical, scratch)
+        os.utime(scratch, (canonical.stat().st_atime, canonical.stat().st_mtime))
+    return str(scratch)
+
+
+def _graph_db_publish(pdir: Path) -> None:
+    """Copy the scratch DB back to the canonical location (temp file + rename, so a
+    reader never sees a half-copied DB); no-op without a scratch dir."""
+    scratch = _graph_db_scratch(pdir)
+    if scratch is None or not scratch.is_file():
+        return
+    canonical = _graph_db_canonical(pdir)
+    tmp = canonical.with_name(f".{canonical.name}.{os.getpid()}.tmp")
+    shutil.copyfile(scratch, tmp)
+    os.replace(tmp, canonical)
+    # Same mtime on both copies: the next _graph_db() must not copy it back again.
+    st = canonical.stat()
+    os.utime(scratch, (st.st_atime, st.st_mtime))
+
+
+def _graph_db_exists(pdir: Path) -> bool:
+    scratch = _graph_db_scratch(pdir)
+    return _graph_db_canonical(pdir).is_file() or bool(scratch and scratch.is_file())
 
 
 def _graph_snapshot(pdir: Path, pid: str):
     """State of the project's graph thread (None if it never ran)."""
-    if not (pdir / "work" / "graph.sqlite").is_file():
+    if not _graph_db_exists(pdir):
         return None
     cfg = _make_cfg(pdir)
     with SqliteSaver.from_conn_string(_graph_db(pdir)) as saver:
@@ -483,14 +533,17 @@ def _graph_job(pid: str, pdir: Path, start: bool, payload: dict | None = None) -
         from app.llm import LLM
         cfg = _make_cfg(pdir)
         llm = LLM(cfg)
-        with SqliteSaver.from_conn_string(_graph_db(pdir)) as saver:
-            graph = build_graph(cfg, llm, checkpointer=saver, interactive=True,
-                                log=lambda m: _set_status(pdir, "running", m))
-            if start:
-                state = graph.invoke(initial_state(pdir / "tender", pdir / "bids", pdir / "work"),
-                                     graph_config(cfg, pid))
-            else:
-                state = graph_resume(graph, cfg, pid, payload)
+        try:
+            with SqliteSaver.from_conn_string(_graph_db(pdir)) as saver:
+                graph = build_graph(cfg, llm, checkpointer=saver, interactive=True,
+                                    log=lambda m: _set_status(pdir, "running", m))
+                if start:
+                    state = graph.invoke(initial_state(pdir / "tender", pdir / "bids", pdir / "work"),
+                                         graph_config(cfg, pid))
+                else:
+                    state = graph_resume(graph, cfg, pid, payload)
+        finally:
+            _graph_db_publish(pdir)   # pause/finish state onto durable storage
         pending = pending_checkpoint(state)
         if pending:
             _set_status(pdir, "waiting", WAITING_DETAIL[pending["checkpoint"]])

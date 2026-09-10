@@ -200,12 +200,11 @@ def test_api_key_enforced(tmp_path, monkeypatch):
     assert client.get("/projects", headers={"X-API-Key": "sesame"}).status_code == 200
 
 
-def test_orchestrated_run_pauses_at_both_checkpoints_and_honours_edits(tmp_path, monkeypatch):
-    """/run -> paused at rubric -> PUT edit -> /resume -> paused at review -> PUT
-    correction -> /resume -> done, with the edits visible in the evaluation."""
+def stub_pipeline(monkeypatch) -> dict:
+    """Replace the LLM-backed graph nodes with fixtures: the orchestrated run then
+    exercises checkpoints, pauses and edits without any model. Returns the bids."""
     monkeypatch.setenv("VERIFY_FINDINGS", "0")
     monkeypatch.setenv("AGENT_SEARCH", "0")
-    client = make_client(tmp_path, monkeypatch)
     import app.graph as graph_mod
     from app.schemas import BidExtraction, Rubric
     fixture_rubric = Rubric.model_validate_json((FIXTURES / "rubric.json").read_text())
@@ -218,6 +217,23 @@ def test_orchestrated_run_pauses_at_both_checkpoints_and_honours_edits(tmp_path,
     monkeypatch.setattr(graph_mod, "extract_bid",
                         lambda name, docs, rubric, cfg, llm: fixture_bids[name].model_copy(deep=True))
     monkeypatch.setattr("app.llm.LLM", lambda cfg: object())
+    return fixture_bids
+
+
+def make_project_with_docs(client, fixture_bids, name="graph") -> str:
+    pid = client.post("/projects", json={"name": name}).json()["id"]
+    stub = b"%PDF-1.4 stub"
+    client.post(f"/projects/{pid}/tender", files=[("files", ("terms.pdf", stub, "application/pdf"))])
+    for bidder in fixture_bids:
+        client.post(f"/projects/{pid}/bids/{bidder}", files=[("files", ("offer.pdf", stub, "application/pdf"))])
+    return pid
+
+
+def test_orchestrated_run_pauses_at_both_checkpoints_and_honours_edits(tmp_path, monkeypatch):
+    """/run -> paused at rubric -> PUT edit -> /resume -> paused at review -> PUT
+    correction -> /resume -> done, with the edits visible in the evaluation."""
+    fixture_bids = stub_pipeline(monkeypatch)
+    client = make_client(tmp_path, monkeypatch)
 
     pid = client.post("/projects", json={"name": "graph"}).json()["id"]
     assert client.post(f"/projects/{pid}/run").status_code == 400   # no tender docs yet
@@ -257,6 +273,42 @@ def test_orchestrated_run_pauses_at_both_checkpoints_and_honours_edits(tmp_path,
     assert client.get(f"/projects/{pid}/bids/Bidder A/agent").status_code == 404
     assert sorted(client.get(f"/projects/{pid}/reports").json()) == [
         "evaluation_record.docx", "price_summary.docx", "summary_list.docx"]
+
+
+def test_pause_state_survives_losing_the_scratch_disk(tmp_path, monkeypatch):
+    """Cloud Run mode: the graph's SQLite DB is worked on under GRAPH_DB_SCRATCH_DIR
+    (instance-local) and copied to the project's work/ dir (the bucket) after every
+    job. Wiping the scratch dir between two human checkpoints — an instance restart
+    — must lose nothing: the next call restores the working copy from work/."""
+    import shutil
+    fixture_bids = stub_pipeline(monkeypatch)
+    scratch = tmp_path / "scratch"
+    monkeypatch.setenv("GRAPH_DB_SCRATCH_DIR", str(scratch))
+    client = make_client(tmp_path, monkeypatch)
+    pid = make_project_with_docs(client, fixture_bids)
+    canonical = tmp_path / "data" / "projects" / pid / "work" / "graph.sqlite"
+
+    assert client.post(f"/projects/{pid}/run").json()["started"] is True
+    assert wait_done(client, pid)["state"] == "waiting"
+    assert canonical.is_file() and (scratch / pid / "graph.sqlite").is_file()
+    assert not list(canonical.parent.glob(".graph.sqlite.*")), "temp copy left behind"
+
+    shutil.rmtree(scratch)                                  # "instance restarted"
+    assert client.get(f"/projects/{pid}/graph").json()["pending"] == "rubric"
+    assert client.post(f"/projects/{pid}/resume", json={}).json()["resumed"] == "rubric"
+    assert client.get(f"/projects/{pid}/graph").json()["pending"] in ("rubric", "review", None)
+    assert wait_done(client, pid)["state"] == "waiting"
+
+    shutil.rmtree(scratch)                                  # and again
+    assert client.post(f"/projects/{pid}/resume", json={}).json()["resumed"] == "review"
+    assert wait_done(client, pid)["state"] == "done"
+    assert client.get(f"/projects/{pid}/graph").json()["pending"] is None
+    assert sorted(client.get(f"/projects/{pid}/reports").json()) == [
+        "evaluation_record.docx", "price_summary.docx", "summary_list.docx"]
+
+    # Deleting the project removes its scratch copy too.
+    client.delete(f"/projects/{pid}")
+    assert not (scratch / pid).exists()
 
 
 def test_project_synthetic_flag(tmp_path, monkeypatch):

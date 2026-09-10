@@ -102,6 +102,7 @@ All on synthetic, deterministic cases with seeded ground truth (never client dat
 | 15 | Three backends, buried benchmark | `--buried` case, first pass capped at 4 pages, agent off vs on | Vertex: 0/2→**2/2** certs, 0 false restores, 0/3→**3/3** prices, 0/9→**9/9** evidence, 30 s / 228 s, $0.03 / $0.12. DeepSeek + local OCR: 2/2, 0 false, 3/3, **6/9**, 585 s / 856 s, $0.004 / $0.016. Fully local baseline 1106 s with **1 first-pass false positive** (contents entry cited as evidence — now a deterministic grounding rule); agent run: aborted under 3-way parallelism (600 s timeout); sequential rerun on bids 1–2 took 27 and 37 min per bid and found **neither certificate** (0/2; both exist on p.11), 1/2 prices, 0/6 evidence — **0 false restores**; bid 3 (no certificate; the search must exhaust its budget) ran away twice (14k generated tokens per request, 4k and then 16k context) and was stopped. Verdict: an 8B local text model does not drive the agent on this laptop; the guardrails held |
 | 16 | OCR comparison, 36 scanned pages | `tools/ocr_compare.py`: qwen3-vl:8b (Ollama) vs Gemini 2.5 Flash (Vertex), separate caches, ground-truth facts (prices, totals, certificate lines, delivery, shelf life) | Both **14/14 facts**; transcript similarity mean 0.95, median 1.0; local blanked 1 filler page; **48.7 s vs 3.8 s per page**; $0 vs $0.00105 per page ($0.038 for all 36) |
 | 17 | Local failure modes | Parallel fan-out on one laptop GPU; Ollama defaults | Two timeouts (OCR page, then a text call) at the 600 s client default → `LLM_TIMEOUT_S` knob and sequential bids for local; run/resume recovery kept 29 finished bids; the 8B text model ignored the "contents entry is not evidence" prompt rule → enforced in `app/grounding.py`. **Ollama's default 4k context silently truncated the pipeline's prompts** (server log: `truncated = 1` on 12 of 574 local requests — the long agent transcripts) — the local agent benchmark's third bid ran away for 14k generated tokens on a truncated transcript; mitigated with a 16k-context model variant (`qwen3:8b-16k`, documented in `.env.example`); the runaway recurred at 16k, so `LLM_MAX_TOKENS` now bounds generation per call |
+| 18 | Cloud Run deployment, measured (2026-09-10) | One private Cloud Run service (nginx ingress + backend + Streamlit sidecars), GCS bucket FUSE-mounted at `/data`, Gemini on Vertex via the service account, IAM-only access through `gcloud run services proxy`; same 30-bidder case driven from the laptop through the proxy | **116/116 (100%)**; **100.9 s** end to end (upload 12.8 s, rubric 11.0 s, extraction + evaluation 76.0 s), **$0.162** ($0.005/bid, 4788 tokens/bid, 6.4 s model time/bid), 0 failed calls — vs 82.6 s laptop→Vertex. Checkpoint DB confirmed synced to the bucket (684 KB); evidence images 0.8 s through the proxy; websocket upgrade 101. FUSE logged out-of-order writes on the three `.docx` reports (files intact via gcsfuse's fallback) → reports now written in one sequential write. IAP tried and reverted: a personal project without an organisation has no OAuth client for it |
 
 ## 4. Next plan — MCP server, Vertex AI Gemini backend, Cloud Run
 
@@ -199,7 +200,11 @@ laptop). Delivered as planned: `app/gcp.py` token provider, Vertex entries for t
 and vision, `app/usage.py` cost ledger with a verified price table, per-bid usage
 files and `GET /usage`, ground truth for the N-bidder case plus `tools/score_case.py`
 so agreement is computed rather than eyeballed, `tools/ocr_compare.py`, and
-`tools/compare_runs.py` for the tables. Results in §3 rows 14–17. Spend: $0.40 metered ($0.35 Vertex, $0.05 DeepSeek).*
+`tools/compare_runs.py` for the tables. Results in §3 rows 14–17. Spend: $0.40 metered ($0.35 Vertex, $0.05 DeepSeek).
+A rerun of the fully local agent benchmark at 16k context was deliberately skipped:
+the laptop's 8B model is not the production model, and the conclusion — the agent's
+value is model-bound, guard it with `LLM_MAX_TOKENS`/`LLM_CONTEXT_TOKENS` and measure
+again on the DGX — does not change with one more laptop run.*
 
 **Steps**
 1. Auth: Vertex's OpenAI-compatible endpoint
@@ -244,7 +249,24 @@ agreement may differ across models — the validation retry and grounding stay o
 any disagreement is reported, not hidden; pricing pages change — record the prices
 used alongside the results.
 
-### 4.3 Step 3 — Cloud Run deployment, scoped honestly (1.5–2 days, optional)
+### 4.3 Step 3 — Cloud Run deployment, scoped honestly (1.5–2 days, optional) — DONE 2026-09-10
+
+*Status: deployed and measured (§3 row 18) in one day on the same GCP project, as a
+**private, scale-to-zero** service — the owner chose private access for now and a
+~3-month life on the trial credits, so idle cost had to be zero. Deviations from the
+steps below, each for a reason: (1) one service with an **nginx ingress sidecar**
+instead of two services plus CORS — the browser-direct uploads and evidence links then
+stay same-origin and the API is never exposed on its own URL; (2) `min-instances=0`
+instead of 1 — safe because the UI polls while a job runs and the checkpoint DB is
+synced to the bucket after every job (`GRAPH_DB_SCRATCH_DIR`; an instance restart
+between checkpoints loses nothing, tested); (3) **Cloud Build** instead of buildx/QEMU
+— native amd64, ~2 min for three images; (4) IAP for a browser-openable private URL
+was tried and reverted (no OAuth client without an organisation; the console route
+remains open). Two FUSE traps materialised as predicted: SQLite (handled by the
+scratch sync) and python-docx's non-sequential zip writes (now one sequential write).
+Spend: $0.16 Vertex + build/run pennies; idle $0. Also delivered alongside:
+`LLM_JSON_SCHEMA` (schema-enforced output with json_object fallback) and
+`LLM_CONTEXT_TOKENS` (refuse instead of silently truncating) for the DGX bring-up.*
 
 **Steps**
 1. Build `linux/amd64` images (`docker buildx`, QEMU on the arm64 Mac) and push to
@@ -293,7 +315,7 @@ Q&As, cost-per-bid numbers), this file (results into §3).
 | --- | --- | --- | --- |
 | 1 MCP server + local-model client — **done** | 1 day | $0 (a few DeepSeek cents for the cloud-driver run) | — |
 | 2 Vertex AI Gemini + measurement — **done** | 1 day | $0.40 metered ($0.35 Vertex, $0.05 DeepSeek) (of ≤ $5 budgeted) | GCP project with billing, Vertex API on, ADC login, region |
-| 3 Cloud Run | 1.5–2 days | ≈ $5–10 | same project, budget alert |
+| 3 Cloud Run — **done** | 1 day | ≈ $0.20 metered (Vertex $0.16 + Cloud Run/Build pennies; $0 idle) (of ≈ $5–10 budgeted) | region, private vs public, how long it stays up |
 | 4 Docs | 0.5 day | $0 | — |
 
 ## 5. Standing backlog (unchanged, client-gated)
