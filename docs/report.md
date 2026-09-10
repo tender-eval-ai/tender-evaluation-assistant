@@ -58,7 +58,7 @@ of the TAP process are absent.
   checkpoints and two `interrupt()` points (`app/graph.py`), exposed through a FastAPI
   run/resume API and a Streamlit review UI, plus the same read-only tools over MCP with a
   confidentiality guard enforced in code (`mcp_server/server.py`).
-- 102 fully offline tests in CI, including the graph pause/resume, the agent's quote
+- 103 fully offline tests in CI, including the graph pause/resume, the agent's quote
   check, the MCP guard over a real socket and a stdio subprocess, and the Cloud Run
   checkpoint sync surviving a wiped scratch disk.
 
@@ -171,7 +171,7 @@ tender_evaluation_assistant/
 │                                (make_demo_case.py), PDF writer (pdfgen.py), stress driver,
 │                                buried-evidence benchmark, ground-truth scorer, OCR comparison,
 │                                results tables
-├── test/                        102 offline tests (15 modules, ~1,980 lines) + JSON fixtures
+├── test/                        103 offline tests (15 modules, ~1,980 lines) + JSON fixtures
 ├── demo_case/                   committed synthetic 3-bidder case (5 one-page PDFs)
 ├── docs/                        plan.md, detailed_specification.md, interview_prep.md, this report,
 │                                mcp_traces/ (5 experiment traces)
@@ -570,7 +570,7 @@ All four measured runs found the same 4 missing certificates, 3 shelf-life breac
 | Cloud Build, three images | 2 min 4 s / 1 min 47 s | `output/step3/build2.log`, `deploy2.log` |
 | Metered model spend, steps 2–3 | ≈ $0.56 (Vertex $0.35 + $0.16, DeepSeek $0.05) | billing console; **not in any file** |
 | Offline demo (`run_demo.py offline-demo`) | 0.5 s, three docx | re-run during this audit |
-| Test suite | 102 tests, 3.8 s | `pytest test/ -q` |
+| Test suite | 103 tests, 3.7 s | `pytest test/ -q` |
 
 ### 7.6 Ablations and error analysis [verified]
 
@@ -638,7 +638,7 @@ and `offline_demo/` are July–September working directories with no results fil
 | Logging | **Needs improvement** | `logging` only in `mcp_server/server.py`; the pipeline prints fallback events to stderr; the backend records progress in `status.json` and reduces any job exception to one string with no traceback (`_start_job`) |
 | Exception handling | **Adequate** | No bare excepts; five `except Exception` sites, each commented (fail-open image check, job wrapper, page render → 400, UI reachability); errors are surfaced to the caller as strings, never swallowed silently except a `gh` subprocess failure and a theme probe |
 | Input validation | **Adequate** | PDF-only uploads with sanitised names, inbox import containment (`is_relative_to`), pydantic bodies for rubric and extraction, project ids validated (`PID_RE`, added by this audit); remaining gaps: no upload size limit, extension-only PDF check, `ResumeRequest` bodies typed as raw dicts and validated only inside the job |
-| Testing | **Strong** | 102 tests, 3.8 s, no network: unit tests for every code rule; graph pause/resume/crash tests; agent tests with generated PDFs and a scripted LLM; API tests over an in-process ASGI client; MCP tests over a real loopback socket and a stdio subprocess; scratch-disk survival; test-to-production line ratio 0.37. No coverage measurement, no property-based tests, no test of the frontend |
+| Testing | **Strong** | 103 tests, 3.7 s, no network: unit tests for every code rule; graph pause/resume/crash tests; agent tests with generated PDFs and a scripted LLM; API tests over an in-process ASGI client; MCP tests over a real loopback socket and a stdio subprocess; scratch-disk survival; test-to-production line ratio 0.37. No coverage measurement, no property-based tests, no test of the frontend |
 | CI/CD | **Adequate** | `.github/workflows/ci.yml`: pytest on push to main and on PRs, Python 3.12, pip cache. No lint, type check, coverage, image build or deploy automation; deployment is two idempotent shell scripts |
 | Reproducibility | **Adequate** | Deterministic case generators; documented commands for demo, tests, benchmark and Cloud Run; results are gitignored and the measured runs need keys, a GCP project or local models (§9) |
 | Security | **Adequate** | Secrets never tracked or printed; Vertex uses OAuth, Cloud Run uses Secret Manager and IAM; MCP guard in code with `compare_digest`; API key now compared in constant time; but: one shared key, key in evidence-link query strings and in the UI's inline script, `CORS_ORIGINS` defaults to `*`, `/health` is unauthenticated and names the models, no upload size cap, no `LICENSE` |
@@ -694,7 +694,7 @@ login`. Set `API_KEY` for any shared deployment.
 `docker compose up -d --build` (flagged: on the author's Mac, Docker Desktop's credential
 helper hangs non-interactive builds; the workaround is in `docs/plan.md` §2 "Ops note").
 
-**Running the tests — verified, 102 passed:**
+**Running the tests — verified, 103 passed:**
 
 ```bash
 .venv/bin/python -m pytest test/ -q
@@ -723,7 +723,7 @@ rubric, extraction, grounding, verification, agent; deterministic evaluation and
 pricing; Word reports; LangGraph orchestration with two human checkpoints; FastAPI +
 Streamlit services; MCP server and local client with the confidentiality guard; Vertex
 AI auth and cost accounting; synthetic case generators, scorer, benchmark and comparison
-tools; private scale-to-zero Cloud Run deployment; 102 offline tests; CI.
+tools; private scale-to-zero Cloud Run deployment; 103 offline tests; CI.
 
 **10.2 Partially complete.** Schema-enforced output and the context guard exist but were
 not part of any measured run (off by default); the fully local configuration is
@@ -742,8 +742,6 @@ lint and type checks in CI; a logging framework; metrics.
 - `quote_on_page`'s 6-word window can be satisfied by boilerplate shared across pages.
 - Two different render scales for page images (`app/ingest.py` default 2.0,
   `backend/api.py` 1.5) — cosmetic.
-- `AGENT_MAX_STEPS` has two defaults: 8 for the pipeline agent (`app/config.py`) and 10
-  for the MCP local client.
 - The frontend infers "no usage yet" from any `RuntimeError` on `/usage`, so a 401 or
   500 there shows as "no model calls" (`frontend/ui.py` evaluation page).
 - On Cloud Run the whole design assumes one instance (`max-instances 1`): a second
@@ -818,7 +816,7 @@ number without an artifact.
 | **Medium** | Result files and cases are gitignored; one benchmark row has no artifact | `.gitignore`; `output/step2/bench_local_agent_seq.log` (0 bytes) | The documents are the only record; a reviewer cannot re-check a number | Commit the small result JSONs under `docs/results/` (they contain no client data), and mark the hand-recorded row as such (done in §7) |
 | **Medium** | No logging framework; job exceptions reduced to one string | `backend/api.py: _start_job`; `app/llm.py` prints | Diagnosing a failed bid extraction in production means reproducing it | `logging` with a JSON formatter, the traceback stored beside `status.json`, request ids |
 | **Low** | Duplicated agent loop and action schema between pipeline and MCP client | `app/agent.py: _run_task`, `mcp_server/local_client.py: answer_question` | Two places to fix a loop bug | Extract a shared `run_tool_loop(transcript, act, verify)` |
-| **Low** | Historical name `GITHUB_MODELS_BASE_URL`; two `AGENT_MAX_STEPS` defaults; o-series name heuristic | `app/config.py`, `mcp_server/local_client.py`, `app/llm.py` | Confusion, not failure | Rename with a deprecation alias; one default; explicit reasoning-model list |
+| **Low** | Historical name `GITHUB_MODELS_BASE_URL`; o-series name heuristic | `app/config.py`, `app/llm.py` | Confusion, not failure | Rename with a deprecation alias; explicit reasoning-model list |
 | **Low** | No `LICENSE` | repository root | Unclear terms for anyone reading the portfolio | Add a licence (or an explicit "all rights reserved, portfolio only" notice) |
 
 ---
@@ -935,7 +933,7 @@ cannot leave the client.
 > agreement on Gemini (Vertex AI, OAuth), DeepSeek and a fully local stack with per-bid
 > cost accounting ($0.005 / $0.001 / $0 per bid); exposed the tools over MCP with a
 > confidentiality guard; deployed privately on Cloud Run (nginx sidecar, GCS FUSE,
-> scale-to-zero); 102 offline tests in CI.
+> scale-to-zero); 103 offline tests in CI.
 
 **60–90 second spoken introduction.**
 
@@ -969,7 +967,7 @@ cannot leave the client.
 | Technical depth | **8/10** | Guardrails, bounded agent, graph orchestration, provider abstraction, MCP, cost ledger and a real deployment, each with a reason and a measurement; no learned component and no work on real-document robustness |
 | Correctness | **7/10** | Deterministic logic is tested cell by cell and the guardrails have benchmarks; but every accuracy figure is on templated synthetic data, and two security-relevant defects existed until this audit |
 | Code quality | **8/10** | Small, readable, well-commented modules with consistent contracts; gaps in route docstrings, UI typing, a duplicated loop, historical naming |
-| Testing | **8/10** | 102 fast offline tests across every layer including sockets and subprocesses; no coverage measurement, no UI tests, no property tests |
+| Testing | **8/10** | 103 fast offline tests across every layer including sockets and subprocesses; no coverage measurement, no UI tests, no property tests |
 | Documentation | **8/10** | Unusually complete (README, dated plan, specification, interview prep, traces, this report); had drifted (stale numbers and counts) until corrected |
 | Reproducibility | **6/10** | Deterministic generators and documented commands; results gitignored, one number without an artifact, external credentials required for anything measured |
 | Deployment readiness | **5/10** | Three working shapes (native, Compose, private Cloud Run) with scripts; single-instance job model, shared key, no logging/metrics, production stack never run |
@@ -1009,6 +1007,7 @@ gap between the two is well understood and written down.
 5. Is `GITHUB_MODELS_BASE_URL` to be renamed now (with an alias) or kept until the DGX
    bring-up rewrites `.env` anyway?
 6. Which licence, if any, should the repository carry?
-7. Are the two `AGENT_MAX_STEPS` defaults (8 pipeline, 10 MCP client) intentional?
+7. *(resolved: one shared default of 8, `app/config.py: DEFAULT_AGENT_STEPS`, for the
+   pipeline agent and the MCP client alike.)*
 8. Does the Technical Marking Sheet sample exist on the client side, and when can
    Stages III–V be scoped?

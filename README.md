@@ -145,7 +145,7 @@ docs/               plan (dated experiment log), detailed specification, intervi
 docker-compose.yml  runs both services together
 deploy/cloudrun/    private Cloud Run packaging: nginx ingress sidecar, Cloud Build, setup/deploy scripts
 run_demo.py         CLI (offline demo + orchestrated run over real folders)
-test/               102 offline tests incl. API, graph, agent, MCP, cost ledger, Cloud Run scratch sync (no network, no client data)
+test/               103 offline tests incl. API, graph, agent, MCP, cost ledger, Cloud Run scratch sync (no network, no client data)
 tools/              case generator (incl. --buried benchmark case, ground truth), PDF
                     generator, stress driver, evidence-search benchmark, case scorer,
                     OCR comparison, results tables

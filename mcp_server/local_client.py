@@ -37,7 +37,7 @@ from mcp import Client  # noqa: E402
 from mcp.client.stdio import StdioServerParameters  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
-from app.config import Config, load_dotenv  # noqa: E402
+from app.config import DEFAULT_AGENT_STEPS, Config, load_dotenv  # noqa: E402
 from app.grounding import quote_on_page  # noqa: E402
 
 DEFAULT_MODEL = "qwen3:8b@http://localhost:11434/v1"
@@ -98,7 +98,7 @@ def _text(result) -> str:
 
 
 async def answer_question(question: str, client: Client, llm, *, project: str | None = None,
-                          tenderer: str | None = None, max_steps: int = 10,
+                          tenderer: str | None = None, max_steps: int = DEFAULT_AGENT_STEPS,
                           log=None) -> dict:
     """The loop. `client` is a connected `mcp.Client` (stdio subprocess in production,
     in-process server in tests); `llm` anything with the project's `chat_json`."""
@@ -229,8 +229,7 @@ async def _run(args) -> dict:
                                      log=lambda m: print(m, file=sys.stderr))
 
 
-def main(argv: list[str] | None = None) -> int:
-    load_dotenv(ROOT / ".env")
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("question")
     parser.add_argument("--project", help="project id (see: python -m mcp_server.server --list)")
@@ -239,12 +238,17 @@ def main(argv: list[str] | None = None) -> int:
                         help="model[@base_url] driving the tools (default: %(default)s)")
     parser.add_argument("--allow-cloud-model", action="store_true",
                         help="permit a cloud endpoint — SYNTHETIC projects only")
-    parser.add_argument("--max-steps", type=int, default=int(os.environ.get("AGENT_MAX_STEPS", "10")),
-                        help="step budget per question (default: AGENT_MAX_STEPS if set, else 10 — "
-                             "the pipeline's own agent defaults to 8)")
+    parser.add_argument("--max-steps", type=int, default=Config().agent_max_steps,
+                        help="step budget per question — the same AGENT_MAX_STEPS the pipeline's "
+                             "agent uses (default: %(default)s)")
     parser.add_argument("--data-dir", default=None)
     parser.add_argument("--trace", help="write the full result (answer + step trace) to this JSON file")
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    load_dotenv(ROOT / ".env")          # before build_parser(): defaults read the env
+    args = build_parser().parse_args(argv)
 
     result = asyncio.run(_run(args))
     if args.trace:

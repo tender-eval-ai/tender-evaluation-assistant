@@ -16,6 +16,10 @@ DEFAULT_BASE_URL = "http://localhost:11434/v1"
 DEFAULT_TEXT_MODEL = "qwen3:8b"
 DEFAULT_VISION_MODEL = "qwen3-vl:8b"
 DEFAULT_FALLBACKS = ""
+# One step budget for every tool-using loop: the pipeline's evidence-search agent (per
+# unresolved finding) and the MCP local client (per reviewer question). AGENT_MAX_STEPS
+# overrides both.
+DEFAULT_AGENT_STEPS = 8
 
 
 def _model_list(env_var: str, default: str) -> list[str]:
@@ -64,7 +68,7 @@ class Config:
         default_factory=lambda: os.environ.get("AGENT_SEARCH", "1").lower()
         not in ("0", "false", "no"))
     agent_max_steps: int = field(
-        default_factory=lambda: int(os.environ.get("AGENT_MAX_STEPS", "8")))
+        default_factory=lambda: int(os.environ.get("AGENT_MAX_STEPS", str(DEFAULT_AGENT_STEPS))))
     agent_ocr_pages: int = field(
         default_factory=lambda: int(os.environ.get("AGENT_OCR_PAGES", "6")))
     # Adversarial re-check of negative findings (set VERIFY_FINDINGS=0 to disable).

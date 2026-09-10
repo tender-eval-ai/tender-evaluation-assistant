@@ -382,3 +382,15 @@ def test_stdio_subprocess_end_to_end(tmp_path):
     assert "real-1 — Project real-1 [REAL DOCUMENTS]" in listing
     assert not sel[1] and "offer.pdf p.2 [skipped]" in sel[0]
     assert "Table of Contents" in page
+
+
+def test_local_client_step_budget_is_the_pipeline_agents(monkeypatch):
+    """One shared default (app.config.DEFAULT_AGENT_STEPS) and one override variable
+    for both tool-using loops — no second, silently different budget."""
+    from app.config import DEFAULT_AGENT_STEPS
+    from mcp_server.local_client import build_parser
+    monkeypatch.delenv("AGENT_MAX_STEPS", raising=False)
+    assert build_parser().parse_args(["q"]).max_steps == DEFAULT_AGENT_STEPS == 8
+    monkeypatch.setenv("AGENT_MAX_STEPS", "5")
+    assert build_parser().parse_args(["q"]).max_steps == 5
+    assert build_parser().parse_args(["q", "--max-steps", "3"]).max_steps == 3
