@@ -1,8 +1,8 @@
 # Tender Evaluation Assistant — Detailed Specification
 
 *Last updated: 2026-09-10 (after the Cloud Run step). Numbers in this document are
-measured, not estimated: 87 tracked files, ~5,400 lines of Python plus ~1,900 lines of
-tests, 98 offline tests, CI on every push.*
+measured, not estimated: 88 tracked files, ~5,400 lines of Python plus ~2,000 lines of
+tests, 102 offline tests, CI on every push.*
 
 ---
 
@@ -61,7 +61,7 @@ flowchart LR
     subgraph docker [Docker Compose]
       API["FastAPI backend<br/>backend/api.py<br/>:8000"]
       GRAPH["LangGraph orchestration<br/>app/graph.py<br/>SQLite checkpoints · interrupts · Send"]
-      LIB["Pipeline library<br/>app/ (16 modules)"]
+      LIB["Pipeline library<br/>app/ (18 modules)"]
       AGENT["Evidence-search agent<br/>app/agent.py + tools.py<br/>bounded, unresolved findings only"]
     end
     subgraph mcp [MCP surface — host process]
@@ -100,19 +100,19 @@ The frontend never imports pipeline code and never touches documents (except the
 browser-direct folder upload, which posts straight to the API). Requirements are split
 per service; the root `requirements.txt` is the dev aggregate (both + pytest).
 
-## 4. Repository inventory (87 tracked files)
+## 4. Repository inventory (88 tracked files)
 
 | Path | Files | LOC (py) | Contents |
 | --- | --- | --- | --- |
 | `app/` | 19 | ~2,270 | Pipeline library (18 modules + `__init__`) incl. graph, agent, tools, grounding, gcp, usage |
-| `backend/` | 4 | 664 | `api.py`, Dockerfile, requirements, `__init__` |
+| `backend/` | 4 | 697 | `api.py`, Dockerfile, requirements, `__init__` |
 | `frontend/` | 3 | 683 | `ui.py`, Dockerfile, requirements |
 | `mcp_server/` | 3 | ~630 | MCP server (393), local-model client (237), `__init__` |
-| `test/` | 21 | ~1,930 | 15 test modules, 98 tests, fixtures, conftest |
+| `test/` | 21 | ~1,980 | 15 test modules, 102 tests, fixtures, conftest |
 | `deploy/cloudrun/` | 5 | — | Private Cloud Run packaging: nginx ingress config + Dockerfile, `cloudbuild.yaml`, idempotent `setup.sh`, `deploy.sh` |
 | `tools/` | 8 | ~930 | Case generator (incl. `--buried`, ground truth), PDF generator, stress driver, evidence-search benchmark, case scorer, OCR comparison, results tables |
 | `demo_case/` | 5 | — | Committed synthetic demo PDFs (2 tender, 3 bids) |
-| `docs/` | 9 | — | `plan.md` (product plan, agent upgrade, experiments, next steps), interview prep, this spec, `mcp_traces/` (5 experiment traces + index) |
+| `docs/` | 10 | — | `plan.md` (product plan, agent upgrade, experiments, next steps), interview prep, this spec, `report.md` (full project audit: results provenance, engineering quality, risks), `mcp_traces/` (5 experiment traces + index) |
 | root | 10 | 85 | `run_demo.py` CLI, compose file, CI workflow, `.env.example`, `.streamlit/config.toml`, README, ignore files (incl. `.gcloudignore`) |
 
 Not tracked: `data/` (projects), `inbox/`, `cache/`, `output/`, `.env`, the
@@ -120,7 +120,7 @@ regenerable `buried_case/` and `demo_case_stress/`.
 
 ## 5. The pipeline library — module by module
 
-### `app/config.py` (95 LOC)
+### `app/config.py` (125 LOC)
 Environment loading and model configuration. `Config` dataclass fields: `base_url`
 (default from `GITHUB_MODELS_BASE_URL` — historic name, now usually the local Ollama
 URL), `text_model` / `vision_model` + `*_fallbacks` lists, `cache_dir`, prompt budgets
@@ -165,7 +165,7 @@ to the model, so output is validated at the boundary:
   `BidPrice` (unit price, optimal dosage, quoted total, FX rate).
 - Evaluation results: `Stage1Result`, `Stage2Result`, `PriceRow`, `EvaluationResult`.
 
-### `app/ingest.py` (170 LOC)
+### `app/ingest.py` (191 LOC)
 PDF → per-page text. `classify_pdf` samples up to 5 pages, `SCAN_THRESHOLD=100`
 chars/page average. `load_pdf` makes the text-vs-scan decision **per page**: pages
 with a text layer are read directly; sparse pages that carry an image XObject are
@@ -226,7 +226,7 @@ rendered to memory and written with one sequential `write_bytes` — python-docx
 writer seeks backwards, which a FUSE-mounted bucket (Cloud Run) only accepts through a
 slow out-of-order-write fallback.
 
-### `app/grounding.py` (77 LOC)
+### `app/grounding.py` (93 LOC)
 The deterministic guardrail behind every citation. `readable_pages()` is the set of
 pages that were actually read; `ground_extraction()` demotes first-pass findings that
 cite any other page (present → missing, yes/no → unclear); `cited_ok()` /
@@ -258,7 +258,7 @@ missing document is restored with the verified quote; an unclear finding gets th
 evidence and a *suggested* verdict attached but stays unclear; a found Price Schedule
 triggers a targeted `extract_price`. Every step is traced to `work/agent/<bid>.json`.
 
-### `app/graph.py` (254 LOC)
+### `app/graph.py` (275 LOC)
 LangGraph orchestration of the whole pipeline. `PipelineState` holds paths, the
 rubric, per-bidder extractions (dict reducer for fan-in), corrections, evaluation and
 a progress log. Nodes wrap the existing functions unchanged: `load_checkpoints`
@@ -271,7 +271,7 @@ load, extract, verify, evidence search, write `bids/<name>.json`) →
 from `max_concurrency` = `MAX_PARALLEL_BIDS`. A crash mid fan-out resumes from the last
 checkpoint with the finished bids kept.
 
-### `app/pipeline.py` (~50 LOC)
+### `app/pipeline.py` (62 LOC)
 Shared helpers: `discover_bidders` (one folder or loose PDF per tenderer),
 `run_offline` (the deterministic half from JSON fixtures — zero network) and the
 console `summarize`. Checkpoint files (`rubric.json`, `bids/*.json`,
@@ -301,7 +301,7 @@ overridable via `MODEL_PRICES`; unknown (local) models cost $0. `write_usage` an
 (mean, median), tokens and calls per bid, median model seconds per bid, failed
 calls, served models — which the API and UI expose.
 
-### `mcp_server/server.py` (393 LOC) — the tools as an MCP server
+### `mcp_server/server.py` (404 LOC) — the tools as an MCP server
 `MCPServer` from the official `mcp` SDK 2.2 exposing nine read-only tools (all
 annotated `readOnlyHint`): navigation — `list_projects`, `list_bids(project)`,
 `get_rubric(project)`, `select_tender(project)`, `select_bid(project, tenderer)` —
@@ -325,7 +325,7 @@ only regardless. The server writes nothing but the OCR cache and never prints to
 stdout (the stdio transport owns it; logs go to stderr). `--list` prints what the
 current policy would serve.
 
-### `mcp_server/local_client.py` (237 LOC) — the production-compatible client
+### `mcp_server/local_client.py` (255 LOC) — the production-compatible client
 Launches the server as a stdio subprocess with `MCP_LOCAL_MODEL=1` and drives the
 tools with the project's own `LLM` class on a *local* endpoint (default
 `qwen3:8b@http://localhost:11434/v1`; cloud endpoints are refused unless
@@ -337,7 +337,7 @@ quote appears on a page this client read through `read_page`/`ocr_page`; otherwi
 the step is rejected and the model must read the page or finish with `found=false`.
 Output: answer, page, quote, step count, seconds and the full trace (`--trace`).
 
-## 6. Backend service — `backend/api.py` (664 LOC)
+## 6. Backend service — `backend/api.py` (697 LOC)
 
 Project-based REST API. Data layout: `$DATA_DIR/projects/<id>/` with `meta.json`,
 `tender/*.pdf`, `bids/<tenderer>/*.pdf`, and `work/` (rubric, extractions, evaluation,
@@ -354,7 +354,7 @@ reports, caches, `status.json`).
 | Evaluation | `POST …/evaluate` (deterministic re-evaluation of stored extractions, no LLM), `GET …/evaluation` |
 | Reports | `GET …/reports`, `GET …/reports/{name}` |
 | Evidence | `GET …/bids/{t}/page`, `GET …/tender/page` — rendered PNG, `?highlight=` marks the quoted text, cached |
-| Misc | `GET /health`, `GET …/status` |
+| Misc | `GET /health`, `GET …/status`, `GET …/usage` (per-bid tokens, calls, $ — see `app/usage.py`) |
 
 Operational design points:
 - **Background jobs**: one thread per job, one job per project (`_running` set +
@@ -397,7 +397,7 @@ Build permissions, inbox seeded with the synthetic cases); `deploy.sh` runs Clou
 Build (`cloudbuild.yaml`, three images in parallel, git-sha tags) and the deploy, then
 grants the owner `run.invoker`. Access is through `gcloud run services proxy`.
 
-## 7. Frontend — `frontend/ui.py` (666 LOC)
+## 7. Frontend — `frontend/ui.py` (683 LOC)
 
 Five-step wizard over `st.segmented_control` (its selection survives `st.rerun()`,
 unlike `st.tabs`) with Back/Next buttons; blue theme accent (`.streamlit/config.toml`),
@@ -454,7 +454,7 @@ stay visible — an early bug hid it behind an immediate rerun).
   found by each, seconds and $ per page.
 - `tools/compare_runs.py` — renders the stress / benchmark / OCR result files as the
   Markdown tables published in the README.
-- `test/` — **98 tests, all offline** (no network, no tokens, no client data): unit
+- `test/` — **102 tests, all offline** (no network, no tokens, no client data): unit
   tests for pricing/rounding, evaluation, retrieval, verification (incl. grounded
   refutations), grounding, report rendering, per-page OCR routing (mixed text+image
   PDFs), LLM fallback chains (stubbed clients), schema-enforced output and its
@@ -490,7 +490,9 @@ stay visible — an early bug hid it behind an immediate rerun).
 | `MAX_PARALLEL_BIDS` | Concurrent bid extractions in the graph fan-out (default 4) |
 | `API_KEY` | Enables auth; required on any shared machine |
 | `DATA_DIR`, `INBOX_DIR` | Storage roots (bind-mounted in Docker) |
-| `PUBLIC_BACKEND_URL` | What the *browser* can reach (folder upload + evidence links) |
+| `PUBLIC_BACKEND_URL` | What the *browser* can reach (folder upload + evidence links); a relative path such as `/api` behind a same-origin proxy |
+| `CORS_ORIGINS` | Allowed browser origins for the API (default `*`; moot behind the Cloud Run nginx sidecar) |
+| `MCP_TRANSPORT` | Default for the MCP server's `--transport` (`stdio`) |
 | *(Ollama context)* | Ollama serves a 4k context by default and truncates longer prompts silently; use a 16k model variant for the text model (`ollama create qwen3:8b-16k`, see `.env.example`) or `OLLAMA_CONTEXT_LENGTH` |
 | `LLM_TIMEOUT_S` | Per-request model timeout (default 600 s); raise for local vision models under load |
 | `LLM_MAX_TOKENS` | Optional cap on generated tokens per call (unset by default); bounds a runaway local generation |
@@ -538,11 +540,11 @@ stay visible — an early bug hid it behind an immediate rerun).
 | — missing certificates | 4/4 found, incl. one inside a scan-only bid |
 | — shelf-life breaches / arithmetic errors | 3/3 and 3/3 flagged |
 | — cheapest non-conforming bid | ranked #1 on price, correctly **not** recommended |
-| Rubric derivation | 6 s on DeepSeek (133 s on local qwen3:8b — same verdicts) |
+| Rubric derivation | 6 s on DeepSeek vs 133 s on local qwen3:8b (2026-08 run; 2026-09-09 stress runs: 4.0 s vs 98.4 s) — same verdicts |
 | 3-bid case incl. scanned-bid OCR + verification | 55 s with parallel extraction (~337 s sequential local) |
 | Evaluation from stored extractions | ~5 s (no LLM) |
-| 30-bidder case through the graph, agent on | **116 s**, all seeded defects matched; agent ran for the 4 missing-certificate bids and restored nothing |
-| Evidence-search benchmark (`--buried`, first pass capped at 4 pages) | certificate recall **0/2 → 2/2**, **0** false restores, price **0/3 → 3/3**, unclear findings with evidence **0/9 → 8/9**, ~6 OCR pages per bid |
+| 30-bidder case through the graph, agent on (2026-09-03 run; the per-provider reruns below are current) | **116 s**, all seeded defects matched; agent ran for the 4 missing-certificate bids and restored nothing |
+| Evidence-search benchmark (`--buried`, first pass capped at 4 pages) | certificate recall **0/2 → 2/2**, **0** false restores, price **0/3 → 3/3**, unclear findings with evidence **0/9 → 8/9**, ~6 OCR pages per bid (2026-09-03 run, DeepSeek + local OCR; the Vertex rerun below reached 9/9) |
 | Orchestrated run/resume flow (demo case) | rubric derived + paused in 4 s; 3 bids extracted in parallel incl. OCR + agent in 54 s; evaluation + reports 2 s — verified both natively and on the rebuilt Docker stack |
 | Mid-project provider retirement (GitHub Models, HTTP 410) | Survived via fallback chain → local Ollama, zero code change |
 | MCP tools, same question two ways (`--buried` project, first pass cached pp. 1–4, agent off) | cloud driver (DeepSeek): certificate **found p.11** in 3 steps / 32 s, absent one **not found** in 7 steps; local driver (`qwen3:8b`, cold cache): **found p.11** in 4 steps / 111 s, absent one not found in 3 steps; no run ever produced an unverified citation |
@@ -556,8 +558,8 @@ stay visible — an early bug hid it behind an immediate rerun).
 
 | Demo (this repo) | Production (client site) |
 | --- | --- |
-| DeepSeek API `deepseek-chat` (text) | Qwen3.6-35B-A3B / DeepSeek-V4-Flash via vLLM |
-| Ollama `qwen3-vl:8b` OCR | Qwen3-VL-30B-A3B page OCR, batched |
+| DeepSeek API `deepseek-chat` or Gemini 2.5 Flash on Vertex AI (text) | Qwen3.6-35B-A3B / DeepSeek-V4-Flash via vLLM |
+| Ollama `qwen3-vl:8b` or Gemini 2.5 Flash (OCR) | Qwen3-VL-30B-A3B page OCR, batched |
 | Docker on a laptop | Same compose stack on DGX Spark GB10 (arm64) |
 | Private, scale-to-zero Cloud Run service (portability proof, reviewer demo) | Not applicable — production is on-premises by contract |
 | Synthetic fixtures | Real tender/bid sets, fully local |

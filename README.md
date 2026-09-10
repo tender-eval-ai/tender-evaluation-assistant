@@ -6,12 +6,12 @@ Input: a tender document set + one bid (offer) per tenderer. Output: an editable
 detailed evaluation record sheet.
 
 > **CONFIDENTIALITY WARNING**
-> The demo's default text model is a **cloud API** (DeepSeek) for document understanding.
-> **Never** feed real client tender/bid documents through any cloud path. Use the bundled
-> synthetic fixtures, or your own sanitized samples. The production design targets fully
-> local inference (Qwen3-VL / Qwen3.6 / DeepSeek on DGX Spark via vLLM) — the LLM client
-> here is OpenAI-compatible, so production swaps `GITHUB_MODELS_BASE_URL` for a local
-> vLLM endpoint with no code change.
+> The models are whatever `.env` points at: the measured demo configurations use
+> **cloud APIs** (DeepSeek, Gemini on Vertex AI) or local Ollama. **Never** feed real
+> client tender/bid documents through any cloud path. Use the bundled synthetic
+> fixtures, or your own sanitized samples. The production design targets fully local
+> inference (Qwen3-VL / Qwen3.6 / DeepSeek on DGX Spark via vLLM) — the LLM client is
+> OpenAI-compatible, so production points the base URL at vLLM with no code change.
 
 ## Pipeline (mirrors the TAP workflow)
 
@@ -86,12 +86,12 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 # 3) Live demo with local Ollama (default backend — no key, no cloud):
 #    Install https://ollama.com then:
 #      ollama pull qwen3:8b && ollama pull qwen3-vl:8b
-.venv/bin/python tools/make_demo_case.py     # generates synthetic demo_case/
+# demo_case/ is committed; regenerate it (same content) with: tools/make_demo_case.py
+# --bids-dir holds one subfolder (or one PDF) per tenderer; --acknowledge-cloud is the
+# confidentiality gate — it only matters when .env points at a cloud endpoint.
 GITHUB_MODELS_BASE_URL=http://localhost:11434/v1 .venv/bin/python run_demo.py run \
-    --tender-dir demo_case/tender \
-    --bids-dir demo_case/bids \      # one subfolder (or one PDF) per tenderer
-    --out output/live_demo \
-    --acknowledge-cloud              # only actually cloud if you point at a cloud URL
+    --tender-dir demo_case/tender --bids-dir demo_case/bids \
+    --out output/live_demo --acknowledge-cloud
 
 # 4) Evidence-search benchmark — the agent OFF vs ON, scored against ground truth:
 .venv/bin/python tools/make_demo_case.py --buried --bidders 3 --out buried_case
@@ -122,7 +122,7 @@ backend, GitHub Models, was retired in 2026.)
 
 ```
 app/                the pipeline library (shared by CLI and backend)
-  config.py         env + model configuration (GitHub Models ⇄ local vLLM swap point)
+  config.py         env + model configuration (the cloud ⇄ local vLLM swap point)
   llm.py            OpenAI-compatible client: fallback chains, JSON-validated chat, OCR
   ingest.py         PDF classification (text vs scan), text extraction, VLM OCR + cache
   schemas.py        pydantic models: Rubric, BidExtraction, EvaluationResult…
@@ -141,10 +141,11 @@ app/                the pipeline library (shared by CLI and backend)
 backend/            FastAPI service (projects, uploads, jobs, reports API) + Dockerfile
 frontend/           Streamlit review UI (HTTP client of the backend only) + Dockerfile
 mcp_server/         MCP server over the read-only tools + local-model MCP client
+docs/               plan (dated experiment log), detailed specification, interview prep, project report (audit)
 docker-compose.yml  runs both services together
 deploy/cloudrun/    private Cloud Run packaging: nginx ingress sidecar, Cloud Build, setup/deploy scripts
 run_demo.py         CLI (offline demo + orchestrated run over real folders)
-test/               98 offline tests incl. API, graph, agent, MCP, cost ledger, Cloud Run scratch sync (no network, no client data)
+test/               102 offline tests incl. API, graph, agent, MCP, cost ledger, Cloud Run scratch sync (no network, no client data)
 tools/              case generator (incl. --buried benchmark case, ground truth), PDF
                     generator, stress driver, evidence-search benchmark, case scorer,
                     OCR comparison, results tables
@@ -162,7 +163,7 @@ dev aggregate (both + pytest).
 BACKEND_URL=http://localhost:8000 .venv/bin/streamlit run frontend/ui.py
 
 # Docker (recommended):
-cp .env.example .env       # set GITHUB_TOKEN; set API_KEY on any shared machine
+cp .env.example .env       # point the models at Ollama/DeepSeek/Vertex; set API_KEY on any shared machine
 docker compose up -d --build
 # UI:  http://localhost:8501     API: http://localhost:8000/health
 ```
@@ -191,7 +192,8 @@ resume; corrected bids are never re-extracted. Layers that run automatically:
   embedded text layer on some pages skips OCR there.
 - **Parallel extraction** (`app/graph.py`): bids without a stored extraction fan out
   as parallel graph branches (`MAX_PARALLEL_BIDS`, default 4) — cloud endpoints scale
-  with it; a local Ollama simply queues the requests. 30 bidders: 116 s end to end.
+  with it; a local Ollama simply queues the requests. 30 bidders: 82.6–115 s end to end
+  on the cloud text models (measured table below; 116 s on the 2026-09-03 run).
 - **Citation grounding** (`app/grounding.py`): "present on page 11" is not accepted if
   page 11 was never read — the finding is demoted so verification and the agent
   actually look. Refutations and agent results must quote text on the cited page.
@@ -199,8 +201,9 @@ resume; corrected bids are never re-extracted. Layers that run automatically:
   missing/unclear after verification, and for a price the first pass never saw, a
   bounded tool-using loop reads the contents page, OCRs the pages it points to (on
   demand, within `AGENT_OCR_PAGES`), and finishes only with a quote verified on that
-  page. `AGENT_SEARCH=0` disables it. Measured on the `--buried` case (schedules on
-  pages 9–12 of scan-only offers, first pass capped at 4 pages):
+  page. `AGENT_SEARCH=0` disables it. First measured on the `--buried` case (schedules
+  on pages 9–12 of scan-only offers, first pass capped at 4 pages; 2026-09-03 run,
+  DeepSeek text + local OCR — the per-provider reruns are in the table further down):
 
   | run | certificate recall | false restores | price extracted | unclear findings w/ evidence |
   | --- | --- | --- | --- | --- |
@@ -411,7 +414,7 @@ bash deploy/cloudrun/setup.sh    # once: APIs, registry, bucket, service account
 bash deploy/cloudrun/deploy.sh   # build (Cloud Build) + deploy; --no-build redeploys the last images
 gcloud run services proxy tender-demo --region us-central1 --port 8080   # open http://localhost:8080
 API_KEY=$(gcloud secrets versions access latest --secret=tender-api-key) \
-  python tools/stress_test.py --backend http://localhost:8080/api --out output/stress_cloudrun.json
+  python tools/stress_test.py --backend http://localhost:8080/api --out output/step3/stress_cloudrun.json
 ```
 
 Confidentiality is unchanged: the deployed instance only ever holds **synthetic**
@@ -440,6 +443,6 @@ thing users need.
 
 Known demo limitations: the first-pass OCR cap per document (`MAX_OCR_PAGES` /
 `--max-ocr-pages`, default 8 — the evidence-search agent reads further pages on demand
-within `AGENT_OCR_PAGES`), local OCR speed (~25 s per page on `qwen3-vl:8b`; seconds
-on a cloud vision model), and no Stage III–V yet (technical marking / combined score —
+within `AGENT_OCR_PAGES`), local OCR speed (measured 48.7 s per page on `qwen3-vl:8b`
+on the laptop; 3.8 s on Gemini), and no Stage III–V yet (technical marking / combined score —
 phase 2).

@@ -173,3 +173,19 @@ def test_estimate_tokens_counts_text_parts_only():
         {"type": "text", "text": "a" * 35},
         {"type": "image_url", "image_url": {"url": "data:image/png;base64,AAAA"}}]}]
     assert estimate_tokens(mixed) == 10
+
+
+def test_github_token_never_reaches_a_local_or_on_prem_endpoint():
+    """The GitHub PAT is only for GitHub hosts; Ollama and the client's vLLM get the
+    placeholder. Provider keys are matched by hostname (see test_usage for Vertex)."""
+    cfg = Config(token="ghp_secret")
+    assert cfg.key_for("http://localhost:11434/v1") == "local"
+    assert cfg.key_for("http://dgx.internal:8000/v1") == "local"
+    assert cfg.key_for("https://models.github.ai/inference") == "ghp_secret"
+
+
+def test_prompt_budgets_are_configurable(monkeypatch):
+    monkeypatch.setenv("MAX_DOC_CHARS", "1000")
+    monkeypatch.setenv("MAX_TOTAL_CHARS", "3000")
+    cfg = Config(token="unused")
+    assert (cfg.max_doc_chars, cfg.max_total_chars) == (1000, 3000)

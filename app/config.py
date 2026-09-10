@@ -9,12 +9,15 @@ from __future__ import annotations
 import os
 import subprocess
 from dataclasses import dataclass, field
+from functools import lru_cache
 from pathlib import Path
 
-DEFAULT_BASE_URL = "https://models.github.ai/inference"
-DEFAULT_TEXT_MODEL = "openai/gpt-4o-mini"
-DEFAULT_VISION_MODEL = "openai/gpt-4.1"
-DEFAULT_FALLBACKS = "openai/o3,openai/gpt-4.1-mini"
+# Defaults = a keyless local Ollama (what .env.example ships); .env overrides. The
+# original demo provider (GitHub Models) was retired in 2026-08 and is gone from here.
+DEFAULT_BASE_URL = "http://localhost:11434/v1"
+DEFAULT_TEXT_MODEL = "qwen3:8b"
+DEFAULT_VISION_MODEL = "qwen3-vl:8b"
+DEFAULT_FALLBACKS = ""
 
 
 def _model_list(env_var: str, default: str) -> list[str]:
@@ -35,8 +38,10 @@ def load_dotenv(path: str | Path = ".env") -> None:
         os.environ.setdefault(key, value)
 
 
+@lru_cache(maxsize=1)
 def github_token() -> str | None:
-    """GITHUB_TOKEN env var, falling back to the gh CLI's stored token."""
+    """GITHUB_TOKEN env var, falling back to the gh CLI's stored token. Cached: Config()
+    is built per request/job and the gh lookup is a subprocess."""
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GITHUB_MODELS_TOKEN")
     if token:
         return token
@@ -63,8 +68,10 @@ class Config:
     cache_dir: Path = Path("cache")
     # Free-tier friendliness: cap how much of each document is OCR'd / prompted.
     max_ocr_pages: int = 8
-    max_doc_chars: int = 15000
-    max_total_chars: int = 45000
+    # Prompt budgets: characters per document excerpt and per prompt (targeted page
+    # selection fills them — app/retrieval.py); lower them for a small context window.
+    max_doc_chars: int = field(default_factory=lambda: int(os.environ.get("MAX_DOC_CHARS", "15000")))
+    max_total_chars: int = field(default_factory=lambda: int(os.environ.get("MAX_TOTAL_CHARS", "45000")))
     # Concurrent bid extractions (graph fan-out / backend thread pool).
     max_parallel_bids: int = field(
         default_factory=lambda: max(1, int(os.environ.get("MAX_PARALLEL_BIDS", "4"))))
@@ -122,4 +129,6 @@ class Config:
                                 ("bigmodel", "ZHIPU_API_KEY")):
             if marker in base_url:
                 return os.environ.get(env_var)
-        return self.token or "local"
+        # Only a GitHub host gets the GitHub token; a local/on-premises server (Ollama,
+        # the client's vLLM) must never receive it.
+        return (self.token or "local") if "github" in base_url else "local"

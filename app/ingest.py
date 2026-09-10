@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -137,7 +138,9 @@ def ocr_single_page(path: Path, page_index: int, cfg: Config, llm: LLM) -> str:
         return cached.read_text()
     text = llm.ocr_page(render_page_png(path, page_index))
     cached.parent.mkdir(parents=True, exist_ok=True)
-    cached.write_text(text)
+    tmp = cached.with_name(f".{cached.name}.{os.getpid()}.tmp")   # never a half-written cache file
+    tmp.write_text(text)
+    os.replace(tmp, cached)
     return text
 
 

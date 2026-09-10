@@ -8,6 +8,7 @@ data/
 inbox/
 .DS_Store
 README.html
+# 30-bidder stress case — regenerate with: python tools/make_demo_case.py --bidders 30 --out demo_case_stress
 demo_case_stress/
 
 # Benchmark case — regenerate with: python tools/make_demo_case.py --buried --out buried_case

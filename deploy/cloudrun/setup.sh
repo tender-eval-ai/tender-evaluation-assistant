@@ -59,6 +59,10 @@ gcloud projects add-iam-policy-binding "$PROJECT" \
 
 echo "== Seed the server inbox with the synthetic demo cases"
 for case in demo_case demo_case_stress; do
-    [ -d "$case" ] && gcloud storage rsync -r "$case" "gs://$BUCKET/inbox/$case" --project "$PROJECT" >/dev/null
+    if [ -d "$case" ]; then
+        gcloud storage rsync -r "$case" "gs://$BUCKET/inbox/$case" --project "$PROJECT" >/dev/null
+    else
+        echo "   skipping $case — not present (regenerate: python tools/make_demo_case.py --bidders 30 --out demo_case_stress)"
+    fi
 done
 echo "done: project=$PROJECT region=$REGION repo=$REPO bucket=$BUCKET sa=$SA_EMAIL secret=$SECRET"

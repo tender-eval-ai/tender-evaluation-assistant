@@ -139,7 +139,7 @@ class UsageLedger:
                     m = models.setdefault(entry, {f: 0 for f in FIELDS} | {"served": b["served"]})
                     for f in FIELDS:
                         m[f] += b[f]
-        totals = {f: sum(m[f] for m in models.values()) for f in FIELDS}
+            totals = {f: sum(m[f] for m in models.values()) for f in FIELDS}
         for m in list(models.values()) + [totals]:
             m["seconds"] = round(m["seconds"], 2)
             m["usd"] = round(m["usd"], 6)

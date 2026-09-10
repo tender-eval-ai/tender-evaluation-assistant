@@ -24,9 +24,10 @@ from app.pipeline import run_offline, summarize  # noqa: E402
 
 CLOUD_WARNING = """\
 *** CONFIDENTIALITY CHECK ***
-'run' sends document content to GitHub Models (cloud). The client's data is under a
-strict NDA and must stay local — use this mode ONLY with synthetic or sanitized
-documents. Re-run with --acknowledge-cloud to confirm your inputs are safe to upload.
+'run' sends document content to the text/vision endpoints configured in .env — a
+cloud API (DeepSeek, Gemini on Vertex AI) unless they point at local models. The
+client's data is under a strict NDA and must stay local — use cloud endpoints ONLY
+with synthetic or sanitized documents. Re-run with --acknowledge-cloud to confirm.
 """
 
 

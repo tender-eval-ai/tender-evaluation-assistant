@@ -1,8 +1,8 @@
 # Tender Evaluation Assistant — Plan
 
 *The single plan file for this repo (supersedes `plan_report.md`, `plan_report_zh.md`
-and `agent_upgrade_plan.md`). Status date 2026-09-08 · repo private · demo phase and
-agent upgrade complete; next batch (§4) proposed, not started.*
+and `agent_upgrade_plan.md`). Status date 2026-09-10 · repo private · demo phase,
+agent upgrade and the §4 batch (MCP, Vertex AI, Cloud Run) complete and measured.*
 
 ---
 
@@ -95,7 +95,7 @@ All on synthetic, deterministic cases with seeded ground truth (never client dat
 | 8 | Run 3, final | Grounding on; agent off vs on | off: certificate recall 0/2, prices 0/3, unclear findings with evidence 0/9 → on: **2/2, 0 false restores, 3/3, 8/9**; 17 OCR pages (~6 per bid) |
 | 9 | 30-bidder regression through the graph, agent on | Same seeded case as #1 | **116 s**; all seeded defects matched exactly; agent ran for the 4 truly-missing-certificate bids and restored nothing |
 | 10 | Orchestrated run/resume flow, live | Native services, then the rebuilt Docker stack | Rubric derived + paused **4 s**; 3 bids in parallel incl. OCR + agent **54 s**; evaluation + reports **2 s**; edits made while paused honoured |
-| 11 | Offline test suite | Grown across phases | 22 → 30 → 45 → 50 → 69 → 81 → 91 → 92 → **98** tests, all offline, CI on every push |
+| 11 | Offline test suite | Grown across phases | 22 → 30 → 45 → 50 → 69 → 81 → 91 → 92 → 98 → **102** tests, all offline, CI on every push |
 | 12 | MCP tools, two drivers (2026-09-08) | `buried_case` as a synthetic project, first pass cached pages 1–4 only, agent off (pipeline says "certificate missing" for all three bidders); same question, same tools over the MCP server; cloud driver = DeepSeek through the local client with `--allow-cloud-model` (Claude Desktop is not installed on this Mac; structurally the same egress), local driver = `qwen3:8b` on Ollama | Cloud: Tenderer_01 **found p.11** in 3 steps / 32 s, Tenderer_03 **not found** (correct) in 7 steps / 127 s. Local, cold cache: Tenderer_02 **found p.11** in 4 steps / 111 s (one rejected finish — it omitted `page`); Tenderer_03 **not found** in 3 steps. Both followed the contents page → page 11 path. One local run before the rejection message was made explicit exhausted its 10 steps (six `finish` attempts without `page`) — no fabricated citation. Traces in `docs/mcp_traces/` |
 | 13 | MCP confidentiality guard, live | HTTP transport without `ALLOW_CLOUD_CLIENTS` / without `API_KEY`; guarded server probed with and without the key on an unflagged and a synthetic project (`MCP_LOCAL_MODEL=1` also set) | Refused to start (exit 2) in both misconfigurations; no key → 401; unflagged project → refused even with the local flag; synthetic project → served. `--list` withholds the 8 unflagged projects on this machine (count only) |
 | 14 | Three backends, 30-bidder stress (2026-09-09) | Same case and code; Gemini 2.5 Flash on Vertex AI (text + OCR, OAuth via ADC), DeepSeek-V4-Flash + local qwen3-vl OCR, fully local qwen3:8b + qwen3-vl:8b; agreement scored by `tools/score_case.py` against seeded ground truth; cost from the per-call ledger | **116/116 (100%) on all three.** Vertex **82.6 s**, $0.162 ($0.005/bid, 4.8k tokens/bid, 6.8 s model time/bid); DeepSeek **115 s**, $0.030 ($0.001/bid); fully local **2731 s in two passes** (first pass aborted at bid 29/30 on a 600 s OCR timeout under 4-way contention, resumed from checkpoints sequentially), $0, 131 s model time/bid; 0 failed calls on the cloud runs |
@@ -187,7 +187,7 @@ missing — the message now names it, and the cold-cache run then succeeded.
 **Difficulties (as anticipated).** The egress point above is the one that matters — it must be stated
 in the README and enforced in code, not left to the operator; SDK API churn (pin, thin
 adapter); a stdio server must not print to stdout (log to stderr); interactive OCR
-latency on local `qwen3-vl` (~25 s/page — say so, or point the vision chain at a cloud
+latency on local `qwen3-vl` (measured 48.7 s/page on the laptop — say so, or point the vision chain at a cloud
 model *for synthetic demos only*); an 8B local model drives the tools less reliably
 than Claude — the local client keeps the step budget and the quote-on-page check, so
 the failure mode is "not found", never a fabricated citation.

@@ -320,3 +320,32 @@ def test_project_synthetic_flag(tmp_path, monkeypatch):
     assert real["synthetic"] is False and demo["synthetic"] is True
     assert client.get(f"/projects/{real['id']}").json()["synthetic"] is False
     assert client.get(f"/projects/{demo['id']}").json()["synthetic"] is True
+
+
+def test_project_id_is_validated_before_touching_the_filesystem(tmp_path, monkeypatch):
+    """'..' as a project id resolves to DATA_DIR itself — and DELETE calls rmtree on
+    the resolved directory. Ids must match the generated <slug>-<hex> shape."""
+    from fastapi import HTTPException
+    client = make_client(tmp_path, monkeypatch)
+    import backend.api as api
+    keep = client.post("/projects", json={"name": "keep me"}).json()["id"]
+    for bad in ("..", ".", "../keep", "keep/../..", "A B", "", "%2e%2e"):
+        with pytest.raises(HTTPException) as err:
+            api._project_dir(bad)
+        assert err.value.status_code == 404
+    assert client.delete("/projects/%2e%2e").status_code == 404
+    assert client.delete("/projects/..").status_code in (404, 405)
+    assert (tmp_path / "data" / "projects" / keep).is_dir()
+    assert client.delete(f"/projects/{keep}").json() == {"deleted": keep}
+
+
+def test_jobs_interrupted_by_a_restart_are_not_left_running(tmp_path, monkeypatch):
+    """A job runs in a daemon thread; if the process dies mid-job the status file
+    would say "running" forever. Startup flips it to a clear error."""
+    client = make_client(tmp_path, monkeypatch)
+    pid = client.post("/projects", json={"name": "restart"}).json()["id"]
+    import backend.api as api
+    api._set_status(api.PROJECTS / pid, "running", "extracting Tenderer_07")
+    client = make_client(tmp_path, monkeypatch)          # process restarted (module reload)
+    status = client.get(f"/projects/{pid}/status").json()
+    assert status["state"] == "error" and "restarted" in status["detail"]

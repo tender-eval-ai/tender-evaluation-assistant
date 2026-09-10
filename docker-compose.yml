@@ -1,7 +1,7 @@
 # Tender Evaluation Assistant — backend API + frontend UI.
-#   cp .env.example .env   # set GITHUB_TOKEN and (on any shared machine) API_KEY
+#   cp .env.example .env   # point the models at Ollama/DeepSeek/Vertex; set API_KEY on any shared machine
 #   docker compose up -d --build
-# UI: http://<host>:8501 — restrict inbound access (EC2 security group) to your own IP.
+# UI: http://<host>:8501 — restrict inbound access (host firewall) to your own IP.
 services:
   backend:
     build:

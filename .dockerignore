@@ -5,6 +5,7 @@ __pycache__
 *.pyc
 cache/
 output/
+.pytest_cache/
 data/
 demo_case/
 test/

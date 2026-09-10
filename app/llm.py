@@ -1,7 +1,8 @@
 """OpenAI-compatible LLM client: schema-validated JSON chat + page OCR, with
 model-fallback chains (primary -> fallbacks on rate limits, outages, bad requests).
 
-Works against GitHub Models (demo) or any local vLLM endpoint (production) unchanged.
+Works unchanged against any OpenAI-compatible endpoint: DeepSeek or Gemini on Vertex AI
+(demo, synthetic documents only), local Ollama (demo), vLLM on the client's hardware.
 """
 from __future__ import annotations
 
@@ -65,7 +66,7 @@ class LLM:
 
     def __init__(self, cfg: Config, token_provider: ADCToken | None = None):
         # Local OpenAI-compatible servers (Ollama, vLLM) need no real key; hosted
-        # endpoints like GitHub Models do.
+        # endpoints do (per-host lookup in Config.key_for; GitHub hosts need the PAT).
         if not cfg.token and "github" in cfg.base_url:
             raise RuntimeError(
                 "No GitHub token found. Set GITHUB_TOKEN (fine-grained PAT with "

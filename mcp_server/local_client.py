@@ -239,7 +239,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="model[@base_url] driving the tools (default: %(default)s)")
     parser.add_argument("--allow-cloud-model", action="store_true",
                         help="permit a cloud endpoint — SYNTHETIC projects only")
-    parser.add_argument("--max-steps", type=int, default=int(os.environ.get("AGENT_MAX_STEPS", "10")))
+    parser.add_argument("--max-steps", type=int, default=int(os.environ.get("AGENT_MAX_STEPS", "10")),
+                        help="step budget per question (default: AGENT_MAX_STEPS if set, else 10 — "
+                             "the pipeline's own agent defaults to 8)")
     parser.add_argument("--data-dir", default=None)
     parser.add_argument("--trace", help="write the full result (answer + step trace) to this JSON file")
     args = parser.parse_args(argv)

@@ -1,9 +1,8 @@
 # Tender Evaluation Assistant — Interview Preparation
 
 *How to present this project on a resume, in a 90-second pitch, and under questioning.
-Everything here is true of the repo as of commit `7f9c1d8` (after the LangGraph +
-agent upgrade, Docker images rebuilt and verified) — no embellishment needed; the
-honest version is the strong version.*
+Everything here is true of the repo as of 2026-09-10 (after the MCP, Vertex AI and
+Cloud Run steps) — no embellishment needed; the honest version is the strong version.*
 
 ---
 
@@ -24,7 +23,7 @@ honest version is the strong version.*
 >   **adversarial verification pass** that must refute every negative finding before
 >   it reaches a report, and page-cited evidence rendered with the quoted sentence
 >   highlighted — **100% agreement with seeded ground truth on a 30-bidder stress
->   test (now 116 s end-to-end)**.
+>   test (82.6 s on Gemini, 115 s on DeepSeek, end to end)**.
 > - Designed for strict confidentiality (NDA): OpenAI-compatible client with
 >   cross-provider fallback chains (`model@endpoint`, per-host credentials incl.
 >   OAuth for **Gemini on Vertex AI**); when the original cloud provider was
@@ -43,7 +42,7 @@ honest version is the strong version.*
 >   (Claude Desktop) see synthetic projects only.
 > - Shipped as a two-service Docker Compose stack (FastAPI backend with run/resume
 >   jobs; Streamlit review UI with triaged review, evidence highlighting and one-click
->   folder upload) with **98 fully-offline tests** and CI on every push, and as a
+>   folder upload) with **102 fully-offline tests** and CI on every push, and as a
 >   **private, scale-to-zero Cloud Run service** (nginx ingress sidecar, GCS-mounted
 >   data with a checkpoint sync that survives instance restarts, Vertex AI via service
 >   account, Cloud Build) — same 30-bidder result, 101 s end to end, $0 idle.
@@ -54,7 +53,7 @@ honest version is the strong version.*
 > that drafts public tender-evaluation reports from scanned bids (OCR → rubric
 > derivation → cited extraction → deterministic scoring → Word); 100% ground-truth
 > agreement on a 30-bidder case, 0→100% buried-evidence recall with zero false
-> positives; tools also served over MCP with a local-model client; measured on three providers and deployed privately on Cloud Run; 98-test CI;
+> positives; tools also served over MCP with a local-model client; measured on three providers and deployed privately on Cloud Run; 102-test CI;
 > Dockerized, runs fully local for confidentiality.
 
 **Tailoring tips**: applying for an *AI/LLM/agent engineer* role → lead with bullets
@@ -121,9 +120,9 @@ bullet 5 and be ready for the egress question below.
 | Number | What it is |
 | --- | --- |
 | **20–60** | Bidders per tender in production; hundreds of pages each |
-| **30 / 116 s / 100%** | Stress test through the graph: bidders / end-to-end time / ground-truth agreement (287 s before parallel fan-out) |
+| **30 / 83–115 s / 100%** | Stress test through the graph: bidders / end-to-end time on the cloud text models / ground-truth agreement (116 s on the 2026-09-03 run; 287 s before parallel fan-out) |
 | **4/4, 3/3, 3/3** | Missing certs (one inside a scan), shelf-life breaches, arithmetic errors — all caught |
-| **98** | Fully-offline tests in CI (incl. graph, agent, grounding, MCP, cost ledger, Cloud Run checkpoint sync) |
+| **102** | Fully-offline tests in CI (incl. graph, agent, grounding, MCP, cost ledger, Cloud Run checkpoint sync) |
 | **101 s / 116/116 / $0.16** | The same 30-bidder run on the private Cloud Run deployment, driven through the IAM proxy (12.8 s of it upload); $0 while idle |
 | **9 / 3** | MCP tools exposed (all read-only) / policies the guard distinguishes (stdio default, on-premises client, HTTP) |
 | **83 s / 115 s / 45 min** | 30-bidder run on Vertex Gemini / DeepSeek + local OCR / fully local (laptop) — 100% agreement on all three |
@@ -132,7 +131,7 @@ bullet 5 and be ready for the egress question below.
 | **0/2 → 2/2, 0 false, 0/3 → 3/3** | Agent benchmark: buried certificate recall, false restores, buried prices |
 | **6 s vs 133 s** | Rubric derivation, DeepSeek vs local qwen3:8b (same verdicts) |
 | **55 s vs ~337 s** | 3-bid case with parallel extraction + cloud text vs sequential local |
-| **~5,200 + 1,800** | Lines of Python (app, services, MCP, tools) + tests, across 81 files (18-module library + 2 services + MCP surface) |
+| **~5,400 + 1,900** | Lines of Python (app, services, MCP, tools) + tests, across 88 tracked files (18-module library + 2 services + MCP surface + Cloud Run packaging) |
 | **2** | Human checkpoints (rubric confirm; extraction correction — corrections are final) |
 
 ---
@@ -322,7 +321,7 @@ certificate, the same path the pipeline's agent takes.
 ### Engineering & quality
 
 **Q: How do you test an LLM pipeline in CI?**
-A: I separate the deterministic 80% from the model 20%. All 69 CI tests are fully
+A: I separate the deterministic 80% from the model 20%. All 102 CI tests are fully
 offline: the price engine, evaluation logic, grounding, report rendering, retrieval
 scoring and per-page OCR routing are tested directly; the LLM client with stubbed
 endpoints; the graph with stubbed model steps — byte-identical output versus the
@@ -344,7 +343,8 @@ A: Bids are independent units of work, so the graph fans them out with LangGraph
 (default 4) that matches what the model endpoint can take; results merge back through
 a dict reducer keyed by bidder. Before the graph I had the same win with a thread pool
 (a 3-bid case from ~337 s to 55 s); the graph version adds crash recovery for free:
-finished bids survive a failure mid fan-out. 30 bidders now take 116 s end to end.
+finished bids survive a failure mid fan-out. 30 bidders take 83–115 s end to end on
+the cloud text models (45 minutes fully local on the laptop).
 
 **Q: How would you scale this to 60 bidders / production?**
 A: The units of work are naturally parallel — bids are independent. Production plan:
