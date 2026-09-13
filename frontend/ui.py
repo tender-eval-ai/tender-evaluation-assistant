@@ -137,27 +137,60 @@ if st.session_state.pop("nav_advance", 0):
     _go(1)
 
 
+def _follow_job(advance: bool = False) -> None:
+    """Show the running job's progress until it pauses or finishes, then move on."""
+    result = wait_for_job(pid, st.empty())
+    if result["state"] == "error":
+        st.error(result["detail"])  # stays on screen — no rerun on failure
+        return
+    if advance:
+        st.session_state["nav_advance"] = 1
+    st.rerun()
+
+
+def _attach_if_running() -> bool:
+    """A job may already be running for this project — started from another page or
+    tab, or a moment ago. Then the page must follow it, not offer to start another
+    (the backend refuses that with 409). Returns True when it attached."""
+    if call("GET", f"/projects/{pid}/status").json()["state"] != "running":
+        return False
+    st.info("⏳ A job is already running for this project — following it.")
+    _follow_job()
+    return True
+
+
+def _post_job(path: str, **kwargs) -> bool:
+    """POST a run/resume; a 409 (job already running, or nothing to resume) is a
+    state to follow, not a crash. Returns True when a job is (now) running."""
+    try:
+        call("POST", path, **kwargs)
+        return True
+    except RuntimeError as err:
+        if "-> 409:" in str(err):
+            st.info(str(err).split("409:", 1)[1].strip().capitalize() + " — following the current state.")
+            return call("GET", f"/projects/{pid}/status").json()["state"] == "running"
+        st.error(str(err))
+        return False
+
+
 def _continue_run(button_label: str) -> None:
     """Resume the paused graph; on success move to the next step."""
+    if _attach_if_running():
+        return
     if st.button(button_label, type="primary"):
-        call("POST", f"/projects/{pid}/resume", json={})
-        result = wait_for_job(pid, st.empty())
-        if result["state"] == "error":
-            st.error(result["detail"])
+        if _post_job(f"/projects/{pid}/resume", json={}):
+            _follow_job(advance=True)
         else:
-            st.session_state["nav_advance"] = 1
             st.rerun()
 
 
 def _start_run(button_label: str, disabled: bool) -> None:
     """Start (or restart) the orchestrated run; it pauses at the next checkpoint."""
+    if _attach_if_running():
+        return
     if st.button(button_label, type="primary", disabled=disabled):
-        call("POST", f"/projects/{pid}/run")
-        result = wait_for_job(pid, st.empty())
-        if result["state"] == "error":
-            st.error(result["detail"])  # stays on screen — no rerun on failure
-        else:
-            st.rerun()
+        if _post_job(f"/projects/{pid}/run"):
+            _follow_job()
 
 
 page = st.segmented_control("Navigation", NAV, key="nav_v2", default=NAV[0],

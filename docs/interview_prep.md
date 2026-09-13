@@ -42,7 +42,7 @@ Cloud Run steps) — no embellishment needed; the honest version is the strong v
 >   (Claude Desktop) see synthetic projects only.
 > - Shipped as a two-service Docker Compose stack (FastAPI backend with run/resume
 >   jobs; Streamlit review UI with triaged review, evidence highlighting and one-click
->   folder upload) with **103 fully-offline tests** and CI on every push, and as a
+>   folder upload) with **105 fully-offline tests** and CI on every push, and as a
 >   **private, scale-to-zero Cloud Run service** (nginx ingress sidecar, GCS-mounted
 >   data with a checkpoint sync that survives instance restarts, Vertex AI via service
 >   account, Cloud Build) — same 30-bidder result, 101 s end to end, $0 idle.
@@ -53,7 +53,7 @@ Cloud Run steps) — no embellishment needed; the honest version is the strong v
 > that drafts public tender-evaluation reports from scanned bids (OCR → rubric
 > derivation → cited extraction → deterministic scoring → Word); 100% ground-truth
 > agreement on a 30-bidder case, 0→100% buried-evidence recall with zero false
-> positives; tools also served over MCP with a local-model client; measured on three providers and deployed privately on Cloud Run; 103-test CI;
+> positives; tools also served over MCP with a local-model client; measured on three providers and deployed privately on Cloud Run; 105-test CI;
 > Dockerized, runs fully local for confidentiality.
 
 **Tailoring tips**: applying for an *AI/LLM/agent engineer* role → lead with bullets
@@ -122,7 +122,7 @@ bullet 5 and be ready for the egress question below.
 | **20–60** | Bidders per tender in production; hundreds of pages each |
 | **30 / 83–115 s / 100%** | Stress test through the graph: bidders / end-to-end time on the cloud text models / ground-truth agreement (116 s on the 2026-09-03 run; 287 s before parallel fan-out) |
 | **4/4, 3/3, 3/3** | Missing certs (one inside a scan), shelf-life breaches, arithmetic errors — all caught |
-| **103** | Fully-offline tests in CI (incl. graph, agent, grounding, MCP, cost ledger, Cloud Run checkpoint sync) |
+| **105** | Fully-offline tests in CI (incl. graph, agent, grounding, MCP, cost ledger, Cloud Run checkpoint sync) |
 | **101 s / 116/116 / $0.16** | The same 30-bidder run on the private Cloud Run deployment, driven through the IAM proxy (12.8 s of it upload); $0 while idle |
 | **9 / 3** | MCP tools exposed (all read-only) / policies the guard distinguishes (stdio default, on-premises client, HTTP) |
 | **83 s / 115 s / 45 min** | 30-bidder run on Vertex Gemini / DeepSeek + local OCR / fully local (laptop) — 100% agreement on all three |
@@ -321,7 +321,7 @@ certificate, the same path the pipeline's agent takes.
 ### Engineering & quality
 
 **Q: How do you test an LLM pipeline in CI?**
-A: I separate the deterministic 80% from the model 20%. All 103 CI tests are fully
+A: I separate the deterministic 80% from the model 20%. All 105 CI tests are fully
 offline: the price engine, evaluation logic, grounding, report rendering, retrieval
 scoring and per-page OCR routing are tested directly; the LLM client with stubbed
 endpoints; the graph with stubbed model steps — byte-identical output versus the

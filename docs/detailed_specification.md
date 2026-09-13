@@ -2,7 +2,7 @@
 
 *Last updated: 2026-09-10 (after the Cloud Run step). Numbers in this document are
 measured, not estimated: 88 tracked files, ~5,400 lines of Python plus ~2,000 lines of
-tests, 103 offline tests, CI on every push.*
+tests, 105 offline tests, CI on every push.*
 
 ---
 
@@ -108,7 +108,7 @@ per service; the root `requirements.txt` is the dev aggregate (both + pytest).
 | `backend/` | 4 | 697 | `api.py`, Dockerfile, requirements, `__init__` |
 | `frontend/` | 3 | 683 | `ui.py`, Dockerfile, requirements |
 | `mcp_server/` | 3 | ~670 | MCP server (404), local-model client (261), `__init__` |
-| `test/` | 21 | ~1,990 | 15 test modules, 103 tests, fixtures, conftest |
+| `test/` | 22 | ~1,990 | 16 test modules, 105 tests, fixtures, conftest |
 | `deploy/cloudrun/` | 5 | — | Private Cloud Run packaging: nginx ingress config + Dockerfile, `cloudbuild.yaml`, idempotent `setup.sh`, `deploy.sh` |
 | `tools/` | 8 | ~930 | Case generator (incl. `--buried`, ground truth), PDF generator, stress driver, evidence-search benchmark, case scorer, OCR comparison, results tables |
 | `demo_case/` | 5 | — | Committed synthetic demo PDFs (2 tender, 3 bids) |
@@ -454,7 +454,7 @@ stay visible — an early bug hid it behind an immediate rerun).
   found by each, seconds and $ per page.
 - `tools/compare_runs.py` — renders the stress / benchmark / OCR result files as the
   Markdown tables published in the README.
-- `test/` — **103 tests, all offline** (no network, no tokens, no client data): unit
+- `test/` — **105 tests, all offline** (no network, no tokens, no client data): unit
   tests for pricing/rounding, evaluation, retrieval, verification (incl. grounded
   refutations), grounding, report rendering, per-page OCR routing (mixed text+image
   PDFs), LLM fallback chains (stubbed clients), schema-enforced output and its
