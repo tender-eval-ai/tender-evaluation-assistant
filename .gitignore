@@ -4,7 +4,7 @@ __pycache__/
 .env
 cache/
 output/
-data/
+/data/
 inbox/
 .DS_Store
 README.html
