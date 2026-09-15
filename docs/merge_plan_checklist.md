@@ -14,9 +14,8 @@ Last updated: 2026-09-15 (Chenyu).
 
 | ID | Item | Status | Waiting on |
 |---|---|---|---|
-| A1 | Base repo name and day-1 git commands | open | Nasi to confirm |
 | A2 | Branch protection on a private repo | decided | — |
-| A3 | MinIO as file storage | decided | Nasi: which kind of AWS storage |
+| A3 | MinIO as file storage | decided | — |
 | A4 | "Redis queue" in AI_camp | open | Nasi to confirm |
 | A5 | Capacity estimate (calls per minute) | open | both |
 | A6 | Real documents from day 4; live evals | open | both |
@@ -48,14 +47,7 @@ Last updated: 2026-09-15 (Chenyu).
 
 ## A. Corrections to the plan
 
-These are facts, checked against both repositories on 2026-09-15. They need a confirmation, not a debate.
-
-### A1. Base repo name and day-1 git commands
-- Plan: base repo `tender-eval-ai/tender-evaluation-assistant`; day-1 commands tag `v0-hk-baseline`, invite `nlp4725`, and clone the old name.
-- Proposal: the joint repo is `chenyufang-data/tender-evaluation-assistant` (private, default branch `main`, 39 commits). The tag is pushed and Nasi already has push access. Change the clone URL in both day-1 blocks and delete the tag and collaborator commands.
-- Chenyu (2026-09-15): agreed, this is done.
-- Nasi:
-- Decision: open
+These are facts, checked against both repositories on 2026-09-15. They need a confirmation, not a debate. (The base repo name and the day-1 git commands were settled on 2026-09-15 and are no longer listed: the joint repo is `chenyufang-data/tender-evaluation-assistant`, the tag `v0-hk-baseline` is pushed, and both of us have push access.)
 
 ### A2. Branch protection on a private repo
 - Plan: "Settings → Branches → protect main: PR, 1 approval, tests check, no force push".
@@ -67,9 +59,9 @@ These are facts, checked against both repositories on 2026-09-15. They need a co
 ### A3. MinIO as file storage
 - Plan: "Postgres for all records and MinIO for files, started with one command".
 - Proposal: MinIO's open-source repository entered maintenance mode in December 2025 and was archived on 25 April 2026; no official binaries and no security fixes. Keep `app/storage.py` as one S3-compatible client configured by endpoint, bucket and credentials, so the same code talks to S3, to GCS through its S3-interoperability keys, or to local disk.
-- Chenyu (2026-09-15): Nasi's shared AWS storage is the development store. Only synthetic and redacted sample documents go there; each person uses their own IAM user limited to that bucket; the bucket stays blocked from public access; keys live only in the gitignored `.env`. If the instance is an EC2 host running MinIO rather than a bucket, restrict its security group to our two IP addresses and treat it as throwaway.
-- Nasi: (please state which kind of instance it is: S3 bucket, or EC2 running MinIO or Postgres)
-- Decision: decided in principle (2026-09-15); kind of instance to confirm.
+- Chenyu (2026-09-15): Nasi's shared AWS storage is the development store. Only synthetic and redacted sample documents go there; each person uses their own IAM user limited to that bucket; the bucket stays blocked from public access; keys live only in the gitignored `.env`.
+- Nasi (2026-09-15): S3 bucket.
+- Decision: decided (2026-09-15). Nasi's S3 bucket is the shared development store; `storage.py` stays one S3-compatible client.
 
 ### A4. "Redis queue" in AI_camp
 - Plan: "AI_camp Flask API, Redis queue, per-page tasks, JSON caches: not ported".
