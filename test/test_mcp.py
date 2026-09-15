@@ -20,6 +20,7 @@ from app.config import Config
 from mcp_server.local_client import (ClientAction, answer_question, build_llm,
                                      is_local_endpoint, server_params)
 from mcp_server.server import Policy, build_http_app, build_server
+from test.fakes import FakeLLM, Rule
 from test.conftest import FIXTURES
 from tools.pdfgen import make_text_pdf
 
@@ -259,19 +260,15 @@ def test_http_transport_requires_api_key_and_serves_synthetic_only(tmp_path):
 
 # ---------------------------------------------------------------- local-model client
 
-class ScriptedLLM:
-    def __init__(self, actions):
-        self.actions = list(actions)
-
-    def chat_json(self, system, user, out_model, chain=None):
-        assert out_model is ClientAction and "Question:" in user
-        return self.actions.pop(0)
+def scripted(actions) -> FakeLLM:
+    """Client actions in order; each answers exactly one prompt that carries a Question."""
+    return FakeLLM(rules=[Rule(reply=a, match=r"Question:", times=1) for a in actions])
 
 
 def test_local_client_answers_with_a_verified_quote(tmp_path):
     make_project(tmp_path, "demo-1", synthetic=True)
     server, ocr = make_server(tmp_path, ocr_budget=2)
-    llm = ScriptedLLM([
+    llm = scripted([
         ClientAction(tool="search_pages", query="Non-collusive", thought="search first"),
         ClientAction(tool="ocr_page", page=2, thought="contents says page 2"),
         ClientAction(tool="finish", found=True, page=2, quote=CERT_OCR,
@@ -296,7 +293,7 @@ def test_local_client_answers_with_a_verified_quote(tmp_path):
 def test_local_client_rejects_unverifiable_quote_then_reports_not_found(tmp_path):
     make_project(tmp_path, "demo-1", synthetic=True)
     server, ocr = make_server(tmp_path)
-    llm = ScriptedLLM([
+    llm = scripted([
         ClientAction(tool="finish", found=True, page=3, quote="Certificate enclosed herewith",
                      answer="Yes"),                                   # never read page 3
         ClientAction(tool="read_page", page=1),
@@ -338,7 +335,7 @@ def test_ocr_outage_is_reported_to_the_model_not_swallowed(tmp_path):
 def test_local_client_step_budget_is_never_a_fabricated_answer(tmp_path):
     make_project(tmp_path, "demo-1", synthetic=True)
     server, _ = make_server(tmp_path)
-    llm = ScriptedLLM([ClientAction(tool="list_pages")] * 3)
+    llm = scripted([ClientAction(tool="list_pages")] * 3)
 
     async def run():
         async with Client(server) as c:
