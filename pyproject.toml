@@ -1,0 +1,20 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = [".venv", "output", "cache", "data", "inbox", "demo_case", "demo_case_stress", "buried_case"]
+
+[tool.ruff.lint]
+# Ruff's default rule set, stated explicitly: pyflakes plus the pycodestyle errors
+# that indicate real problems. Style-only rules (line length, import order) are
+# deliberately off until a dedicated formatting PR turns them on.
+select = ["E4", "E7", "E9", "F"]
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+markers = [
+    "orchestrator: needs Postgres and subprocess workers; opt-in (pytest -m orchestrator)",
+    "realdata: redacted sample documents on the local machine only; never in CI",
+    "live: calls a real model endpoint; opt-in",
+]
+# The default run is fully offline and free; opt-in levels are selected explicitly.
+addopts = "-m 'not orchestrator and not realdata and not live'"

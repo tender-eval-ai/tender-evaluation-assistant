@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Refuses direct pushes to main. Changes reach main through pull requests only.
+# Installed with: git config core.hooksPath .githooks
+while read -r _local_ref _local_sha remote_ref _remote_sha; do
+  if [ "$remote_ref" = "refs/heads/main" ]; then
+    echo "pre-push: direct pushes to main are refused. Open a pull request instead." >&2
+    exit 1
+  fi
+done
+exit 0

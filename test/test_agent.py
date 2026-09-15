@@ -1,7 +1,6 @@
 """Evidence-search agent (app/agent.py + app/tools.py): finds buried evidence via
 on-demand OCR, respects budgets, rejects unverifiable quotes, never flips verdicts,
 and never runs when nothing is unresolved."""
-from pathlib import Path
 
 from app.agent import AgentAction, evidence_search
 from app.grounding import quote_on_page

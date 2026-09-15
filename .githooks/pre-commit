@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Runs the hooks in .pre-commit-config.yaml on the staged files.
+# Installed with: git config core.hooksPath .githooks
+root=$(git rev-parse --show-toplevel)
+pc="$root/.venv/bin/pre-commit"
+[ -x "$pc" ] || pc=$(command -v pre-commit)
+if [ -z "$pc" ]; then
+  echo "pre-commit is not installed: pip install -r requirements-dev.txt" >&2
+  exit 1
+fi
+exec "$pc" run

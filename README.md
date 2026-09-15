@@ -118,6 +118,20 @@ documents only on any cloud path. Hosted endpoints pick their key by hostname
 Production swaps the base URL for vLLM on the client's hardware. (The original demo
 backend, GitHub Models, was retired in 2026.)
 
+## Development workflow
+
+Two people share this repo, so every change reaches `main` through a pull request reviewed by the other person (ownership and open decisions: `docs/merge_plan_checklist.md`).
+
+```bash
+pip install -r requirements-dev.txt     # ruff, pre-commit, pip-audit on top of requirements.txt
+git config core.hooksPath .githooks     # runs the pre-commit hooks on commit; refuses direct pushes to main
+pre-commit run --all-files              # exactly what CI's lint job runs
+# after changing requirements*.txt:
+uv pip compile requirements.txt --python-version 3.12 --generate-hashes -o requirements.lock
+```
+
+CI on every pull request: `lint` (pre-commit: ruff, gitleaks, large files, merge markers, PDF placement), `test` (the offline suite, installed from `requirements.lock`), `security` (gitleaks over the full history, pip-audit over the lockfile). On `main`, `main-guard` fails when a commit did not arrive through a merged pull request. Opt-in test levels are the pytest markers `orchestrator`, `realdata` and `live`; the default run excludes them and needs no network, tokens or client data.
+
 ## Repository layout
 
 ```
