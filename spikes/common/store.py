@@ -29,17 +29,17 @@ class Store:
     def reset(self) -> None:
         p = self.p
         with self.conn() as c:
+            c.execute(f"drop table if exists {p}_runs, {p}_rubrics, {p}_results")   # schema may have changed
             c.execute(f"""
             create table if not exists {p}_runs (
               run_id text primary key, tender text not null, vendor text not null, state text not null,
               step text, progress jsonb not null default '{{}}'::jsonb, attempt int not null default 1,
-              job_id bigint, rubric_version int, error text, updated_at double precision not null);
+              job_id bigint, worker_pid int, rubric_version int, error text, updated_at double precision not null);
             create table if not exists {p}_rubrics (
               tender text primary key, version int not null, confirmed boolean not null, spec jsonb not null);
             create table if not exists {p}_results (
               run_id text primary key, vendor text not null, rubric_version int not null,
               fields jsonb not null, verdict jsonb not null, corrections jsonb not null default '{{}}'::jsonb);
-            truncate {p}_runs, {p}_rubrics, {p}_results;
             """)
 
     # ---------------------------------------------------------------- runs
@@ -67,11 +67,11 @@ class Store:
     def run(self, run_id: str) -> dict:
         with self.conn() as c:
             row = c.execute(f"select run_id, tender, vendor, state, step, progress, attempt, job_id, rubric_version, "
-                            f"error, updated_at from {self.p}_runs where run_id=%s", (run_id,)).fetchone()
+                            f"error, updated_at, worker_pid from {self.p}_runs where run_id=%s", (run_id,)).fetchone()
         if row is None:
             raise KeyError(run_id)
         keys = ["run_id", "tender", "vendor", "state", "step", "progress", "attempt", "job_id", "rubric_version",
-                "error", "updated_at"]
+                "error", "updated_at", "worker_pid"]
         return dict(zip(keys, row))
 
     def runs_where(self, where: str, params: tuple = ()) -> list[dict]:
@@ -83,7 +83,7 @@ class Store:
     def status(self, run_id: str, worker_pid: int | None = None) -> RunStatus:
         r = self.run(run_id)
         return RunStatus(r["run_id"], r["tender"], r["vendor"], r["state"], r["step"], r["progress"],
-                         r["rubric_version"], worker_pid, r["updated_at"], r["error"])
+                         r["rubric_version"], worker_pid or r["worker_pid"], r["updated_at"], r["error"])
 
     # ---------------------------------------------------------------- rubric
     def rubric(self, tender: str) -> tuple[int, bool, dict]:

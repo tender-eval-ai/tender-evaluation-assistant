@@ -95,7 +95,8 @@ def _kill_mid_check(bench: Bench, sig: int, number: int, title: str) -> Measure:
     a = bench.adapter
     run = a.start_check(TENDER, "Tenderer_B")
     assert bench.wait_step_progress(run, "triage", 6), "the worker never reported triage progress"
-    pids = a.workers()
+    holder = a.status(run).worker_pid                    # the process running this job, when the variant reports it
+    pids = [holder] if holder and holder in a.workers() else a.workers()
     os.kill(pids[0], sig)
     killed_at = time.time()
     a.confirm_rubric(TENDER)
@@ -230,7 +231,8 @@ def s10_whats_stuck(bench: Bench) -> Measure:
     a = bench.adapter
     run = a.start_check(TENDER, "Tenderer_B")
     assert bench.wait_step_progress(run, "triage", 6)
-    os.kill(a.workers()[0], signal.SIGKILL)
+    holder = a.status(run).worker_pid
+    os.kill(holder if holder and holder in a.workers() else a.workers()[0], signal.SIGKILL)
     killed = time.time()
     detected: float | None = None
     while time.time() - killed < 8 and detected is None:

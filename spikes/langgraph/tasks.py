@@ -30,6 +30,7 @@ def _run_graph(run_id: str, resume: bool) -> None:
     def progress(step: str, done: int, total: int) -> None:
         store.update_run(run_id, state="running", step=step, progress={"done": done, "total": total, "unit": "pages"})
 
+    store.update_run(run_id, worker_pid=os.getpid())    # which process holds the job (the harness kills it)
     try:
         with llm.scope(run["vendor"]):
             with PostgresSaver.from_conn_string(os.environ["DATABASE_URL"]) as saver:   # tables exist: adapter.setup()
