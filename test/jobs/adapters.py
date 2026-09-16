@@ -13,7 +13,7 @@ from typing import Any, Protocol
 ADAPTERS = {
     "reference": "test.jobs.reference:ReferenceAdapter",
     "langgraph": "spikes.langgraph.adapter:LangGraphAdapter",
-    # "queue": "spikes.queue.adapter:ProcrastinateAdapter",         (S1)
+    "queue": "spikes.queue.adapter:ProcrastinateAdapter",
 }
 
 
