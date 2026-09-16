@@ -9,19 +9,7 @@ from app.schemas import (BidExtraction, BidPrice, ComplianceFinding,
                          DocumentPresence)
 from app.verify import Verdict, verify_extraction
 from test.conftest import FIXTURES
-
-
-class ScriptedLLM:
-    """Returns pre-scripted verdicts in order; records the claims it was asked about."""
-
-    def __init__(self, verdicts):
-        self.verdicts = list(verdicts)
-        self.claims = []
-
-    def chat_json(self, system, user, out_model, chain=None):
-        assert out_model is Verdict
-        self.claims.append(user.split("\n")[1])
-        return self.verdicts.pop(0)
+from test.fakes import FakeLLM
 
 
 def make_extraction() -> BidExtraction:
@@ -53,7 +41,7 @@ def make_docs() -> list[Document]:
 
 def run(verdicts):
     rubric = load_rubric(FIXTURES / "rubric.json")
-    llm = ScriptedLLM(verdicts)
+    llm = FakeLLM(sequence=verdicts)
     ext, amendments = verify_extraction(make_extraction(), make_docs(), rubric,
                                         Config(), llm)
     return ext, amendments, llm
@@ -61,7 +49,7 @@ def run(verdicts):
 
 def test_only_negative_findings_are_challenged():
     _, _, llm = run([Verdict(refuted=False), Verdict(refuted=False)])
-    assert len(llm.claims) == 2  # one missing doc + one non-compliance, nothing else
+    assert len(llm.calls) == 2  # one missing doc + one non-compliance, nothing else
 
 
 def test_upheld_findings_stay_unchanged():
