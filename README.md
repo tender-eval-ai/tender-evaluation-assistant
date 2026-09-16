@@ -87,6 +87,9 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 #    Install https://ollama.com then:
 #      ollama pull qwen3:8b && ollama pull qwen3-vl:8b
 # demo_case/ is committed; regenerate it (same content) with: tools/make_demo_case.py
+# test/data/synthetic_tender/ is a synthetic tender-style case (17 tender documents, running headers, PART
+# numbering, a Completeness Check Schedule with items (a)-(o), four bids incl. scans); the
+# real-size tender is in test/data/synthetic_tender_full/. Regenerate: tools/make_synthetic_tender.py [--full]
 # --bids-dir holds one subfolder (or one PDF) per tenderer; --acknowledge-cloud is the
 # confidentiality gate — it only matters when .env points at a cloud endpoint.
 GITHUB_MODELS_BASE_URL=http://localhost:11434/v1 .venv/bin/python run_demo.py run \

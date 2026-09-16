@@ -1,0 +1,841 @@
+{
+  "case": "SYN-2026-001",
+  "subject": "Supply of Synthetic Coagulant Granules (Type S)",
+  "profile": "full",
+  "seed": 20260915,
+  "generator": "tools/make_synthetic_tender.py",
+  "estimated_quantity_kg": 875000,
+  "tender": {
+    "documents": [
+      {
+        "file": "tender/00 Guidelines for Electronic Tendering.pdf",
+        "title": "Guidelines for Electronic Tendering",
+        "pages": 2,
+        "combined_first_page": 1
+      },
+      {
+        "file": "tender/01 Tender Form.pdf",
+        "title": "Tender Form",
+        "pages": 6,
+        "combined_first_page": 3
+      },
+      {
+        "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+        "title": "Interpretation, Terms of Tender and General Conditions of Contract",
+        "pages": 141,
+        "combined_first_page": 9
+      },
+      {
+        "file": "tender/03 Interpretation (Supplement).pdf",
+        "title": "Interpretation (Supplement)",
+        "pages": 4,
+        "combined_first_page": 150
+      },
+      {
+        "file": "tender/04 Terms of Tender (Supplement).pdf",
+        "title": "Terms of Tender (Supplement)",
+        "pages": 17,
+        "combined_first_page": 154
+      },
+      {
+        "file": "tender/05 Annex A (Reply Slip) to the Terms of Tender (Supplement).pdf",
+        "title": "Annex A (Reply Slip) to the Terms of Tender (Supplement)",
+        "pages": 1,
+        "combined_first_page": 171
+      },
+      {
+        "file": "tender/06 Annex B (Procedures and Conditions of Plant Trial) to the Terms of Tender (Supplement).pdf",
+        "title": "Annex B (Procedures and Conditions of Plant Trial) to the Terms of Tender (Supplement)",
+        "pages": 2,
+        "combined_first_page": 172
+      },
+      {
+        "file": "tender/07 Special Conditions of Contract.pdf",
+        "title": "Special Conditions of Contract",
+        "pages": 13,
+        "combined_first_page": 174
+      },
+      {
+        "file": "tender/08 Technical Specifications.pdf",
+        "title": "Technical Specifications",
+        "pages": 3,
+        "combined_first_page": 187
+      },
+      {
+        "file": "tender/08A Attachment A to the Technical Specifications.pdf",
+        "title": "Attachment A to the Technical Specifications",
+        "pages": 8,
+        "combined_first_page": 190
+      },
+      {
+        "file": "tender/08B Attachment B to the Technical Specifications.pdf",
+        "title": "Attachment B to the Technical Specifications",
+        "pages": 8,
+        "combined_first_page": 198
+      },
+      {
+        "file": "tender/08C Attachment C to the Technical Specifications.pdf",
+        "title": "Attachment C to the Technical Specifications",
+        "pages": 4,
+        "combined_first_page": 206
+      },
+      {
+        "file": "tender/08D Attachment D to the Technical Specifications.pdf",
+        "title": "Attachment D to the Technical Specifications",
+        "pages": 2,
+        "combined_first_page": 210
+      },
+      {
+        "file": "tender/09 Schedules.pdf",
+        "title": "Schedules",
+        "pages": 18,
+        "combined_first_page": 212
+      },
+      {
+        "file": "tender/10 Non-collusive Tendering Certificate.pdf",
+        "title": "Non-collusive Tendering Certificate",
+        "pages": 3,
+        "combined_first_page": 230
+      },
+      {
+        "file": "tender/11 Appendix to the Terms of Tender - Contact Details.pdf",
+        "title": "Appendix to the Terms of Tender - Contact Details",
+        "pages": 2,
+        "combined_first_page": 233
+      },
+      {
+        "file": "tender/12 Annex A to the Terms of Tender Part I - Method of Production Statement.pdf",
+        "title": "Annex A to the Terms of Tender Part I - Method of Production Statement",
+        "pages": 1,
+        "combined_first_page": 235
+      }
+    ],
+    "combined": {
+      "file": "tender_combined/SYN-2026-001 Tender Documents (combined).pdf",
+      "pages": 235
+    },
+    "completeness_check_schedule": {
+      "file": "tender/09 Schedules.pdf",
+      "pages": [
+        11,
+        12,
+        13
+      ],
+      "combined_pages": [
+        222,
+        223,
+        224
+      ],
+      "items": [
+        {
+          "letter": "a",
+          "part": "A",
+          "description": "An Offer to be Bound in Part 4 of the Tender Form, duly signed by the Tenderer",
+          "schedule_page": 11,
+          "schedule_combined_page": 222,
+          "references": [
+            {
+              "paragraph": "3.3",
+              "document": "Terms of Tender",
+              "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+              "page": 5,
+              "combined_page": 13
+            },
+            {
+              "paragraph": "9",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 4,
+              "combined_page": 157
+            }
+          ]
+        },
+        {
+          "letter": "b",
+          "part": "A",
+          "description": "The one-time unit price quotation for Item 1 as specified in Part A of the Price Schedule",
+          "schedule_page": 11,
+          "schedule_combined_page": 222,
+          "references": [
+            {
+              "paragraph": "5",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 2,
+              "combined_page": 155
+            }
+          ]
+        },
+        {
+          "letter": "c",
+          "part": "A",
+          "description": "The optimal dosage for Item 1 as specified in Part A of the Price Schedule",
+          "schedule_page": 11,
+          "schedule_combined_page": 222,
+          "references": [
+            {
+              "paragraph": "6",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 2,
+              "combined_page": 155
+            }
+          ]
+        },
+        {
+          "letter": "d",
+          "part": "A",
+          "description": "The essential information required in the Particulars of Goods Schedule",
+          "schedule_page": 11,
+          "schedule_combined_page": 222,
+          "references": [
+            {
+              "paragraph": "8",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 3,
+              "combined_page": 156
+            }
+          ]
+        },
+        {
+          "letter": "e",
+          "part": "B",
+          "description": "Other information required in the Particulars of Goods Schedule",
+          "schedule_page": 11,
+          "schedule_combined_page": 222,
+          "references": [
+            {
+              "paragraph": "8.4",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 4,
+              "combined_page": 157
+            }
+          ]
+        },
+        {
+          "letter": "f",
+          "part": "B",
+          "description": "Information and documents required in Tables A, B and C of the Information Schedule",
+          "schedule_page": 12,
+          "schedule_combined_page": 223,
+          "references": [
+            {
+              "paragraph": "10",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 4,
+              "combined_page": 157
+            }
+          ]
+        },
+        {
+          "letter": "g",
+          "part": "B",
+          "description": "Samples of the Goods, if requested by the Authority at any time after the Tender Closing Date",
+          "schedule_page": 12,
+          "schedule_combined_page": 223,
+          "references": [
+            {
+              "paragraph": "11",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 5,
+              "combined_page": 158
+            }
+          ]
+        },
+        {
+          "letter": "h",
+          "part": "B",
+          "description": "Documentary evidence proving compliance with the Technical Specifications",
+          "schedule_page": 12,
+          "schedule_combined_page": 223,
+          "references": [
+            {
+              "paragraph": "12",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 5,
+              "combined_page": 158
+            }
+          ]
+        },
+        {
+          "letter": "i",
+          "part": "A",
+          "description": "Where the Tenderer is not the manufacturer of the Goods, the letter of intent from the manufacturer",
+          "schedule_page": 12,
+          "schedule_combined_page": 223,
+          "references": [
+            {
+              "paragraph": "15",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 6,
+              "combined_page": 159
+            }
+          ]
+        },
+        {
+          "letter": "j",
+          "part": "B",
+          "description": "A certified extract of the board resolution authorising the signatory of the Tender",
+          "schedule_page": 12,
+          "schedule_combined_page": 223,
+          "references": [
+            {
+              "paragraph": "16",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 7,
+              "combined_page": 160
+            }
+          ]
+        },
+        {
+          "letter": "k",
+          "part": "B",
+          "description": "The contact details of the Tenderer in the Appendix to the Terms of Tender",
+          "schedule_page": 13,
+          "schedule_combined_page": 224,
+          "references": [
+            {
+              "paragraph": "17",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 8,
+              "combined_page": 161
+            }
+          ]
+        },
+        {
+          "letter": "l",
+          "part": "A",
+          "description": "The signed Non-collusive Tendering Certificate",
+          "schedule_page": 13,
+          "schedule_combined_page": 224,
+          "references": [
+            {
+              "paragraph": "9.4",
+              "document": "Terms of Tender",
+              "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+              "page": 7,
+              "combined_page": 15
+            },
+            {
+              "paragraph": "10.1",
+              "document": "Terms of Tender",
+              "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+              "page": 8,
+              "combined_page": 16
+            },
+            {
+              "paragraph": "12",
+              "document": "Terms of Tender",
+              "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+              "page": 9,
+              "combined_page": 17
+            },
+            {
+              "paragraph": "20.2",
+              "document": "Terms of Tender",
+              "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+              "page": 12,
+              "combined_page": 20
+            },
+            {
+              "paragraph": "13",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 5,
+              "combined_page": 158
+            }
+          ]
+        },
+        {
+          "letter": "m",
+          "part": "C",
+          "description": "Parts C and D of the Price Schedule",
+          "schedule_page": 13,
+          "schedule_combined_page": 224,
+          "references": [
+            {
+              "paragraph": "20",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 9,
+              "combined_page": 162
+            }
+          ]
+        },
+        {
+          "letter": "n",
+          "part": "A",
+          "description": "The Compliance Schedule",
+          "schedule_page": 13,
+          "schedule_combined_page": 224,
+          "references": [
+            {
+              "paragraph": "7",
+              "document": "Terms of Tender",
+              "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+              "page": 6,
+              "combined_page": 14
+            }
+          ]
+        },
+        {
+          "letter": "o",
+          "part": "B",
+          "description": "Annex A to the Terms of Tender - Part I - Method of Production Statement",
+          "schedule_page": 13,
+          "schedule_combined_page": 224,
+          "references": [
+            {
+              "paragraph": "21",
+              "document": "Terms of Tender (Supplement)",
+              "file": "tender/04 Terms of Tender (Supplement).pdf",
+              "page": 9,
+              "combined_page": 162
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "bids": {
+    "Tenderer_A": {
+      "scanned": false,
+      "manufacturer_itself": true,
+      "pages": 12,
+      "injection_page": null,
+      "items": {
+        "a": {
+          "present": true,
+          "page": 2,
+          "values": {
+            "signed": true
+          }
+        },
+        "b": {
+          "present": true,
+          "page": 3,
+          "values": {
+            "unit_price": 7.34,
+            "currency": "HK$",
+            "optimal_dosage_mg_per_l": 2.8,
+            "total": 6422500.0
+          }
+        },
+        "c": {
+          "present": true,
+          "page": 3,
+          "values": {
+            "unit_price": 7.34,
+            "currency": "HK$",
+            "optimal_dosage_mg_per_l": 2.8,
+            "total": 6422500.0
+          }
+        },
+        "d": {
+          "present": true,
+          "page": 5,
+          "values": {
+            "shelf_life_months": 24,
+            "manufacturer": "Tenderer A Chemicals Ltd"
+          }
+        },
+        "e": {
+          "present": true,
+          "page": 5,
+          "values": {
+            "shelf_life_months": 24,
+            "manufacturer": "Tenderer A Chemicals Ltd"
+          }
+        },
+        "f": {
+          "present": true,
+          "page": 7,
+          "values": {}
+        },
+        "g": {
+          "present": false,
+          "not_requested": true,
+          "page": null,
+          "values": {}
+        },
+        "h": {
+          "present": true,
+          "page": 12,
+          "values": {}
+        },
+        "i": {
+          "present": false,
+          "not_applicable": true,
+          "page": null,
+          "values": {}
+        },
+        "j": {
+          "present": true,
+          "page": 8,
+          "values": {}
+        },
+        "k": {
+          "present": true,
+          "page": 9,
+          "values": {}
+        },
+        "l": {
+          "present": true,
+          "page": 10,
+          "values": {
+            "signed": true
+          }
+        },
+        "m": {
+          "present": true,
+          "page": 4,
+          "values": {}
+        },
+        "n": {
+          "present": true,
+          "page": 6,
+          "values": {
+            "delivery_days": 14
+          }
+        },
+        "o": {
+          "present": true,
+          "page": 11,
+          "values": {}
+        }
+      },
+      "file": "bids/Tenderer_A/offer.pdf"
+    },
+    "Tenderer_B": {
+      "scanned": true,
+      "manufacturer_itself": true,
+      "pages": 100,
+      "injection_page": 41,
+      "items": {
+        "a": {
+          "present": true,
+          "page": 2,
+          "values": {
+            "signed": true
+          }
+        },
+        "b": {
+          "present": true,
+          "page": 3,
+          "values": {
+            "unit_price": 6.03,
+            "currency": "HK$",
+            "optimal_dosage_mg_per_l": 3.0,
+            "total": 5276250.0
+          }
+        },
+        "c": {
+          "present": true,
+          "page": 3,
+          "values": {
+            "unit_price": 6.03,
+            "currency": "HK$",
+            "optimal_dosage_mg_per_l": 3.0,
+            "total": 5276250.0
+          }
+        },
+        "d": {
+          "present": true,
+          "page": 5,
+          "values": {
+            "shelf_life_months": 24,
+            "manufacturer": "Tenderer B Chemicals Ltd"
+          }
+        },
+        "e": {
+          "present": true,
+          "page": 5,
+          "values": {
+            "shelf_life_months": 24,
+            "manufacturer": "Tenderer B Chemicals Ltd"
+          }
+        },
+        "f": {
+          "present": true,
+          "page": 7,
+          "values": {}
+        },
+        "g": {
+          "present": false,
+          "not_requested": true,
+          "page": null,
+          "values": {}
+        },
+        "h": {
+          "present": true,
+          "page": 87,
+          "values": {}
+        },
+        "i": {
+          "present": false,
+          "not_applicable": true,
+          "page": null,
+          "values": {}
+        },
+        "j": {
+          "present": true,
+          "page": 83,
+          "values": {}
+        },
+        "k": {
+          "present": true,
+          "page": 84,
+          "values": {}
+        },
+        "l": {
+          "present": true,
+          "page": 85,
+          "values": {
+            "signed": true
+          }
+        },
+        "m": {
+          "present": true,
+          "page": 4,
+          "values": {}
+        },
+        "n": {
+          "present": true,
+          "page": 6,
+          "values": {
+            "delivery_days": 28
+          }
+        },
+        "o": {
+          "present": true,
+          "page": 86,
+          "values": {}
+        }
+      },
+      "file": "bids/Tenderer_B/offer.pdf"
+    },
+    "Tenderer_C": {
+      "scanned": false,
+      "manufacturer_itself": true,
+      "pages": 12,
+      "injection_page": null,
+      "items": {
+        "a": {
+          "present": true,
+          "page": 2,
+          "values": {
+            "signed": true
+          }
+        },
+        "b": {
+          "present": true,
+          "page": 3,
+          "values": {
+            "unit_price": 7.27,
+            "currency": "HK$",
+            "optimal_dosage_mg_per_l": 2.9,
+            "total": 6361250.0
+          }
+        },
+        "c": {
+          "present": true,
+          "page": 3,
+          "values": {
+            "unit_price": 7.27,
+            "currency": "HK$",
+            "optimal_dosage_mg_per_l": 2.9,
+            "total": 6361250.0
+          }
+        },
+        "d": {
+          "present": true,
+          "page": 5,
+          "values": {
+            "shelf_life_months": 18,
+            "manufacturer": "Tenderer C Chemicals Ltd"
+          }
+        },
+        "e": {
+          "present": true,
+          "page": 5,
+          "values": {
+            "shelf_life_months": 18,
+            "manufacturer": "Tenderer C Chemicals Ltd"
+          }
+        },
+        "f": {
+          "present": true,
+          "page": 7,
+          "values": {}
+        },
+        "g": {
+          "present": false,
+          "not_requested": true,
+          "page": null,
+          "values": {}
+        },
+        "h": {
+          "present": true,
+          "page": 12,
+          "values": {}
+        },
+        "i": {
+          "present": false,
+          "not_applicable": true,
+          "page": null,
+          "values": {}
+        },
+        "j": {
+          "present": true,
+          "page": 8,
+          "values": {}
+        },
+        "k": {
+          "present": true,
+          "page": 9,
+          "values": {}
+        },
+        "l": {
+          "present": false,
+          "page": null,
+          "values": {}
+        },
+        "m": {
+          "present": true,
+          "page": 4,
+          "values": {}
+        },
+        "n": {
+          "present": true,
+          "page": 6,
+          "values": {
+            "delivery_days": 21
+          }
+        },
+        "o": {
+          "present": true,
+          "page": 11,
+          "values": {}
+        }
+      },
+      "file": "bids/Tenderer_C/offer.pdf"
+    },
+    "Tenderer_D": {
+      "scanned": true,
+      "manufacturer_itself": false,
+      "pages": 100,
+      "injection_page": 41,
+      "items": {
+        "a": {
+          "present": true,
+          "page": 2,
+          "values": {
+            "signed": true
+          }
+        },
+        "b": {
+          "present": true,
+          "page": 3,
+          "values": {
+            "unit_price": 4.42,
+            "currency": "US$",
+            "optimal_dosage_mg_per_l": 4.0,
+            "total": 3867500.0
+          }
+        },
+        "c": {
+          "present": true,
+          "page": 3,
+          "values": {
+            "unit_price": 4.42,
+            "currency": "US$",
+            "optimal_dosage_mg_per_l": 4.0,
+            "total": 3867500.0
+          }
+        },
+        "d": {
+          "present": true,
+          "page": 5,
+          "values": {
+            "shelf_life_months": 24,
+            "manufacturer": "Northfield Polymers D Inc"
+          }
+        },
+        "e": {
+          "present": true,
+          "page": 5,
+          "values": {
+            "shelf_life_months": 24,
+            "manufacturer": "Northfield Polymers D Inc"
+          }
+        },
+        "f": {
+          "present": true,
+          "page": 7,
+          "values": {}
+        },
+        "g": {
+          "present": false,
+          "not_requested": true,
+          "page": null,
+          "values": {}
+        },
+        "h": {
+          "present": true,
+          "page": 87,
+          "values": {}
+        },
+        "i": {
+          "present": true,
+          "page": 83,
+          "values": {
+            "manufacturer": "Northfield Polymers D Inc"
+          }
+        },
+        "j": {
+          "present": false,
+          "page": null,
+          "values": {}
+        },
+        "k": {
+          "present": true,
+          "page": 84,
+          "values": {}
+        },
+        "l": {
+          "present": true,
+          "page": 85,
+          "values": {
+            "signed": true
+          }
+        },
+        "m": {
+          "present": true,
+          "page": 4,
+          "values": {}
+        },
+        "n": {
+          "present": true,
+          "page": 6,
+          "values": {
+            "delivery_days": 28
+          }
+        },
+        "o": {
+          "present": true,
+          "page": 86,
+          "values": {}
+        }
+      },
+      "file": "bids/Tenderer_D/offer.pdf"
+    }
+  }
+}

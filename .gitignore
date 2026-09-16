@@ -4,7 +4,7 @@ __pycache__/
 .env
 cache/
 output/
-data/
+/data/
 inbox/
 .DS_Store
 README.html
@@ -13,3 +13,7 @@ demo_case_stress/
 
 # Benchmark case — regenerate with: python tools/make_demo_case.py --buried --out buried_case
 buried_case/
+
+# Real-size synthetic tender case: the tender is committed, the two 100-page scanned bids (4.5 MB each)
+# are regenerated with: python tools/make_synthetic_tender.py --full --out test/data/synthetic_tender_full
+test/data/synthetic_tender_full/bids/
