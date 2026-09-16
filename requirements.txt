@@ -6,3 +6,10 @@ pytest>=8.0
 httpx>=0.27
 # MCP server + local-model client (mcp_server/); not part of the service images.
 mcp==2.2.0
+
+# Postgres driver: the orchestrator harness (test/jobs) now, the background worker from S1.
+psycopg[binary]>=3.2
+
+# Stop point S1 spikes (spikes/): the Procrastinate run queue and the LangGraph Postgres checkpointer.
+procrastinate>=3.9
+langgraph-checkpoint-postgres>=3.1
