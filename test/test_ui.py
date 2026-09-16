@@ -91,7 +91,8 @@ def test_pages_follow_a_running_job_rather_than_offering_a_start(backend, monkey
                 api._set_status(pdir, "error", "ValueError: boom")
         return real_get_status(pdir)
 
-    monkeypatch.setattr(api, "_get_status", ends_on_second_poll)
+    import backend.deps as deps
+    monkeypatch.setattr(deps, "_get_status", ends_on_second_poll)   # routes call deps._get_status
     at = _open_extraction_page(pid)
     assert reads["status_endpoint"] >= 2, "the page never polled the running job"
     assert not [b for b in at.button if "Run extraction" in b.label], "a start button was offered while a job ran"
