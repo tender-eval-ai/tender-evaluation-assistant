@@ -99,7 +99,7 @@ class FakeLLM:
     def __init__(self, rules: list[Rule] | tuple[Rule, ...] = (), *, sequence: list | tuple = (),
                  ocr_text: str | list[str] = "", delay: float | tuple[float, float] | None = None,
                  faults: dict[int, Exception | type[Exception]] | None = None, seed: int = 0,
-                 strict: bool = True, log_path: str | os.PathLike | None = None):
+                 strict: bool = True, log_path: str | os.PathLike | None = None, index_offset: int = 0):
         self.rules = list(rules)
         self.sequence = list(sequence)
         self.ocr_text = ocr_text
@@ -108,6 +108,7 @@ class FakeLLM:
         self.rng = random.Random(seed)
         self.strict = strict
         self.log_path = str(log_path) if log_path else os.environ.get("FAKE_LLM_LOG")
+        self.index_offset = index_offset      # calls already made elsewhere (other attempts / processes)
         self.usage = UsageLedger()
         self.calls: list[Call] = []
         self._lock = threading.Lock()
@@ -144,7 +145,7 @@ class FakeLLM:
     def _call(self, kind: str, system: str, user: str, out_model: type | None, chain: list[str],
               images: list[bytes]):
         with self._lock:
-            n = len(self.calls) + 1
+            n = self.index_offset + len(self.calls) + 1
             call = Call(n, kind, self.usage.scope, out_model.__name__ if out_model else None, system, user,
                         [_sha(i) for i in images], chain[0])
             self.calls.append(call)
