@@ -17,6 +17,7 @@ import psycopg
 from psycopg.types.json import Json
 
 from test.jobs.adapters import Result, RunStatus
+from test.jobs import knobs
 from test.jobs import slice as sl
 
 SCHEMA = """
@@ -177,8 +178,8 @@ class ReferenceAdapter:
         signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))   # no graceful drain: die like a naive process
         with self._conn() as c:
             tender, vendor = c.execute("select tender, vendor from harness_runs where run_id=%s", (run_id,)).fetchone()
-        cert_page = int(os.environ.get("CERT_PAGE", "13"))
-        bid = sl.make_vendor(vendor, int(os.environ.get("N_PAGES", "16")), cert_page)
+        cert_page = int(knobs.get("CERT_PAGE", "13"))
+        bid = sl.make_vendor(vendor, int(knobs.get("N_PAGES", "16")), cert_page)
         llm = sl.make_llm(cert_page)
 
         def save(**cols):
@@ -206,7 +207,7 @@ class ReferenceAdapter:
                     if confirmed:
                         break
                     time.sleep(0.2)
-                if os.environ.get("SLICE_EXTRA_STEP"):
+                if knobs.get("SLICE_EXTRA_STEP"):
                     save(step="extra_step", state="running")
                     fields["extra_step"] = True
                 save(step="decide", state="running")

@@ -21,6 +21,7 @@ from typing import Callable
 from pydantic import BaseModel
 
 from test.fakes import FakeLLM, Rule
+from test.jobs import knobs
 
 PAGES_PER_TRIAGE = 6
 ITEM = "l"
@@ -54,11 +55,15 @@ def make_vendor(vendor: str, n_pages: int = 16, cert_page: int = 13) -> dict:
             "cert_page": cert_page}
 
 
-def triage(pages: list[bytes], vendor: str, llm: FakeLLM, progress: Progress, start_at: int = 0) -> list[dict]:
-    """Label every page, six per call. `start_at` lets a resumed worker skip labelled batches."""
+def triage(pages: list[bytes], vendor: str, llm: FakeLLM, progress: Progress, start_at: int = 0,
+           max_batches: int | None = None) -> list[dict]:
+    """Label every page, six per call. `start_at` lets a resumed worker skip labelled batches;
+    `max_batches` lets an orchestrator checkpoint after each batch by calling one at a time."""
     labels: list[dict] = []
     total = len(pages)
-    for i in range(start_at, total, PAGES_PER_TRIAGE):
+    for k, i in enumerate(range(start_at, total, PAGES_PER_TRIAGE)):
+        if max_batches is not None and k >= max_batches:
+            break
         batch = pages[i:i + PAGES_PER_TRIAGE]
         out = llm.chat_json("Label each page.", f"vendor {vendor}: label pages {i + 1}-{i + len(batch)} of {total}",
                             PageLabels, images=batch)
@@ -118,18 +123,24 @@ def fake_rules(cert_page: int) -> list[Rule]:
 
 def make_llm(cert_page: int, log_path: str | None = None, delay: tuple[float, float] | None = None,
              faults: dict | None = None) -> FakeLLM:
-    """The worker's LLM. Delay and faults come from the environment when a worker is a
-    subprocess: FAKE_DELAY="0.3,0.6", FAKE_FAULTS="2:429,3:429,5:permanent"."""
-    if delay is None and os.environ.get("FAKE_DELAY"):
-        lo, hi = (float(x) for x in os.environ["FAKE_DELAY"].split(","))
+    """The worker's LLM. Delay and faults come from the harness knobs when a worker is a
+    subprocess: FAKE_DELAY="0.3,0.6", FAKE_FAULTS="2:429,3:429,5:permanent". Fault indexes
+    count calls across every process and attempt of the scenario (the shared log), so a
+    worker that retries a job sees the next fault, not the same one again."""
+    if delay is None and knobs.get("FAKE_DELAY"):
+        lo, hi = (float(x) for x in knobs.get("FAKE_DELAY").split(","))
         delay = (lo, hi)
-    if faults is None and os.environ.get("FAKE_FAULTS"):
+    log_path = log_path or os.environ.get("FAKE_LLM_LOG")
+    offset = 0
+    if faults is None and knobs.get("FAKE_FAULTS"):
         faults = {}
-        for part in os.environ["FAKE_FAULTS"].split(","):
+        for part in knobs.get("FAKE_FAULTS").split(","):
             n, kind = part.split(":")
             faults[int(n)] = ProviderError(kind)
-    return FakeLLM(rules=fake_rules(cert_page), log_path=log_path or os.environ.get("FAKE_LLM_LOG"),
-                   delay=delay, faults=faults)
+        if log_path and os.path.exists(log_path):
+            with open(log_path, encoding="utf-8") as fh:
+                offset = sum(1 for line in fh if line.strip())
+    return FakeLLM(rules=fake_rules(cert_page), log_path=log_path, delay=delay, faults=faults, index_offset=offset)
 
 
 class ProviderError(RuntimeError):

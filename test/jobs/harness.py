@@ -46,12 +46,24 @@ class Bench:
 
     def __init__(self, adapter: Orchestrator, log_dir: Path):
         self.adapter = adapter
-        self.log = log_dir / f"calls-{int(time.time() * 1000)}.jsonl"
+        stamp = int(time.time() * 1000)
+        self.log = log_dir / f"calls-{stamp}.jsonl"
+        self.knobs = log_dir / f"knobs-{stamp}.json"
         os.environ["FAKE_LLM_LOG"] = str(self.log)
-        os.environ.setdefault("FAKE_DELAY", "0.25,0.5")
-        os.environ.pop("FAKE_FAULTS", None)
-        os.environ.pop("SLICE_EXTRA_STEP", None)
+        os.environ["HARNESS_KNOBS"] = str(self.knobs)
+        for stale in ("FAKE_FAULTS", "SLICE_EXTRA_STEP"):
+            os.environ.pop(stale, None)
+        self.set(FAKE_DELAY="0.25,0.5")
         adapter.setup()
+
+    def set(self, **values) -> None:
+        """Change a knob for this scenario. Written to the knob file, which every worker
+        process reads on each job, so it reaches workers started before the scenario."""
+        current = json.loads(self.knobs.read_text()) if self.knobs.exists() else {}
+        current.update(values)
+        self.knobs.write_text(json.dumps(current))
+        for k, v in values.items():
+            os.environ[k] = str(v)
 
     def calls(self) -> list[dict]:
         return read_log(self.log) if self.log.exists() else []
@@ -110,7 +122,7 @@ def s3_two_api_copies(bench: Bench, vendors: int = 12) -> Measure:
     runs = [a.start_check(TENDER, n) for n in names] + [b.start_check(TENDER, n) for n in names]
     a.confirm_rubric(TENDER)
     bench.wait(lambda: all(a.status(r).state in ("done", "failed", "lost") for r in runs), timeout=120)
-    per_vendor = Counter(a.status(r).vendor for r in runs if a.status(r).state == "done")
+    per_vendor = Counter(a.status(r).vendor for r in set(runs) if a.status(r).state == "done")   # distinct runs
     duplicates = sum(n - 1 for n in per_vendor.values() if n > 1)
     b.shutdown()
     return Measure(3, "Two workers and two API copies, the same vendors submitted twice", "must",
@@ -120,7 +132,7 @@ def s3_two_api_copies(bench: Bench, vendors: int = 12) -> Measure:
 
 def s4_provider_errors(bench: Bench) -> Measure:
     """Two 429s, then one permanent failure. Retries must not skip ahead; the failure must be visible."""
-    os.environ["FAKE_FAULTS"] = "2:429,3:429,6:permanent"
+    bench.set(FAKE_FAULTS="2:429,3:429,6:permanent")
     a = bench.adapter
     run = a.start_check(TENDER, "Tenderer_B")
     a.confirm_rubric(TENDER)
@@ -184,7 +196,7 @@ def s7_correction(bench: Bench) -> Measure:
 
 def s8_rate_limit(bench: Bench, vendors: int = 20, rpm: int = 60) -> Measure:
     a = bench.adapter
-    os.environ["FAKE_DELAY"] = "0.05,0.1"
+    bench.set(FAKE_DELAY="0.05,0.1")
     runs = [a.start_check(TENDER, f"Tenderer_{i:02d}") for i in range(vendors)]
     a.confirm_rubric(TENDER)
     bench.wait(lambda: all(a.status(r).state in ("done", "failed", "lost") for r in runs), timeout=120)
@@ -203,7 +215,7 @@ def s9_add_step_while_paused(bench: Bench, vendors: int = 5) -> Measure:
     a = bench.adapter
     runs = [a.start_check(TENDER, f"Tenderer_{i:02d}") for i in range(vendors)]
     assert bench.wait(lambda: all(a.status(r).state == "paused" for r in runs), timeout=60)
-    os.environ["SLICE_EXTRA_STEP"] = "1"        # "deploy" a pipeline with one more step
+    bench.set(SLICE_EXTRA_STEP="1")             # "deploy" a pipeline with one more step
     a.confirm_rubric(TENDER)
     resumed = bench.wait(lambda: all(a.status(r).state == "done" for r in runs), timeout=60)
     new_step_applied = all(a.results(r) and a.results(r).fields.get("extra_step") for r in runs)
@@ -212,25 +224,35 @@ def s9_add_step_while_paused(bench: Bench, vendors: int = 5) -> Measure:
 
 
 def s10_whats_stuck(bench: Bench) -> Measure:
+    """After a kill, how soon does one call list the run as stuck, with why and since,
+    and does the orchestrator then recover it on its own? Either answer passes: a run
+    that is healed before anyone asks is not stuck; a run that is listed can be acted on."""
     a = bench.adapter
     run = a.start_check(TENDER, "Tenderer_B")
     assert bench.wait_step_progress(run, "triage", 6)
     os.kill(a.workers()[0], signal.SIGKILL)
-    time.sleep(1.0)
-    started = time.perf_counter()
-    stuck = a.list_stuck()
-    seconds = time.perf_counter() - started
-    found = any(s["run_id"] == run and s.get("why") and s.get("since") for s in stuck)
-    return Measure(10, "Which vendors are stuck, why, since when", "should", passed=found,
-                   notes=f"{len(stuck)} stuck run(s) listed in {seconds * 1000:.0f} ms; killed run listed with why/since: {found}")
+    killed = time.time()
+    detected: float | None = None
+    while time.time() - killed < 8 and detected is None:
+        if any(s["run_id"] == run and s.get("why") and s.get("since") for s in a.list_stuck()):
+            detected = round(time.time() - killed, 2)
+        time.sleep(0.25)
+    a.confirm_rubric(TENDER)
+    recovered = bench.wait_state(run, "done", timeout=20)
+    return Measure(10, "Which vendors are stuck, why, since when", "should", passed=detected is not None or recovered,
+                   recover_seconds=round(time.time() - killed, 2) if recovered else None,
+                   notes=(f"listed as stuck {detected} s after the kill, with why and since" if detected is not None
+                          else "never listed as stuck within 8 s") + f"; recovered without help: {recovered}")
 
 
 def s11_glue_code(bench: Bench) -> Measure:
-    module = inspect.getmodule(type(bench.adapter))
-    lines = [ln for ln in Path(inspect.getsourcefile(module)).read_text().splitlines()
-             if ln.strip() and not ln.strip().startswith("#")]
+    files = [Path(f) for f in getattr(bench.adapter, "glue_files", [inspect.getsourcefile(inspect.getmodule(type(bench.adapter)))])]
+    counts = {f.name: sum(1 for ln in f.read_text().splitlines() if ln.strip() and not ln.strip().startswith("#"))
+              for f in files}
+    services = getattr(bench.adapter, "services", "Postgres")
     return Measure(11, "Glue code and infrastructure outside the pipeline steps", "compare", passed=None,
-                   notes=f"{len(lines)} non-blank lines in {Path(inspect.getsourcefile(module)).name}; extra services: Postgres")
+                   notes=f"{sum(counts.values())} non-blank lines in {', '.join(f'{k} ({v})' for k, v in counts.items())}; "
+                         f"extra services: {services}")
 
 
 def s12_step_alone(bench: Bench) -> Measure:
