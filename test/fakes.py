@@ -221,7 +221,7 @@ class FakeLLM:
     def _log(self, call: Call) -> None:
         if not self.log_path:
             return
-        line = {"n": call.n, "pid": os.getpid(), "kind": call.kind, "scope": call.scope,
+        line = {"n": call.n, "pid": os.getpid(), "t": round(time.time(), 3), "kind": call.kind, "scope": call.scope,
                 "out_model": call.out_model, "model": call.model, "prompt_sha": _sha(call.user)[:12],
                 "prompt_chars": len(call.user), "images": len(call.images),
                 "seconds": round(call.seconds, 4), "error": call.error}
