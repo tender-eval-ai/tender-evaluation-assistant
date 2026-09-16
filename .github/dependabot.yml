@@ -1,11 +1,12 @@
 version: 2
 updates:
-  - package-ecosystem: pip
-    directory: /
-    schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+  # GitHub Actions used by ci.yml: a bump here is a real change; merge when CI is green.
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+
+# Python is deliberately not listed. Installs come from requirements.lock (uv pip compile,
+# hashed), which Dependabot does not read; its pip updates only raised the >= floors in
+# requirements*.txt (#12 to #16) and changed nothing that gets installed. The lock is
+# refreshed by hand at each stop point or when CI's pip-audit flags a pinned version.
