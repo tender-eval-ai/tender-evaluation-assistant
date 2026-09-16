@@ -49,7 +49,7 @@ def ocr_table(path: Path) -> str:
     a, b = r["chains"]["a"], r["chains"]["b"]
     f = r["facts"]
     return "\n".join([
-        f"| chain | served | s / page | $ / page | ground-truth facts found | failed calls |",
+        "| chain | served | s / page | $ / page | ground-truth facts found | failed calls |",
         "| --- | --- | --- | --- | --- | --- |",
         f"| A `{a['entry'].split('@')[0]}` | {', '.join(a['served'].values())} | {a['seconds_per_page']} | ${a['usd_per_page']} | {f['a_found']}/{f['checked']} | {a['failed_calls']} |",
         f"| B `{b['entry'].split('@')[0]}` | {', '.join(b['served'].values())} | {b['seconds_per_page']} | ${b['usd_per_page']} | {f['b_found']}/{f['checked']} | {b['failed_calls']} |",

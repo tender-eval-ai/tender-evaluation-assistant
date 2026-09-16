@@ -26,7 +26,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app.config import Config, load_dotenv  # noqa: E402
-from app.ingest import ocr_single_page, render_page_png  # noqa: E402  (render kept for parity)
+from app.ingest import ocr_single_page  # noqa: E402
 from pypdf import PdfReader  # noqa: E402
 
 
@@ -126,8 +126,8 @@ def main() -> int:
                        "min": round(sims[0], 3)},
         "facts": {"checked": len(fact_rows),
                   "a_found": sum(1 for r in fact_rows if r[2]), "b_found": sum(1 for r in fact_rows if r[3]),
-                  "missed_by_a": [f"{n}: {l}" for n, l, a, b in fact_rows if not a],
-                  "missed_by_b": [f"{n}: {l}" for n, l, a, b in fact_rows if not b]},
+                  "missed_by_a": [f"{n}: {label}" for n, label, a, b in fact_rows if not a],
+                  "missed_by_b": [f"{n}: {label}" for n, label, a, b in fact_rows if not b]},
         "empty_transcripts": empty,
         "chains": {k: {"entry": v["entry"], "served": v["served"], "seconds": v["seconds"],
                        "seconds_per_page": round(v["seconds"] / n_pages, 1),

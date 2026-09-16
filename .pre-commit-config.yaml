@@ -1,0 +1,31 @@
+# Runs on every commit through .githooks/pre-commit (git config core.hooksPath .githooks)
+# and on every pull request in CI (pre-commit run --all-files).
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.7
+    hooks:
+      - id: ruff-check
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: check-added-large-files
+        args: [--maxkb=1000]
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: check-yaml
+      - id: check-toml
+
+  - repo: local
+    hooks:
+      - id: no-pdfs-outside-fixtures
+        name: block PDFs outside demo_case/ and test/data/
+        entry: bash -c 'echo "PDF files are only allowed under demo_case/ or test/data/:" "$@"; exit 1' --
+        language: system
+        files: '\.pdf$'
+        exclude: '^(demo_case|test/data)/'

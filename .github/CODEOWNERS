@@ -1,0 +1,20 @@
+# Code owners are requested automatically as reviewers on every pull request
+# that touches their paths. The last matching pattern wins.
+# Ownership map agreed in docs/merge_plan_checklist.md (C1).
+
+# Default: pipeline, LLM layers, worker, gateway, backend, tools, tests.
+*                              @chenyufang-data
+
+# Nasi: React UI, parser, rule engine, schedule locator, templates, auth.
+/web/                          @nlp4725
+/app/parsing/                  @nlp4725
+/app/engine/                   @nlp4725
+/app/rulesets/locate.py        @nlp4725
+/app/rulesets/templates/       @nlp4725
+/app/rulesets/render.py        @nlp4725
+/backend/routes/auth.py        @nlp4725
+
+# Shared contracts: both must approve.
+/app/rulesets/schema.py        @chenyufang-data @nlp4725
+/migrations/                   @chenyufang-data @nlp4725
+/docs/api_contract.md          @chenyufang-data @nlp4725
