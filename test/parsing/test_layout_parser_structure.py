@@ -44,3 +44,18 @@ def test_parts_belong_to_the_sub_document_they_appear_in(tmp_path: Path):
     assert all("#" not in n["node_id"] for n in parts)
     clauses = [n for n in nodes if n["kind"] == "clause"]
     assert {n["parent_id"] for n in clauses} == {n["node_id"] for n in parts}
+
+
+def test_reading_lines_keep_a_slightly_lower_marker_on_its_own_line():
+    from app.parsing.layout_document_index import _join_lines, _reading_lines
+
+    # A marker and a drop capital set a fraction of a point below the rest of
+    # their line, straddling a 5-point boundary, then a second line of text.
+    items = [
+        ("he information required in Table G of the", [153.7, 389.9, 520.9, 400.4]),
+        ("(f)", [117.8, 390.1, 129.8, 401.0]),
+        ("T", [146.6, 390.3, 153.7, 397.9]),
+        ("Schedule.", [146.6, 403.1, 252.4, 411.3]),
+    ]
+
+    assert _join_lines(_reading_lines(items)) == "(f) T he information required in Table G of the Schedule."

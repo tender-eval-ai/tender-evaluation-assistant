@@ -404,13 +404,48 @@ def _fitz_page(source_file: str, page_number: int):
     return doc[page_number - 1]
 
 
+def _reading_lines(items: list[tuple[str, list[float]]]) -> list[list[tuple[str, list[float]]]]:
+    """Group a block's text items into visual lines, top to bottom, each left to right.
+
+    Replaces MarkdownGenerator._group_text's ordering, which sorts by
+    `(y0 // 5, x0)`: two items on the same line whose tops straddle a 5-point
+    bucket boundary land in different "lines". A drop capital or a marker set a
+    fraction of a point lower than its line's text then reads after the whole
+    line - "(f) The information ..." came out as "he information ... of the (f) T
+    Information Schedule", so the item never opened with its own marker. That is
+    the same mis-ordering `_find_displaced_marker` works around after the fact.
+    Here an item joins the current line when its vertical centre is within half
+    a line height of the line's own centre, so jitter of a point or two (or a
+    raised superscript) no longer splits a line, while the next line of text,
+    a full line height below, still starts a new one.
+    """
+    def centre(bbox):
+        return (bbox[1] + bbox[3]) / 2
+
+    valid = sorted(((t.strip(), b) for t, b in items if t and t.strip()), key=lambda it: centre(it[1]))
+    lines: list[list[tuple[str, list[float]]]] = []
+    for text, bbox in valid:
+        if lines:
+            line = lines[-1]
+            line_centre = sum(centre(b) for _, b in line) / len(line)
+            height = max([b[3] - b[1] for _, b in line] + [bbox[3] - bbox[1]])
+            if abs(centre(bbox) - line_centre) <= height / 2:
+                line.append((text, bbox))
+                continue
+        lines.append([(text, bbox)])
+    return [sorted(line, key=lambda it: it[1][0]) for line in lines]
+
+
+def _join_lines(lines) -> str:
+    return " ".join(text for line in lines for text, _ in line)
+
+
 def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str, str, list[float]]]:
     """Ordered (x0, class_name, text, bbox) blocks for one page, boilerplate
     excluded. `bbox` is the block's own [x0, y0, x1, y1] in PDF point
     coordinates (page-relative, origin top-left) - carried through to each
     node's output so a node can be located exactly on the page, not just
     which page it's on."""
-    from pymupdf.layout.onnx.MarkdownGenerator import MarkdownGenerator
     from pymupdf.layout.pymupdf_util import create_input_data_from_page
 
     model = _get_model()
@@ -430,7 +465,9 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
     for g in groups:
         if g["class_name"] in ("page-header", "page-footer", "picture"):
             continue
-        text = MarkdownGenerator._group_text(g, all_texts, all_bboxes).strip()
+        items = [(all_texts[i], all_bboxes[i]) for i in g.get("indicies", [])
+                 if 0 <= i < len(all_texts) and i < len(all_bboxes)]
+        text = _join_lines(_reading_lines(items)).strip()
         if not text:
             continue
         blocks.append((g["group_bbox"][0], g["class_name"], text, list(g["group_bbox"])))
