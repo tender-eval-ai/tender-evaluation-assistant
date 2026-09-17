@@ -8,7 +8,7 @@ Joint review of the "Tender Review Merge Plan" (10-day version, 2026-09-15). Thi
 
 **Context both of us share.** Two bootcamp students, both in the US, no client and no pilot. Each person works on their own area independently and stops at the joint stop points in section D. The goal is the strongest possible joint project for job applications.
 
-Last updated: 2026-09-15 (Chenyu).
+Last updated: 2026-09-16 (Nasi).
 
 ## Status board
 
@@ -38,8 +38,9 @@ Last updated: 2026-09-15 (Chenyu).
 | E4 | One full day for the comparison, decision next morning | open | both |
 | F1 | Repo stays private until publishable, then org and public | decided | — |
 | F2 | Data classes and endpoints named per fixture and eval | open | both |
-| F3 | Files excluded from the port of `aicamp-final` | open | Nasi |
+| F3 | Files excluded from the port (commit `7e8e273`, see F5) | open | Nasi |
 | F4 | Public-release audit at S5 | open | both |
+| F5 | Port source: pushed commit, no `aicamp-final` tag | open | Chenyu to acknowledge |
 | G1 | Two independent demos, same image | open | Nasi to confirm AWS side |
 | G2 | No cloud named in code; configuration only | open | both |
 | G3 | Abuse limits before a public demo | open | both |
@@ -173,7 +174,7 @@ Proposed because none of these help a job application, and several need a client
 
 | Stop point | Both check together | Chenyu does before it (alone) | Nasi does before it (alone) |
 |---|---|---|---|
-| S0 Contracts | `schema.py` (Citation, 12 CheckTypes, SlotSpec, SlotValue, TemplateRule, RuleSet), `api_contract.md`, migration 001, compose file. Half a day. | FakeLLM (`test/fakes.py`), the failure-scenario harness, synthetic 366-page combined tender and 100-page scanned bid via `tools/make_demo_case.py` and `tools/pdfgen.py` | Tag `aicamp-final`, rotate the RDS password and IAM key, map the 44 check names to 12 kinds, ground truth for Tender 2 and Tender 3 (private folder, never in git) |
+| S0 Contracts | `schema.py` (Citation, 12 CheckTypes, SlotSpec, SlotValue, TemplateRule, RuleSet), `api_contract.md`, migration 001, compose file. Half a day. | FakeLLM (`test/fakes.py`), the failure-scenario harness, synthetic 366-page combined tender and 100-page scanned bid via `tools/make_demo_case.py` and `tools/pdfgen.py` | Record the port source commit (F5), rotate the RDS password and IAM key, map the 44 check names to 12 kinds, ground truth for Tender 2 and Tender 3 (private folder, never in git) |
 | S1 Orchestrator | Read both sets of harness numbers, write `docs/decisions/0001-orchestrator.md`, pick one. | Both spikes (LangGraph + Postgres checkpointer; Procrastinate job queue), both run through the same harness | Port `validator/engine` unchanged, split the 13 rule files into templates + `params/Tender 1.json`, golden test proving verdicts are identical |
 | S2 One item end to end | Replace the UI stub with real routes; item (l) on the synthetic tender shows in the Stage I window with its page highlighted. | Worker on the winner, V0 without page cap, V1 triage, V2 resolve, V3 extract for item (l), results API, LLM gateway (fallback, cache, budget, allowlist by `data_class`) | Port the parser, split combined PDFs, clause tree, `locate.py` finding 15 items with Parts on all 3 tenders, `StageResultsWindow` and `DocumentViewer` on the mock |
 | S3 Rule sets on 3 tenders | Run the rule-set evals together and record the numbers. | L1 match, L2 slots with quote verification, L3 novel rules (ported `extract_leaf_requirements`), L4 coverage, rulesets backend (edit, versions, diff, confirm) | Parser recall at or above 95% against the ground truth, `RulesWindow` with full editing, Vitest and API-contract snapshot |
@@ -235,7 +236,7 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Decision: open
 
 ### F3. Files excluded from the port
-- Proposal: the port from `aicamp-final` excludes `retrieval_eval/production_parser_nodes_full.json`, `ground_truth_full.md`, `archive/reports/tender_compliance_*`, and the vendor values in `tests/evals/*`. The port PR checklist lists them. Ground truth for all three tenders lives in the private data folder.
+- Proposal: the port from commit `7e8e273` (F5) excludes `retrieval_eval/production_parser_nodes_full.json`, `ground_truth_full.md`, `archive/reports/tender_compliance_*`, and the vendor values in `tests/evals/*`. The port PR checklist lists them. Ground truth for all three tenders lives in the private data folder.
 - Chenyu:
 - Nasi:
 - Decision: open
@@ -244,6 +245,13 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Proposal: before the transfer and the switch to public, run gitleaks over the full history and search the history for the three tender numbers and the vendor names. The joint repo's history is Chenyu's old repo, which committed only code, tests and the synthetic demo case; the risk is what the port brings in.
 - Chenyu:
 - Nasi:
+- Decision: open
+
+### F5. Port source
+- Plan: "Commit the 50 uncommitted files, tag them" as `aicamp-final`; every port copies from that tag.
+- Proposal: port from what is already pushed to `nlp4725/Bidding-AI-expert` and do not push the local uncommitted work. The fixed source is branch `redesign/stage1-panel` at commit `7e8e273dfd24c8fefeffc43a2014e0ddbc267d30` (2026-08-10); every port PR names this commit (`git show 7e8e273:<path>`) instead of the tag. The 52 uncommitted local files are mostly the AI_camp job runtime (`service/worker.py`, `queue_client.py`, `rate_limiter.py`, `task_store.py`, `storage.py`, `s3_docs.py`, `aws_config.py`, `infra/`), which the worker and gateway replace, plus 21 test files. `validator/engine/` has no local changes. The few local changes in ported areas (`ingest/layout_document_index.py`, `validator/checkers/information_schedule_checker.py`, `extract/fields.py`, `extract/llm_client.py`, `extract/vision_client.py`, `frontend/src/api.js`, `frontend/src/components/VendorCompletenessList.jsx`) are kept in a local patch and brought over by hand in the matching port PR only if needed. Key rotation (RDS password, IAM key) is unaffected and still happens before S0.
+- Chenyu:
+- Nasi (2026-09-16): port from the pushed commit; no push of the local work and no `aicamp-final` tag.
 - Decision: open
 
 ## G. Deployment and demo
