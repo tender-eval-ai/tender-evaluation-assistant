@@ -62,7 +62,7 @@ These are facts, checked against both repositories on 2026-09-15. They need a co
 - Proposal: MinIO's open-source repository entered maintenance mode in December 2025 and was archived on 25 April 2026; no official binaries and no security fixes. Keep `app/storage.py` as one S3-compatible client configured by endpoint, bucket and credentials, so the same code talks to S3, to GCS through its S3-interoperability keys, or to local disk.
 - Chenyu (2026-09-15): Nasi's shared AWS storage is the development store. Only synthetic and redacted sample documents go there; each person uses their own IAM user limited to that bucket; the bucket stays blocked from public access; keys live only in the gitignored `.env`.
 - Nasi (2026-09-15): S3 bucket.
-- Nasi (2026-09-16): the shared bucket now lives in a new AWS account, because an access key on the old account was exposed. Still to do: deactivate that key and remove the old account's resources. Each of us gets an IAM user in the new account limited to the bucket.
+- Nasi (2026-09-16): the shared bucket now lives in a new AWS account, because an access key on the old account was exposed; that key is revoked. Still to do: remove the old account's resources. Each of us gets an IAM user in the new account limited to the bucket.
 - Decision: decided (2026-09-15). Nasi's S3 bucket is the shared development store; `storage.py` stays one S3-compatible client.
 
 ### A4. "Redis queue" in AI_camp
