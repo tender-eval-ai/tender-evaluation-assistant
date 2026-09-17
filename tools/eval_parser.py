@@ -237,6 +237,84 @@ def score(key: dict, tender: Tender) -> dict:
     return report
 
 
+# ---------------------------------------------------------------- deep (node-level) key
+
+DEEP_METRICS = ("own_node", "reachable", "page", "length", "parent")
+HEADING_SLACK = 12  # squashed characters allowed before a node's first words
+
+
+def score_deep(deep_key: dict, tender: Tender) -> dict:
+    """Score every node of a deep key (SPEC.md) on the parser node that should represent it.
+
+    A key node is located by where its text starts (page + first words), not by id,
+    because the key's ids and the parser's ids follow different naming schemes.
+    """
+    by_page: dict[tuple[str, int], list[dict]] = defaultdict(list)
+    for node in tender.nodes:
+        if node.get("page"):
+            by_page[(node["source_file"], node["page"])].append(node)
+
+    key_nodes = deep_key["nodes"]
+    match: dict[str, dict | None] = {}
+    rows = []
+    for key_node in key_nodes:
+        file = key_node.get("file") or next(iter(tender._docs))
+        start = key_node["page"][0]
+        prefix = _squash(key_node["first_words"])[:24]
+        on_page = by_page.get((file, start), [])
+        # A node may open with a short heading the key leaves out ("Part A" before a Part intro).
+        own = [n for n in on_page if 0 <= _squash(n.get("text")).find(prefix) <= HEADING_SLACK]
+        parent_match = match.get(key_node.get("parent_id"))
+        if parent_match and len(own) > 1:
+            own.sort(key=lambda n: n.get("parent_id") != parent_match["node_id"])
+        node = own[0] if own else None
+        match[key_node["node_id"]] = node
+
+        row = {"node_id": key_node["node_id"], "level": key_node["level"],
+               "doc": key_node["node_id"].split(":")[0], "page": key_node["page"],
+               "own_node": node is not None,
+               "reachable": node is not None or any(prefix in _squash(n.get("text")) for n in on_page)}
+        if node is not None:
+            chars = key_node.get("chars")
+            row.update(
+                parser_node=node["node_id"], parser_chars=len(node.get("text") or ""), key_chars=chars,
+                page_ok=node["page"] == start,
+                length_ok=chars is None or abs(len(node.get("text") or "") - chars) <= LENGTH_TOLERANCE * max(chars, 1),
+                parent_ok=(key_node.get("parent_id") is None or key_node["parent_id"] not in match
+                           or (parent_match is not None and node.get("parent_id") == parent_match["node_id"])),
+            )
+        row["page"] = row.pop("page_ok", False)
+        row["length"] = row.pop("length_ok", False)
+        row["parent"] = row.pop("parent_ok", False)
+        row["key_page"] = key_node["page"]
+        rows.append(row)
+
+    def rates(subset):
+        return {m: (sum(r[m] for r in subset), len(subset)) for m in DEEP_METRICS}
+
+    by_level = defaultdict(list)
+    by_doc = defaultdict(list)
+    for r in rows:
+        by_level[r["level"]].append(r)
+        by_doc[r["doc"]].append(r)
+    return {"tender": deep_key["tender"], "nodes": rows, "metrics": rates(rows),
+            "by_level": {lvl: rates(rs) for lvl, rs in sorted(by_level.items())},
+            "by_doc": {doc: rates(rs) for doc, rs in sorted(by_doc.items(), key=lambda kv: -len(kv[1]))}}
+
+
+def print_deep_report(report: dict) -> None:
+    def line(label, metrics):
+        cells = "  ".join(f"{m} {ok}/{total} {ok / total if total else 0:6.1%}" for m, (ok, total) in metrics.items())
+        print(f"  {label:<22} {cells}")
+
+    print(f"\n{report['tender']} (deep key, {len(report['nodes'])} nodes)")
+    line("all", report["metrics"])
+    for level, metrics in report["by_level"].items():
+        line(f"level {level}", metrics)
+    for doc, metrics in report["by_doc"].items():
+        line(doc, metrics)
+
+
 def print_report(report: dict, show_failures: bool) -> None:
     print(f"\n{report['tender']}")
     for name, (ok, total) in report["metrics"].items():
@@ -266,6 +344,7 @@ def main() -> None:
     parser.add_argument("--nodes", type=Path, help="reuse (or write) parsed nodes as JSON")
     parser.add_argument("--out", type=Path, help="write the full report as JSON")
     parser.add_argument("--failures", action="store_true", help="list every failing entry")
+    parser.add_argument("--deep-key", type=Path, help="also score a node-level key (ground_truth/deep/SPEC.md)")
     args = parser.parse_args()
 
     key = json.loads(args.key.read_text())
@@ -277,8 +356,12 @@ def main() -> None:
         if args.nodes:
             args.nodes.write_text(json.dumps(nodes, ensure_ascii=False))
 
-    report = score(key, Tender(nodes, pdfs))
+    tender = Tender(nodes, pdfs)
+    report = score(key, tender)
     print_report(report, args.failures)
+    if args.deep_key:
+        report["deep"] = score_deep(json.loads(args.deep_key.read_text()), tender)
+        print_deep_report(report["deep"])
     if args.out:
         args.out.write_text(json.dumps(report, ensure_ascii=False, indent=1))
 
