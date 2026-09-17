@@ -29,3 +29,18 @@ def test_standalone_document_node_starts_on_its_first_page(tmp_path: Path):
     document = next(n for n in nodes if n["kind"] == "document")
     assert document["page"] == 1
 
+
+def test_parts_belong_to_the_sub_document_they_appear_in(tmp_path: Path):
+    nodes = _parse(tmp_path, _pages(
+        ["Sample Price Schedule", "", "Part A - Estimated Price",
+         "1. Tenderers shall quote a unit price for each item.", "", "Sample Price Schedule Page 1 of 1"],
+        ["Sample Compliance Schedule", "", "Part A - Statement of Compliance",
+         "1. Tenderers shall state compliance with each requirement.", "", "Sample Compliance Schedule Page 1 of 1"],
+    ))
+
+    subdocs = {n["doc_name"]: n["node_id"] for n in nodes if n["kind"] == "subdocument"}
+    parts = [n for n in nodes if n["kind"] == "part"]
+    assert sorted(n["parent_id"] for n in parts) == sorted(subdocs.values())
+    assert all("#" not in n["node_id"] for n in parts)
+    clauses = [n for n in nodes if n["kind"] == "clause"]
+    assert {n["parent_id"] for n in clauses} == {n["node_id"] for n in parts}

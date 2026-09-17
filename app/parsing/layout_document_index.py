@@ -695,12 +695,21 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                         nodes_by_id[last_marker_id].text += "\n" + text
                     continue
 
+                # A Part or annex belongs to the sub-document it appears in, not
+                # to the file. Parented to the file root, a combined schedule
+                # file's "Part A" of the Price Schedule and "Part A" of the
+                # Compliance Schedule were siblings told apart only by a `#2`
+                # suffix, the sub-document node had no children (so its extent
+                # was unknown), and "Part A of the Price Schedule" could not be
+                # looked up under the Price Schedule.
+                container = (subdoc_by_page.get(page.page_number) or {}).get("node_id") or doc_id
+
                 if kind == "part":
                     current_part = f"Part {number}"
-                    part_node = _unique(f"{doc_id}:P{number}", seen_ids)
+                    part_node = _unique(f"{container}:P{number}", seen_ids)
                     current_scope = None
                     add(_WorkingNode(
-                        part_node, doc_id, "part", current_part, number, title, page.page_number, text, 0,
+                        part_node, container, "part", current_part, number, title, page.page_number, text, 0,
                         bbox=bbox, **_ident(doc_ident, page.page_number),
                     ))
                     reset_below_part()
@@ -708,10 +717,10 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
 
                 if kind == "annex":
                     current_part = f"Annex {number}"
-                    part_node = _unique(f"{doc_id}:ANNEX-{number}", seen_ids)
+                    part_node = _unique(f"{container}:ANNEX-{number}", seen_ids)
                     current_scope = None
                     add(_WorkingNode(
-                        part_node, doc_id, "annex", current_part, number, title, page.page_number, text, 0,
+                        part_node, container, "annex", current_part, number, title, page.page_number, text, 0,
                         bbox=bbox, **_ident(doc_ident, page.page_number),
                     ))
                     reset_below_part()
