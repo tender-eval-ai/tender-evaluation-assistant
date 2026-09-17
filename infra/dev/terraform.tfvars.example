@@ -1,0 +1,5 @@
+# Values from the company layer's `terraform output project_handover`.
+profile               = "dev-admin"
+dev_account_id        = "<tender-review-dev account id>"
+data_region           = "ap-east-1"
+synthetic_bucket_name = "tender-review-dev-synthetic"

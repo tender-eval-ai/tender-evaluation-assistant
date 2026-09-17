@@ -1,0 +1,4 @@
+profile           = "dev-admin"
+account_id        = "<tender-review-dev account id>"
+region            = "ap-east-1"
+state_bucket_name = "tender-review-dev-tfstate-<tender-review-dev account id>"
