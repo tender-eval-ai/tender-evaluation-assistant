@@ -112,9 +112,18 @@ def _on_page(tender: Tender, node: dict) -> bool:
 _SUBITEMS = re.compile(r"\(([a-z]{1,4})\)")
 
 
-def reference_matcher(clause_id: str):
-    """Turn an answer-key clause id into (predicate, expected marker)."""
+def reference_matcher(clause_id: str, text: str = ""):
+    """Turn an answer-key clause id into (predicate, expected marker).
+
+    `text` is the reference as written. "PartN" is the id shape of both "Part 4 of
+    the Tender Form" (a Part heading) and "part (4) in the Appendix" (a numbered
+    entry labelled "(4)"); only the written form tells them apart.
+    """
     head, _, rest = clause_id.partition(":")
+    numbered_part = re.search(r"\bpart\s*\((\d+)\)", text, re.I)
+    if numbered_part and re.fullmatch(r"(?:Part)?\(?\d+\)?", rest or ""):
+        label = f"({numbered_part.group(1)})"
+        return (lambda n, t, lab=label: n.get("label") == lab), label
     if head in ("ToT", "TermsSupp") and rest and rest[0].isdigit():
         number = re.match(r"[\d.]+", rest).group(0).rstrip(".")
         items = _SUBITEMS.findall(rest)
@@ -143,7 +152,7 @@ def reference_matcher(clause_id: str):
 def _candidates(tender: Tender, ref: dict, pages: list[int] | None):
     if not pages:
         return []
-    predicate, marker = reference_matcher(ref["clause_id"])
+    predicate, marker = reference_matcher(ref["clause_id"], ref.get("text", ""))
     start, end = pages
     found = [n for n in tender.nodes
              if n.get("page") and start <= n["page"] <= end and tender.in_file(n, ref.get("file"))
