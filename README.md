@@ -133,7 +133,7 @@ pre-commit run --all-files              # exactly what CI's lint job runs
 uv pip compile requirements.txt --python-version 3.12 --universal --generate-hashes -o requirements.lock
 ```
 
-CI on every pull request: `lint` (pre-commit: ruff, gitleaks, large files, merge markers, PDF placement), `test` (the offline suite, installed from `requirements.lock`), `security` (gitleaks over the full history, pip-audit over the lockfile). On `main`, `main-guard` fails when a commit did not arrive through a merged pull request. Opt-in test levels are the pytest markers `orchestrator`, `realdata` and `live`; the default run excludes them and needs no network, tokens or client data.
+CI on every pull request: `lint` (pre-commit: ruff, gitleaks, large files, merge markers, PDF placement), `test` (the offline suite, installed from `requirements.lock`), `security` (gitleaks over the full history, pip-audit over the lockfile). On `main`, `main-guard` fails when a commit did not arrive through a merged pull request. Opt-in test levels are the pytest markers `orchestrator`, `realdata` and `live`; the default run excludes them and needs no network, tokens or client data. Dependabot watches only the GitHub Actions versions; Python versions are fixed by `requirements.lock`, refreshed by hand at each stop point or when pip-audit fails.
 
 ## Repository layout
 
