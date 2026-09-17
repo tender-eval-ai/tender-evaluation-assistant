@@ -1,7 +1,7 @@
 # Remote-state settings for the project layers (state lives inside the project account).
 # Copy to backend.hcl after running bootstrap/ and set bucket to the state_bucket it printed.
 bucket       = "tender-review-dev-tfstate-<tender-review-dev account id>"
-region       = "ap-east-1"
+region       = "us-east-1"
 profile      = "dev-admin"
 encrypt      = true
 use_lockfile = true

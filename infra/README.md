@@ -23,7 +23,7 @@ infra/
    ```bash
    aws configure sso
    #   SSO session name: tender · start URL: https://<your-sso-id>.awsapps.com/start
-   #   SSO region: <Identity Center region> · pick account tender-review-dev · role DevAdmin
+   #   SSO region: us-east-1 · pick account tender-review-dev · role DevAdmin
    #   profile name: dev-admin
    # (or paste the cli_profiles block into ~/.aws/config)
    aws sso login --sso-session tender
