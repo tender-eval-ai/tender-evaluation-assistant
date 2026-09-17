@@ -11,39 +11,7 @@ from app import db
 from app.jobs.execute import run_pipeline
 from app.jobs.models import Pause, Pipeline, Step
 from app.jobs.queue import MAX_ATTEMPTS, Settings, TransientRetry
-
-
-class MemoryContext:
-    """Progress and checkpoints kept in memory, with a log of what was written."""
-
-    def __init__(self, confirmed: bool = False):
-        self.run = {"run_id": "r1", "project": "p", "tenderer": "t", "kind": "k"}
-        self.data: dict = {}
-        self.done: list[str] = []
-        self.confirmed = confirmed
-        self.events: list[tuple] = []
-
-    def progress(self, step, done, total, unit="pages"):
-        self.events.append(("progress", step, done, total))
-
-    def checkpoint(self, **data):
-        self.data.update(data)
-        self.events.append(("checkpoint", dict(data)))
-
-    def complete(self, step, data):
-        if data:
-            self.data.update(data)
-        self.done.append(step)
-        self.events.append(("complete", step))
-
-    def paused(self, step, reason):
-        self.events.append(("paused", step, reason))
-
-    def resumed(self, step):
-        self.events.append(("resumed", step))
-
-    def ruleset(self):
-        return (1, {"version": 1}) if self.confirmed else None
+from test.jobs.memory_context import MemoryContext
 
 
 def pipeline(*steps: Step) -> Pipeline:
@@ -90,11 +58,11 @@ def test_pause_parks_the_run_and_resume_runs_the_same_step_again():
         return None if ctx.ruleset() else Pause("ruleset_confirmed")
 
     p = pipeline(Step("extract", lambda ctx: {"fields": {"f": 1}}), Step("await", wait, "steps"), Step("decide", lambda ctx: {"d": 1}))
-    ctx = MemoryContext(confirmed=False)
+    ctx = MemoryContext()
     out = run_pipeline(p, ctx)
     assert out.state == "paused" and out.step == "await" and out.reason == "ruleset_confirmed"
     assert ctx.done == ["extract"] and ("paused", "await", "ruleset_confirmed") in ctx.events
-    ctx.confirmed = True
+    ctx.confirm({"version": 1})
     assert run_pipeline(p, ctx).state == "done"
     assert ctx.done == ["extract", "await", "decide"]
 
@@ -102,7 +70,7 @@ def test_pause_parks_the_run_and_resume_runs_the_same_step_again():
 def test_an_unblock_written_between_pause_and_recheck_is_not_missed():
     """The step is asked twice: the second answer sees a confirmation written after the
     first, so the run never waits for a sweeper it does not need."""
-    ctx = MemoryContext(confirmed=False)
+    ctx = MemoryContext()
     answers = iter([Pause("ruleset_confirmed"), None])
 
     def wait(ctx_):

@@ -155,6 +155,8 @@ app/                the pipeline library (shared by CLI and backend)
   usage.py          per-bid token / call / $ accounting, price table, run summaries
   graph.py          LangGraph orchestration: state, checkpoints, interrupts, Send fan-out
   pipeline.py       bidder discovery, offline (fixture) run, console summary
+  checks/           the vendor check for one schedule item, layer by layer: V0 page rendering, V1 triage,
+                    V2 resolve, V3 extract (item (l)), V6 engine bridge, the `vendor_check` pipeline
   gateway.py        the LLM gateway every pipeline call goes through: endpoint policy by data class,
                     cache, per-project daily budget, shared rate limiter (gateway_pg.py: the Postgres backends)
   jobs/             the run queue and check worker (Procrastinate on Postgres): step pipelines with
