@@ -165,7 +165,8 @@ def _candidates(tender: Tender, ref: dict, pages: list[int] | None):
 def score_reference(tender: Tender, ref: dict) -> dict:
     hits = _candidates(tender, ref, ref["pages"]) + _candidates(tender, ref, ref.get("alt_pages"))
     result = {"id": ref["id"], "clause_id": ref["clause_id"], "text": ref["text"],
-              "coverage": bool(hits), "page": False, "position": False, "length": False, "citation": False}
+              "coverage": bool(hits), "page": False, "position": False, "length": False, "citation": False,
+              "page_correct": False, "char_correct": False, "exact_location_correct": False}
     if not hits:
         return result
     node, marker, pages = hits[0]
@@ -174,6 +175,12 @@ def score_reference(tender: Tender, ref: dict) -> dict:
         page=node["page"] == pages[0],
         position=node["page"] == pages[0] and _marker_ok(node, marker) and _on_page(tender, node),
         length=tender.last_page(node) == pages[1],
+    )
+    # AI_camp's names for the same resolved node (traceability_groundtruth_eval_2.md).
+    char_ok = len(node.get("text") or "") > 0 or node["kind"] in CONTAINER_KINDS
+    result.update(
+        page_correct=result["page"], char_correct=char_ok,
+        exact_location_correct=result["page"] and char_ok and bool(node.get("bbox")) and _starts_with_own_marker(node),
     )
     hit_ids = {n["node_id"] for n, _, _ in hits}
     resolved = [n for _, nodes in tender.citations.resolve_text(ref["text"]) for n in nodes]
@@ -223,7 +230,8 @@ def score(key: dict, tender: Tender) -> dict:
     report = {"tender": key["tender"], "schedule": schedule, "references": references}
     metrics = {}
     for group, rows, names in (("schedule", schedule, ("coverage", "page", "position", "length")),
-                               ("references", references, ("coverage", "citation", "page", "position", "length"))):
+                               ("references", references, ("coverage", "citation", "page", "position", "length",
+                                                           "page_correct", "char_correct", "exact_location_correct"))):
         for name in names:
             metrics[f"{group}.{name}"] = (sum(r[name] for r in rows), len(rows))
 
@@ -239,58 +247,113 @@ def score(key: dict, tender: Tender) -> dict:
 
 # ---------------------------------------------------------------- deep (node-level) key
 
-DEEP_METRICS = ("own_node", "reachable", "page", "length", "parent")
+DEEP_METRICS = ("recall", "page_correct", "char_correct", "exact_location_correct",
+                "kind_correctness", "hierarchy_correctness")
 HEADING_SLACK = 12  # squashed characters allowed before a node's first words
+_LEADING_GLYPH = re.compile(r"^[*^#\s]+")
+
+
+def expected_kind(node_id: str) -> tuple[str, ...] | None:
+    """The parser kinds a key node's id implies, or None when the id does not say
+    (fields, headings, tails, rows, notes, preambles are not scored for kind)."""
+    segment = node_id.split(":")[-1]
+    if re.search(r"\((?:[a-z]{1,4}|[ivx]+|\d+)\)$", segment):
+        return ("subitem",)
+    if re.fullmatch(r"\d+\.?", segment):
+        return ("clause",)
+    if re.fullmatch(r"\d+(?:\.\d+)+", segment):
+        return ("subclause",)
+    if re.match(r"(?:Part|Table)[A-Z0-9]", segment):
+        return ("part",)
+    if segment.startswith("Annex"):
+        return ("annex", "part", "subdocument")
+    return None
+
+
+def _starts_with_own_marker(node: dict) -> bool:
+    """AI_camp's "exact location": the node's own text starts with its own label or number."""
+    text = _LEADING_GLYPH.sub("", node.get("text") or "")
+    marker = node.get("label") or node.get("number") or node.get("part")
+    if not marker or not text:
+        return bool(text)
+    return _squash(text).startswith(_squash(marker))
 
 
 def score_deep(deep_key: dict, tender: Tender) -> dict:
-    """Score every node of a deep key (SPEC.md) on the parser node that should represent it.
+    """Score every node of a deep key (SPEC.md) with the metric names and definitions
+    AI_camp used for Tender 1 (retrieval_eval/traceability_groundtruth_eval_2.md and
+    the structural check in layout_document_index.py's docstring):
 
-    A key node is located by where its text starts (page + first words), not by id,
-    because the key's ids and the parser's ids follow different naming schemes.
+    recall                  the parser has a node of its own starting at the key node
+                            (same page, text opens with the key node's first words)
+    page_correct            that node starts on the key node's first page
+    char_correct            that node records a real, non-zero character length
+    exact_location_correct  page and char correct, a bbox is recorded, and the node's
+                            text starts with its own label/number marker
+    kind_correctness        the node's kind is the one its id implies (clause, subclause,
+                            sub-item, Part/Table, annex); ids that imply no kind are skipped
+    hierarchy_correctness   the node's parent is the node matched to the key node's parent
+                            (nodes whose key parent is a root outside the key are skipped)
+    avg_node_length_ratio   parser length / key own-text length, averaged over found nodes
+
+    A key node is located by where its text starts, not by id, because the key's ids
+    and the parser's ids follow different naming schemes.
     """
     by_page: dict[tuple[str, int], list[dict]] = defaultdict(list)
     for node in tender.nodes:
         if node.get("page"):
             by_page[(node["source_file"], node["page"])].append(node)
 
-    key_nodes = deep_key["nodes"]
+    key_ids = {k["node_id"] for k in deep_key["nodes"]}
     match: dict[str, dict | None] = {}
     rows = []
-    for key_node in key_nodes:
+    for key_node in deep_key["nodes"]:
         file = key_node.get("file") or next(iter(tender._docs))
         start = key_node["page"][0]
         prefix = _squash(key_node["first_words"])[:24]
-        on_page = by_page.get((file, start), [])
         # A node may open with a short heading the key leaves out ("Part A" before a Part intro).
-        own = [n for n in on_page if 0 <= _squash(n.get("text")).find(prefix) <= HEADING_SLACK]
+        own = [n for n in by_page.get((file, start), [])
+               if 0 <= _squash(n.get("text")).find(prefix) <= HEADING_SLACK]
         parent_match = match.get(key_node.get("parent_id"))
         if parent_match and len(own) > 1:
             own.sort(key=lambda n: n.get("parent_id") != parent_match["node_id"])
         node = own[0] if own else None
         match[key_node["node_id"]] = node
 
+        kinds = expected_kind(key_node["node_id"])
+        has_parent = key_node.get("parent_id") in key_ids
         row = {"node_id": key_node["node_id"], "level": key_node["level"],
-               "doc": key_node["node_id"].split(":")[0], "page": key_node["page"],
-               "own_node": node is not None,
-               "reachable": node is not None or any(prefix in _squash(n.get("text")) for n in on_page)}
+               "doc": key_node["node_id"].split(":")[0], "key_page": key_node["page"],
+               "key_chars": key_node.get("chars"), "kind_expected": kinds,
+               "recall": node is not None, "page_correct": False, "char_correct": False,
+               "exact_location_correct": False,
+               "kind_correctness": False if kinds else None,
+               "hierarchy_correctness": False if has_parent else None}
         if node is not None:
-            chars = key_node.get("chars")
+            length = len(node.get("text") or "")
+            page_ok = node["page"] == start
+            char_ok = length > 0 or node["kind"] in CONTAINER_KINDS
             row.update(
-                parser_node=node["node_id"], parser_chars=len(node.get("text") or ""), key_chars=chars,
-                page_ok=node["page"] == start,
-                length_ok=chars is None or abs(len(node.get("text") or "") - chars) <= LENGTH_TOLERANCE * max(chars, 1),
-                parent_ok=(key_node.get("parent_id") is None or key_node["parent_id"] not in match
-                           or (parent_match is not None and node.get("parent_id") == parent_match["node_id"])),
+                parser_node=node["node_id"], parser_kind=node["kind"], parser_chars=length,
+                page_correct=page_ok, char_correct=char_ok,
+                exact_location_correct=page_ok and char_ok and bool(node.get("bbox")) and _starts_with_own_marker(node),
             )
-        row["page"] = row.pop("page_ok", False)
-        row["length"] = row.pop("length_ok", False)
-        row["parent"] = row.pop("parent_ok", False)
-        row["key_page"] = key_node["page"]
+            if kinds:
+                row["kind_correctness"] = node["kind"] in kinds
+            if has_parent:
+                row["hierarchy_correctness"] = parent_match is not None and node.get("parent_id") == parent_match["node_id"]
+            if key_node.get("chars"):
+                row["length_ratio"] = length / key_node["chars"]
         rows.append(row)
 
     def rates(subset):
-        return {m: (sum(r[m] for r in subset), len(subset)) for m in DEEP_METRICS}
+        out = {}
+        for m in DEEP_METRICS:
+            scored = [r[m] for r in subset if r[m] is not None]
+            out[m] = (sum(scored), len(scored))
+        ratios = [r["length_ratio"] for r in subset if "length_ratio" in r]
+        out["avg_node_length_ratio"] = round(sum(ratios) / len(ratios), 3) if ratios else None
+        return out
 
     by_level = defaultdict(list)
     by_doc = defaultdict(list)
@@ -303,9 +366,14 @@ def score_deep(deep_key: dict, tender: Tender) -> dict:
 
 
 def print_deep_report(report: dict) -> None:
+    def cell(value):
+        if isinstance(value, tuple):
+            ok, total = value
+            return f"{ok}/{total} {ok / total:6.1%}" if total else "-"
+        return "-" if value is None else f"{value:.3f}"
+
     def line(label, metrics):
-        cells = "  ".join(f"{m} {ok}/{total} {ok / total if total else 0:6.1%}" for m, (ok, total) in metrics.items())
-        print(f"  {label:<22} {cells}")
+        print(f"  {label:<22} " + "  ".join(f"{name} {cell(value)}" for name, value in metrics.items()))
 
     print(f"\n{report['tender']} (deep key, {len(report['nodes'])} nodes)")
     line("all", report["metrics"])
