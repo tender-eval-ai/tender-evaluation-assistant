@@ -11,6 +11,7 @@ export DATABASE_URL=postgresql://postgres:dev@localhost:55432/harness
 python -m test.jobs.harness reference --out output/orchestrator      # all twelve scenarios, JSON + markdown table
 python -m test.jobs.harness reference --only 1 5                     # a subset
 python -m pytest test/jobs -m orchestrator -q                        # the same scenarios as tests
+python -m test.jobs.harness app --out output/orchestrator            # the promoted runner (app/jobs), S2
 ```
 
 Environment knobs read by workers: `FAKE_DELAY="0.25,0.5"` (seconds per LLM call), `FAKE_FAULTS="2:429,3:429,6:permanent"` (fault by call index), `N_PAGES`, `CERT_PAGE`, `SLICE_EXTRA_STEP`.
@@ -25,6 +26,8 @@ Environment knobs read by workers: `FAKE_DELAY="0.25,0.5"` (seconds per LLM call
 | `worker.py` | `python -m test.jobs.worker <adapter> <run_id>`, the process the harness kills |
 | `harness.py` | Scenarios 1 to 12, the `Measure` record, the markdown table, the CLI |
 | `test_orchestrator_scenarios.py` | The scenarios as opt-in tests (`-m orchestrator`) |
+| `app_pipeline.py` | The slice as an `app.jobs` pipeline of kind `slice` (the same FakeLLM steps behind `Step` and `Pipeline`) |
+| `app_adapter.py` | The promoted runner under the harness: `python -m app.jobs.worker` subprocesses with second-scale settings (`JOBS_HEARTBEAT=1`, `JOBS_STALLED_AFTER=3`, `JOBS_SWEEP_EVERY=1`) |
 
 ## Scenarios and measures
 
@@ -53,6 +56,33 @@ Implement `Orchestrator` (see `adapters.py`) in `spikes/<name>/adapter.py`, regi
 ORCHESTRATOR_ADAPTER=langgraph ORCHESTRATOR_EXPECT_GATES=1 python -m pytest test/jobs -m orchestrator -q
 python -m test.jobs.harness langgraph --out output/orchestrator
 ```
+
+## The promoted runner (S2)
+
+After the S1 decision the queue variant moved to `app/jobs/` as a generic step pipeline (`docs/decisions/0001-orchestrator.md`, Consequences). `app_adapter.py` puts it under the same scenarios, so the promotion is certified by the same gates that chose it:
+
+```bash
+ORCHESTRATOR_ADAPTER=app ORCHESTRATOR_EXPECT_GATES=1 python -m pytest test/jobs -m orchestrator -q
+```
+
+### The promoted runner (`app/jobs`, 2026-09-17)
+
+| # | Scenario | Gate | Result | Lost | Repeated LLM calls | Duplicates | LLM calls | Recover (s) | Notes |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | Kill a worker in the middle of a vendor check | must | pass | 0 | 0 | 0 | 5 | 5.12 | final state done; killed pid 34573 with SIGKILL after the first triage batch |
+| 2 | Stop a worker the way a deploy does (SIGTERM) | must | pass | 0 | 0 | 0 | 5 | 1.88 | final state done; killed pid 34598 with SIGTERM after the first triage batch |
+| 3 | Two workers and two API copies, the same vendors submitted twice | must | pass | 0 | 0 | 0 | 60 |  | 12 vendors finished; a vendor run twice is paid twice |
+| 4 | Provider returns 429s, then one permanent failure | must | pass | 0 | 0 | 0 | 6 |  | final state failed; 2 transient errors seen; retried after 429: True; permanent failure visible as failed/dead: True |
+| 5 | Pause for rubric confirmation; edit the rubric while paused; resume | must | pass | 0 | 0 | 0 | 5 |  | verdict reflects the edit made while paused |
+| 6 | Rubric edited after confirming: new version, re-check every vendor | must | pass | 0 | 0 | 0 | 0 |  | 10 vendors re-checked to v2 with 0 LLM calls |
+| 7 | Reviewer corrects one field | must | pass | 0 | 0 | 0 | 10 |  | verdict updated with 0 calls: True; correction survived a re-run: True |
+| 8 | 20 vendors at once under a 60/min provider limit | should | FAIL | 0 | 0 | 0 | 100 |  | peak 100 calls in any 60 s window (limit 60) |
+| 9 | Add a pipeline step while 5 jobs are paused mid-way | should | pass | 0 | 0 | 0 | 0 |  | paused runs finished: True; the new step ran for them: True |
+| 10 | Which vendors are stuck, why, since when | should | pass | 0 | 0 | 0 | 0 | 8.37 | never listed as stuck within 8 s; recovered without help: True |
+| 11 | Glue code and infrastructure outside the pipeline steps | compare | - | 0 | 0 | 0 | 0 |  | 655 non-blank lines in execute.py (32), models.py (63), queue.py (62), registry.py (20), runner.py (121), store.py (152), sweeper.py (43), tasks.py (72), worker.py (39), db.py (51); extra services: Postgres (Procrastinate tables + runs, job_steps, results, rulesets) |
+| 12 | Testing one step on its own, without the orchestrator | compare | pass | 0 | 0 | 0 | 2 |  | triage ran alone on 8 pages in 2 calls |
+
+Same must-pass results as the spike it came from. Scenario 10 passes on recovery: the killed run is listed as stuck 2.5 s after the kill and the sweeper retries it 0.3 s later, a window the harness's quarter-second poll can miss. Scenario 8 waits for the gateway's rate limiter (S2). Line count 11 is larger than the spike's because the runner is now generic (any pipeline of steps, a registry, migrations) rather than one hard-wired slice.
 
 ## Results
 
