@@ -573,8 +573,12 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
         {pn: b for pn, b in blocks_by_page.items() if pn not in toc_pages}, _scope_of_page
     )
 
+    # The document starts on its first page. Left as None, a standalone file (one
+    # document, no sub-documents) could not be located at all: a citation of the
+    # whole document ("the Non-collusive Tendering Certificate") resolved to a node
+    # with no page, and anything that filters nodes by page skipped it.
     nodes: list[_WorkingNode] = [
-        _WorkingNode(doc_id, None, "document", None, None, None, None, "", 0)
+        _WorkingNode(doc_id, None, "document", None, None, None, pages[0].page_number, "", 0)
     ]
     for segment in subdocs if len(subdocs) > 1 else []:
         nodes.append(_WorkingNode(
