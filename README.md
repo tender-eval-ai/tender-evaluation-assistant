@@ -131,6 +131,10 @@ git config core.hooksPath .githooks     # runs the pre-commit hooks on commit; r
 pre-commit run --all-files              # exactly what CI's lint job runs
 # after changing requirements*.txt:
 uv pip compile requirements.txt --python-version 3.12 --universal --generate-hashes -o requirements.lock
+# after changing a route (review docs/api_contract.md first; the snapshot is docs/openapi.json):
+UPDATE_OPENAPI=1 python -m pytest test/test_api_contract.py
+# the Postgres-backed tests (CI's integration job): the check API, the worker, migrations
+DATABASE_URL=postgresql://postgres:dev@localhost:55432/harness python -m pytest -m postgres -q
 ```
 
 CI on every pull request: `lint` (pre-commit: ruff, gitleaks, large files, merge markers, PDF placement), `test` (the offline suite, installed from `requirements.lock`), `security` (gitleaks over the full history, pip-audit over the lockfile). On `main`, `main-guard` fails when a commit did not arrive through a merged pull request. Opt-in test levels are the pytest markers `orchestrator`, `realdata` and `live`; the default run excludes them and needs no network, tokens or client data. Dependabot watches only the GitHub Actions versions; Python versions are fixed by `requirements.lock`, refreshed by hand at each stop point or when pip-audit fails.

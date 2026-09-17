@@ -62,7 +62,7 @@ def reset_for_tests(dsn: str | None = None) -> None:
     """Drop the app's tables and empty Procrastinate's, so a test starts from nothing."""
     with _connect(dsn) as c:
         c.execute("drop table if exists results, job_steps, rulesets, runs, llm_cache, llm_rate_limit, llm_budget, "
-                  "schema_migrations cascade")
+                  "events, schema_migrations cascade")
         if c.execute("select to_regclass('procrastinate_jobs')").fetchone()[0]:
             c.execute("truncate procrastinate_jobs, procrastinate_events, procrastinate_periodic_defers, "
                       "procrastinate_workers restart identity")

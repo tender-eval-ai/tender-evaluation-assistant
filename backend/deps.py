@@ -28,6 +28,8 @@ INBOX_DIR = Path("inbox")
 GRAPH_DB_SCRATCH: str | None = None
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+DEFAULT_USER = "anonymous"
+_runner = None
 
 
 def configure() -> None:
@@ -67,6 +69,37 @@ def require_key_or_query(x_api_key: str | None = Header(default=None),
         raise HTTPException(401, "invalid or missing X-API-Key header")
 
 
+def acting_user(x_user: str | None = Header(default=None)) -> str:
+    """Who is acting, from the X-User header until per-user sessions arrive (checklist B9)."""
+    return (x_user or "").strip() or DEFAULT_USER
+
+
+# ---------------------------------------------------------------- the job runner (Postgres)
+
+def runner():
+    """The JobRunner over the Postgres queue, or 503 when DATABASE_URL is not set (the
+    routes that only touch project files keep working without it)."""
+    global _runner
+    from backend.errors import ApiError
+    if not os.environ.get("DATABASE_URL"):
+        raise ApiError(503, "queue_unavailable", "DATABASE_URL is not set; the check worker needs Postgres")
+    if _runner is None:
+        import app.checks.vendor_check  # noqa: F401  registers the pipeline (decide) for this process
+        from app.jobs.runner import JobRunner
+        _runner = JobRunner().open()
+    return _runner
+
+
+def reset_runner() -> None:
+    global _runner
+    if _runner is not None:
+        try:
+            _runner.close()
+        except Exception:   # noqa: BLE001
+            pass
+    _runner = None
+
+
 # ---------------------------------------------------------------- files and project state
 
 def _read_json(path: Path) -> dict:
@@ -102,6 +135,41 @@ def _set_status(pdir: Path, state: str, detail: str = "") -> None:
 def _get_status(pdir: Path) -> dict:
     path = pdir / "status.json"
     return _read_json(path) if path.is_file() else {"state": "idle", "detail": ""}
+
+
+def data_class_of(pdir: Path) -> str:
+    meta = _read_json(pdir / "meta.json") if (pdir / "meta.json").is_file() else {}
+    if meta.get("data_class"):
+        return meta["data_class"]
+    return "synthetic" if meta.get("synthetic") else "confidential"
+
+
+def doc_id(rel_path: str) -> str:
+    """A stable id for a document: the first 12 hex digits of the sha1 of its path
+    relative to the project (e.g. 'bids/Tenderer_B/offer.pdf')."""
+    import hashlib
+    return hashlib.sha1(rel_path.encode()).hexdigest()[:12]
+
+
+def documents_of(pdir: Path) -> list[dict]:
+    """Every PDF of the project: tender documents, then each tenderer's offer files."""
+    out = []
+    for path in sorted((pdir / "tender").glob("*.pdf")) if (pdir / "tender").is_dir() else []:
+        rel = f"tender/{path.name}"
+        out.append({"doc_id": doc_id(rel), "rel": rel, "path": path, "file": path.name, "kind": "tender", "tenderer": None})
+    for folder in sorted(p for p in (pdir / "bids").iterdir() if p.is_dir()) if (pdir / "bids").is_dir() else []:
+        for path in sorted(p for p in folder.rglob("*.pdf") if not p.name.startswith("~$")):
+            rel = f"bids/{folder.name}/{path.relative_to(folder)}"
+            out.append({"doc_id": doc_id(rel), "rel": rel, "path": path, "file": path.name, "kind": "bid",
+                        "tenderer": folder.name})
+    return out
+
+
+def find_document(pdir: Path, wanted: str) -> dict:
+    for d in documents_of(pdir):
+        if d["doc_id"] == wanted:
+            return d
+    raise HTTPException(404, f"document '{wanted}' not found")
 
 
 def _make_cfg(pdir: Path) -> Config:

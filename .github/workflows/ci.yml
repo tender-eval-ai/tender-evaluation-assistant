@@ -33,6 +33,34 @@ jobs:
       # The default suite is fully offline: no LLM calls, no tokens, no client data.
       - run: python -m pytest test/ -q
 
+  integration:
+    # The Postgres-backed tests: the check API, the worker, migrations. The harness
+    # scenarios (-m orchestrator) stay a local, opt-in run.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: dev
+          POSTGRES_DB: harness
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:dev@localhost:55432/harness
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install --require-hashes -r requirements.lock
+      - run: python -m pytest -m postgres -q
+
   security:
     runs-on: ubuntu-latest
     steps:

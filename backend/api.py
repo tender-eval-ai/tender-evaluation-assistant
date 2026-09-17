@@ -20,6 +20,14 @@ Project lifecycle (mirrors the CLI checkpoints, which stay human-editable):
     GET  /projects/{id}/reports[/{name}]    list / download the Word deliverables
     PUT  /projects/{id}/bids/{tenderer}/extraction   inject or correct an extraction
 
+S2 routes (docs/api_contract.md; they need DATABASE_URL, the queue's Postgres):
+    GET/PUT /projects/{id}/ruleset[/draft], POST .../ruleset/confirm, GET .../ruleset/versions
+    POST /projects/{id}/checks              one job per tenderer on the worker
+    GET  /projects/{id}/jobs[/{job_id}]     follow them
+    GET  /projects/{id}/bids/{t}/results    fields with citations, verdicts, cost
+    GET  /projects/{id}/documents[/{doc_id}/pages[/{n}/image]]   the viewer; images by signed URL
+    GET  /projects/{id}/events              the audit log
+
 Data layout under $DATA_DIR/projects/<id>/:
     meta.json  tender/*.pdf  bids/<tenderer>/*.pdf
     work/{rubric.json, bids/<tenderer>.json, evaluation.json, reports/*.docx, cache/}
@@ -44,7 +52,8 @@ from backend import deps, jobs
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 deps.configure()   # re-read DATA_DIR / INBOX_DIR / API_KEY (tests reload this module after changing them)
 
-from backend.routes import documents, projects, reports, results, rubric, runs  # noqa: E402
+from backend import errors  # noqa: E402
+from backend.routes import checks, documents, events, projects, reports, results, rubric, rulesets, runs, viewer  # noqa: E402
 
 # Re-exported: tests and scripts reach these through backend.api.
 PROJECTS = deps.PROJECTS
@@ -54,6 +63,7 @@ _set_status = deps._set_status
 _get_status = deps._get_status
 _running = jobs._running          # the same set the job runner uses
 jobs._running.clear()             # a (re)import starts with no job running, as before
+deps.reset_runner()               # and with no open queue connection from a previous import
 
 app = FastAPI(title="Tender Evaluation Assistant API", version="0.1.0")
 
@@ -66,6 +76,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+errors.install(app)
 jobs._reset_interrupted_jobs()
 
 
@@ -76,5 +87,6 @@ def health() -> dict:
             "auth_required": bool(deps.API_KEY)}
 
 
-for router in (projects.router, rubric.router, documents.router, runs.router, results.router, reports.router):
+for router in (projects.router, rubric.router, documents.router, runs.router, results.router, reports.router,
+               rulesets.router, checks.router, viewer.keyed, viewer.router, events.router):
     app.include_router(router)

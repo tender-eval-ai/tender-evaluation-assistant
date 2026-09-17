@@ -1,6 +1,6 @@
 """The vendor check through a real worker process on Postgres: the run pauses for the
 rule set, resumes on confirmation, and the stored verdict comes from the engine.
-Opt-in (-m orchestrator, DATABASE_URL), like the harness."""
+Opt-in (-m postgres, DATABASE_URL); CI's integration job runs it."""
 from __future__ import annotations
 
 import json
@@ -14,7 +14,7 @@ import pytest
 
 from test.checks.conftest import CASE, PID, RULESET
 
-pytestmark = pytest.mark.orchestrator
+pytestmark = pytest.mark.postgres
 
 
 @pytest.fixture

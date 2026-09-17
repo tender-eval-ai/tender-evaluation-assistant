@@ -72,6 +72,11 @@ class Store:
     def status(self, run_id: str) -> RunStatus:
         return RunStatus(**self.run(run_id))
 
+    def latest_run(self, project: str, tenderer: str, done_only: bool = False) -> dict | None:
+        where = "project=%s and tenderer=%s" + (" and state='done'" if done_only else "")
+        rows = self.runs_where(where, (project, tenderer))
+        return rows[-1] if rows else None
+
     # ---------------------------------------------------------------- steps
     def steps(self, run_id: str) -> dict:
         with self.conn() as c:
@@ -145,13 +150,49 @@ class Store:
             c.execute("update rulesets set spec=%s where project=%s and version=%s", (Json(spec), project, version))
         return version
 
-    def confirm(self, project: str) -> int:
-        """Confirm the latest draft. Returns the confirmed version (the latest one when
-        there is no draft)."""
+    def versions(self, project: str) -> list[dict]:
         with self.conn() as c:
-            row = c.execute("update rulesets set status='confirmed', confirmed_at=now() where project=%s and "
-                            "version = (select max(version) from rulesets where project=%s and status='draft') "
-                            "returning version", (project, project)).fetchone()
+            rows = c.execute("select version, status, parent_version, created_by, extract(epoch from created_at), "
+                             "confirmed_by, extract(epoch from confirmed_at), updated_by from rulesets where project=%s "
+                             "order by version", (project,)).fetchall()
+        keys = ["version", "status", "parent_version", "created_by", "created_at", "confirmed_by", "confirmed_at", "updated_by"]
+        return [dict(zip(keys, r)) for r in rows]
+
+    def get_version(self, project: str, version: int) -> dict | None:
+        with self.conn() as c:
+            row = c.execute("select spec from rulesets where project=%s and version=%s", (project, version)).fetchone()
+        return row[0] if row else None
+
+    def save_draft(self, project: str, spec: dict, user: str) -> tuple[int, bool]:
+        """Replace the open draft, or open a new one after the latest confirmed version.
+        Returns (version, created)."""
+        with self.conn() as c:
+            row = c.execute("select version from rulesets where project=%s and status='draft' order by version desc limit 1",
+                            (project,)).fetchone()
+            if row:
+                version = row[0]
+                c.execute("update rulesets set spec=%s, updated_by=%s where project=%s and version=%s",
+                          (Json({**spec, "version": version}), user, project, version))
+                return version, False
+            latest = c.execute("select max(version) from rulesets where project=%s", (project,)).fetchone()[0]
+            confirmed = c.execute("select max(version) from rulesets where project=%s and status='confirmed'",
+                                  (project,)).fetchone()[0]
+            version = (latest or 0) + 1
+            c.execute("insert into rulesets (project, version, status, spec, created_by, updated_by, parent_version) "
+                      "values (%s,%s,'draft',%s,%s,%s,%s)",
+                      (project, version, Json({**spec, "version": version, "parent_version": confirmed}), user, user, confirmed))
+            return version, True
+
+    def confirm(self, project: str, user: str = "system") -> int:
+        """Confirm the latest draft as `user` (a person from the API, else "system", since
+        a confirmed rule set records who confirmed it). Returns the confirmed version (the
+        latest one when there is no draft)."""
+        with self.conn() as c:
+            row = c.execute("update rulesets set status='confirmed', confirmed_at=now(), confirmed_by=%s, "
+                            "spec = spec || jsonb_build_object('status', 'confirmed', 'confirmed_by', %s::text, "
+                            "'confirmed_at', to_char(now() at time zone 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"')) "
+                            "where project=%s and version = (select max(version) from rulesets where project=%s "
+                            "and status='draft') returning version", (user, user, project, project)).fetchone()
             if row:
                 return row[0]
             return c.execute("select max(version) from rulesets where project=%s and status='confirmed'",
@@ -180,6 +221,29 @@ class Store:
                 c.execute("update results set verdict=%s, ruleset_version=%s, updated_at=now() where run_id=%s",
                           (Json(verdict), version, run_id))
         return version
+
+    # ---------------------------------------------------------------- audit
+    def event(self, kind: str, project: str, subject: str | None, before: Any, after: Any, actor: str,
+              reason: str | None = None) -> int:
+        with self.conn() as c:
+            return c.execute("insert into events (kind, project, subject, before, after, actor, reason) "
+                             "values (%s,%s,%s,%s,%s,%s,%s) returning id",
+                             (kind, project, subject, Json(before), Json(after), actor, reason)).fetchone()[0]
+
+    def events(self, project: str, kind: str | None = None, after_id: int = 0, since: float | None = None,
+               limit: int = 100) -> list[dict]:
+        where, params = ["project=%s", "id > %s"], [project, after_id]
+        if kind:
+            where.append("kind=%s")
+            params.append(kind)
+        if since is not None:
+            where.append("at >= to_timestamp(%s)")
+            params.append(since)
+        with self.conn() as c:
+            rows = c.execute(f"select id, kind, project, subject, before, after, actor, reason, extract(epoch from at) "
+                             f"from events where {' and '.join(where)} order by id limit %s", (*params, limit)).fetchall()
+        keys = ["id", "kind", "project", "subject", "before", "after", "user", "reason", "at"]
+        return [dict(zip(keys, r)) for r in rows]
 
 
 def _apply(fields: dict, corrections: dict) -> dict:
