@@ -16,35 +16,35 @@ Last updated: 2026-09-16 (Nasi).
 |---|---|---|---|
 | A2 | Branch protection on a private repo | decided | — |
 | A3 | MinIO as file storage | decided | — |
-| A4 | "Redis queue" in AI_camp | open | Nasi to confirm |
-| A5 | Capacity estimate (calls per minute) | open | both |
-| A6 | Real documents from day 4; live evals | open | both |
-| A7 | Eval sets ported as they are | open | Nasi |
-| B1 | Client pilot (and hosting region, pilot slot) | open | Nasi |
-| B2 | SSO / OIDC identity provider | open | both |
-| B3 | Retention period with logged deletion | open | both |
-| B4 | Upload quarantine with malware scan | open | both |
-| B5 | Restore and rollback drills with RPO / RTO | open | both |
-| B6 | Infrastructure-as-code profile, two API replicas | open | both |
-| B7 | Dashboards, alerts, runbook | open | both |
-| B8 | Daily and weekly ceremonies | open | Nasi |
-| B9 | Cheap security items kept, done last | open | both |
-| C1 | What stays from the plan unchanged | open | Nasi to confirm |
-| D1 | Independent tracks and six stop points | open | Nasi |
-| D2 | Pacing: S0 to S3 in ten days, S4 stretch, S5 after | open | both |
-| E1 | LLM cache before the orchestrator decision | open | both |
-| E2 | Procrastinate as the run queue in both variants | open | both |
-| E3 | Neutral framing of the two variants in the plan | open | Nasi |
-| E4 | One full day for the comparison, decision next morning | open | both |
+| A4 | "Redis queue" in AI_camp | open | Chenyu |
+| A5 | Capacity estimate (calls per minute) | open | Chenyu |
+| A6 | Real documents from day 4; live evals | open | Chenyu |
+| A7 | Eval sets ported as they are | open | Chenyu |
+| B1 | Client pilot (and hosting region, pilot slot) | agreed | — (update the plan) |
+| B2 | SSO / OIDC identity provider | open | Chenyu |
+| B3 | Retention period with logged deletion | open | Chenyu |
+| B4 | Upload quarantine with malware scan | open | Chenyu |
+| B5 | Restore and rollback drills with RPO / RTO | open | Chenyu |
+| B6 | Infrastructure-as-code profile, two API replicas | open | Chenyu |
+| B7 | Dashboards, alerts, runbook | open | Chenyu |
+| B8 | Daily and weekly ceremonies | agreed | — (update the plan) |
+| B9 | Cheap security items kept, done last | open | Chenyu |
+| C1 | What stays from the plan unchanged | agreed | — (update the plan) |
+| D1 | Independent tracks and six stop points | agreed | — (update the plan) |
+| D2 | Pacing: S0 to S3 in ten days, S4 stretch, S5 after | open | Chenyu |
+| E1 | LLM cache before the orchestrator decision | open | Chenyu |
+| E2 | Procrastinate as the run queue in both variants | open | Chenyu |
+| E3 | Neutral framing of the two variants in the plan | open | Chenyu |
+| E4 | One full day for the comparison, decision next morning | open | Chenyu |
 | F1 | Repo stays private until publishable, then org and public | decided | — |
-| F2 | Data classes and endpoints named per fixture and eval | open | both |
-| F3 | Files excluded from the port (commit `7e8e273`, see F5) | open | Nasi |
-| F4 | Public-release audit at S5 | open | both |
+| F2 | Data classes and endpoints named per fixture and eval | open | Chenyu |
+| F3 | Files excluded from the port (commit `7e8e273`, see F5) | open | Chenyu |
+| F4 | Public-release audit at S5 | open | Chenyu |
 | F5 | Port source: pushed commit, no `aicamp-final` tag | open | Chenyu to acknowledge |
 | G1 | Two independent demos, same image | open | Nasi: domain; Chenyu to agree |
-| G2 | No cloud named in code; configuration only | open | both |
-| G3 | Abuse limits before a public demo | open | both |
-| H1 | Portfolio finish checklist | open | both |
+| G2 | No cloud named in code; configuration only | open | Chenyu |
+| G3 | Abuse limits before a public demo | open | Chenyu |
+| H1 | Portfolio finish checklist | open | Chenyu |
 
 ## A. Corrections to the plan
 
@@ -54,8 +54,8 @@ These are facts, checked against both repositories on 2026-09-15. They need a co
 - Plan: "Settings → Branches → protect main: PR, 1 approval, tests check, no force push".
 - Proposal: not available on a private repository on GitHub Free. Until the repo is public: a pre-push hook that refuses pushes to `main`, CODEOWNERS (auto-requests the reviewer for free), and a CI job that fails on a commit to `main` that did not arrive through a merged pull request.
 - Chenyu (2026-09-15): stay in the current private repo until publishable, then transfer to an organisation and make it public, where protection is free. Use the convention until then.
-- Nasi:
-- Decision: decided (Chenyu, 2026-09-15); Nasi to acknowledge.
+- Nasi (2026-09-16): acknowledged; use the convention until the repo is public.
+- Decision: decided (Chenyu, 2026-09-15); Nasi acknowledged 2026-09-16.
 
 ### A3. MinIO as file storage
 - Plan: "Postgres for all records and MinIO for files, started with one command".
@@ -69,28 +69,28 @@ These are facts, checked against both repositories on 2026-09-15. They need a co
 - Plan: "AI_camp Flask API, Redis queue, per-page tasks, JSON caches: not ported".
 - Proposal: there is no Redis in the repository; `service/batch_jobs.py` uses `ThreadPoolExecutor(3)`. Wording only.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): confirmed: AI_camp has no Redis; `service/batch_jobs.py` uses a thread pool. Fix the wording.
 - Decision: open
 
 ### A5. Capacity estimate
 - Plan: 15,000 scanned pages, 2,500 triage calls plus 2,500 other calls, about 83 minutes at 60 requests per minute and 17 minutes at 300.
 - Proposal: those are cloud-provider rate limits. On one DGX Spark running vLLM, a six-page vision call at 150 DPI is roughly 15k input tokens for a Qwen-VL-class model, and one box handles a few such calls per minute, not 60. Measure calls per minute on the real box (or a rented equivalent) at S2 and quote the measured number. "100-vendor batch under 8 hours" is a hypothesis until then.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: measure calls per minute on the real endpoint at S2 and quote that number.
 - Decision: open
 
 ### A6. Real documents from day 4; live evals
 - Plan: "Real documents are used from D4"; live evals at CP3 and CP4; "real client documents arrive for the pilot tomorrow" on D9.
 - Proposal: real client documents never reach a cloud endpoint. Only the redacted sample cases are cleared for cloud models, and that clearance is Chenyu's decision. Every fixture carries a `data_class`, and every live eval names the endpoint it runs against.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: real client documents never reach a cloud endpoint; every fixture carries a `data_class` and every live eval names its endpoint.
 - Decision: open
 
 ### A7. Eval sets ported as they are
 - Plan: "Rule engine, rule files, leaf extractor, checker prompts, eval sets: port to app/engine/, templates/, novel.py, app/prompts/, test/evals/".
 - Proposal: `tests/evals/*` in AI_camp contain vendor values from the redacted bid; the repository also holds `retrieval_eval/production_parser_nodes_full.json`, `ground_truth_full.md` and `archive/reports/tender_compliance_*`, all derived from the redacted documents. Exclude these from the port; keep ground truth and eval sets in the private data folder the plan already describes on D5.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: exclude the eval sets and the files derived from the redacted documents; keep them in the private data folder.
 - Decision: open
 
 ## B. Scope: drop or defer
@@ -101,63 +101,63 @@ Proposed because none of these help a job application, and several need a client
 - Plan: D1 confirms the client's availability; D10 15:00 to 17:00 is "pilot tender with the client in the approved environment"; CP5 KR5 is "pilot tender evaluated with the client's reviewers; findings list recorded"; open decisions include a hosting region for Hong Kong public data and a pilot slot.
 - Proposal: there is no client. The sample cases came from the camp as redacted documents, so nobody sends real documents and nobody sits as a reviewer on day 10. CP4 KR1 (run the redacted Tender 1 bid and compare with the historical Summary List and Price Summary) already provides the strongest evidence available. Drop the pilot, the "real documents arrive" line, the hosting-region decision and the pilot-slot decision. If a camp mentor or the person who supplied the sample cases is reachable, replace the pilot with a recorded 30-minute walkthrough on the synthetic case, as a stretch item rather than a key result.
 - Chenyu (2026-09-15): keep on the list for Nasi to check; drop unless a camp mentor can act as reviewer.
-- Nasi:
-- Decision: open
+- Nasi (2026-09-16): agree: drop the pilot, the "real documents arrive" line and the hosting-region and pilot-slot decisions; a recorded walkthrough only if a mentor becomes available.
+- Decision: agreed (2026-09-16). Plan to be updated.
 
 ### B2. SSO / OIDC identity provider
 - Plan: open decision by D8, "client SSO (OIDC or SAML) or per-user accounts with MFA, before D9 auth work"; users, roles and project membership "OIDC-ready".
 - Proposal: no client, so no identity provider to integrate. Keep per-user accounts with a role (see B9); drop the OIDC and SAML work.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: per-user accounts with a role; drop OIDC and SAML.
 - Decision: open
 
 ### B3. Retention period with logged deletion
 - Plan: D9, "documents are deleted after the agreed retention period, and the deletion is logged"; a retention job and a retention test.
 - Proposal: a retention policy is agreed with a client. Defer.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: defer.
 - Decision: open
 
 ### B4. Upload quarantine with malware scan
 - Plan: D9, "uploaded files wait in quarantine until their size and file type are checked and a malware scan passes".
 - Proposal: keep the size cap and file-type check (they are small and part of B9). Defer the quarantine flow and the malware scanner.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: keep the size cap and file-type check; defer quarantine and malware scanning.
 - Decision: open
 
 ### B5. Restore and rollback drills with RPO / RTO
 - Plan: CP5 KR4, "recovery point at most 15 minutes, recovery time at most 4 hours measured; rollback with no data loss"; point-in-time recovery, object versioning, drill records.
 - Proposal: defer. A measured recovery objective only matters for an operated service.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: defer.
 - Decision: open
 
 ### B6. Infrastructure-as-code production profile, two API replicas
 - Plan: D10, "two copies of the API, three workers, the database, file storage and the model service, defined in files rather than clicked together, with an automatic check that nothing is publicly exposed".
 - Proposal: keep one compose file that runs the whole stack on one machine (this is also the demo setup, see G1). Defer the multi-replica profile and the policy check.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: one compose file for the whole stack; defer the multi-replica profile.
 - Decision: open
 
 ### B7. Dashboards, alerts, runbook
 - Plan: D10, dashboards and alerts for stuck checks, model errors, cost, screen speed and backup age; a runbook for the client's IT staff.
 - Proposal: defer dashboards and alerts. Keep a short "how to run it" section in the README instead of a runbook.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: defer dashboards and alerts; a "how to run it" section in the README.
 - Decision: open
 
 ### B8. Daily and weekly ceremonies
 - Plan: 09:30 written check-in, 09:40 call, review windows at 13:00 and 16:30, 17:30 KR update, 17:45 evening note, Monday kickoff, Wednesday knowledge swap, Friday demo and retro, a KR tracker with one issue per task.
 - Proposal: replace all of it with three rules. Every change is a pull request reviewed by the other person. Shared shapes live in `app/rulesets/schema.py`, `docs/api_contract.md` and the migrations, and change only in their own PR with both approvals. Each person works independently up to the next stop point in section D and stops there.
 - Chenyu (2026-09-15): agreed. We do our own jobs and stop before the work that needs both of us to check.
-- Nasi:
-- Decision: open
+- Nasi (2026-09-16): agree: the three rules replace the ceremonies.
+- Decision: agreed (2026-09-16). Plan to be updated.
 
 ### B9. Cheap security items, kept and done last
 - Plan: spread over D9.
 - Proposal: keep only the items interviewers ask about and do them after S4 if time remains: per-user login with a role, signed image URLs instead of the key in the link, `/health` without model names, explicit CORS origins, secret scanning in CI, upload size cap and file-type check.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: only these items, after S4 if time remains.
 - Decision: open
 
 ## C. What stays from the plan
@@ -165,8 +165,8 @@ Proposed because none of these help a job application, and several need a client
 ### C1. Unchanged
 - Plan and proposal are the same: the split (Chenyu: pipeline, LLM layers L1 to L4 and V0 to V5, worker, gateway, pricing, reports; Nasi: parser and locator L0, rule engine and templates V6, the React three-column UI for L5 and V7); contracts before code; item (l) through every layer before widening; each LLM layer with fixed input, fixed output shape, code checks and a FakeLLM call-count test; human editing as versioned, attributed records with reasons and engine-only re-evaluation; the orchestrator comparison with its decision record; the "Kept, ported, removed" table apart from A7.
 - Chenyu (2026-09-15): agreed.
-- Nasi:
-- Decision: open
+- Nasi (2026-09-16): agreed.
+- Decision: agreed (2026-09-16). Plan to be updated.
 
 ## D. Working mode: independent tracks and stop points
 
@@ -183,13 +183,13 @@ Proposed because none of these help a job application, and several need a client
 | S5 Portfolio finish | README, demos, eval report, decision records, public release (section H). | Remove the losing orchestrator and the API threads; GCP demo | Remove Streamlit; final UI polish; screenshots and the demo recording; AWS demo |
 
 - Chenyu (2026-09-15): agreed.
-- Nasi:
-- Decision: open
+- Nasi (2026-09-16): agreed; already working this way (engine port PR #19 before S1).
+- Decision: agreed (2026-09-16). Plan to be updated.
 
 ### D2. Pacing
 - Proposal: S0 to S3 in the first ten working days, S4 as the stretch, S5 the week after. If S4 slips, the project is complete and demonstrable at S3, which is why S3 comes before S4. Start date and holidays are for us to pick; nothing in the plan depends on 21 September.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: S0 to S3 in ten days, S4 stretch, S5 after.
 - Decision: open
 
 ## E. Orchestrator comparison
@@ -200,52 +200,52 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Plan: gates 1 and 2 require "0 repeated LLM calls" after SIGKILL or SIGTERM; the LLM cache is built on D3, after the decision.
 - Proposal: a killed LangGraph node re-runs from its start, so LangGraph can only pass those gates through the cache. Build a cache stub inside the spike (a dict keyed by model, prompt version and input hash) or measure "repeated paid calls, cache allowed" for both variants.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree.
 - Decision: open
 
 ### E2. Procrastinate as the run queue in both variants
 - Plan: the LangGraph variant hand-writes "claiming, retries, dead jobs, shared rate limit"; the queue variant gets them from Procrastinate.
 - Proposal: use Procrastinate as the run queue in both variants. Then the only difference measured is per-node checkpoints plus `interrupt()` versus a hand-written `job_steps` table plus status-column pauses.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree.
 - Decision: open
 
 ### E3. Neutral framing
 - Plan: "the queue is what this plan recommends"; the repo layout removes `langgraph*`; the data model lists "Procrastinate tables"; the production diagram says "procrastinate worker"; the scalability row says "LangGraph and threads removed".
 - Proposal: keep the queue as the default and say so once. Keep the one-paragraph LangGraph layout already present in the "Alternative" section so the losing variant is not pre-deleted from the document.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree.
 - Decision: open
 
 ### E4. One full day, decision the next morning
 - Plan: build both variants in the morning of D2, run twelve scenarios in the afternoon, decide by 17:00.
 - Proposal: the harness (kill, SIGTERM, two workers and two API copies, 429 then permanent failure, pause-edit-resume, re-check after a new version, field correction, plus the three "should" scenarios) is one to two days of work and is reused later as CP2 KR3 and CP4 KR6. Build it before S0, give the comparison a full day, and write the decision at S1 the next morning.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree.
 - Decision: open
 
 ## F. Repository, data and confidentiality
 
 ### F1. Repository
 - Decision (Chenyu, 2026-09-15): stay in the current private repo `chenyufang-data/tender-evaluation-assistant` until the project is publishable, then transfer it to an organisation and make it public. A transfer does not carry collaborators, so Nasi is added to the organisation at that point. Status: decided.
-- Nasi:
+- Nasi (2026-09-16): acknowledged.
 
 ### F2. Data classes and endpoints
 - Proposal: every fixture and every project carries a `data_class` (`synthetic`, `redacted_sample`, `confidential`). The gateway allowlist keys on it. Each live eval names the endpoint it ran against in its stored result.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree.
 - Decision: open
 
 ### F3. Files excluded from the port
 - Proposal: the port from commit `7e8e273` (F5) excludes `retrieval_eval/production_parser_nodes_full.json`, `ground_truth_full.md`, `archive/reports/tender_compliance_*`, and the vendor values in `tests/evals/*`. The port PR checklist lists them. Ground truth for all three tenders lives in the private data folder.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree: exclude these files; the port PR checklist lists them.
 - Decision: open
 
 ### F4. Public-release audit at S5
 - Proposal: before the transfer and the switch to public, run gitleaks over the full history and search the history for the three tender numbers and the vendor names. The joint repo's history is Chenyu's old repo, which committed only code, tests and the synthetic demo case; the risk is what the port brings in.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree.
 - Decision: open
 
 ### F5. Port source
@@ -266,13 +266,13 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 ### G2. Configuration only
 - Proposal: nothing in the code names a cloud. Database URL, storage endpoint, LLM endpoint and public base URL come from environment variables. `deploy/cloudrun/` stays for GCP; Nasi adds the AWS equivalent (one EC2 host with the compose file and Caddy for TLS is the simplest).
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree.
 - Decision: open
 
 ### G3. Abuse limits before a public demo
 - Proposal: a public demo needs, before it goes live, a demo login or a read-only mode with pre-computed synthetic results, the gateway's per-day LLM budget, and an upload size cap. Otherwise anyone can upload PDFs and spend our model credits.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree.
 - Decision: open
 
 ## H. Portfolio finish
@@ -286,7 +286,7 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   5. One-command setup: `docker compose up` brings up Postgres, the API, a worker and the UI on the synthetic case.
   6. Descriptive test names for the tests that tell a story: call-count tests, the prompt-injection test, the golden engine test, the resume-after-kill test.
 - Chenyu:
-- Nasi:
+- Nasi (2026-09-16): agree.
 - Decision: open
 
 ## Verified facts (no action needed)
