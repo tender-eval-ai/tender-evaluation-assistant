@@ -13,3 +13,8 @@ psycopg[binary]>=3.2
 # Stop point S1 spikes (spikes/): the Procrastinate run queue and the LangGraph Postgres checkpointer.
 procrastinate>=3.9
 langgraph-checkpoint-postgres>=3.1
+
+# Tender parser (app/parsing/, ported from Bidding-AI-expert@7e8e273). PyMuPDF is AGPL-3.0 and
+# pymupdf-layout is PolyForm Noncommercial; see docs/decisions/0002-pymupdf-licences.md.
+pymupdf==1.28.0
+pymupdf-layout==1.28.0
