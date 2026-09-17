@@ -41,7 +41,7 @@ Last updated: 2026-09-16 (Nasi).
 | F3 | Files excluded from the port (commit `7e8e273`, see F5) | open | Nasi |
 | F4 | Public-release audit at S5 | open | both |
 | F5 | Port source: pushed commit, no `aicamp-final` tag | open | Chenyu to acknowledge |
-| G1 | Two independent demos, same image | open | Nasi to confirm AWS side |
+| G1 | Two independent demos, same image | open | Nasi: domain; Chenyu to agree |
 | G2 | No cloud named in code; configuration only | open | both |
 | G3 | Abuse limits before a public demo | open | both |
 | H1 | Portfolio finish checklist | open | both |
@@ -62,7 +62,7 @@ These are facts, checked against both repositories on 2026-09-15. They need a co
 - Proposal: MinIO's open-source repository entered maintenance mode in December 2025 and was archived on 25 April 2026; no official binaries and no security fixes. Keep `app/storage.py` as one S3-compatible client configured by endpoint, bucket and credentials, so the same code talks to S3, to GCS through its S3-interoperability keys, or to local disk.
 - Chenyu (2026-09-15): Nasi's shared AWS storage is the development store. Only synthetic and redacted sample documents go there; each person uses their own IAM user limited to that bucket; the bucket stays blocked from public access; keys live only in the gitignored `.env`.
 - Nasi (2026-09-15): S3 bucket.
-- Nasi (2026-09-16): the shared bucket now lives in a new AWS account, because an access key on the old account was exposed; that key is revoked. Still to do: remove the old account's resources. Each of us gets an IAM user in the new account limited to the bucket.
+- Nasi (2026-09-16): the shared bucket now lives in a new AWS account, because an access key on the old account was exposed; that key is revoked. Still to do: remove the old account's resources. The new account is `tender-review-dev` in `us-east-1`, managed by Terraform in `infra/` (PR #21); each of us signs in through IAM Identity Center (`dev-admin` to run Terraform, `dev-synthetic` for the bucket), so there are no long-lived access keys. Proposal (PR #21): the bucket holds synthetic data only, and the redacted cases stay in each person's private local data folder.
 - Decision: decided (2026-09-15). Nasi's S3 bucket is the shared development store; `storage.py` stays one S3-compatible client.
 
 ### A4. "Redis queue" in AI_camp
@@ -260,7 +260,7 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 ### G1. Two independent demos, same image
 - Proposal: Chenyu deploys on GCP Cloud Run under the cyfang domain; Nasi deploys on AWS under her own domain. Each deployment has its own Postgres and object store and holds synthetic data only. CI builds one image per tag and pushes it to a registry both pull from, so the two demos are the same build.
 - Chenyu (2026-09-15): proposed.
-- Nasi: (please confirm the AWS side and the domain)
+- Nasi (2026-09-16): AWS side confirmed: the `tender-review-dev` account in `us-east-1`, Terraform in `infra/` (PR #21), synthetic data only. Domain not chosen yet.
 - Decision: open
 
 ### G2. Configuration only
