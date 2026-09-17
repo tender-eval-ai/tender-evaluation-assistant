@@ -4,8 +4,11 @@ from datetime import datetime, timezone
 import pytest
 from pydantic import ValidationError
 
-from app.rulesets.schema import (CheckType, Citation, DataClass, Edit, ItemStatus, RuleSet, RuleSetItem,
-                                 SlotValue, TemplateRule, Tier)
+from app.engine import core as engine
+from app.rulesets.schema import (NEGATIVE_KEYS, NEUTRAL_KEYS, OUTCOME_KEYS, POSITIVE_KEYS, CheckType, Citation,
+                                 Consequence, ConsequenceDefaults, DataClass, Edit, FollowUp, ItemNote, ItemStatus,
+                                 Normalise, Outcome, Part, RuleSet, RuleSetItem, SlotKind, SlotSpec, SlotValue,
+                                 Template, TemplateRule)
 
 NOW = datetime(2026, 9, 21, 9, 30, tzinfo=timezone.utc)
 
@@ -14,14 +17,18 @@ def cite(quote="Estimated Quantity (Kilograms) 875,000 kg", node="PriceSchedule:
     return Citation(file="tender/09 Schedules.pdf", page=1, node_id=node, quote=quote, data_class=DataClass.SYNTHETIC)
 
 
+def rule(id="price_schedule.unit_price_present", **kw) -> TemplateRule:
+    kw.setdefault("consequence", Consequence.CRITICAL)
+    return TemplateRule(id=id, check=CheckType.FILLED, field="price_schedule.unit_price", **kw)
+
+
 def item(letter="b", status=ItemStatus.VERIFIED, **kw) -> RuleSetItem:
     template = kw.pop("template", "price_schedule")
-    return RuleSetItem(letter=letter, title="Unit price quotation", part=Tier.A, template=template,
+    rules = kw.pop("rules", [rule()])
+    return RuleSetItem(letter=letter, title="Unit price quotation", part=Part.A, template=template,
                        citation=cite("(b) The one-time unit price quotation", "Sched:CCS:(b)"),
                        slots={"estimated_quantity": SlotValue(value=875000, citation=cite(), verified=True)},
-                       rules=[TemplateRule(id="price_schedule.unit_price_present", check=CheckType.FILLED,
-                                           field="price_schedule.unit_price", tier=Tier.A)],
-                       status=status, **kw)
+                       rules=rules, status=status, **kw)
 
 
 def ruleset(items, status="draft", **kw) -> RuleSet:
@@ -29,9 +36,80 @@ def ruleset(items, status="draft", **kw) -> RuleSet:
                    created_by="chenyu", created_at=NOW, status=status, **kw)
 
 
+PASS_FAIL = {"blank": Outcome(status="disqualified", note="{field} is blank"), "filled": Outcome(status="pass"),
+             "redacted": Outcome(status="needs_review")}
+
+
 def test_the_check_menu_has_twelve_kinds():
     assert len(CheckType) == 12
     assert CheckType.HUMAN_ONLY in CheckType
+
+
+def test_the_outcome_vocabulary_matches_the_engine():
+    """The engine picks outcome keys from three tables; the contract must list the same ones."""
+    assert POSITIVE_KEYS == frozenset(engine.POSITIVE_KEYS)
+    assert NEGATIVE_KEYS == frozenset(engine.NEGATIVE_KEYS)
+    assert NEUTRAL_KEYS == frozenset(engine.NEUTRAL_KEYS)
+    assert {"blank", "filled", "redacted", "not_applicable"} <= OUTCOME_KEYS
+
+
+def test_a_rule_is_a_gate_or_it_is_not_a_rule():
+    with pytest.raises(ValidationError, match="consequence or its own outcomes"):
+        rule(consequence=None)
+    own = rule(consequence=None, outcomes=PASS_FAIL)
+    assert own.outcomes["blank"].status == "disqualified"
+    with pytest.raises(ValidationError, match="unknown outcome keys \\['blnk'\\]"):
+        rule(outcomes={"blnk": Outcome(status="pass")})
+
+
+def test_follow_ups_belong_to_dormant_outcomes_only():
+    follow = FollowUp(trigger="Authority requests it", deadline="5 working days", if_deadline_missed="disqualified")
+    assert Outcome(status="dormant", follow_up=follow).follow_up is follow
+    with pytest.raises(ValidationError, match="dormant"):
+        Outcome(status="pass", follow_up=follow)
+
+
+def test_params_take_literals_of_four_kinds_and_normalise_is_a_closed_list():
+    r = rule(params={"min": 0, "max": 2.5, "units": ["kg", "g"], "strict": True, "expected": "{estimated_quantity}"})
+    assert r.slot_refs() == {"estimated_quantity"}
+    with pytest.raises(ValidationError):
+        rule(params={"nested": {"a": 1}})
+    assert Normalise(op="round_significant_figures", params={"digits": 2}).op == "round_significant_figures"
+    with pytest.raises(ValidationError):
+        Normalise(op="round_to_nearest")
+    assert rule(stage="II").stage == "II"
+    with pytest.raises(ValidationError):
+        rule(stage="III")
+
+
+def test_added_items_are_numbered_x1_x2_and_schedule_items_keep_their_letter():
+    assert item("l").letter == "l" and item("x1").letter == "x1" and item("x12").letter == "x12"
+    for bad in ("aa", "x0", "x01", "1", "L"):
+        with pytest.raises(ValidationError):
+            item(bad)
+
+
+def test_a_novel_item_has_no_template_so_its_rules_carry_their_own_outcomes():
+    with pytest.raises(ValidationError, match="own outcomes"):
+        item("l", ItemStatus.NOVEL, template=None)
+    novel = item("l", ItemStatus.NOVEL, template=None, rules=[rule(consequence=None, outcomes=PASS_FAIL)],
+                 condition="tenderer is not the manufacturer",
+                 notes=[ItemNote(kind="trigger", text="required only if the tenderer is not the manufacturer")])
+    assert novel.notes[0].kind == "trigger" and novel.condition
+
+
+def test_a_template_declares_the_tiers_and_slots_its_rules_use():
+    defaults = {Consequence.CRITICAL: ConsequenceDefaults(outcomes=PASS_FAIL)}
+    slot = SlotSpec(name="estimated_quantity", kind=SlotKind.NUMBER, unit="kg", description="the estimated quantity")
+    t = Template(id="price_schedule", form_name="Price Schedule", slots=[slot], consequences=defaults,
+                 rules=[rule(params={"expected": "{estimated_quantity}"})])
+    assert Template.model_validate_json(t.model_dump_json()) == t
+    with pytest.raises(ValidationError, match="no defaults for it"):
+        Template(id="t", form_name="f", rules=[rule(consequence=Consequence.DISCRETIONARY)])
+    with pytest.raises(ValidationError, match="references slots \\['estimated_quantity'\\]"):
+        Template(id="t", form_name="f", consequences=defaults, rules=[rule(params={"expected": "{estimated_quantity}"})])
+    with pytest.raises(ValidationError, match="unknown outcome keys"):
+        ConsequenceDefaults(outcomes={"fillled": Outcome(status="pass")})
 
 
 def test_extracted_values_must_cite_their_source():
@@ -67,7 +145,8 @@ def test_letters_and_rule_ids_are_unique_and_versions_are_ordered():
 
 
 def test_round_trips_through_json():
-    rs = ruleset([item("b"), item("l", ItemStatus.NOVEL, template=None)])
+    rs = ruleset([item("b"), item("l", ItemStatus.NOVEL, template=None,
+                                  rules=[rule(consequence=None, outcomes=PASS_FAIL, stage="II")])])
     again = RuleSet.model_validate_json(rs.model_dump_json())
     assert again == rs
-    assert again.item("l").template is None
+    assert again.item("l").template is None and again.item("l").rules[0].stage == "II"
