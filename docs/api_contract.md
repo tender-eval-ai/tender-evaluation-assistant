@@ -72,7 +72,7 @@ The React UI is built against this file through `web/mock/`, which answers exact
 
 ## Models
 
-From `app/rulesets/schema.py` (shared): `RuleSet`, `RuleSetItem`, `SlotSpec`, `SlotValue`, `TemplateRule`, `Citation`, `Gap`, `Edit`, and the enums `DataClass`, `CheckType`, `Tier`, `ItemStatus`.
+From `app/rulesets/schema.py` (shared): `RuleSet`, `RuleSetItem`, `ItemNote`, `SlotSpec`, `SlotValue`, `TemplateRule`, `Outcome`, `FollowUp`, `Normalise`, `Template`, `ConsequenceDefaults`, `FollowUpDeadline`, `Citation`, `Gap`, `Edit`, and the enums `DataClass`, `CheckType`, `Part`, `Consequence`, `ItemStatus`; the closed outcome vocabulary is `OUTCOME_KEYS`. (S0 amendments of 2026-09-17: `Tier` became `Part` on an item; a rule names a `Consequence` tier or carries its own `outcomes`.)
 
 API-only models, to be defined in `backend/schemas_api.py` at S2 and exported into `docs/openapi.json`:
 
@@ -82,13 +82,13 @@ API-only models, to be defined in `backend/schemas_api.py` at S2 and exported in
 - `Diff {from, to, added: [letter], removed: [letter], changed: [{letter, fields: [str], edit: Edit}]}`
 - `BidResult {tenderer, ruleset_version, fields: {letter: {field: FieldValue}}, verdicts: {letter: Verdict}, stage1, stage2, trace, cost, review_confirmed_by?}`
 - `FieldValue {value, redacted, page, image_url, confidence, correction?: {value, by, at, reason}, model_value?}`
-- `Verdict {outcome: pass|needs_review|disqualified|dormant, tier, rule_ids, reason, evidence: [Citation]}`
+- `Verdict {outcome: pass|needs_review|disqualified|dormant, part, rule_ids, reason, evidence: [Citation]}`
 - `Correction {value?: any, present?: bool, page?: int, reason: str}`
 - `Document`, `Page`, `Node`, `PriceSummary`, `Evaluation`, `Event` as described in the tables.
 
 ## Open questions for S0
 
 1. `rubric` (today's name) or `ruleset` (this file): this file proposes `ruleset` for the new routes and keeps `rubric` until S2 only.
-2. Item identity: the schedule letter is stable within a tender but a novel item added by a person has no letter. Proposal: `letter` for schedule items, `x1`, `x2`, ... for added items.
+2. Resolved (2026-09-17, in `schema.py`): `letter` is `a` to `z` for schedule items and `x1`, `x2`, ... for items a person adds.
 3. Should `POST /checks` accept a rule-set version, or always use the latest confirmed one? Proposal: latest confirmed, with `?version=` only on `evaluate`.
 4. Where the OpenAPI snapshot test lives (`test/test_api_contract.py`, added at S2 when the first new route lands).

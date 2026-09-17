@@ -11,11 +11,21 @@ Design rules the models enforce:
   value appears in the quote.
 - The LLM may only choose a check from the twelve `CheckType` kinds; anything else is
   `human_only`, and a person decides.
+- A rule is a gate: it names a consequence tier, or carries its own outcomes. Notes,
+  definitions and triggers are `ItemNote`s, not rules.
+- Outcome keys come from one closed vocabulary shared with the engine, so a misspelt key
+  fails validation instead of never matching.
 - A rule set cannot be confirmed while an item still needs input or a gap has no reason.
 - Human edits keep the model's value next to the correction and record who, when and why.
+
+S0 amendments (2026-09-17, from docs/check_kind_mapping.md "Schema gaps"): outcomes per
+result, seven consequence tiers on a rule while A/B/C stays the schedule Part on an item,
+normalisation steps, typed params, a stage per rule, item notes and conditions, ids for
+added items, and the template file format with its per-template consequence defaults.
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from enum import StrEnum
 from typing import Any, Literal
@@ -50,12 +60,26 @@ class CheckType(StrEnum):
     HUMAN_ONLY = "human_only"                    # no automated check; a reviewer decides
 
 
-class Tier(StrEnum):
-    """Consequence of a missing item, from the Completeness Check Schedule's Parts."""
+class Part(StrEnum):
+    """The Completeness Check Schedule's Parts: what a missing item means for the tender."""
 
     A = "A"  # missing: the tender is not considered further
     B = "B"  # missing: the Authority may request it before disqualifying
     C = "C"  # discretionary: may be requested later or evaluated as submitted
+
+
+class Consequence(StrEnum):
+    """What a blank or failing field means for one rule, before any rule-level override.
+    The seven tiers the rule files use. The default outcomes for a tier are defined per
+    template (`Template.consequences`), because they differ from form to form."""
+
+    CRITICAL = "critical"                          # blank: disqualified; redacted: needs_review
+    MANDATORY_ON_REQUEST = "mandatory_on_request"  # blank: dormant, may be requested later
+    ON_REQUEST_ONLY = "on_request_only"            # not requested: dormant; requested and missed: disqualified
+    DEEMED_COMPLIANCE = "deemed_compliance"        # blank: pass; expressly non-compliant: disqualified
+    DEEMED_DEFAULT = "deemed_default"              # blank: pass, read as the stated default (e.g. cash)
+    DISCRETIONARY = "discretionary"                # blank: pass; the Authority may ask later
+    NO_GATE = "no_gate"                            # recorded, never changes the verdict
 
 
 class SlotKind(StrEnum):
@@ -72,6 +96,33 @@ class ItemStatus(StrEnum):
     NOVEL = "novel"              # no template; rules drafted from the clause (L3), person must approve
     GAP = "gap"                  # the item is in the schedule but no rule could be built
     EDITED = "edited"            # a person changed something; the model's version is kept alongside
+
+
+OutcomeStatus = Literal["pass", "needs_review", "disqualified", "dormant"]
+
+# The outcome vocabulary. For each evaluated rule the engine picks one key: the field's
+# presence state, or the first positive / negative / neutral key the rule's outcomes define
+# (app/engine/core.py keeps the same three tables; test/test_rulesets_schema.py proves they
+# match). Closed on purpose: a new pair is one line here, in a `contract` PR.
+PRESENCE_KEYS: frozenset[str] = frozenset({"blank", "filled", "redacted", "not_applicable"})
+POSITIVE_KEYS: frozenset[str] = frozenset({
+    "match", "within_range", "within_precision", "valid", "compliant", "confirmed_compliant",
+    "accredited", "on_time", "requested_and_met", "content_ok", "complete", "sealed",
+    "bundled", "not_a_postal_box", "no_extra_charges", "receipt_confirmed",
+    "effective_and_not_aborted",
+})
+NEGATIVE_KEYS: frozenset[str] = frozenset({
+    "mismatch", "outside_range", "exceeds_precision", "invalid", "non_compliant", "noncompliant",
+    "expressly_non_compliant", "not_accredited", "late", "requested_and_missed", "content_wrong",
+    "incomplete", "not_sealed", "not_bundled", "postal_box", "extra_charges_proposed",
+    "no_receipt_evidence", "not_effective_or_aborted",
+})
+NEUTRAL_KEYS: frozenset[str] = frozenset({"not_applicable", "not_requested", "unstated", "na"})
+OUTCOME_KEYS: frozenset[str] = PRESENCE_KEYS | POSITIVE_KEYS | NEGATIVE_KEYS | NEUTRAL_KEYS
+
+_SLOT_REF = re.compile(r"^\{([a-z][a-z0-9_]*)\}$")
+
+ParamValue = str | int | float | bool | list[str]
 
 
 class Citation(BaseModel):
@@ -127,18 +178,131 @@ class SlotValue(BaseModel):
         return self
 
 
+class FollowUp(BaseModel):
+    """What a dormant outcome leads to: what triggers the request, by when the tenderer
+    must answer (prose, always present) and what a missed deadline means."""
+
+    trigger: str = Field(min_length=1)
+    deadline: str = Field(min_length=1)
+    if_deadline_missed: OutcomeStatus
+
+
+class Outcome(BaseModel):
+    """The verdict for one outcome key. `note` may use {field} for the field's label."""
+
+    status: OutcomeStatus
+    note: str | None = None
+    follow_up: FollowUp | None = None
+
+    @model_validator(mode="after")
+    def _follow_up_only_when_dormant(self) -> Outcome:
+        if self.follow_up is not None and self.status != "dormant":
+            raise ValueError("a follow_up belongs to a dormant outcome only")
+        return self
+
+
+def _check_outcome_keys(outcomes: dict[str, Outcome], where: str) -> None:
+    unknown = sorted(set(outcomes) - OUTCOME_KEYS)
+    if unknown:
+        raise ValueError(f"{where}: unknown outcome keys {unknown}; the vocabulary is closed (OUTCOME_KEYS)")
+
+
+class Normalise(BaseModel):
+    """A step applied to the field's value before the check, by the engine's own name."""
+
+    op: Literal["round_significant_figures", "resolve_range_to_lower_bound"]
+    params: dict[str, str | int | float] = Field(default_factory=dict)
+
+
 class TemplateRule(BaseModel):
-    """One check the engine runs on one vendor field. `params` reference slots as
-    "{slot_name}" or hold literals; the engine renders them per tender."""
+    """One check the engine runs on one vendor field. `params` hold literals or reference
+    slots as "{slot_name}"; the engine renders them per tender. A rule is a gate: it names
+    the consequence tier whose template defaults apply, or carries its own `outcomes`,
+    which replace the tier's defaults whole."""
 
     id: str = Field(pattern=r"^[a-z][a-z0-9_.]*$", description="e.g. 'price_schedule.unit_price_present'")
     check: CheckType
     field: str = Field(min_length=1, description="vendor field, e.g. 'price_schedule.unit_price'")
-    params: dict[str, str] = Field(default_factory=dict)
-    tier: Tier
+    params: dict[str, ParamValue] = Field(default_factory=dict)
+    consequence: Consequence | None = None
+    outcomes: dict[str, Outcome] | None = None
+    normalise: list[Normalise] = Field(default_factory=list)
+    stage: Literal["I", "II"] = "I"
     condition: str | None = Field(default=None, description="applies only when this holds, e.g. 'not manufacturer'")
-    depends_on: list[str] = Field(default_factory=list, description="rule ids that must pass first")
+    depends_on: list[str] = Field(default_factory=list,
+                                  description="rule ids that must pass first; the engine also accepts one id")
     note: str | None = None
+
+    @model_validator(mode="after")
+    def _is_a_gate(self) -> TemplateRule:
+        if self.consequence is None and self.outcomes is None:
+            raise ValueError(f"rule {self.id} needs a consequence or its own outcomes; a note belongs in ItemNote")
+        if self.outcomes is not None:
+            _check_outcome_keys(self.outcomes, f"rule {self.id}")
+        return self
+
+    def slot_refs(self) -> set[str]:
+        """Slot names this rule's params reference as "{name}"."""
+        refs = set()
+        for value in self.params.values():
+            if isinstance(value, str) and (m := _SLOT_REF.match(value)):
+                refs.add(m.group(1))
+        return refs
+
+
+class FollowUpDeadline(BaseModel):
+    """How the engine turns a dormant outcome's prose deadline into a date, from the
+    request date it is given at check time."""
+
+    op: Literal["add_working_days", "add_calendar_days"]
+    offset: int = Field(ge=1)
+
+
+class ConsequenceDefaults(BaseModel):
+    """A template's default outcomes for one consequence tier."""
+
+    outcomes: dict[str, Outcome]
+    follow_up_deadline: FollowUpDeadline | None = None
+
+    @model_validator(mode="after")
+    def _keys_closed(self) -> ConsequenceDefaults:
+        _check_outcome_keys(self.outcomes, "consequence defaults")
+        return self
+
+
+class Template(BaseModel):
+    """One form's reusable rules, stored as app/rulesets/templates/<id>.json. A rule set
+    item that matched a template (L1) copies its rules and fills its slots from the tender
+    (L2); the engine reads `consequences` for every rule that names a tier."""
+
+    id: str = Field(pattern=r"^[a-z][a-z0-9_]*$")
+    form_name: str = Field(min_length=1)
+    slots: list[SlotSpec] = Field(default_factory=list)
+    consequences: dict[Consequence, ConsequenceDefaults] = Field(default_factory=dict)
+    rules: list[TemplateRule]
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Template:
+        ids = [r.id for r in self.rules]
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"duplicate rule ids in template {self.id}")
+        slots = {s.name for s in self.slots}
+        for r in self.rules:
+            if r.consequence is not None and r.outcomes is None and r.consequence not in self.consequences:
+                raise ValueError(f"rule {r.id} names tier {r.consequence} but template {self.id} has no defaults for it")
+            missing = r.slot_refs() - slots
+            if missing:
+                raise ValueError(f"rule {r.id} references slots {sorted(missing)} the template does not declare")
+        return self
+
+
+class ItemNote(BaseModel):
+    """Prose attached to an item that is not a check: a definition, what triggers a
+    requirement, a consequence stated in the clause, or a cross-reference."""
+
+    kind: Literal["definition", "trigger", "consequence", "reference"]
+    text: str = Field(min_length=1)
+    citation: Citation | None = None
 
 
 class Gap(BaseModel):
@@ -151,24 +315,31 @@ class Gap(BaseModel):
 
 
 class RuleSetItem(BaseModel):
-    """One Completeness Check Schedule item, (a) to (o), with its rules."""
+    """One Completeness Check Schedule item, (a) to (o), with its rules. An item a person
+    adds has no schedule letter and is numbered x1, x2, ..."""
 
-    letter: str = Field(pattern=r"^[a-z]$")
+    letter: str = Field(pattern=r"^([a-z]|x[1-9][0-9]*)$")
     title: str = Field(min_length=1)
-    part: Tier
+    part: Part
     template: str | None = Field(default=None, description="template id; None for a novel item")
     citation: Citation = Field(description="the schedule row")
     clauses: list[Citation] = Field(default_factory=list, description="the clauses the row points to")
+    condition: str | None = Field(default=None, description="the item applies only when this holds")
+    notes: list[ItemNote] = Field(default_factory=list)
     slots: dict[str, SlotValue] = Field(default_factory=dict)
     rules: list[TemplateRule] = Field(default_factory=list)
     status: ItemStatus
     edit: Edit | None = None
 
     @model_validator(mode="after")
-    def _rule_ids_unique(self) -> RuleSetItem:
+    def _rules_consistent(self) -> RuleSetItem:
         ids = [r.id for r in self.rules]
         if len(ids) != len(set(ids)):
             raise ValueError(f"duplicate rule ids in item ({self.letter})")
+        if self.template is None:
+            without = [r.id for r in self.rules if r.outcomes is None]
+            if without:
+                raise ValueError(f"item ({self.letter}) has no template, so its rules need their own outcomes: {without}")
         return self
 
 
