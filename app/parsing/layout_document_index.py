@@ -436,6 +436,38 @@ def _reading_lines(items: list[tuple[str, list[float]]]) -> list[list[tuple[str,
     return [sorted(line, key=lambda it: it[1][0]) for line in lines]
 
 
+_STANDALONE_MARKER = re.compile(r"^[*^#]*\((?:[a-z]{1,2}|[ivx]{1,4}|\d+)\)$")
+
+
+def _split_at_marker_lines(lines):
+    """Split one layout block into several where later lines open with their own
+    list marker in the same column as the block's first marker.
+
+    The layout model sometimes merges consecutive list items into a single
+    `text` block when nothing but the marker column separates them: "(i) Where
+    ... (j) Where ... (k) Where ..." came back as one block, so (j) and (k) never
+    became nodes and (i) swallowed both. Only this module's first-text-of-block
+    rule classifies markers, so each item has to start its own piece.
+
+    Two conditions keep an inline enumeration ("(i) the Tenderer; or (ii) a
+    related person") from being split: the marker must be a text item on its
+    own (a hanging marker set apart from its paragraph, not a token inside a
+    sentence), and it must be the first item of its line at the x position of
+    the block's opening marker (within 2 points).
+    """
+    if len(lines) < 2 or not _STANDALONE_MARKER.match(lines[0][0][0]):
+        return [lines]
+    column = lines[0][0][1][0]
+    pieces = [[lines[0]]]
+    for line in lines[1:]:
+        text, bbox = line[0]
+        if _STANDALONE_MARKER.match(text) and abs(bbox[0] - column) <= 2:
+            pieces.append([line])
+        else:
+            pieces[-1].append(line)
+    return pieces
+
+
 def _join_lines(lines) -> str:
     return " ".join(text for line in lines for text, _ in line)
 
@@ -467,10 +499,17 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
             continue
         items = [(all_texts[i], all_bboxes[i]) for i in g.get("indicies", [])
                  if 0 <= i < len(all_texts) and i < len(all_bboxes)]
-        text = _join_lines(_reading_lines(items)).strip()
-        if not text:
-            continue
-        blocks.append((g["group_bbox"][0], g["class_name"], text, list(g["group_bbox"])))
+        lines = _reading_lines(items)
+        pieces = [lines] if g["class_name"] == "table" else _split_at_marker_lines(lines)
+        for piece in pieces:
+            text = _join_lines(piece).strip()
+            if not text:
+                continue
+            bbox = list(g["group_bbox"]) if len(pieces) == 1 else [
+                min(b[0] for line in piece for _, b in line), min(b[1] for line in piece for _, b in line),
+                max(b[2] for line in piece for _, b in line), max(b[3] for line in piece for _, b in line),
+            ]
+            blocks.append((bbox[0], g["class_name"], text, bbox))
     return blocks
 
 

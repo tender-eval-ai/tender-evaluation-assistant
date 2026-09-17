@@ -59,3 +59,32 @@ def test_reading_lines_keep_a_slightly_lower_marker_on_its_own_line():
     ]
 
     assert _join_lines(_reading_lines(items)) == "(f) T he information required in Table G of the Schedule."
+
+
+def test_block_splits_where_a_line_opens_with_a_marker_in_the_marker_column():
+    from app.parsing.layout_document_index import _join_lines, _reading_lines, _split_at_marker_lines
+
+    items = [
+        ("(i)", [118, 523, 129, 534]), ("Where the first condition applies, a letter", [147, 523, 521, 534]),
+        ("of intent is required.", [147, 537, 300, 548]),
+        ("(j)", [118, 578, 129, 589]), ("Where the second condition applies, a letter", [147, 578, 521, 589]),
+        ("(ii) is not a new item because it is not in the marker column", [147, 592, 521, 603]),
+    ]
+
+    pieces = [_join_lines(p) for p in _split_at_marker_lines(_reading_lines(items))]
+
+    assert pieces == [
+        "(i) Where the first condition applies, a letter of intent is required.",
+        "(j) Where the second condition applies, a letter (ii) is not a new item because it is not in the marker column",
+    ]
+
+
+def test_inline_enumeration_is_not_split():
+    from app.parsing.layout_document_index import _reading_lines, _split_at_marker_lines
+
+    items = [
+        ("(e)", [118, 100, 129, 111]), ("the Tenderer; or", [147, 100, 400, 111]),
+        ("(ii) a related person of the Tenderer", [147, 114, 400, 125]),
+    ]
+
+    assert len(_split_at_marker_lines(_reading_lines(items))) == 1
