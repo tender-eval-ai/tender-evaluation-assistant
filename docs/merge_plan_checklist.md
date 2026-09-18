@@ -8,7 +8,7 @@ Joint review of the "Tender Review Merge Plan" (10-day version, 2026-09-15). Thi
 
 **Context both of us share.** Two bootcamp students, both in the US, no client and no pilot. Each person works on their own area independently and stops at the joint stop points in section D. The goal is the strongest possible joint project for job applications.
 
-Last updated: 2026-09-18 (Nasi).
+Last updated: 2026-09-18 (Chenyu).
 
 ## Status board
 
