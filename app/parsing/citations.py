@@ -80,7 +80,11 @@ _GROUP_RE = re.compile(_GROUP)
 _CHAIN = re.compile(
     # "<Name> - Part IA": the dash form names the document first. Tried first, so
     # "Annex A to the Terms of Tender - Part IA" is not read as the whole annex.
-    rf"(?P<dname>{_NAME})\s+[-–—]\s+(?P<dlevel>(?:Part|Table)\s+{_LIST})"
+    # Several Parts may follow in brackets, each with its own dash subtitle:
+    # "<Name> - (Part IA - <title> and Part IB - <title>)"; read as the first Part
+    # alone, the second was never cited.
+    rf"(?P<dname>{_NAME})\s+[-–—]\s+\(?(?P<dlevel>(?:Part|Table)\s+{_LIST}"
+    rf"(?:(?:\s+[-–—]\s+[^()]*?)?\s+and\s+(?:Part|Table)\s+{_LIST})*)"
     # Several chains may share one document name: "paragraphs 1 and 2 of Tables A to
     # C, paragraph 1 of Table D and Part F of the X Schedule". Read as one chain, only
     # the last group had a name and the others were silently dropped (twelve targets
@@ -178,15 +182,13 @@ def _clean_name(name: str) -> str:
 def _chain_citations(match: re.Match) -> list[Citation]:
     if match.group("dname"):
         name = _clean_name(match.group("dname"))
-        level = _LEVEL_RE.match(match.group("dlevel"))
-        levels = [_level_targets(level.group("kw"), level.group("ids"))]
-    else:
-        name = _clean_name(match.group("name"))
-        # Written innermost first ("Paragraph 2 of Table A"); resolved outermost first.
-        groups = [[_level_targets(m.group("kw"), m.group("ids")) for m in _LEVEL_RE.finditer(group.group(0))][::-1]
-                  for group in _GROUP_RE.finditer(match.group("levels"))]
-        return [c for levels in groups for c in _citations_for(name, levels)]
-    return _citations_for(name, levels)
+        return [c for level in _LEVEL_RE.finditer(match.group("dlevel"))
+                for c in _citations_for(name, [_level_targets(level.group("kw"), level.group("ids"))])]
+    name = _clean_name(match.group("name"))
+    # Written innermost first ("Paragraph 2 of Table A"); resolved outermost first.
+    groups = [[_level_targets(m.group("kw"), m.group("ids")) for m in _LEVEL_RE.finditer(group.group(0))][::-1]
+              for group in _GROUP_RE.finditer(match.group("levels"))]
+    return [c for levels in groups for c in _citations_for(name, levels)]
 
 
 def _citations_for(name: str, levels: list[list[tuple[str, str]]]) -> list[Citation]:

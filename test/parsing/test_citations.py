@@ -70,6 +70,11 @@ def test_numbered_part_of_an_appendix_and_dash_named_part_of_an_annex():
     assert _resolve("Annex B to the Sample Terms - Part IB - Method of refund") == [["D:PIB"]]
 
 
+def test_several_dash_named_parts_in_brackets_each_resolve():
+    assert _resolve("Annex B to the Sample Terms - (Part IA - Method of payment and "
+                    "Part IB - Method of refund (if applicable)).") == [["D:PIA"], ["D:PIB"]]
+
+
 def test_annex_named_after_its_document():
     assert _resolve("the terms set out at Annex A to the Sample Terms.") == [["T:ANNEX-A"]]
 
