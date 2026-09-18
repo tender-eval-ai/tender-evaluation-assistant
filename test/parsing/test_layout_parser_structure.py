@@ -274,3 +274,53 @@ def test_an_item_flagged_in_the_margin_is_still_its_own_item(monkeypatch):
     assert nodes["doc:4.18.1"]["text"].startswith("(D) 4.18.1 It is")
     assert nodes["doc:4.18.1:(b)"]["text"].startswith("(D) (b) it is")
     assert nodes["doc:4.18.1:(a)"]["text"] == "(a) in one respect;"
+
+
+def test_an_annex_named_only_in_its_page_header_is_an_annex(monkeypatch):
+    """An annex bound into a longer document opens where its header line first
+    appears (joined to the heading below it); the same header on the following
+    pages is furniture, and on a document's own first page it is only the
+    document's title."""
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {
+        1: [(36, "list-item", "35. The last clause of the sample terms.")],
+        2: [(363, "annex-title", "Annex A to the Sample Terms"),
+            (170, "section-header", "SAMPLE UNDERTAKING"),
+            (36, "text", "THIS UNDERTAKING is made on a sample day."),
+            (36, "list-item", "1. The first clause of the undertaking.")],
+        3: [(363, "annex-title", "Annex A to the Sample Terms"),
+            (36, "list-item", "2. The second clause of the undertaking.")],
+    })
+
+    assert nodes["doc:ANNEX-A"]["text"].startswith("Annex A to the Sample Terms\nSAMPLE UNDERTAKING")
+    assert nodes["doc:ANNEX-A:para"]["text"] == "THIS UNDERTAKING is made on a sample day."
+    assert nodes["doc:ANNEX-A:1"]["parent_id"] == nodes["doc:ANNEX-A:2"]["parent_id"] == "doc:ANNEX-A"
+    assert nodes["doc:35"]["text"] == "35. The last clause of the sample terms."
+    assert not any(n["kind"] == "annex" and n["node_id"] != "doc:ANNEX-A" for n in nodes.values())
+
+    standalone = parse_blocks(monkeypatch, {1: [
+        (353, "annex-title", "Annex A to the Sample Terms"),
+        (290, "section-header", "Part IA"),
+        (190, "section-header", "Method of Sample Payment")]})
+
+    assert standalone["doc"]["text"] == "Annex A to the Sample Terms"
+    assert standalone["doc:PIA"]["parent_id"] == "doc"
+
+
+def test_a_paragraph_of_a_few_words_with_no_stop_runs_on(monkeypatch):
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (200, "section-header", "SAMPLE CERTIFICATE"),
+        (36, "text", "To: the Sample Office"),
+        (36, "text", "Dear Sir/Madam,"),
+        (36, "text", "BY"),
+        (240, "text", "whose office is at a sample address"),
+        (36, "text", "The Tenderer certifies the sample matter."),
+    ]})
+
+    assert [n["text"] for n in nodes.values() if ":para" in n["node_id"]] == [
+        "To: the Sample Office\nDear Sir/Madam,",
+        "BY\nwhose office is at a sample address",
+        "The Tenderer certifies the sample matter."]

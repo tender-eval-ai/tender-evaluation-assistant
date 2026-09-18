@@ -930,6 +930,54 @@ def _attach_item_flags(blocks: list) -> list:
     return out
 
 
+# The page-header line of an annex bound into a longer document: "Annex A to
+# the Terms of Tender", on its own.
+_ANNEX_TITLE_LINE = re.compile(r"^Annex[ \t]+([A-Z0-9]+)[ \t]+to[ \t]+the\b[^\n]*$")
+
+
+def _open_annexes(blocks_by_page: dict, first_pages: set[int]) -> None:
+    """Turn the header line of an annex bound into a longer document into the
+    annex's heading, on the first page it heads.
+
+    The standard terms booklet carries its annexes (a sub-contractor's
+    undertaking, the deposit form) after its last Part, and names each only in
+    the page header, which the layout model returns as page furniture. Dropped,
+    the annex was never a node: its recitals and execution block ran on into
+    the booklet's last clause and its numbered clauses collided with the
+    booklet's own. On the first page of a run of pages carrying the same
+    header, the header opens the annex, joined to the unnumbered heading right
+    below it (its title); on the following pages it is furniture again. On a
+    document's own first page the annex is the document itself (a standalone
+    annex file), and the header is only its title.
+    """
+    previous: set[str] = set()
+    for page_number in sorted(blocks_by_page):
+        blocks = blocks_by_page[page_number]
+        titles = {b[2] for b in blocks if b[1] == "annex-title"}
+        out = []
+        skip = None
+        for index, block in enumerate(blocks):
+            if index == skip:
+                continue
+            if block[1] != "annex-title":
+                out.append(block)
+                continue
+            if block[2] in previous:
+                continue
+            x0, _cls, text, bbox, label = block
+            if page_number in first_pages:
+                out.append((x0, "section-header", text, bbox, label))
+                continue
+            after = next((j for j in range(index + 1, len(blocks)) if blocks[j][1] != "field"), None)
+            if after is not None and blocks[after][1] == "section-header" \
+                    and _classify_marker(blocks[after][2])[0] is None:
+                text = f"{text}\n{blocks[after][2]}"
+                skip = after
+            out.append((x0, "annex-title", text, bbox, label))
+        blocks_by_page[page_number] = out
+        previous = titles
+
+
 # Text items a `picture` group must carry to be read as a table instead.
 _PICTURE_MIN_TEXT_ITEMS = 8
 
@@ -971,6 +1019,15 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
                 bbox = list(g["group_bbox"])
                 kept = (header_fields if class_name == "page-header" else footer_fields)
                 kept.append((bbox[0], "field", text, bbox, None))
+            elif class_name == "page-header" and _ANNEX_TITLE_LINE.match(text) \
+                    and g["group_bbox"][0] > page.rect.width / 2:
+                # An annex bound into a longer document names itself only in
+                # the page header of its pages, set to the right; kept as
+                # class "annex-title" for `_open_annexes` to decide where the
+                # annex starts. (A contents page lists annexes too, but at the
+                # left margin.)
+                bbox = list(g["group_bbox"])
+                header_fields.insert(0, (bbox[0], "annex-title", text, bbox, None))
             continue
         if class_name == "picture" and len(g.get("indicies") or []) >= _PICTURE_MIN_TEXT_ITEMS:
             # A table the layout model took for a picture. Dropped as a
@@ -1129,6 +1186,8 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
         return segment["node_id"] if segment else doc_id
 
     blocks_by_page = {p.page_number: _layout_blocks(p.source_file, p.page_number) for p in pages}
+    _open_annexes(blocks_by_page, {pages[0].page_number} | {
+        segment["first_page"] for segment in (subdocs if len(subdocs) > 1 else [])})
     # `looks_like_toc` (shared with document_index's flat-text scan) flags a
     # page by heading density alone - >=8 clause-shaped headings averaging
     # under 200 chars each. Confirmed a false positive on `09 Schedules.pdf`
@@ -1281,6 +1340,9 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                 emit_run_in_items()
                 run_in_pending = (text, page.page_number, bbox)
                 kind, number, title = _classify_marker(text)
+                if class_name == "annex-title":
+                    first_line, _, rest = text.partition("\n")
+                    kind, number, title = "annex", _ANNEX_TITLE_LINE.match(first_line).group(1), rest.strip()
                 # Only the row's own first piece carries its label: a run-in
                 # sub-item split out of the row ("(i) ...; (ii) ...") is a
                 # marker of its own and classifies normally.
@@ -1448,11 +1510,14 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                         # hand-checked lengths count a Part's body in the Part)
                         # and stays the node later text joins, and each
                         # paragraph is its child. A block that carries on a
-                        # paragraph stopped mid-sentence (at a page break) joins
-                        # that paragraph instead.
+                        # paragraph stopped mid-sentence (at a page break, or a
+                        # form's line broken around a blank) joins that
+                        # paragraph instead, as does anything after a paragraph
+                        # of a few words with no stop (an addressee's first line).
                         host.text += "\n" + text
                         last_para = paragraphs[-1] if paragraphs and paragraphs[-1].parent_id == host.node_id else None
-                        if last_para is not None and last_para.text.rstrip()[-1:] not in (".", ";", ":", ")"):
+                        if last_para is not None and last_para.text.rstrip()[-1:] not in (".", ";", ":", ")") \
+                                and (text[:1].islower() or len(last_para.text.split()) <= 4):
                             last_para.text += "\n" + text
                         else:
                             node_id = _unique(f"{host.node_id}:para", seen_ids)
