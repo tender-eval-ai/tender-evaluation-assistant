@@ -49,7 +49,7 @@ The React UI is built against this file through `web/mock/`, which answers exact
 |---|---|---|---|---|---|
 | GET | `/projects/{pid}/documents` | | `[Document]` | S2 | S2 done
 | GET | `/projects/{pid}/documents/{doc_id}/pages` | | `[Page]` | S2 | S2 done
-| GET | `/projects/{pid}/documents/{doc_id}/pages/{n}/image` | `?highlight=` | `image/png` | S2 done | Served through a signed, short-lived URL returned inside `BidResult` and `Page`; the API key never appears in a query string. |
+| GET | `/projects/{pid}/documents/{doc_id}/pages/{n}/image` | `?highlight=` | `image/png` | S2 done | Served through a signed, short-lived URL returned inside `BidResult` and `Page`; the API key never appears in a query string. A `PageCitation` with a `quote` carries `highlight` inside the signature: use `image_url` as given. A page-only link with a client-appended `highlight` still opens (pre-S2 clients); that fallback goes once the web UI uses the signed link. |
 | GET | `/projects/{pid}/documents/{doc_id}/nodes` | | `[Node]` | S3 | Clause tree from L0: `{node_id, parent_id, kind, number, title, page, box}`. |
 
 ## Scoring, report, audit
@@ -82,11 +82,11 @@ API-only models, defined in `backend/schemas_api.py` and exported into `docs/ope
 - `Diff {from, to, added: [letter], removed: [letter], changed: [{letter, fields: [str], edit: Edit}]}`
 - `BidResult {tenderer, run_id, ruleset_version, fields: {letter: {field: FieldValue}}, verdicts: {letter: Verdict}, stage1: StageSummary, stage2?: StageSummary, trace?, cost: {calls, cache_hits, usd, waited_seconds}, review_confirmed_by?}`
 - `FieldValue {value, redacted, confidence, page?: PageCitation, correction?: {value, by, reason, model_value}, model_value?}`
-- `PageCitation {doc_id, file, page, image_url}`: where a value was read and a signed link to the page; the verbatim `quote` of a `Citation` arrives with V4 quote verification (S4)
+- `PageCitation {doc_id, file, page, image_url, quote?, box?, page_size?}`: where a value was read and a signed link to the page. When the value is found on the page's text layer, `quote` is that text as the page has it, `box` is `[x0, y0, x1, y1]` around it in PDF points with the origin at the page's top-left (y down, as on the image), `page_size` is the page's `[width, height]` in points (to scale `box` onto the image: multiply by image width / `page_size[0]`), and `image_url` renders the quote highlighted. Otherwise (scanned page, value not on the text layer) all three are null and `image_url` is the plain page. Quote verification on scanned pages arrives with V4 (S4). (Amended at S2, checklist I1.)
 - `Verdict {outcome, worst, part, rule_ids, reason, checks: [CheckedField], evidence: [PageCitation]}`; `outcome` is the engine's overall status (dormant fields do not count against a tender as submitted), `worst` includes dormant
 - `CheckedField {field_id, status, note?, redacted, stage, follow_up?}`, `StageSummary {outcome, items: {letter: outcome}}`
 - `Correction {value?: any, present?: bool, page?: int, reason: str}`
-- `Document {doc_id, file, kind, tenderer?, pages, data_class}`, `Page {page, has_text, label?, title?, summary?, signed?, has_table?, image_url}`, `Event {id, kind, project, subject?, before?, after?, user, reason?, at}`; `Node`, `PriceSummary`, `Evaluation` as described in the tables.
+- `Document {doc_id, file, path, kind, tenderer?, pages, data_class}`; `path` is relative to the project (`tender/09 Schedules.pdf`, `bids/Tenderer_A/offer.pdf`), the form a rule-set `Citation.file` uses, so a citation finds its document by `Document.path == Citation.file` (amended at S2, checklist I1), `Page {page, has_text, label?, title?, summary?, signed?, has_table?, image_url}`, `Event {id, kind, project, subject?, before?, after?, user, reason?, at}`; `Node`, `PriceSummary`, `Evaluation` as described in the tables.
 
 ## Questions settled at S0
 
