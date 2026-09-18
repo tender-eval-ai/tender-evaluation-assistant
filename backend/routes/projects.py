@@ -23,6 +23,9 @@ class NewProject(BaseModel):
     # project to cloud-driven clients ONLY when this is set — real documents never
     # leave the machine.
     synthetic: bool = False
+    # The class the LLM gateway keys its endpoint allowlist on (docs/api_contract.md).
+    # Derived from `synthetic` when absent, so today's clients keep working.
+    data_class: Literal["synthetic", "redacted_sample", "confidential"] | None = None
 
 
 @router.post("/projects")
@@ -33,10 +36,12 @@ def create_project(req: NewProject) -> dict:
     (pdir / "tender").mkdir(parents=True)
     (pdir / "bids").mkdir()
     (pdir / "work" / "bids").mkdir(parents=True)
+    data_class = req.data_class or ("synthetic" if req.synthetic else "confidential")
+    synthetic = data_class == "synthetic"
     deps._write_json(pdir / "meta.json", {"id": pid, "name": req.name, "created": time.time(),
-                                          "synthetic": req.synthetic})
+                                          "synthetic": synthetic, "data_class": data_class})
     deps._set_status(pdir, "idle")
-    return {"id": pid, "name": req.name, "synthetic": req.synthetic}
+    return {"id": pid, "name": req.name, "synthetic": synthetic, "data_class": data_class}
 
 
 @router.get("/projects")

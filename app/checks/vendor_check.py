@@ -68,6 +68,16 @@ def _llm(ctx: Context):
     return LLM_FACTORY(project_dir(ctx.run["project"]), ctx.run["project"], ctx.run["tenderer"])
 
 
+COST_KEYS = ("calls", "cache_hits", "usd", "waited_seconds")
+
+
+def _cost(ctx: Context, llm, before: dict) -> dict:
+    """The run's model cost so far: what was saved plus this step's calls since `before`."""
+    saved = ctx.data.get("cost") or {}
+    stats = getattr(llm, "stats", {})
+    return {k: round(saved.get(k, 0) + stats.get(k, 0) - before.get(k, 0), 6) for k in COST_KEYS}
+
+
 def render(ctx: Context):
     pdir = project_dir(ctx.run["project"])
     bid_dir = pdir / "bids" / ctx.run["tenderer"]
@@ -83,25 +93,30 @@ def triage(ctx: Context):
     llm = _llm(ctx)
     with llm.scope(ctx.run["tenderer"]):
         while nxt < len(pages):                                         # one batch, then checkpoint
+            before = dict(getattr(llm, "stats", {}))
             labels += v1.triage(pages, ctx.run["tenderer"], llm, ctx.progress, start_at=nxt, max_batches=1)
             nxt = min(nxt + v1.PAGES_PER_CALL, len(pages))
-            ctx.checkpoint(labels=labels, next_batch=nxt)
+            ctx.checkpoint(labels=labels, next_batch=nxt, cost=_cost(ctx, llm, before))
     return None
 
 
 def resolve_step(ctx: Context):
     ctx.progress("resolve", 0, 1, "calls")
     llm = _llm(ctx)
+    before = dict(getattr(llm, "stats", {}))
     with llm.scope(ctx.run["tenderer"]):
-        return {"item_pages": resolve(ctx.data["labels"], ITEM, ctx.run["tenderer"], llm).model_dump()}
+        pages = resolve(ctx.data["labels"], ITEM, ctx.run["tenderer"], llm).model_dump()
+    return {"item_pages": pages, "cost": _cost(ctx, llm, before)}
 
 
 def extract_step(ctx: Context):
     ctx.progress("extract", 0, 1, "calls")
     llm = _llm(ctx)
+    before = dict(getattr(llm, "stats", {}))
     with llm.scope(ctx.run["tenderer"]):
         item_pages = ItemPages.model_validate(ctx.data["item_pages"])
-        return {"fields": extract(ctx.data["pages"], item_pages, ctx.run["tenderer"], llm)}
+        fields = extract(ctx.data["pages"], item_pages, ctx.run["tenderer"], llm)
+    return {"fields": fields, "cost": _cost(ctx, llm, before)}
 
 
 def await_ruleset(ctx: Context):

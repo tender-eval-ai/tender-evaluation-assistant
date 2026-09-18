@@ -49,6 +49,25 @@ def migrate(dsn: str | None = None, directory: Path = MIGRATIONS_DIR) -> list[st
     return ran
 
 
+LOCK_ID = 7_314_159    # one advisory lock for every process that prepares the database
+
+
+def prepare(app=None, dsn: str | None = None) -> list[str]:
+    """What every process runs at start: pending migrations, then Procrastinate's own
+    schema, under one advisory lock so the API and the workers may start in any order
+    and at the same time."""
+    with _connect(dsn) as c:
+        c.execute("select pg_advisory_lock(%s)", (LOCK_ID,))
+        try:
+            ran = migrate(dsn)
+            if app is not None:
+                from app.jobs.queue import apply_schema
+                apply_schema(app)
+        finally:
+            c.execute("select pg_advisory_unlock(%s)", (LOCK_ID,))
+    return ran
+
+
 def rollback(name: str, dsn: str | None = None, directory: Path = MIGRATIONS_DIR) -> None:
     """Reverse one applied migration by name."""
     path = directory / f"{name}.sql"
@@ -62,7 +81,7 @@ def reset_for_tests(dsn: str | None = None) -> None:
     """Drop the app's tables and empty Procrastinate's, so a test starts from nothing."""
     with _connect(dsn) as c:
         c.execute("drop table if exists results, job_steps, rulesets, runs, llm_cache, llm_rate_limit, llm_budget, "
-                  "schema_migrations cascade")
+                  "events, schema_migrations cascade")
         if c.execute("select to_regclass('procrastinate_jobs')").fetchone()[0]:
             c.execute("truncate procrastinate_jobs, procrastinate_events, procrastinate_periodic_defers, "
                       "procrastinate_workers restart identity")
