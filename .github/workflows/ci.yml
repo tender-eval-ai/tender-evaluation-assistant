@@ -33,6 +33,24 @@ jobs:
       # The default suite is fully offline: no LLM calls, no tokens, no client data.
       - run: python -m pytest test/ -q
 
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      # Runs on the MSW mock of the S2 contract: no backend, no secrets.
+      - run: npx vitest run
+      - run: npm run build
+
   security:
     runs-on: ubuntu-latest
     steps:
