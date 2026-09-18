@@ -197,7 +197,7 @@ def s7_correction(bench: Bench) -> Measure:
 
 def s8_rate_limit(bench: Bench, vendors: int = 20, rpm: int = 60) -> Measure:
     a = bench.adapter
-    bench.set(FAKE_DELAY="0.05,0.1")
+    bench.set(FAKE_DELAY="0.05,0.1", LLM_RPM=str(rpm))      # the provider's limit, as a variant would be configured
     runs = [a.start_check(TENDER, f"Tenderer_{i:02d}") for i in range(vendors)]
     a.confirm_rubric(TENDER)
     bench.wait(lambda: all(a.status(r).state in ("done", "failed", "lost") for r in runs), timeout=120)

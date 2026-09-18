@@ -88,7 +88,7 @@ What this decision does not say: it is about the pipeline runner for a linear pe
 - `app/tasks.py` and the `job_steps` table are built from `spikes/queue/tasks.py`; `spikes/common/queue.py` (retry strategy, sweeper as a periodic task, worker settings) and `spikes/common/store.py` (results and corrections) move under `app/`.
 - The `Orchestrator` interface stays as the port the API calls, so the LangGraph variant remains runnable from `spikes/langgraph` under the harness until the decision is final; it is deleted or frozen under a tag afterwards.
 - Production heartbeat and stalled-timeout values are the library defaults (10 s / 30 s), not the harness's 1 s / 3 s; recovery after a crash is then about 35 s.
-- A shared rate limiter (scenario 8) is still to be built, for either variant.
+- A shared rate limiter (scenario 8) is still to be built, for either variant. *(Built at S2 in `app/gateway.py` and `app/gateway_pg.py`: one pace per provider in Postgres; the promoted runner passes scenario 8 with a peak of 59 calls in any 60 s window, see `test/jobs/README.md`.)*
 
 ## How to reproduce
 

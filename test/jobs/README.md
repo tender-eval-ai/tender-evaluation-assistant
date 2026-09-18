@@ -65,24 +65,24 @@ After the S1 decision the queue variant moved to `app/jobs/` as a generic step p
 ORCHESTRATOR_ADAPTER=app ORCHESTRATOR_EXPECT_GATES=1 python -m pytest test/jobs -m orchestrator -q
 ```
 
-### The promoted runner (`app/jobs`, 2026-09-17)
+### The promoted runner (`app/jobs`, 2026-09-17, with the gateway)
 
 | # | Scenario | Gate | Result | Lost | Repeated LLM calls | Duplicates | LLM calls | Recover (s) | Notes |
 |---|---|---|---|---|---|---|---|---|---|
-| 1 | Kill a worker in the middle of a vendor check | must | pass | 0 | 0 | 0 | 5 | 5.12 | final state done; killed pid 34573 with SIGKILL after the first triage batch |
-| 2 | Stop a worker the way a deploy does (SIGTERM) | must | pass | 0 | 0 | 0 | 5 | 1.88 | final state done; killed pid 34598 with SIGTERM after the first triage batch |
+| 1 | Kill a worker in the middle of a vendor check | must | pass | 0 | 0 | 0 | 5 | 5.05 | final state done; killed pid 39731 with SIGKILL after the first triage batch |
+| 2 | Stop a worker the way a deploy does (SIGTERM) | must | pass | 0 | 0 | 0 | 5 | 1.82 | final state done; killed pid 39756 with SIGTERM after the first triage batch |
 | 3 | Two workers and two API copies, the same vendors submitted twice | must | pass | 0 | 0 | 0 | 60 |  | 12 vendors finished; a vendor run twice is paid twice |
 | 4 | Provider returns 429s, then one permanent failure | must | pass | 0 | 0 | 0 | 6 |  | final state failed; 2 transient errors seen; retried after 429: True; permanent failure visible as failed/dead: True |
 | 5 | Pause for rubric confirmation; edit the rubric while paused; resume | must | pass | 0 | 0 | 0 | 5 |  | verdict reflects the edit made while paused |
 | 6 | Rubric edited after confirming: new version, re-check every vendor | must | pass | 0 | 0 | 0 | 0 |  | 10 vendors re-checked to v2 with 0 LLM calls |
 | 7 | Reviewer corrects one field | must | pass | 0 | 0 | 0 | 10 |  | verdict updated with 0 calls: True; correction survived a re-run: True |
-| 8 | 20 vendors at once under a 60/min provider limit | should | FAIL | 0 | 0 | 0 | 100 |  | peak 100 calls in any 60 s window (limit 60) |
+| 8 | 20 vendors at once under a 60/min provider limit | should | pass | 0 | 0 | 0 | 100 |  | peak 59 calls in any 60 s window (limit 60) |
 | 9 | Add a pipeline step while 5 jobs are paused mid-way | should | pass | 0 | 0 | 0 | 0 |  | paused runs finished: True; the new step ran for them: True |
-| 10 | Which vendors are stuck, why, since when | should | pass | 0 | 0 | 0 | 0 | 8.37 | never listed as stuck within 8 s; recovered without help: True |
-| 11 | Glue code and infrastructure outside the pipeline steps | compare | - | 0 | 0 | 0 | 0 |  | 655 non-blank lines in execute.py (32), models.py (63), queue.py (62), registry.py (20), runner.py (121), store.py (152), sweeper.py (43), tasks.py (72), worker.py (39), db.py (51); extra services: Postgres (Procrastinate tables + runs, job_steps, results, rulesets) |
+| 10 | Which vendors are stuck, why, since when | should | pass | 0 | 0 | 0 | 0 | 8.28 | never listed as stuck within 8 s; recovered without help: True |
+| 11 | Glue code and infrastructure outside the pipeline steps | compare | - | 0 | 0 | 0 | 0 |  | 656 non-blank lines in execute.py (32), models.py (63), queue.py (62), registry.py (20), runner.py (121), store.py (152), sweeper.py (43), tasks.py (72), worker.py (39), db.py (52); extra services: Postgres (Procrastinate tables + runs, job_steps, results, rulesets) |
 | 12 | Testing one step on its own, without the orchestrator | compare | pass | 0 | 0 | 0 | 2 |  | triage ran alone on 8 pages in 2 calls |
 
-Same must-pass results as the spike it came from. Scenario 10 passes on recovery: the killed run is listed as stuck 2.5 s after the kill and the sweeper retries it 0.3 s later, a window the harness's quarter-second poll can miss. Scenario 8 waits for the gateway's rate limiter (S2). Line count 11 is larger than the spike's because the runner is now generic (any pipeline of steps, a registry, migrations) rather than one hard-wired slice.
+Same must-pass results as the spike it came from. Scenario 8 passes because every call goes through `app/gateway.py`, whose shared rate limiter (`app/gateway_pg.py`, one pace per provider in Postgres) spaces calls from every worker at the configured `LLM_RPM`; the harness's scenario 8 sets that knob to the provider limit it assumes. Scenario 10 passes on recovery: the killed run is listed as stuck 2.5 s after the kill and the sweeper retries it 0.3 s later, a window the harness's quarter-second poll can miss. Line count 11 is larger than the spike's because the runner is now generic (any pipeline of steps, a registry, migrations) rather than one hard-wired slice.
 
 ## Results
 

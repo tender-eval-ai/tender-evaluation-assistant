@@ -15,6 +15,7 @@ markers = [
     "orchestrator: needs Postgres and subprocess workers; opt-in (pytest -m orchestrator)",
     "realdata: redacted sample documents on the local machine only; never in CI",
     "live: calls a real model endpoint; opt-in",
+    "postgres: needs Postgres (DATABASE_URL); opt-in (pytest -m postgres); CI's integration job runs it",
 ]
 # The default run is fully offline and free; opt-in levels are selected explicitly.
-addopts = "-m 'not orchestrator and not realdata and not live'"
+addopts = "-m 'not orchestrator and not realdata and not live and not postgres'"

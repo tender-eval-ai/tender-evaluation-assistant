@@ -12,7 +12,7 @@ import socket
 import sys
 
 from app.jobs import registry
-from app.jobs.queue import QUEUE, Settings, apply_schema
+from app.jobs.queue import QUEUE, Settings
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -32,8 +32,7 @@ def main(argv: list[str] | None = None) -> int:
     from app.jobs.sweeper import Sweeper
 
     if not args.no_migrate:
-        db.migrate(settings.dsn)
-        apply_schema(tasks.app)
+        db.prepare(tasks.app, settings.dsn)
     if not args.no_sweep:
         Sweeper(settings).start()
     print(f"[worker] {args.name}: pipelines {registry.kinds()}, queue {QUEUE}", file=sys.stderr)
