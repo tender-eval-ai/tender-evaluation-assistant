@@ -660,21 +660,29 @@ def _column_row_pieces(items) -> list:
 _MARKER_COLUMN_SLACK = 2.0
 
 
-def _closes_the_list(x0: float, class_name: str, subitem_stack, nodes_by_id) -> bool:
-    """Does this markerless block end the open sub-item list rather than
-    continue its last item?
+def _closed_list_depth(x0: float, class_name: str, subitem_stack, nodes_by_id) -> int | None:
+    """The depth of the open sub-item list this markerless block ends, or None
+    when it continues the list's last item instead.
 
-    True when it starts in the list's own marker column and the layout model
-    did not classify it as a list item. A genuine continuation of an item wraps
-    to the item's TEXT column, which is indented past the marker column, so the
-    two never collide.
+    A list ends where a block starts in the list's own marker column and the
+    layout model did not classify it as a list item. A genuine continuation of an
+    item wraps to the item's TEXT column, which is indented past the marker
+    column, so the two never collide.
+
+    Only the list whose marker column matches is closed, not every open level:
+    a paragraph after a nested "(a) ... (b) ..." list that sits in the column of
+    (a)/(b) resumes the item that holds that list, and the outer list stays open
+    - the Terms of Tender (Supplement)'s paragraph 13 carries on with (2), (3) of
+    the outer list after such a paragraph, and closing the whole stack re-rooted
+    them under the paragraph and lost 13(b)'s items entirely.
     """
     if not subitem_stack or class_name == "list-item":
-        return False
-    opener = nodes_by_id.get(subitem_stack[-1][1])
-    if opener is None or not opener.bbox:
-        return False
-    return abs(x0 - opener.bbox[0]) <= _MARKER_COLUMN_SLACK
+        return None
+    for depth in range(len(subitem_stack) - 1, -1, -1):
+        opener = nodes_by_id.get(subitem_stack[depth][1])
+        if opener is not None and opener.bbox and abs(x0 - opener.bbox[0]) <= _MARKER_COLUMN_SLACK:
+            return depth
+    return None
 
 
 def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str, str, list[float]]]:
@@ -1005,7 +1013,8 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                         ))
                         continue
 
-                    if _closes_the_list(x0, class_name, subitem_stack, nodes_by_id):
+                    closed = _closed_list_depth(x0, class_name, subitem_stack, nodes_by_id)
+                    if closed is not None:
                         # Text that resumes the enclosing clause after a list,
                         # not a continuation of the list's last item: "The
                         # grounds specified in Paragraphs 20.1(a) to 20.1(g)
@@ -1017,8 +1026,8 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                         # classifies it `text` where the items are `list-item`.
                         # Absorbed into the last item, it inflates that item and
                         # loses a node the schedules cite in its own right.
-                        parent = nodes_by_id[subitem_stack[0][1]].parent_id
-                        subitem_stack = []
+                        parent = nodes_by_id[subitem_stack[closed][1]].parent_id
+                        del subitem_stack[closed:]
                         node_id = _unique(f"{parent}:tail", seen_ids)
                         add(_WorkingNode(
                             node_id, parent, "subitem", current_part, None, None,
