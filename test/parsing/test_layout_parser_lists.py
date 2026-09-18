@@ -136,3 +136,23 @@ def test_the_sentence_resuming_after_a_run_in_list_is_a_tail_node(monkeypatch):
     assert nodes["doc:9.1:(b)"]["text"].endswith("shall comply with the sample requirements.")
     assert nodes["doc:9.2:tail"]["text"] == "Its size is set out below."
     assert not any(n["node_id"].startswith("doc:9.3:tail") for n in nodes.values())
+
+
+def test_a_list_lettered_or_numbered_in_capitals_is_a_list(monkeypatch):
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (84, "section-header", "WHEREAS"),
+        (84, "list-item", "(A) The first sample recital."),
+        (84, "list-item", "(B) The second sample recital."),
+        (84, "list-item", "(2) Sample maintenance"),
+        (120, "list-item", "(I) Regular sample maintenance:"),
+        (150, "list-item", "(a) a first sample task;"),
+        (120, "list-item", "(II) Further sample maintenance."),
+    ]})
+
+    labels = {n["label"]: n["parent_id"] for n in nodes.values() if n.get("label")}
+    assert nodes["doc:(A)"]["text"] == "(A) The first sample recital."
+    assert labels["(B)"] == labels["(A)"], "(B) continues (A)"
+    assert labels["(II)"] == labels["(I)"], "(II) continues (I)"
+    assert labels["(a)"].endswith(":(I)")

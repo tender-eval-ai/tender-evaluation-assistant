@@ -53,7 +53,7 @@ from app.parsing.document_index import (
     _ANNEX,
     _SUBCLAUSE,
     _ident,
-    _successors,
+    _successors as _lowercase_successors,
     _unique,
     derive_doc_id,
     detect_subdocuments,
@@ -70,6 +70,20 @@ from app.parsing.document_index import (
 # letters or digits bare) since "i)"/"ii)" is unambiguous but a bare
 # "a)"/"1)" is common as ordinary prose punctuation elsewhere in the corpus.
 _SUBITEM_WITH_DIGITS = re.compile(r"^(?:\(([a-z]{1,2}|[ivx]{1,4}|\d+)\)|([ivx]{1,4})\))[ \t]*")
+
+# A list lettered or numbered in capitals - a deed's recitals "(A)", "(B)", a
+# maintenance schedule's "(I)", "(II)" - opening its own block, followed by its
+# text. Unrecognised, every such item ran on into the heading or item before
+# the list.
+_UPPERCASE_SUBITEM = re.compile(r"^\(([A-Z]|[IVX]{1,4})\)[ \t]+(?=\S)")
+
+
+def _successors(marker: str) -> set[str]:
+    """`document_index._successors`, for capital markers as well: "(B)" follows
+    "(A)", and "(II)" or "(J)" follows "(I)"."""
+    if marker.isupper():
+        return {s.upper() for s in _lowercase_successors(marker.lower())}
+    return _lowercase_successors(marker)
 
 # Looser than document_index._PART: that pattern requires either an em-dash
 # ("PART 4 — TITLE") or a literal newline before the title ("PART 5 \n TITLE"),
@@ -1122,6 +1136,9 @@ def _classify_marker(text: str):
     sm = _SUBITEM_WITH_DIGITS.match(text)
     if sm:
         return "subitem", sm.group(1) or sm.group(2), None
+    um = _UPPERCASE_SUBITEM.match(text)
+    if um:
+        return "subitem", um.group(1), None
     # `09 Schedules.pdf`'s Compliance Schedule glues a footnote-reference
     # glyph (*/^/#) directly onto a subitem's own opening marker - "^(a)
     # I/We confirm...", "^(b) I/We confirm...not in compliance..." - the
