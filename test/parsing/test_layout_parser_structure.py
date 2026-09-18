@@ -88,3 +88,25 @@ def test_inline_enumeration_is_not_split():
     ]
 
     assert len(_split_at_marker_lines(_reading_lines(items))) == 1
+
+
+def test_text_before_the_first_marker_is_the_documents_own_text(monkeypatch):
+    """A schedule's title and preamble come before its first marker; they used to
+    be dropped from every node. The running masthead is kept once, where it opens
+    the document, and still dropped where it repeats on later pages."""
+    from test.parsing.stub_layout import parse_blocks
+
+    masthead = "SAMPLE SCHEDULE (To be completed and returned)"
+    nodes = parse_blocks(monkeypatch, {
+        1: [(200, "section-header", masthead),
+            (36, "text", "References to the sample terms have the meanings given there."),
+            (36, "section-header", "Part A - Sample Details"),
+            (48, "list-item", "(a) Name of the sample")],
+        2: [(200, "section-header", masthead),
+            (48, "list-item", "(b) Address of the sample")],
+    })
+
+    document = nodes["doc"]
+    assert document["text"].startswith(masthead)
+    assert "References to the sample terms" in document["text"]
+    assert all(masthead not in n["text"] for n in nodes.values() if n is not document)

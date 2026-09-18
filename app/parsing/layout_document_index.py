@@ -999,12 +999,18 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
     clause_node = None
     subclause_node = None
     subitem_stack: list[tuple[str, str]] = []
-    nodes_by_id: dict[str, _WorkingNode] = {}
+    nodes_by_id: dict[str, _WorkingNode] = {n.node_id: n for n in nodes}
     # id of whatever marker node was most recently created - a plain block
     # absorbs into this one, unconditionally, until the next marker of any
     # kind opens (see module docstring: this is what "a node's own span runs
     # up to the next marker" means in a block-based model).
-    last_marker_id: str | None = None
+    #
+    # Before the first marker, that is the document (or sub-document) itself:
+    # its title and preamble are its own text. Left as None, everything ahead of
+    # the first marker was dropped from every node - a schedule's heading and
+    # its "References to ..." preamble, a certificate's addressee - so the
+    # document's own opening could not be located or quoted.
+    last_marker_id: str | None = doc_id
 
     def reset_below_part():
         nonlocal clause_node, subclause_node, subitem_stack, last_marker_id
@@ -1082,6 +1088,7 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
             part_node = None
             current_part = None
             reset_below_part()
+            last_marker_id = segment["node_id"]
 
         for x0, class_name, raw_text, bbox, row_label in blocks_by_page.get(page.page_number, []):
             for index, text in enumerate(_split_block(raw_text, class_name)):
@@ -1125,7 +1132,12 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                                 break
 
                 if kind is None:
-                    if text in furniture_by_scope.get(_scope_of_page(page.page_number), ()):
+                    scope_root = _scope_of_page(page.page_number)
+                    if text in furniture_by_scope.get(scope_root, ()) and last_marker_id != scope_root:
+                        # A running masthead is dropped on every page but the one
+                        # it opens: there, before any marker, it is the document's
+                        # own title ("PRICE SCHEDULE (To be completed and returned
+                        # ...)") and belongs to the document node.
                         run_in_pending = None
                         continue
 
