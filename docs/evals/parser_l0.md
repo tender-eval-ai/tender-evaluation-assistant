@@ -210,3 +210,19 @@ No commit after `6bca266` lowers any metric on any of the three tenders. Tender 
 By level at `1770505` (recall / hierarchy): Tender 2 L0 100 / 100, L1 86.9 / 62.8, L2 100 / 94.3, L3 98.1 / 91.3; Tender 3 L0 96.3 / 95.8, L1 84.5 / 52.8, L2 94.2 / 72.0, L3 98.7 / 100.
 
 Still below target at `1770505`: deep recall (93.1 and 90.8, target 95), hierarchy (77.1 and 65.0) and exact location (89.2 and 87.2) on both tenders, and Tender 3's references citation (90.6). Main causes of the remaining misses: form fields without a marker (signature, name and date lines; the Appendix's address fields), paragraphs and "tail" text the keys count as their own nodes under a heading or after a list, headings and notes that the keys nest their following items under (the parser keeps them as leaves, so every child's parent is off), the Chinese Tender Form's Parts (not recognised as Parts), a desirable-feature flag set as its own block before an item of the Technical Specifications, and Tender 3's Annex A to the Terms of Tender inside TERMS-1, which is not recognised as an annex, so its recitals and execution block run into the clause before it.
+
+## Locate (L0 `app/rulesets/locate.py`, 2026-09-17)
+
+`test/rulesets/test_locate.py -m realdata` on nodes parsed at `9877109`. Items and Parts come from the schedule's page text (ported reader); each item's node and its cited clauses come from the node table and `CitationIndex`. Tender 1 has no checklist key, so its items come from the deep key's level-0 rows and its cited clauses from the deep key's `cited_via`. That key also lists links the item text does not write out, which accounts for all 4 of its misses.
+
+| Tender | Items found | Right Part | Right page | Own node | Cited clauses resolved |
+|---|---|---|---|---|---|
+| Tender 1 | 15/15 | 15/15 | 15/15 | 15/15 | 45/49 (91.8%) |
+| Tender 2 | 13/13 | 13/13 | 13/13 | 13/13 | 41/43 (95.3%) |
+| Tender 3 | 21/21 | 21/21 | 21/21 | 21/21 | 58/65 (89.2%) |
+
+Remaining misses are parser gaps, not locate: no node for the Parts of the Annex A deposit form (Tender 2, 2), the Tender Form in the combined PDF (Tender 3, 2), the numbered items of Price Schedule Part A (Tender 3, 4), or the TERMS Annex A (Tender 3, 1).
+
+The resolver fixes in `8b5ce90` (chains sharing one document name, numbered file names, "respectively", wrapped footer labels) also raise the parser evaluator's references citation: Tender 2 87.5% to 95.0%, Tender 3 84.4% to 89.1%. No other metric changes.
+
+After the second parser pass (`1770505`, fresh parse, same test): items, Parts, pages and own nodes unchanged on all three tenders; cited clauses resolved Tender 1 43/49, Tender 2 42/43, Tender 3 62/65. The two new Tender 1 misses are under investigation.

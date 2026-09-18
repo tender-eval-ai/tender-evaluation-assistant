@@ -74,11 +74,20 @@ _LIST = rf"{_ID}(?:{_ASIDE}\s*(?:,\s*(?:and\s+)?|\s+and\s+|\s+to\s+|\s*[-–]\s*
 _LEVEL_KEYWORD = r"(?:[Pp]aragraphs?|[Cc]lauses?|[Ii]tems?|[Pp]arts?|[Tt]ables?|Annex(?:es)?)"
 _LEVEL = rf"{_LEVEL_KEYWORD}\s+{_LIST}{_ASIDE}"
 _LEVEL_RE = re.compile(rf"(?P<kw>{_LEVEL_KEYWORD})\s+(?P<ids>{_LIST}){_ASIDE}")
+# One target chain written innermost first: "paragraph 1 of Table D".
+_GROUP = rf"{_LEVEL}(?:\s+(?:of|in)\s+(?:the\s+)?{_LEVEL})*"
+_GROUP_RE = re.compile(_GROUP)
 _CHAIN = re.compile(
     # "<Name> - Part IA": the dash form names the document first. Tried first, so
     # "Annex A to the Terms of Tender - Part IA" is not read as the whole annex.
     rf"(?P<dname>{_NAME})\s+[-–—]\s+(?P<dlevel>(?:Part|Table)\s+{_LIST})"
-    rf"|(?P<levels>{_LEVEL}(?:\s+(?:of|in)\s+(?:the\s+)?{_LEVEL})*)\s+(?:of|in|to)\s+the\s+(?P<name>{_NAME})"
+    # Several chains may share one document name: "paragraphs 1 and 2 of Tables A to
+    # C, paragraph 1 of Table D and Part F of the X Schedule". Read as one chain, only
+    # the last group had a name and the others were silently dropped (twelve targets
+    # of one schedule item on Tender 3).
+    # "parts (2) and (3) respectively in the X": an adverb may sit before the name.
+    rf"|(?P<levels>{_GROUP}(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+){_GROUP})*)(?:\s+respectively)?"
+    rf"\s+(?:of|in|to)\s+the\s+(?P<name>{_NAME})"
 )
 _ITEM_MARKER = re.compile(r"\(([a-z]{1,4})\)")
 _ID_TOKEN = re.compile(_ID)
@@ -174,8 +183,13 @@ def _chain_citations(match: re.Match) -> list[Citation]:
     else:
         name = _clean_name(match.group("name"))
         # Written innermost first ("Paragraph 2 of Table A"); resolved outermost first.
-        levels = [_level_targets(m.group("kw"), m.group("ids"))
-                  for m in _LEVEL_RE.finditer(match.group("levels"))][::-1]
+        groups = [[_level_targets(m.group("kw"), m.group("ids")) for m in _LEVEL_RE.finditer(group.group(0))][::-1]
+                  for group in _GROUP_RE.finditer(match.group("levels"))]
+        return [c for levels in groups for c in _citations_for(name, levels)]
+    return _citations_for(name, levels)
+
+
+def _citations_for(name: str, levels: list[list[tuple[str, str]]]) -> list[Citation]:
     citations = []
     for path in itertools.product(*levels):
         kind, ident = path[-1]
@@ -209,6 +223,34 @@ def _minimal_roots(node_ids) -> list[str]:
     return roots
 
 
+# A tender issued as separate files numbers them "01 Tender Form (G.F.999).pdf",
+# "10 Appendix to the Terms of Tender - Contact Details.pdf": after the number, the
+# file name is the document's title.
+_NUMBERED_FILE = re.compile(r"^\d{1,2}[A-Z]?\s+(?P<title>.+?)\.pdf$", re.I)
+
+
+def _file_title(source_file: str | None) -> list[str]:
+    """The names a numbered file gives its document: its title, and the title without
+    a parenthesised form or version number ("(G.F.999)"; a parenthesis without a
+    digit, such as "(Supplement)", is part of the name and stays).
+
+    Some documents name themselves nowhere else: the Tender Form has no footer label,
+    and the Appendix's footer label wraps, so citations of a Part of the Tender Form
+    or an entry of the Appendix resolved to nothing on both multi-file tenders. Only nodes that carry `source_file` (set by whoever
+    parsed the files, as tools/eval_parser.py and app/rulesets/locate.py do) get
+    these names."""
+    match = _NUMBERED_FILE.match((source_file or "").replace("\\", "/").rsplit("/", 1)[-1])
+    if not match:
+        return []
+    title = match.group("title").strip()
+    bare = re.sub(r"\s*\((?=[^()]*\d)[^()]*(?:\([^()]*\))?[^()]*\)\s*", " ", title).strip()
+    # "Appendix to the Terms of Tender - Contact Details" is also cited without its
+    # subtitle.
+    main = re.split(r"\s+[-–—]\s+", bare, maxsplit=1)[0]
+    return list(dict.fromkeys(name for name in (title, bare, main) if name))
+
+
+_TAIL_WORDS = 5
 _ANNEX_HEADING = re.compile(r"^\s*(Annex\s+\S+\s+(?:to|of)\s+the\s+[^\n]+?)\s*$", re.M)
 
 
@@ -260,7 +302,8 @@ class CitationIndex:
             elif node["kind"] == "subdocument" and node.get("doc_name"):
                 register(node["doc_name"], node["node_id"])
             elif node["kind"] == "document":
-                continue
+                for name in _file_title(node.get("source_file")):
+                    register(name, node["node_id"])
             elif node.get("doc_name") and node["node_id"].split(":")[0] not in roots_with_subdocs:
                 # A standalone file - one document, no embedded sub-documents - names
                 # itself only in its page footer, so the whole file is the scope.
@@ -272,13 +315,30 @@ class CitationIndex:
 
     def _scope(self, name: str) -> list[str]:
         """Scope prefixes for a name; if the full name is unknown, try it without a
-        trailing " and ..." or " - subtitle" (a name run that kept going)."""
+        trailing " and ...", " - subtitle" or " in ..." (a name run that kept going:
+        "Part A of the Price Schedule in Local Currency" reads the connector "in"
+        and the capitalised words after it as part of the name)."""
         candidates = [name]
-        for separator in (" and ", " - ", " – "):
+        for separator in (" and ", " - ", " – ", " in "):
             if separator in name:
                 candidates.append(name.rsplit(separator, 1)[0])
         for candidate in candidates:
             prefixes = self.scopes.get(normalise_name(candidate))
+            if prefixes:
+                return prefixes
+        return self._truncated_scope(normalise_name(name))
+
+    def _truncated_scope(self, key: str) -> list[str]:
+        """A footer label that wrapped keeps only its last line: on the combined tender
+        the Appendix to the Terms of Tender is known only by the words after "Appendix
+        to the", and an annex of the Information Schedule only by the end of its
+        parenthesised title. A known name of at
+        least five words that ends the cited name is taken for it; shorter tails ("Terms
+        of Tender" at the end of "Annex A to the Terms of Tender") are real documents
+        of their own, so the longest matching tail wins and short ones never match."""
+        words = key.split()
+        for start in range(1, len(words) - _TAIL_WORDS + 1):
+            prefixes = self.scopes.get(" ".join(words[start:]))
             if prefixes:
                 return prefixes
         return []
