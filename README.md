@@ -133,7 +133,7 @@ pre-commit run --all-files              # exactly what CI's lint job runs
 uv pip compile requirements.txt --python-version 3.12 --universal --generate-hashes -o requirements.lock
 ```
 
-CI on every pull request: `lint` (pre-commit: ruff, gitleaks, large files, merge markers, PDF placement), `test` (the offline suite, installed from `requirements.lock`), `security` (gitleaks over the full history, pip-audit over the lockfile). On `main`, `main-guard` fails when a commit did not arrive through a merged pull request. Opt-in test levels are the pytest markers `orchestrator`, `realdata` and `live`; the default run excludes them and needs no network, tokens or client data.
+CI on every pull request: `lint` (pre-commit: ruff, gitleaks, large files, merge markers, PDF placement), `test` (the offline suite, installed from `requirements.lock`), `security` (gitleaks over the full history, pip-audit over the lockfile). On `main`, `main-guard` fails when a commit did not arrive through a merged pull request. Opt-in test levels are the pytest markers `orchestrator`, `realdata` and `live`; the default run excludes them and needs no network, tokens or client data. Dependabot watches only the GitHub Actions versions; Python versions are fixed by `requirements.lock`, refreshed by hand at each stop point or when pip-audit fails.
 
 ## Repository layout
 
@@ -155,10 +155,16 @@ app/                the pipeline library (shared by CLI and backend)
   usage.py          per-bid token / call / $ accounting, price table, run summaries
   graph.py          LangGraph orchestration: state, checkpoints, interrupts, Send fan-out
   pipeline.py       bidder discovery, offline (fixture) run, console summary
+  jobs/             the run queue and check worker (Procrastinate on Postgres): step pipelines with
+                    per-step checkpoints, pause/resume, results + corrections, `python -m app.jobs.worker`
+  db.py             plain-SQL migrations (migrations/NNN_name.sql, up and down sections)
+  rulesets/         the shared rule-set contract (schema.py), changed only by a `contract` PR
+  engine/           Nasi's rule engine, ported unchanged from Bidding-AI-expert@7e8e273
 backend/            FastAPI service (projects, uploads, jobs, reports API) + Dockerfile
 frontend/           Streamlit review UI (HTTP client of the backend only) + Dockerfile
 mcp_server/         MCP server over the read-only tools + local-model MCP client
 docs/               plan (dated experiment log), detailed specification, interview prep, project report (audit)
+migrations/         SQL migrations applied by app.db.migrate (the worker runs it at start)
 docker-compose.yml  runs both services together
 deploy/cloudrun/    private Cloud Run packaging: nginx ingress sidecar, Cloud Build, setup/deploy scripts
 run_demo.py         CLI (offline demo + orchestrated run over real folders)

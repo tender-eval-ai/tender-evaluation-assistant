@@ -291,7 +291,7 @@ def markdown_table(results: list[Measure], adapter_name: str) -> str:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("adapter", choices=["reference", "langgraph", "queue"])
+    parser.add_argument("adapter", choices=["reference", "langgraph", "queue", "app"])
     parser.add_argument("--out", default="output/orchestrator")
     parser.add_argument("--only", type=int, nargs="*", help="scenario numbers")
     args = parser.parse_args(argv)
