@@ -266,9 +266,16 @@ def test_real_tender_items_parts_and_clauses(tender):
     by_id = {n["node_id"]: n for n in nodes}
 
     def first_text_node(node_id):
-        # A whole-document or heading target is found as its first text node.
+        # A whole-document or heading target is found as its first text node. A
+        # document's own text and its unnumbered headings are only its title and
+        # preamble, so a whole-document target is found as its first marked node.
+        whole = by_id[node_id]["kind"] in ("document", "subdocument")
         for n in nodes:
-            if (n["node_id"] == node_id or n["node_id"].startswith(f"{node_id}:")) and (n.get("text") or "").strip():
+            if whole:
+                inside = n["node_id"].startswith(f"{node_id}:") and (n.get("number") or n.get("label"))
+            else:
+                inside = n["node_id"] == node_id or n["node_id"].startswith(f"{node_id}:")
+            if inside and (n.get("text") or "").strip():
                 return n["node_id"]
         return None
 
