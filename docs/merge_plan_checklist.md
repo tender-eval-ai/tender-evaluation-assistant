@@ -46,7 +46,7 @@ Last updated: 2026-09-18 (Nasi).
 | G2 | No cloud named in code; configuration only | agreed | — (update the plan) |
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
-| I1 | Contract gaps found at S2 (locate, web mock) | open | both |
+| I1 | Contract gaps found at S2 (locate, web mock, Rules window) | open | both (1–2 in PR #35) |
 
 ## A. Corrections to the plan
 
@@ -316,6 +316,15 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   8. `Correction` is the stored record in `openapi.json` and the request body in the doc; name them apart (`Correction`, `CorrectionRequest`).
   9. 422 responses are FastAPI's default body, not the error envelope. `image_url` is relative to the API base; say so in the doc.
   10. A verdict's checks link to field values only by the last part of `field_id`; give each check its `field` key.
+- Proposal, rule-set editing routes (found building the Rules window on the mock, PR #36):
+  11. `openapi.json` is missing GET diff, GET gaps and POST/PATCH/DELETE items, and the `ItemPatch`, `NewItem` and `Diff` schemas; GET ruleset, PUT draft and POST confirm return an untyped dict instead of `RuleSet`.
+  12. No route sets a gap reason (only a whole-draft PUT), and `Gap` has no edit record, so the reason is unattributed. Add `PATCH /ruleset/gaps/{id}` with `reason`, recorded as an `Edit`.
+  13. `ItemPatch.note` is a string but `ItemNote` needs a `kind`; there is no way to edit or remove a note.
+  14. Only `SlotValue` keeps `model_value`; a rule or template edit keeps its original only in the parent version. `Diff.changed[].edit` must allow `null` for changes made by the rule builder.
+  15. PATCH sets `edited`, which does not block confirm, so an edit can clear `needs_input` while a required slot is still empty. Confirm should check the template's required slots, not the status alone.
+  16. The status of an item a person adds is unstated (`edited` or `novel`).
+  17. `RuleSetVersion` timestamps are float seconds while `RuleSet` uses ISO datetimes; the draft's last editor is not exposed, so the UI cannot warn before a `self_approval` 403.
+- Items 1 and 2 are proposed in PR #35.
 - Chenyu:
 - Nasi (2026-09-18): proposed; 1 and 2 before the S2 check, the rest at S3.
 - Decision: open
