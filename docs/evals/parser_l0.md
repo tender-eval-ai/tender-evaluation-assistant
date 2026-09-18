@@ -121,3 +121,17 @@ No commit lowers any metric. The resolver commit is the only large gain (citatio
 | TenderForm-ZH | 13 | 23.1 | 0.0 | NCTC | 34 | 64.7 | 47.1 |
 
 By level (unchanged port, own / length / parent): Tender 2 L1 74.0 / 65.6 / 55.8, L2 82.8 / 75.3 / 78.0; Tender 3 L1 56.4 / 48.5 / 33.5, L2 77.0 / 72.0 / 54.1. Numbered terms documents (ToT, Supplement, GCC, SCC and its annexes) are at 84–99% own node; tables, forms and schedules are where nodes are missing and parents are wrong (the Information Schedule, glossary attachment, Innovative Suggestion Schedule, Price Schedule, Particulars of Goods, Annex A, Appendix, Chinese Tender Form).
+
+## Locate (L0 `app/rulesets/locate.py`, 2026-09-17)
+
+`test/rulesets/test_locate.py -m realdata` on nodes parsed at `9877109`. Items and Parts come from the schedule's page text (ported reader); each item's node and its cited clauses come from the node table and `CitationIndex`. Tender 1 has no checklist key, so its items come from the deep key's level-0 rows and its cited clauses from the deep key's `cited_via`. That key also lists links the item text does not write out, which accounts for all 4 of its misses.
+
+| Tender | Items found | Right Part | Right page | Own node | Cited clauses resolved |
+|---|---|---|---|---|---|
+| Tender 1 | 15/15 | 15/15 | 15/15 | 15/15 | 45/49 (91.8%) |
+| Tender 2 | 13/13 | 13/13 | 13/13 | 13/13 | 41/43 (95.3%) |
+| Tender 3 | 21/21 | 21/21 | 21/21 | 21/21 | 58/65 (89.2%) |
+
+Remaining misses are parser gaps, not locate: no node for the Parts of the Annex A deposit form (Tender 2, 2), the Tender Form in the combined PDF (Tender 3, 2), the numbered items of Price Schedule Part A (Tender 3, 4), or the TERMS Annex A (Tender 3, 1).
+
+The resolver fixes in `8b5ce90` (chains sharing one document name, numbered file names, "respectively", wrapped footer labels) also raise the parser evaluator's references citation: Tender 2 87.5% to 95.0%, Tender 3 84.4% to 89.1%. No other metric changes.
