@@ -70,6 +70,59 @@ _ANNEX = re.compile(
 # boundary - without it, Tender 3's 366-page combined PDF yields 170 colliding
 # (part, number) keys, since a dozen embedded documents each have a clause 1.
 _FOOTER = re.compile(r"([A-Z][A-Za-z ()\-]{4,45}?)\s+Page\s+(\d+)\s+of\s+(\d+)")
+# Page numbering the footer pattern cannot read, tried only where it finds
+# nothing, so every sub-document it already names keeps its name (and its id):
+#  - the name on its own line above "Page N of M", when it carries digits or
+#    full stops the footer pattern excludes: TERMS-1's own
+#    "Ref. No. TERMS-1 (June 2025)" over "Page 1 of 173";
+#  - the name on the line below "Page N of M" printed as a header: the Tender
+#    Form's "Page 1 of 3" over "G.F. 230 (Rev. 02/25) (English Version)";
+#  - Chinese numbering "第一頁，共三頁" over the same form code, for the Chinese
+#    Tender Form bound behind the English one.
+# Without these, Tender 3's Chinese Tender Form ran on as part of the
+# English one and TERMS-1 was no document at all.
+_PAGE_NAME_ABOVE = re.compile(r"(?m)^[ \t]*(\S[^\n]{3,60}?)[ \t]*\n[ \t]*Page[ \t]+(\d+)[ \t]+of[ \t]+(\d+)")
+_PAGE_NAME_BELOW = re.compile(r"Page[ \t]+(\d+)[ \t]+of[ \t]+(\d+)[ \t]*\n[ \t]*(\S[^\n]{3,60}?)[ \t]*\n")
+_ZH_PAGE_NAME_BELOW = re.compile(r"第([〇零一二三四五六七八九十百]+)頁，共([〇零一二三四五六七八九十百]+)頁[ \t]*\n[ \t]*(\S[^\n]{3,60}?)[ \t]*\n")
+_ZH_DIGITS = {c: i for i, c in enumerate("零一二三四五六七八九")} | {"〇": 0}
+
+
+def _zh_number(text: str) -> int:
+    """"一" -> 1, "十二" -> 12, "二十" -> 20, "一百零三" -> 103."""
+    total, current = 0, 0
+    for char in text:
+        if char in _ZH_DIGITS:
+            current = _ZH_DIGITS[char]
+        elif char == "十":
+            total += (current or 1) * 10
+            current = 0
+        elif char == "百":
+            total += (current or 1) * 100
+            current = 0
+    return total + current
+
+
+def _squash_name(name: str) -> str:
+    """A sub-document name with its spacing removed: the same form prints
+    "(Rev.12/22)" on one page and "(Rev. 12/22)" on the next."""
+    return re.sub(r"\s+", "", name)
+
+
+def _page_footer(text: str) -> tuple[str, int] | None:
+    """(sub-document name, page position) from a page's numbering, or None."""
+    match = _FOOTER.search(text)
+    if match:
+        return match.group(1).strip(), int(match.group(2))
+    match = _PAGE_NAME_ABOVE.search(text)
+    if match and not re.match(r"Page\s+\d+\s+of\s+\d+", match.group(1)):
+        return match.group(1).strip(), int(match.group(2))
+    match = _PAGE_NAME_BELOW.search(text)
+    if match:
+        return match.group(3).strip(), int(match.group(1))
+    match = _ZH_PAGE_NAME_BELOW.search(text)
+    if match:
+        return match.group(3).strip(), _zh_number(match.group(1))
+    return None
 # "20." + newline/space + Title  -> a top-level clause. The trailing period is what
 # separates it from a sub-clause.
 _CLAUSE = re.compile(r"(?m)^[ \t]*(\d+)\.[ \t]*\n?[ \t]*([A-Z][^\n]*)")
@@ -154,8 +207,8 @@ def detect_subdocuments(pages) -> list[dict]:
     segments: list[dict] = []
     unfooted = 0
     for page in pages:
-        match = _FOOTER.search(page.native_text or "")
-        if not match:
+        footer = _page_footer(page.native_text or "")
+        if not footer:
             # Carry a segment across the odd unfooted page (a full-page table, an
             # image), but not across a long run - TERMS-1's own footer carries a
             # version number the pattern can't match, so without this bound the
@@ -165,8 +218,8 @@ def detect_subdocuments(pages) -> list[dict]:
                 segments[-1]["last_page"] = page.page_number
             continue
         unfooted = 0
-        name, position = match.group(1).strip(), int(match.group(2))
-        if position == 1 or not segments or segments[-1]["name"] != name:
+        name, position = footer
+        if position == 1 or not segments or _squash_name(segments[-1]["name"]) != _squash_name(name):
             segments.append({"name": name, "first_page": page.page_number, "last_page": page.page_number})
         else:
             segments[-1]["last_page"] = page.page_number
