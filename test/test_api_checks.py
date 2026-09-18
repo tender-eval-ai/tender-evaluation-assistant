@@ -149,6 +149,7 @@ def test_a_check_through_the_worker_yields_fields_with_citations_a_verdict_and_i
     sig = res["fields"]["l"]["signature"]
     assert sig["value"] == "authorised signatory" and sig["page"]["page"] == 13 and sig["page"]["file"] == "offer.pdf"
     assert sig["confidence"] == 0.92 and sig["redacted"] is False
+    assert sig["page"]["quote"] is None and sig["page"]["box"] is None      # Tenderer_B is scanned: no text layer
     assert client.get(sig["page"]["image_url"]).headers["content-type"] == "image/png"
     verdict = res["verdicts"]["l"]
     assert verdict["outcome"] == "pass" and verdict["part"] == "A" and len(verdict["checks"]) == 4 and verdict["evidence"]

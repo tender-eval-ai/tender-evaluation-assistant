@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import io
 import os
+import re
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -56,15 +57,14 @@ def classify_pdf(path: Path, sample_pages: int = 5) -> str:
     return "text" if chars / n >= SCAN_THRESHOLD else "scanned"
 
 
-def _highlight_rects(page, query: str) -> list[tuple[float, float, float, float]]:
-    """Line rectangles (PDF points, bottom-left origin) of the first occurrence of
-    `query` on the page. LLM quotes rarely match the PDF verbatim and pdfium search
-    does not cross line breaks, so progressively shorter leading word-runs are tried.
-    Scanned pages have no text layer — they simply return no rects."""
-    import re
+def _find_on_page(page, query: str) -> tuple[str | None, list[tuple[float, float, float, float]]]:
+    """The text found and its line rectangles (PDF points, bottom-left origin) for the
+    first occurrence of `query` on the page. LLM quotes rarely match the PDF verbatim
+    and pdfium search does not cross line breaks, so progressively shorter leading
+    word-runs are tried. Scanned pages have no text layer: (None, [])."""
     words = re.sub(r"\s+", " ", query or "").strip().split(" ")
     if not words:
-        return []
+        return None, []
     textpage = page.get_textpage()
     for n in dict.fromkeys([len(words), 10, 6, 4, 3]):
         if n > len(words):
@@ -75,9 +75,45 @@ def _highlight_rects(page, query: str) -> list[tuple[float, float, float, float]
         match = textpage.search(needle, match_case=False).get_next()
         if match:
             index, count = match
-            return [textpage.get_rect(i)
-                    for i in range(textpage.count_rects(index, count))]
-    return []
+            return (textpage.get_text_range(index, count),
+                    [textpage.get_rect(i) for i in range(textpage.count_rects(index, count))])
+    return None, []
+
+
+def _highlight_rects(page, query: str) -> list[tuple[float, float, float, float]]:
+    return _find_on_page(page, query)[1]
+
+
+@dataclass(frozen=True)
+class QuoteBox:
+    """Where a quote sits on a page: the text as the text layer has it, its bounding box
+    [x0, y0, x1, y1] in PDF points with the origin at the page's top-left (y grows down,
+    as on the rendered image), and the page's [width, height] in points."""
+    quote: str
+    box: tuple[float, float, float, float]
+    page_size: tuple[float, float]
+
+
+def locate_quote(path: Path, page_index: int, query: str) -> QuoteBox | None:
+    """The quote's place on the page's text layer, or None (not found, scanned page, bad page)."""
+    import pypdfium2 as pdfium
+
+    with _PDFIUM_LOCK:
+        pdf = pdfium.PdfDocument(str(path))
+        try:
+            if not 0 <= page_index < len(pdf):
+                return None
+            page = pdf[page_index]
+            found, rects = _find_on_page(page, query)
+            if not rects:
+                return None
+            w, h = page.get_size()
+            x0, x1 = min(r[0] for r in rects), max(r[2] for r in rects)
+            y0, y1 = h - max(r[3] for r in rects), h - min(r[1] for r in rects)
+            return QuoteBox(quote=re.sub(r"\s+", " ", found or query).strip(),
+                            box=tuple(round(v, 1) for v in (x0, y0, x1, y1)), page_size=(round(w, 1), round(h, 1)))
+        finally:
+            pdf.close()
 
 
 def render_page_png(path: Path, page_index: int, scale: float = 2.0,

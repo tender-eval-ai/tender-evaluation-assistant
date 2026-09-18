@@ -8,6 +8,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends
 
 from app.checks.extract_item_l import PREFIX as ITEM_L_PREFIX
+from app.ingest import QuoteBox, locate_quote
 from app.jobs.models import RunStatus
 from backend import deps, signing
 from backend.errors import ApiError
@@ -80,12 +81,25 @@ def get_job(pid: str, job_id: str) -> Job:
 def _bid_result(pid: str, pdir, run: dict, result, steps: dict) -> BidResult:
     docs = {d["file"]: d for d in deps.documents_of(pdir) if d["tenderer"] == run["tenderer"]}
 
-    def cite(page_ref: dict | None) -> PageCitation | None:
+    located: dict[tuple, QuoteBox | None] = {}
+
+    def cite(page_ref: dict | None, text=None) -> PageCitation | None:
+        """The page a value was read from; with `text` found on its text layer, also the
+        quote, its box and a signed highlighted image link."""
         if not page_ref or page_ref.get("doc") not in docs:
             return None
-        d = docs[page_ref["doc"]]
-        return PageCitation(doc_id=d["doc_id"], file=d["file"], page=page_ref["page"],
-                            image_url=signing.image_url(pid, d["doc_id"], page_ref["page"]))
+        d, page = docs[page_ref["doc"]], page_ref["page"]
+        at = None
+        if isinstance(text, str) and len(text.strip()) >= 4:
+            k = (d["doc_id"], page, text)
+            if k not in located:
+                located[k] = locate_quote(d["path"], page - 1, text)
+            at = located[k]
+        if at is None:
+            return PageCitation(doc_id=d["doc_id"], file=d["file"], page=page,
+                                image_url=signing.image_url(pid, d["doc_id"], page))
+        return PageCitation(doc_id=d["doc_id"], file=d["file"], page=page, quote=at.quote, box=list(at.box),
+                            page_size=list(at.page_size), image_url=signing.image_url(pid, d["doc_id"], page, at.quote))
 
     fields: dict[str, dict[str, FieldValue]] = defaultdict(dict)
     for key, value in result.fields.items():
@@ -100,12 +114,12 @@ def _bid_result(pid: str, pdir, run: dict, result, steps: dict) -> BidResult:
             value=correction["value"] if correction else value,
             redacted=bool(result.fields.get(f"{key}_redacted")),
             confidence=result.fields.get(f"{key}_confidence"),
-            page=cite(result.fields.get(f"{key}_page")),
+            page=cite(result.fields.get(f"{key}_page"), result.fields.get(f"{key}_quote") or value),
             correction=correction, model_value=value if correction else None)
     v = result.verdict
     checks = [CheckedField(field_id=f["field_id"], status=f["status"], note=f.get("note"), redacted=bool(f.get("redacted")),
                            stage=f.get("stage", "I"), follow_up=f.get("follow_up")) for f in v.get("fields", [])]
-    evidence = [c for c in (cite(f.get("page")) for f in v.get("fields", [])) if c]
+    evidence = [c for c in (cite(f.get("page"), f.get("value")) for f in v.get("fields", [])) if c]
     letter = v.get("item", "l")
     verdict = Verdict(outcome=v["outcome"], worst=v.get("worst", v["outcome"]), part=v["part"], rule_ids=v["rule_ids"],
                       reason="; ".join(v.get("reasons", [])), checks=checks, evidence=evidence)

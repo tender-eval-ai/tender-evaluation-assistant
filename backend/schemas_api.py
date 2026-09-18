@@ -35,13 +35,21 @@ class CheckResponse(BaseModel):
 
 
 class PageCitation(BaseModel):
-    """Where a value was read: the page, and a signed URL to its image. A verbatim quote
-    arrives with V4 quote verification (S4)."""
+    """Where a value was read: the page, and a signed URL to its image. When the value is
+    found on the page's text layer, `quote` is that text as the page has it, `box` its
+    place and `image_url` renders it highlighted; on a scanned page all three stay plain
+    (quote and box null). Verified quotes on scanned pages arrive with V4 (S4)."""
 
     doc_id: str
     file: str
     page: int
-    image_url: str
+    image_url: str = Field(description="signed, short-lived; carries a signed `highlight` when `quote` is set. "
+                                       "Use it as given: do not add or change query parameters")
+    quote: str | None = Field(default=None, description="the text the value was read from, as on the page's text layer")
+    box: list[float] | None = Field(default=None, min_length=4, max_length=4,
+                                    description="[x0, y0, x1, y1] around `quote`, PDF points, origin top-left, y down")
+    page_size: list[float] | None = Field(default=None, min_length=2, max_length=2,
+                                          description="[width, height] of the page in PDF points, set with `box`")
 
 
 class Correction(BaseModel):
@@ -100,6 +108,8 @@ class BidResult(BaseModel):
 class Document(BaseModel):
     doc_id: str
     file: str
+    path: str = Field(description="relative to the project, as a rule-set Citation.file names it, "
+                                  "e.g. 'tender/09 Schedules.pdf' or 'bids/Tenderer_A/offer.pdf'")
     kind: Literal["tender", "bid"]
     tenderer: str | None = None
     pages: int

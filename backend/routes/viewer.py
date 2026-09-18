@@ -20,7 +20,7 @@ keyed = APIRouter(dependencies=[Depends(deps.require_key)])
 def list_documents(pid: str) -> list[Document]:
     pdir = deps._project_dir(pid)
     data_class = deps.data_class_of(pdir)
-    return [Document(doc_id=d["doc_id"], file=d["file"], kind=d["kind"], tenderer=d["tenderer"],
+    return [Document(doc_id=d["doc_id"], file=d["file"], path=d["rel"], kind=d["kind"], tenderer=d["tenderer"],
                      pages=len(PdfReader(str(d["path"])).pages), data_class=data_class) for d in deps.documents_of(pdir)]
 
 
@@ -55,8 +55,9 @@ def list_pages(pid: str, doc_id: str) -> list[Page]:
 @router.get("/projects/{pid}/documents/{doc_id}/pages/{n}/image")
 def page_image(pid: str, doc_id: str, n: int, exp: int | None = None, sig: str | None = None,
                highlight: str | None = None, x_api_key: str | None = Header(default=None)) -> Response:
-    """A signed URL (from Page.image_url or a citation) or the API key opens it."""
-    if not (signing.verify(pid, doc_id, n, exp, sig) or (deps.API_KEY and deps._key_ok(x_api_key))
+    """A signed URL (from Page.image_url or a citation) or the API key opens it. A
+    citation with a quote on a text layer carries `highlight` inside its signed URL."""
+    if not (signing.verify(pid, doc_id, n, exp, sig, highlight) or (deps.API_KEY and deps._key_ok(x_api_key))
             or (not deps.API_KEY and sig is None and exp is None)):
         raise ApiError(403, "forbidden", "the image link is invalid or has expired")
     pdir = deps._project_dir(pid)

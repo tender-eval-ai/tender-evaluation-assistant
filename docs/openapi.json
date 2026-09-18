@@ -460,6 +460,11 @@
             "title": "Pages",
             "type": "integer"
           },
+          "path": {
+            "description": "relative to the project, as a rule-set Citation.file names it, e.g. 'tender/09 Schedules.pdf' or 'bids/Tenderer_A/offer.pdf'",
+            "title": "Path",
+            "type": "string"
+          },
           "tenderer": {
             "anyOf": [
               {
@@ -475,6 +480,7 @@
         "required": [
           "doc_id",
           "file",
+          "path",
           "kind",
           "pages",
           "data_class"
@@ -972,8 +978,25 @@
         "type": "object"
       },
       "PageCitation": {
-        "description": "Where a value was read: the page, and a signed URL to its image. A verbatim quote\narrives with V4 quote verification (S4).",
+        "description": "Where a value was read: the page, and a signed URL to its image. When the value is\nfound on the page's text layer, `quote` is that text as the page has it, `box` its\nplace and `image_url` renders it highlighted; on a scanned page all three stay plain\n(quote and box null). Verified quotes on scanned pages arrive with V4 (S4).",
         "properties": {
+          "box": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "maxItems": 4,
+                "minItems": 4,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "[x0, y0, x1, y1] around `quote`, PDF points, origin top-left, y down",
+            "title": "Box"
+          },
           "doc_id": {
             "title": "Doc Id",
             "type": "string"
@@ -983,12 +1006,42 @@
             "type": "string"
           },
           "image_url": {
+            "description": "signed, short-lived; carries a signed `highlight` when `quote` is set. Use it as given: do not add or change query parameters",
             "title": "Image Url",
             "type": "string"
           },
           "page": {
             "title": "Page",
             "type": "integer"
+          },
+          "page_size": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "maxItems": 2,
+                "minItems": 2,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "[width, height] of the page in PDF points, set with `box`",
+            "title": "Page Size"
+          },
+          "quote": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the text the value was read from, as on the page's text layer",
+            "title": "Quote"
           }
         },
         "required": [
@@ -2338,7 +2391,7 @@
     },
     "/projects/{pid}/documents/{doc_id}/pages/{n}/image": {
       "get": {
-        "description": "A signed URL (from Page.image_url or a citation) or the API key opens it.",
+        "description": "A signed URL (from Page.image_url or a citation) or the API key opens it. A\ncitation with a quote on a text layer carries `highlight` inside its signed URL.",
         "operationId": "page_image_projects__pid__documents__doc_id__pages__n__image_get",
         "parameters": [
           {
