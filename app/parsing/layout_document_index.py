@@ -425,6 +425,13 @@ def _run_in_chain(text: str, start: int) -> list[int]:
     return []
 
 
+# Where a sentence resumes after the run-in list inside it: a comma and a
+# finite verb whose subject is the whole list ("(a) ...; or (b) the Tenderer,
+# has been convicted"), or a new sentence after the last item's full stop.
+_RUN_IN_TAIL = re.compile(
+    r",(?=\s+(?:is|are|was|were|has|have|had|shall|will|may|must|does|do)\s)|[.;](?=\s+[A-Z])")
+
+
 def _split_run_in_items(text: str) -> list[tuple[str, bool]]:
     """Split `text` at each item of every run-in list inside it, nested lists
     included. Each piece is (text, opens_list): True for a list's first item,
@@ -1336,6 +1343,21 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
             nodes.append(node)
             nodes_by_id[node_id] = node
             last_id = node_id
+        last = nodes_by_id[last_id]
+        tail = _RUN_IN_TAIL.search(last.text) if last_id != host else None
+        if tail:
+            # The sentence resumes after its list: "..., (c) the Tenderer, shall
+            # comply with ..." - "shall comply" is the host's text again. It is
+            # added as a tail node of the host, and the last item keeps it too,
+            # as run-in items keep the text they were cut from (the answer key
+            # for Tender 2 measures the last item with it).
+            tail_id = _unique(f"{host}:tail", seen_ids)
+            tail_node = _WorkingNode(
+                tail_id, host, "subitem", nodes_by_id[host].part, None, None, page_number,
+                last.text[tail.end():].strip(), 0, bbox=bbox, **_ident(doc_ident, page_number),
+            )
+            nodes.append(tail_node)
+            nodes_by_id[tail_id] = tail_node
 
     for page in pages:
         emit_run_in_items()

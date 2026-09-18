@@ -116,3 +116,23 @@ def test_nested_run_in_items_nest_and_the_following_text_still_joins_the_host(mo
     assert nodes["doc:4.1:(b):(ii)"]["parent_id"] == "doc:4.1:(b)"
     assert nodes["doc:4.1:(c)"]["parent_id"] == "doc:4.1"
     assert nodes["doc:4.1"]["text"].endswith("A closing sentence of the same clause.")
+
+
+def test_the_sentence_resuming_after_a_run_in_list_is_a_tail_node(monkeypatch):
+    """After a list of alternatives inside one sentence, the sentence carries on
+    ("..., shall comply"): that text is a tail node of the host. The last item
+    keeps it too, as run-in items keep the text they were cut from."""
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (36, "list-item", "9.1 The sample terms may specify that (a) the sample goods; and/or (b) the "
+                          "sample maker, shall comply with the sample requirements."),
+        (36, "list-item", "9.2 A sample may be (a) blue; or (b) red. Its size is set out below."),
+        (36, "list-item", "9.3 A sample is (a) blue; or (b) red, as the buyer prefers."),
+    ]})
+
+    assert nodes["doc:9.1:tail"]["text"] == "shall comply with the sample requirements."
+    assert nodes["doc:9.1:tail"]["parent_id"] == "doc:9.1"
+    assert nodes["doc:9.1:(b)"]["text"].endswith("shall comply with the sample requirements.")
+    assert nodes["doc:9.2:tail"]["text"] == "Its size is set out below."
+    assert not any(n["node_id"].startswith("doc:9.3:tail") for n in nodes.values())
