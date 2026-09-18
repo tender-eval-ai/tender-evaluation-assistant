@@ -167,3 +167,54 @@ def test_the_first_heading_after_a_part_without_a_title_is_its_title(monkeypatch
 
     assert nodes["doc:PIA"]["text"] == "Part IA\nMethod of Sample Payment"
     assert nodes["doc:PIB:heading"]["text"] == "Refund Options"
+
+
+def test_blank_form_fields_are_nodes_of_their_own(monkeypatch):
+    """A signature block's and a contact list's blank fields are nodes, added the
+    way run-in sub-items are: the host keeps its text. A field the layout model
+    took for page furniture (class "field") was never in any node and stands
+    under the document."""
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (200, "section-header", "SAMPLE CERTIFICATE"),
+        (36, "list-item", "6. The Tenderer certifies the last matter."),
+        (48, "text", "Name of the signatory (where applicable) : Title of the signatory (where applicable) :"),
+        (48, "text", "Date :"),
+        (36, "text", "The Tenderer shall provide the details below:"),
+        (48, "field", "Name of Bidder:"),
+    ]})
+
+    fields = {n["node_id"]: n for n in nodes.values() if ":field" in n["node_id"]}
+    assert [(n["parent_id"], n["text"]) for n in fields.values()] == [
+        ("doc:6", "Name of the signatory (where applicable) :"),
+        ("doc:6", "Title of the signatory (where applicable) :"),
+        ("doc:6", "Date :"),
+        ("doc", "Name of Bidder:"),
+    ]
+    assert nodes["doc:6"]["text"].endswith("Date :\nThe Tenderer shall provide the details below:")
+    assert "Name of Bidder" not in nodes["doc:6"]["text"]
+
+
+def test_a_field_label_is_told_from_a_sentence_ending_in_a_colon():
+    from app.parsing.layout_document_index import _field_labels
+
+    assert _field_labels("Name of Bidder: ________") == ["Name of Bidder: ________"]
+    assert _field_labels("Name of witness: Title of witness:") == ["Name of witness:", "Title of witness:"]
+    assert _field_labels("日期 ：") == ["日期 ："]
+    assert _field_labels("Signed by the Tenderer / Signed by a signatory for and on behalf of the Tenderer :")
+    for prose in ("The Tenderer shall provide the information below:", "“Tender Form” means:",
+                  "in the presence of :", "Signed by a signatory for and on behalf of the Sample Company:",
+                  "Address: 1 Sample Road", "上述文件亦可在下列辦事處索取："):
+        assert _field_labels(prose) is None, prose
+
+
+def test_a_colon_set_in_its_own_column_joins_the_label_on_its_line():
+    from app.parsing.layout_document_index import _attach_stray_colons
+
+    blocks = [(56, "text", "Name of the Tenderer", [56, 400, 150, 410], None),
+              (56, "text", "Date", [56, 485, 80, 495], None),
+              (273, "text", ":", [273, 403, 276, 413], None),
+              (273, "text", ":", [273, 488, 276, 498], None)]
+
+    assert [b[2] for b in _attach_stray_colons(blocks)] == ["Name of the Tenderer :", "Date :"]

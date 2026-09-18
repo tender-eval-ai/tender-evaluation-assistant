@@ -812,6 +812,75 @@ def _is_heading(text: str, x0: float, class_name: str, subitem_stack, nodes_by_i
     return True
 
 
+# A form field is a label and a colon with the answer space left blank (a name,
+# date, address or telephone label, in English or Chinese). A block of nothing
+# but such labels is a row of fields, not prose. What tells a label from a
+# sentence that introduces a list, or a definition ending in "means:", is that
+# the label is a short noun phrase: no verb or pointer word, a capital (or a CJK
+# character) first, at most eight words - unless it offers alternatives with
+# "/" (a signature line naming who may sign), which prose ending in a colon
+# never does.
+_FIELD_STOPWORDS = frozenset(
+    "following follows below above means include includes including shall is are be "
+    "which that if would will may must witnesses contain contains comprising".split())
+_FIELD_CJK_STOPWORDS = ("下列", "以下", "如下", "，", "。")
+_FIELD_MAX_WORDS = 8
+_FIELD_MAX_CHARS = 100
+
+
+def _field_labels(text: str) -> list[str] | None:
+    """The field labels a block consists of, one per label, or None when the
+    block is not a row of blank form fields. A single label keeps the block's
+    own text, answer line of underscores and all."""
+    body = re.sub(r"[\s_.…]+$", "", text.strip())
+    if not body.endswith((":", "：")):
+        return None
+    labels = re.split(r"(?<=[:：])\s+(?=\S)", body)
+    for label in labels:
+        name = label.rstrip(":： ").lstrip("*#^ “\"")
+        if not label.endswith((":", "：")) or not name or len(name) > _FIELD_MAX_CHARS or ". " in name:
+            return None
+        first = name[0]
+        if first.isascii() and not first.isupper():
+            return None
+        if first >= "\u2e80":
+            if any(stop in name for stop in _FIELD_CJK_STOPWORDS) or len(name) > 20:
+                return None
+            continue
+        words = [w.strip("()“”\"',").lower() for w in name.split()]
+        if any(w in _FIELD_STOPWORDS for w in words):
+            return None
+        if len(words) > _FIELD_MAX_WORDS and "/" not in name:
+            return None
+    return labels if len(labels) > 1 else [text.strip()]
+
+
+def _attach_stray_colons(blocks: list) -> list:
+    """Join a block that is nothing but a colon to the label on its line.
+
+    A form sets its colons in a column of their own, to the right of its
+    labels, and the layout model returns each colon as a block of
+    its own, listed after the whole form. The label then reads without its
+    colon and the colon is an orphan paragraph of whatever node came last.
+    The colon goes back to the block to its left that shares most of its
+    height."""
+    out = list(blocks)
+    for colon in [b for b in blocks if b[2] in (":", "：") and b[1] != "table"]:
+        cx0, _cls, _text, cb, _label = colon
+        best, best_overlap = None, 0.0
+        for index, (x0, cls, text, bbox, label) in enumerate(out):
+            if out[index] is colon or cls == "table" or bbox[2] > cx0 + 1:
+                continue
+            overlap = min(bbox[3], cb[3]) - max(bbox[1], cb[1])
+            if overlap > best_overlap:
+                best, best_overlap = index, overlap
+        if best is not None:
+            x0, cls, text, bbox, label = out[best]
+            out[best] = (x0, cls, f"{text} {colon[2]}", bbox, label)
+            out.remove(colon)
+    return out
+
+
 # Text items a `picture` group must carry to be read as a table instead.
 _PICTURE_MIN_TEXT_ITEMS = 8
 
@@ -837,9 +906,23 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
     all_texts = data_dict.get("text", [])
     all_bboxes = data_dict.get("bboxes", [])
 
-    blocks = []
+    blocks, header_fields, footer_fields = [], [], []
     for g in groups:
         class_name = g["class_name"]
+        if class_name in ("page-header", "page-footer"):
+            # The layout model takes a signature line near the foot of a form
+            # (the tenderer's name label above the real footer) or a field row at
+            # its head for page furniture. A header or footer made of blank
+            # form fields is the form's own content and is kept, as class
+            # "field" so the main loop knows no node ever held its text.
+            items = [(all_texts[i], all_bboxes[i]) for i in g.get("indicies", [])
+                     if 0 <= i < len(all_texts) and i < len(all_bboxes)]
+            text = _join_lines(_reading_lines(items)).strip()
+            if _field_labels(text):
+                bbox = list(g["group_bbox"])
+                kept = (header_fields if class_name == "page-header" else footer_fields)
+                kept.append((bbox[0], "field", text, bbox, None))
+            continue
         if class_name == "picture" and len(g.get("indicies") or []) >= _PICTURE_MIN_TEXT_ITEMS:
             # A table the layout model took for a picture. Dropped as a
             # picture, its whole text layer was lost - the Price Schedule's
@@ -869,7 +952,7 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
                 max(b[2] for line in piece for _, b in line), max(b[3] for line in piece for _, b in line),
             ]
             blocks.append((bbox[0], class_name, text, bbox, row_label))
-    return blocks
+    return _attach_stray_colons(header_fields + blocks + footer_fields)
 
 
 def _classify_marker(text: str):
@@ -1205,6 +1288,37 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                             page.page_number, text, 0,
                             bbox=bbox, **_ident(doc_ident, page.page_number),
                         ))
+                        run_in_pending = None
+                        continue
+
+                    labels = _field_labels(text) if class_name in ("text", "list-item", "field") else None
+                    if labels:
+                        # Blank form fields - a signature block's name and date
+                        # lines, a contact list's address and telephone labels -
+                        # could not be located: they only
+                        # ran on into the clause or item before them. One node
+                        # per label, added the way run-in sub-items are: the
+                        # host keeps its whole text (Tender 1's hand-checked
+                        # lengths count a signature block in the clause above
+                        # it) and stays the node later text joins, and the field
+                        # is its child. A field the layout model took for page
+                        # furniture (class "field", see `_layout_blocks`) was
+                        # never any node's text, so it stands under the
+                        # enclosing Part or document instead.
+                        rescued = class_name == "field"
+                        host = last_marker_id if last_marker_id in nodes_by_id else None
+                        if rescued or host is None:
+                            host = current_scope or part_node or doc_id
+                        else:
+                            nodes_by_id[host].text += "\n" + text
+                        for label in labels:
+                            node_id = _unique(f"{host}:field", seen_ids)
+                            node = _WorkingNode(
+                                node_id, host, "subitem", current_part, None, None, page.page_number, label, 0,
+                                bbox=bbox, **_ident(doc_ident, page.page_number),
+                            )
+                            nodes.append(node)
+                            nodes_by_id[node_id] = node
                         run_in_pending = None
                         continue
 
