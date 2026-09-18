@@ -785,6 +785,9 @@ def _closed_list_depth(x0: float, class_name: str, subitem_stack, nodes_by_id) -
         opener = nodes_by_id.get(subitem_stack[depth][1])
         if opener is not None and opener.bbox and abs(x0 - opener.bbox[0]) <= _MARKER_COLUMN_SLACK:
             return depth
+    return None
+
+
 def _is_heading(text: str, x0: float, class_name: str, subitem_stack, nodes_by_id, last_marker_id) -> bool:
     """Is this markerless block a heading of its own rather than text of the
     node before it?
@@ -807,9 +810,6 @@ def _is_heading(text: str, x0: float, class_name: str, subitem_stack, nodes_by_i
     if last is not None and last.kind in ("part", "annex") and not last.title and "\n" not in last.text:
         return False
     return True
-
-
-    return None
 
 
 # Text items a `picture` group must carry to be read as a table instead.
@@ -1180,6 +1180,9 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                     if text in furniture_by_scope.get(scope_root, ()) and last_marker_id != scope_root:
                         # A running masthead is dropped on every page but the one
                         # it opens: there, before any marker, it is the document's
+                        # own title ("PRICE SCHEDULE (To be completed and returned
+                        # ...)") and belongs to the document node.
+                        run_in_pending = None
                         continue
 
                     if _is_heading(text, x0, class_name, subitem_stack, nodes_by_id, last_marker_id) \
@@ -1202,8 +1205,6 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                             page.page_number, text, 0,
                             bbox=bbox, **_ident(doc_ident, page.page_number),
                         ))
-                        # own title ("PRICE SCHEDULE (To be completed and returned
-                        # ...)") and belongs to the document node.
                         run_in_pending = None
                         continue
 
