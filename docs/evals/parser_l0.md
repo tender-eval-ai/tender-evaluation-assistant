@@ -64,41 +64,41 @@ Main causes: the resolver only understands "Paragraph N of the X" (Tables, sched
 
 The first improvement pass ran before the deep keys existed and was stopped so the node-level baseline could be measured first. Every column is scored with the current evaluator; the checklist-level baseline is slightly higher than the table above because commit `79c106a` fixed how "part (N)" references are scored.
 
-Columns: `a45f300` unchanged port · `93f0ab7` document node page · `e14f121` Parts under their sub-document · `b6a69cb` block lines by vertical overlap · `96857ed` resolver for Tables/Parts/rows/annexes/whole documents · `11ae315` split blocks at a marker in the marker column.
+Columns: `a45f300` unchanged port · `93f0ab7` document node page · `e14f121` Parts under their sub-document · `b6a69cb` block lines by vertical overlap · `96857ed` resolver for Tables/Parts/rows/annexes/whole documents · `11ae315` split blocks at a marker in the marker column · `6bca266` table blocks split into rows from the detected grid, read cell by cell (measured with `9877109`, which changes only the evaluator).
 
 **Tender 2**
 
-| Metric | a45f300 | 93f0ab7 | e14f121 | b6a69cb | 96857ed | 11ae315 |
-|---|---|---|---|---|---|---|
-| schedule coverage / page / position | 100 / 100 / 100 | 100 / 100 / 100 | 100 / 100 / 100 | 100 / 100 / 100 | 100 / 100 / 100 | 100 / 100 / 100 |
-| schedule length | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 |
-| references coverage / page | 92.5 | 95.0 | 95.0 | 95.0 | 95.0 | 95.0 |
-| references position | 90.0 | 92.5 | 92.5 | 92.5 | 92.5 | 92.5 |
-| references length | 82.5 | 85.0 | 90.0 | 90.0 | 90.0 | 90.0 |
-| references citation | 50.0 | 50.0 | 50.0 | 50.0 | 87.5 | 87.5 |
-| deep own node / page | 79.5 | 79.5 | 79.5 | 80.7 | 80.7 | 80.8 |
-| deep reachable | 93.3 | 93.3 | 93.3 | 94.7 | 94.7 | 94.7 |
-| deep length | 71.7 | 71.7 | 71.7 | 72.9 | 72.9 | 73.0 |
-| deep parent | 68.0 | 68.0 | 68.0 | 68.4 | 68.4 | 68.4 |
+| Metric | a45f300 | 93f0ab7 | e14f121 | b6a69cb | 96857ed | 11ae315 | 6bca266 |
+|---|---|---|---|---|---|---|---|
+| schedule coverage / page / position | 100 / 100 / 100 | 100 / 100 / 100 | 100 / 100 / 100 | 100 / 100 / 100 | 100 / 100 / 100 | 100 / 100 / 100 | 100 / 100 / 100 |
+| schedule length | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 |
+| references coverage / page | 92.5 | 95.0 | 95.0 | 95.0 | 95.0 | 95.0 | 95.0 |
+| references position | 90.0 | 92.5 | 92.5 | 92.5 | 92.5 | 92.5 | 95.0 |
+| references length | 82.5 | 85.0 | 90.0 | 90.0 | 90.0 | 90.0 | 87.5 |
+| references citation | 50.0 | 50.0 | 50.0 | 50.0 | 87.5 | 87.5 | 87.5 |
+| deep own node / page | 79.5 | 79.5 | 79.5 | 80.7 | 80.7 | 80.8 | 85.1 |
+| deep reachable | 93.3 | 93.3 | 93.3 | 94.7 | 94.7 | 94.7 | 96.3 |
+| deep length | 71.7 | 71.7 | 71.7 | 72.9 | 72.9 | 73.0 | 78.2 |
+| deep parent | 68.0 | 68.0 | 68.0 | 68.4 | 68.4 | 68.4 | 70.8 |
 
 **Tender 3**
 
-| Metric | a45f300 | 93f0ab7 | e14f121 | b6a69cb | 96857ed | 11ae315 |
-|---|---|---|---|---|---|---|
-| schedule coverage / page | 91.7 | 91.7 | 91.7 | 91.7 | 91.7 | 100 |
-| schedule position | 87.5 | 87.5 | 87.5 | 91.7 | 91.7 | 100 |
-| schedule length | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 | 100 |
-| references coverage / page | 90.6 | 90.6 | 90.6 | 90.6 | 90.6 | 90.6 |
-| references position | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 |
-| references length | 81.2 | 81.2 | 82.8 | 82.8 | 82.8 | 82.8 |
-| references citation | 40.6 | 40.6 | 40.6 | 40.6 | 84.4 | 84.4 |
-| split recall / precision | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 |
-| deep own node / page | 70.2 | 70.2 | 70.2 | 70.8 | 70.8 | 71.0 |
-| deep reachable | 83.9 | 83.9 | 83.9 | 84.5 | 84.5 | 84.5 |
-| deep length | 64.2 | 64.2 | 64.2 | 64.7 | 64.7 | 65.0 |
-| deep parent | 48.6 | 48.6 | 48.6 | 49.2 | 49.2 | 49.9 |
+| Metric | a45f300 | 93f0ab7 | e14f121 | b6a69cb | 96857ed | 11ae315 | 6bca266 |
+|---|---|---|---|---|---|---|---|
+| schedule coverage / page | 91.7 | 91.7 | 91.7 | 91.7 | 91.7 | 100 | 100 |
+| schedule position | 87.5 | 87.5 | 87.5 | 91.7 | 91.7 | 100 | 100 |
+| schedule length | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 | 100 | 100 |
+| references coverage / page | 90.6 | 90.6 | 90.6 | 90.6 | 90.6 | 90.6 | 90.6 |
+| references position | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 | 89.1 |
+| references length | 81.2 | 81.2 | 82.8 | 82.8 | 82.8 | 82.8 | 85.9 |
+| references citation | 40.6 | 40.6 | 40.6 | 40.6 | 84.4 | 84.4 | 84.4 |
+| split recall / precision | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 |
+| deep own node / page | 70.2 | 70.2 | 70.2 | 70.8 | 70.8 | 71.0 | 82.9 |
+| deep reachable | 83.9 | 83.9 | 83.9 | 84.5 | 84.5 | 84.5 | 94.9 |
+| deep length | 64.2 | 64.2 | 64.2 | 64.7 | 64.7 | 65.0 | 75.9 |
+| deep parent | 48.6 | 48.6 | 48.6 | 49.2 | 49.2 | 49.9 | 53.2 |
 
-No commit lowers any metric. The resolver commit is the only large gain (citation +37 and +44 points); the structural commits move the deep metrics by under 1.5 points.
+Up to `11ae315` no commit lowers any metric; the resolver commit is the only large gain (citation +37 and +44 points), and the structural commits move the deep metrics by under 1.5 points. `6bca266` raises deep own node by 4.3 and 11.9 points but lowers Tender 2's references length (90.0 → 87.5) and fails Tender 1's no-regression table (125/142 nodes still correct, from 142); both are recovered by the commits below.
 
 **Deep baseline by document** (unchanged port, own node / parent, %):
 
@@ -121,3 +121,92 @@ No commit lowers any metric. The resolver commit is the only large gain (citatio
 | TenderForm-ZH | 13 | 23.1 | 0.0 | NCTC | 34 | 64.7 | 47.1 |
 
 By level (unchanged port, own / length / parent): Tender 2 L1 74.0 / 65.6 / 55.8, L2 82.8 / 75.3 / 78.0; Tender 3 L1 56.4 / 48.5 / 33.5, L2 77.0 / 72.0 / 54.1. Numbered terms documents (ToT, Supplement, GCC, SCC and its annexes) are at 84–99% own node; tables, forms and schedules are where nodes are missing and parents are wrong (the Information Schedule, glossary attachment, Innovative Suggestion Schedule, Price Schedule, Particulars of Goods, Annex A, Appendix, Chinese Tender Form).
+
+### Second pass on tables, forms and the document split (2026-09-17)
+
+Every column is scored with the evaluator as of `1770505`, which adds two evaluator fixes to `9877109`: `e5458c0` matches a Completeness Check Schedule item to a direct child of its Part (a sub-item with the same label no longer stands in for it) and `738d38c` judges exact location by a node's own marker rather than its enclosing Part's name; neither lowers any earlier score. The first five deep rows are AI_camp's metric names (`c2b4107`); "reachable", "length (within 10%)" and "parent" are the definitions used in the tables above, scored with the evaluator as of `22e840a`. Tender 1 has no checklist key and is scored on its deep key (454 nodes, converted from AI_camp's hand-built key).
+
+Columns: `11ae315` and `6bca266` as above · `6410fa2` a paragraph in a nested list's marker column closes only that list · `582fc37` sub-items listed inside one sentence become nodes · `14dee7e` text before a document's first marker is the document's own text · `0b9b82a` document split from page numbering printed above/below the name or in Chinese · `5dfdb0b` "Notes:" split from a first note numbered by letter or roman numeral · `b304107` "Part IA"/"Part IB" are Parts · `56dfa87` a heading with no marker is its own node · `ee8cd7b` a "picture" carrying its own text layer is read as a table · `1770505` a table row keyed by a bare number carries that number.
+
+**Tender 2**
+
+| Metric | 11ae315 | 6bca266 | 6410fa2 | 582fc37 | 14dee7e | 0b9b82a | 5dfdb0b | b304107 | 56dfa87 | ee8cd7b | 1770505 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| schedule coverage / page / position | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 |
+| schedule length | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 |
+| references coverage / page | 95.0 | 95.0 | 95.0 | 95.0 | 95.0 | 95.0 | 95.0 | 100 | 100 | 100 | 100 |
+| references position | 92.5 | 95.0 | 95.0 | 95.0 | 95.0 | 95.0 | 95.0 | 100 | 100 | 100 | 100 |
+| references length | 90.0 | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 | 92.5 | 92.5 | 92.5 | 92.5 |
+| references citation | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 | 92.5 | 92.5 | 92.5 | 92.5 |
+| deep recall (= own node, page) | 80.8 | 85.1 | 85.2 | 91.5 | 91.8 | 91.8 | 92.3 | 92.5 | 93.0 | 93.1 | 93.1 |
+| deep exact_location_correct | 75.4 | 81.3 | 81.5 | 87.8 | 87.8 | 87.8 | 88.6 | 88.6 | 89.2 | 89.2 | 89.2 |
+| deep kind_correctness | 89.4 | 91.5 | 91.5 | 98.8 | 98.8 | 98.8 | 99.1 | 99.4 | 99.4 | 99.4 | 99.4 |
+| deep hierarchy_correctness | 65.0 | 67.7 | 69.5 | 76.4 | 76.5 | 76.5 | 76.7 | 77.0 | 77.0 | 77.1 | 77.1 |
+| deep avg_node_length_ratio | 1.75 | 1.62 | 1.61 | 1.53 | 1.54 | 1.54 | 1.53 | 1.52 | 1.51 | 1.51 | 1.51 |
+| deep reachable | 94.7 | 96.3 | 96.3 | 96.3 | 97.5 | 97.5 | 97.5 | 97.5 | 97.5 | 97.6 | 97.6 |
+| deep length (within 10%) | 73.0 | 78.2 | 78.3 | 84.7 | 84.7 | 84.7 | 85.4 | 85.4 | 86.1 | 86.1 | 86.1 |
+| deep parent | 68.4 | 70.8 | 72.4 | 78.6 | 78.7 | 78.7 | 78.8 | 79.1 | 79.2 | 79.4 | 79.4 |
+
+**Tender 3**
+
+| Metric | 11ae315 | 6bca266 | 6410fa2 | 582fc37 | 14dee7e | 0b9b82a | 5dfdb0b | b304107 | 56dfa87 | ee8cd7b | 1770505 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| schedule coverage / page / position | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 |
+| schedule length | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 |
+| references coverage / page | 90.6 | 90.6 | 90.6 | 90.6 | 90.6 | 90.6 | 90.6 | 90.6 | 90.6 | 90.6 | 96.9 |
+| references position | 87.5 | 89.1 | 89.1 | 89.1 | 89.1 | 89.1 | 89.1 | 89.1 | 89.1 | 89.1 | 95.3 |
+| references length | 82.8 | 85.9 | 85.9 | 85.9 | 85.9 | 87.5 | 87.5 | 87.5 | 87.5 | 87.5 | 92.2 |
+| references citation | 84.4 | 84.4 | 84.4 | 84.4 | 84.4 | 84.4 | 84.4 | 84.4 | 84.4 | 84.4 | 90.6 |
+| split recall / precision | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 | 92.0 / 100 | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 |
+| deep recall (= own node, page) | 71.0 | 82.9 | 83.1 | 88.1 | 89.0 | 89.0 | 89.6 | 89.6 | 90.6 | 90.8 | 90.8 |
+| deep exact_location_correct | 67.1 | 80.2 | 80.3 | 85.3 | 85.3 | 85.3 | 86.0 | 86.0 | 87.0 | 87.2 | 87.2 |
+| deep kind_correctness | 87.1 | 90.8 | 90.8 | 97.3 | 97.6 | 97.6 | 98.0 | 98.0 | 98.0 | 98.0 | 98.0 |
+| deep hierarchy_correctness | 45.8 | 49.4 | 50.0 | 55.2 | 63.7 | 63.7 | 63.7 | 63.7 | 64.8 | 65.0 | 65.0 |
+| deep avg_node_length_ratio | 1.78 | 1.59 | 1.58 | 1.59 | 1.60 | 1.57 | 1.57 | 1.57 | 1.61 | 1.61 | 1.61 |
+| deep reachable | 84.5 | 94.9 | 94.9 | 94.9 | 96.5 | 96.5 | 97.2 | 97.2 | 97.3 | 97.6 | 97.6 |
+| deep length (within 10%) | 65.0 | 75.9 | 76.1 | 80.1 | 80.3 | 80.3 | 80.9 | 80.9 | 81.9 | 82.0 | 82.0 |
+| deep parent | 49.9 | 53.2 | 53.7 | 58.5 | 66.9 | 66.9 | 66.9 | 66.9 | 67.8 | 68.0 | 68.0 |
+
+**Tender 1**
+
+| Metric | 11ae315 | 6bca266 | 6410fa2 | 582fc37 | 14dee7e | 0b9b82a | 5dfdb0b | b304107 | 56dfa87 | ee8cd7b | 1770505 |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| deep recall (= own node, page) | 90.7 | 91.2 | 91.4 | 91.4 | 91.9 | 91.9 | 91.9 | 91.9 | 92.3 | 92.5 | 92.5 |
+| deep exact_location_correct | 81.9 | 85.9 | 86.1 | 86.1 | 86.1 | 86.1 | 86.1 | 86.1 | 86.6 | 86.6 | 86.6 |
+| deep kind_correctness | 97.2 | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 |
+| deep hierarchy_correctness | 75.6 | 74.5 | 76.4 | 76.4 | 76.4 | 76.4 | 76.4 | 76.4 | 76.4 | 76.7 | 76.7 |
+| deep avg_node_length_ratio | 1.12 | 1.09 | 1.08 | 1.08 | 1.11 | 1.11 | 1.11 | 1.11 | 1.11 | 1.11 | 1.11 |
+
+No commit after `6bca266` lowers any metric on any of the three tenders. Tender 1's no-regression table (AI_camp's 142 hand-checked nodes, page and length within 10%): 142/142 at `11ae315`, 125/142 at `6bca266`, 141/142 from `6410fa2` on; the one left is a paragraph after a nested list that the table counts in the list's last item and the parser gives to the item holding the list. Its node count is 1583 at `11ae315` and 1882 at `1770505`, and its Completeness Check Schedule still parses to Parts A-C with items (a)-(o).
+
+**Deep recall / hierarchy by document**, `6bca266` → `1770505` (%):
+
+| Tender 2 | Nodes | Recall | Hierarchy | Tender 3 | Nodes | Recall | Hierarchy |
+|---|---|---|---|---|---|---|---|
+| SCC | 165 | 92.1 → 100 | 83.1 → 95.5 | TechSpec | 269 | 92.6 → 93.7 | 47.2 → 48.5 |
+| ToT | 151 | 89.4 → 99.3 | 87.5 → 97.3 | InfoSchedule | 178 | 61.8 → 76.4 | 31.2 → 49.4 |
+| TermsSupp | 79 | 97.5 → 100 | 91.3 → 100 | ToT | 154 | 88.3 → 98.1 | 85.5 → 94.9 |
+| GCC | 78 | 96.2 → 100 | 84.5 → 93.1 | TermsSupp | 113 | 89.4 → 96.5 | 84.4 → 95.6 |
+| ComplianceSchedule | 62 | 91.9 → 96.8 | 34.4 → 37.7 | AnnexSCCB | 112 | 99.1 → 100 | 91.0 → 100 |
+| InfoSchedule | 55 | 58.2 → 80.0 | 46.3 → 68.5 | SCC | 83 | 95.2 → 95.2 | 74.7 → 78.7 |
+| NCTC | 33 | 66.7 → 78.8 | 50.0 → 53.1 | AttTechSpec | 82 | 97.6 → 98.8 | 0.0 → 98.8 |
+| PriceSchedule | 25 | 88.0 → 88.0 | 41.7 → 41.7 | GCC | 77 | 100 → 100 | 97.1 → 97.1 |
+| POGS | 19 | 89.5 → 89.5 | 44.4 → 44.4 | PriceSchedule | 75 | 70.7 → 86.7 | 24.3 → 43.2 |
+| CCS | 18 | 88.9 → 100 | 86.7 → 100 | AnnexSCCC | 72 | 87.5 → 97.2 | 76.1 → 91.5 |
+| TechSpec | 17 | 88.2 → 100 | 81.2 → 87.5 | ComplianceSchedule | 64 | 90.6 → 93.8 | 33.3 → 42.9 |
+| AppendixToT | 14 | 28.6 → 28.6 | 0.0 → 0.0 | ISS | 52 | 57.7 → 82.7 | 11.8 → 51.0 |
+| AnnexToTA | 14 | 21.4 → 50.0 | 0.0 → 23.1 | AnnexToTA | 50 | 62.0 → 76.0 | 20.4 → 28.6 |
+| TenderForm-EN | 13 | 76.9 → 76.9 | 25.0 → 25.0 | POGS | 47 | 68.1 → 91.5 | 26.1 → 26.1 |
+| TenderForm-ZH | 13 | 46.2 → 53.8 | 0.0 → 0.0 | NCTC | 34 | 64.7 → 82.4 | 48.5 → 66.7 |
+| | | | | CCS | 27 | 88.9 → 96.3 | 87.5 → 95.8 |
+| | | | | AnnexSuppA | 26 | 61.5 → 92.3 | 0.0 → 32.0 |
+| | | | | AppendixToT | 23 | 47.8 → 52.2 | 9.1 → 9.1 |
+| | | | | TenderForm-EN | 13 | 76.9 → 76.9 | 27.3 → 27.3 |
+| | | | | AttAnnexSCCA | 13 | 84.6 → 84.6 | 25.0 → 25.0 |
+| | | | | TenderForm-ZH | 12 | 50.0 → 58.3 | 0.0 → 0.0 |
+| | | | | AnnexToTB | 5 | 40.0 → 40.0 | 25.0 → 25.0 |
+| | | | | AttAnnexSuppA | 1 | 0.0 → 100 | - → - |
+
+By level at `1770505` (recall / hierarchy): Tender 2 L0 100 / 100, L1 86.9 / 62.8, L2 100 / 94.3, L3 98.1 / 91.3; Tender 3 L0 96.3 / 95.8, L1 84.5 / 52.8, L2 94.2 / 72.0, L3 98.7 / 100.
+
+Still below target at `1770505`: deep recall (93.1 and 90.8, target 95), hierarchy (77.1 and 65.0) and exact location (89.2 and 87.2) on both tenders, and Tender 3's references citation (90.6). Main causes of the remaining misses: form fields without a marker (signature, name and date lines; the Appendix's address fields), paragraphs and "tail" text the keys count as their own nodes under a heading or after a list, headings and notes that the keys nest their following items under (the parser keeps them as leaves, so every child's parent is off), the Chinese Tender Form's Parts (not recognised as Parts), a desirable-feature flag set as its own block before an item of the Technical Specifications, and Tender 3's Annex A to the Terms of Tender inside TERMS-1, which is not recognised as an annex, so its recitals and execution block run into the clause before it.
