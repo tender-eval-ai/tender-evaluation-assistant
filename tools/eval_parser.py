@@ -276,7 +276,9 @@ def expected_kind(node_id: str) -> tuple[str, ...] | None:
 def _starts_with_own_marker(node: dict) -> bool:
     """AI_camp's "exact location": the node's own text starts with its own label or number."""
     text = _LEADING_GLYPH.sub("", node.get("text") or "")
-    marker = node.get("label") or node.get("number") or node.get("part")
+    # `part` is the enclosing Part of every node inside one, so it is only the
+    # node's own marker for the Part node itself.
+    marker = node.get("label") or node.get("number") or (node.get("part") if node.get("kind") == "part" else None)
     if not marker or not text:
         return bool(text)
     return _squash(text).startswith(_squash(marker))
