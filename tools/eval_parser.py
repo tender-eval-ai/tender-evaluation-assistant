@@ -204,7 +204,10 @@ def score_schedule_entry(tender: Tender, entry: dict, schedule_file: str | None,
               "coverage": bool(found), "page": False, "position": False, "length": False}
     if not found:
         return result
-    node = min(found, key=lambda n: n["page"] != entry["page"])
+    # An item is its Part's own child: a run-in sub-item of an earlier item can
+    # carry the same label ("(i)" inside item (h)) and must not stand in for it.
+    kinds = {n["node_id"]: n["kind"] for n in tender.nodes}
+    node = min(found, key=lambda n: (n["page"] != entry["page"], is_item and kinds.get(n.get("parent_id")) != "part"))
     length = len(node["text"])
     result.update(
         node_id=node["node_id"], node_page=node["page"], node_chars=length, key_chars=entry["chars"],
