@@ -22,6 +22,13 @@ const VARIANTS = {
   missing: { label: "Missing", tone: "crit", Icon: WarningIcon },
   not_checked: { label: "Not checked", tone: "pending", Icon: CircleDotIcon },
 
+  // RuleSetItem.status (app/rulesets/schema.py ItemStatus) in the Rules window.
+  verified: { label: "Verified", tone: "good", Icon: CheckCircleIcon },
+  needs_input: { label: "Needs input", tone: "crit", Icon: WarningIcon },
+  novel: { label: "Novel — approve the drafted rules", tone: "warn", Icon: CircleDotIcon },
+  gap: { label: "Gap — no rule built", tone: "crit", Icon: WarningIcon },
+  edited: { label: "Edited by a person", tone: "pending", Icon: CircleDotIcon },
+
   // Price Summary row status (pricing/price_summary_service.py)
   RANKED: { label: "Ranked", tone: "good", Icon: CheckCircleIcon },
   CANNOT_CALCULATE: { label: "Cannot be calculated", tone: "warn", Icon: WarningIcon },

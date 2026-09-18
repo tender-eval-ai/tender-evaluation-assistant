@@ -1,3 +1,5 @@
+import Badge from "./Badge.jsx";
+
 const TIER = {
   A: { label: "Mandatory", dot: "bg-mandatory", stripe: "border-l-mandatory" },
   B: { label: "Rectifiable", dot: "bg-rectifiable", stripe: "border-l-rectifiable" },
@@ -16,6 +18,8 @@ export default function RequirementCard({ item, isActive, onSelect }) {
       type="button"
       onClick={() => onSelect(item)}
       aria-pressed={isActive}
+      data-letter={item.letter}
+      data-status={item.status}
       className={`w-full text-left border border-border-soft border-l-2 ${tier.stripe} rounded-[4px] bg-card
         cursor-pointer transition-all px-2.5 py-1.5
         ${isActive ? "shadow-sm ring-1 ring-accent/25 border-border" : "hover:border-border"}
@@ -29,7 +33,8 @@ export default function RequirementCard({ item, isActive, onSelect }) {
             <span className="text-xs text-ink-4">{tier.label}</span>
           </span>
         </div>
-        <span className="font-mono text-xs text-ink-4 shrink-0">
+        <span className="flex items-center gap-1 font-mono text-xs text-ink-4 shrink-0">
+          <Badge kind={item.status} compact />
           {item.status}
           {item.clauses?.length > 0 ? ` · ${item.clauses.length}§` : ""}
         </span>
