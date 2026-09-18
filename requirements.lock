@@ -1326,7 +1326,9 @@ pluggy==1.6.0 \
 procrastinate==3.9.0 \
     --hash=sha256:5805ab2af35eab12befa700ecd49e572c4f655d654151df9e5ce1ca07efb5e6e \
     --hash=sha256:af4b9ccaeebbf2a1439e02ae1e8ce327f8436a81e9d68a0b1bd26d5e7ac697bd
-    # via -r requirements.txt
+    # via
+    #   -r backend/requirements.txt
+    #   -r requirements.txt
 protobuf==7.36.1 \
     --hash=sha256:0b53ce95272aad50ad25d7ff03373743209822e8ba42ea7fad27d2bee1547d00 \
     --hash=sha256:39c518c05586c016d7874ff6079ee115bcec1ea5fbb1d177fbf7867ef4c67e44 \
@@ -1341,6 +1343,7 @@ psycopg==3.3.5 \
     --hash=sha256:ce5aa5cdb4f9379f00f487590e5890bfa7df9a164648c969ffa628505e21af4e \
     --hash=sha256:d0a3d9ccf5788af054cbd745278cb02401b5c312aeaafbf2c6144460aec47da4
     # via
+    #   -r backend/requirements.txt
     #   -r requirements.txt
     #   langgraph-checkpoint-postgres
     #   procrastinate

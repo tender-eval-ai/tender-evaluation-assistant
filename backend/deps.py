@@ -85,7 +85,10 @@ def runner():
         raise ApiError(503, "queue_unavailable", "DATABASE_URL is not set; the check worker needs Postgres")
     if _runner is None:
         import app.checks.vendor_check  # noqa: F401  registers the pipeline (decide) for this process
+        from app import db
+        from app.jobs import tasks
         from app.jobs.runner import JobRunner
+        db.prepare(tasks.app)             # migrations and the queue's schema, whichever process starts first
         _runner = JobRunner().open()
     return _runner
 

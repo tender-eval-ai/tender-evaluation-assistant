@@ -29,3 +29,13 @@ def test_progress_counts_pages_across_the_offer(tmp_path):
     seen = []
     render_offer(CASE / "bids" / "Tenderer_A", tmp_path, progress=lambda d, n: seen.append((d, n)))
     assert seen[0] == (1, 12) and seen[-1] == (12, 12)
+
+
+def test_scanned_pages_render_with_ink_not_as_blank_paper(tmp_path):
+    """The synthetic scans are grayscale JPEGs; declared as RGB they decoded to nothing
+    and every scanned page came out white (found on the first live run at S2)."""
+    from PIL import Image
+    import io
+    refs = render_offer(CASE / "bids" / "Tenderer_B", tmp_path)
+    dark, _ = Image.open(io.BytesIO(read_png(refs[12]))).convert("L").getextrema()
+    assert dark < 128, "page 13 of the scanned offer must show its printed text"

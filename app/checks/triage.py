@@ -4,6 +4,7 @@ closed vocabulary), code checks (every requested page answered, unknown labels
 become 'other'). One call per six pages, so a 300-page offer is 50 calls."""
 from __future__ import annotations
 
+import os
 from typing import Callable
 
 from pydantic import BaseModel, Field
@@ -12,7 +13,9 @@ from app.checks.labels import PAGE_LABELS, normalise
 from app.checks.pages import read_png
 
 PROMPT_VERSION = "triage-v1"
-PAGES_PER_CALL = 6
+# Six page images per call is the design number (a 300-page offer is 50 calls); a model
+# with a small context window takes fewer through TRIAGE_PAGES_PER_CALL.
+PAGES_PER_CALL = max(1, int(os.environ.get("TRIAGE_PAGES_PER_CALL", "6")))
 Progress = Callable[[str, int, int], None]
 
 SYSTEM = (

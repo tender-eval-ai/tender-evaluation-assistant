@@ -10,8 +10,10 @@ def _escape(text: str) -> str:
     return text.replace("\\", r"\\").replace("(", r"\(").replace(")", r"\)")
 
 
-def _jpeg_size(data: bytes) -> tuple[int, int]:
-    """Width/height from a baseline JPEG's SOF marker (fallback 1x1)."""
+def _jpeg_info(data: bytes) -> tuple[int, int, int]:
+    """Width, height and colour components from a baseline JPEG's SOF marker
+    (fallback 1x1, 3). The component count decides the PDF colour space: a grayscale
+    scan declared as RGB decodes to nothing in PDFium and renders as a blank page."""
     i = 2
     while i + 9 < len(data):
         if data[i] != 0xFF:
@@ -21,12 +23,12 @@ def _jpeg_size(data: bytes) -> tuple[int, int]:
         if marker in (0xC0, 0xC1, 0xC2):
             h = int.from_bytes(data[i + 5:i + 7], "big")
             w = int.from_bytes(data[i + 7:i + 9], "big")
-            return w, h
+            return w, h, data[i + 9]
         if marker in (0xD8, 0x01) or 0xD0 <= marker <= 0xD7:
             i += 2
             continue
         i += 2 + int.from_bytes(data[i + 2:i + 4], "big")
-    return 1, 1
+    return 1, 1, 3
 
 
 def make_text_pdf(path: Path, text: str | list[str],
@@ -64,11 +66,12 @@ def make_text_pdf(path: Path, text: str | list[str],
         objects.append(b"<< /Length %d >>\nstream\n%s\nendstream" % (len(raw), raw))
         if i in images:
             jpeg = images[i]
-            w, h = _jpeg_size(jpeg)
+            w, h, components = _jpeg_info(jpeg)
+            colorspace = {1: b"/DeviceGray", 4: b"/DeviceCMYK"}.get(components, b"/DeviceRGB")
             objects.append(
                 b"<< /Type /XObject /Subtype /Image /Width %d /Height %d "
-                b"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode "
-                b"/Length %d >>\nstream\n%s\nendstream" % (w, h, len(jpeg), jpeg))
+                b"/ColorSpace %s /BitsPerComponent 8 /Filter /DCTDecode "
+                b"/Length %d >>\nstream\n%s\nendstream" % (w, h, colorspace, len(jpeg), jpeg))
     objects.append(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
 
     out = bytearray(b"%PDF-1.4\n")

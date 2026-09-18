@@ -8,6 +8,7 @@ from __future__ import annotations
 import hashlib
 import io
 import os
+import threading
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -18,6 +19,10 @@ from .llm import LLM
 
 # Average extractable chars/page below which a PDF is treated as scanned.
 SCAN_THRESHOLD = 100
+
+# PDFium is not thread-safe: a worker running two jobs at once deadlocked inside it
+# (both rendering pages). One render at a time per process; the pages are cached anyway.
+_PDFIUM_LOCK = threading.Lock()
 
 
 @dataclass
@@ -81,6 +86,11 @@ def render_page_png(path: Path, page_index: int, scale: float = 2.0,
     layer), its lines get a translucent yellow marker."""
     import pypdfium2 as pdfium
 
+    with _PDFIUM_LOCK:
+        return _render_locked(pdfium, path, page_index, scale, highlight)
+
+
+def _render_locked(pdfium, path: Path, page_index: int, scale: float, highlight: str | None) -> bytes:
     pdf = pdfium.PdfDocument(str(path))
     try:
         page = pdf[page_index]

@@ -173,7 +173,7 @@ frontend/           Streamlit review UI (HTTP client of the backend only) + Dock
 mcp_server/         MCP server over the read-only tools + local-model MCP client
 docs/               plan (dated experiment log), detailed specification, interview prep, project report (audit)
 migrations/         SQL migrations applied by app.db.migrate (the worker runs it at start)
-docker-compose.yml  runs both services together
+docker-compose.yml  Postgres, the API, the check worker (same image) and the UI together
 deploy/cloudrun/    private Cloud Run packaging: nginx ingress sidecar, Cloud Build, setup/deploy scripts
 run_demo.py         CLI (offline demo + orchestrated run over real folders)
 test/               105 offline tests incl. API, graph, agent, MCP, cost ledger, Cloud Run scratch sync (no network, no client data)
@@ -189,15 +189,30 @@ Requirements are split per service: `backend/requirements.txt` (FastAPI + pipeli
 dev aggregate (both + pytest).
 
 ```bash
-# Local dev, two terminals:
-.venv/bin/uvicorn backend.api:app --reload --port 8000
-BACKEND_URL=http://localhost:8000 .venv/bin/streamlit run frontend/ui.py
-
-# Docker (recommended):
+# Docker (recommended): Postgres, the API, the check worker and the UI.
 cp .env.example .env       # point the models at Ollama/DeepSeek/Vertex; set API_KEY on any shared machine
 docker compose up -d --build
-# UI:  http://localhost:8501     API: http://localhost:8000/health
+# UI:  http://localhost:8501     API: http://localhost:8000/docs     (workers: docker compose up -d --scale worker=3)
+
+# The synthetic tender case end to end through the API: project, import, rule set drafted and
+# confirmed by a second person, one check per tenderer on the worker, the results per tenderer.
+python tools/check_synthetic_case.py             # add --key when API_KEY is set
+
+# Local dev without Docker (needs a Postgres for the check routes and the worker):
+docker run -d --name tea-pg -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=tender -p 55432:5432 postgres:16
+export DATABASE_URL=postgresql://postgres:dev@localhost:55432/tender
+.venv/bin/uvicorn backend.api:app --reload --port 8000
+.venv/bin/python -m app.jobs.worker --pipelines app.checks.vendor_check
+BACKEND_URL=http://localhost:8000 .venv/bin/streamlit run frontend/ui.py
 ```
+
+**How a check runs (S2).** `POST /projects/{pid}/checks` queues one job per tenderer on Postgres; a worker renders every
+page of the offer, labels them six at a time, finds the item's pages, reads the certificate's fields with page
+citations, and hands them to the rule engine under the confirmed rule set. The worker checkpoints after every step
+(and every batch of pages), so a crash or a deploy resumes where it stopped; every model call goes through the
+gateway (endpoint policy by data class, cache, daily budget, one shared pace per provider). `GET /projects/{pid}/jobs`
+follows the jobs, `GET /projects/{pid}/bids/{t}/results` has the fields, the verdict and its evidence; page images
+open by signed links. The measurements behind the design are in `docs/decisions/0001-orchestrator.md`.
 
 UI flow = **one orchestrated run with two human checkpoints** (`POST /run`,
 `POST /resume`): upload documents → *Run* derives the rubric and pauses → review it

@@ -1,8 +1,25 @@
-# Tender Evaluation Assistant — backend API + frontend UI.
-#   cp .env.example .env   # point the models at Ollama/DeepSeek/Vertex; set API_KEY on any shared machine
+# Tender Evaluation Assistant: Postgres, the API, the check worker, the review UI.
+#   cp .env.example .env        # models (local Ollama by default); set API_KEY on any shared machine
 #   docker compose up -d --build
-# UI: http://<host>:8501 — restrict inbound access (host firewall) to your own IP.
+#   python tools/check_synthetic_case.py       # the synthetic case end to end through the API
+# UI: http://<host>:8501 (Streamlit, until S5). API: http://<host>:8000/docs.
+# Restrict inbound access (host firewall) to your own IP.
 services:
+  postgres:
+    image: postgres:16
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-dev}
+      - POSTGRES_DB=tender
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # ports: ["55432:5432"]   # uncomment to reach it with local tools
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tender"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
   backend:
     build:
       context: .
@@ -11,12 +28,37 @@ services:
     environment:
       - DATA_DIR=/data
       - INBOX_DIR=/inbox
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-dev}@postgres:5432/tender
     volumes:
       - ./data:/data
-      - ./inbox:/inbox               # drop case folders here, import via the UI
-      - ./demo_case:/inbox/demo_case:ro   # demo case always available for import
+      - ./inbox:/inbox                            # drop case folders here, import via the UI or the API
+      - ./demo_case:/inbox/demo_case:ro           # the original demo case
+      - ./test/data/synthetic_tender:/inbox/synthetic_tender:ro   # the synthetic tender-style case (17 tender documents, 4 offers)
     ports:
-      - "8000:8000"   # remove if only the UI needs access (compose network suffices)
+      - "${API_PORT:-8000}:8000"   # API_PORT moves it when 8000 is taken; remove if only the UI needs access
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    # Same image as the API; runs the check jobs (app/jobs) and applies migrations at start.
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    command: ["python", "-m", "app.jobs.worker", "--pipelines", "app.checks.vendor_check"]
+    env_file: .env
+    environment:
+      - DATA_DIR=/data
+      - DATABASE_URL=postgresql://postgres:${POSTGRES_PASSWORD:-dev}@postgres:5432/tender
+      # JOBS_CONCURRENCY, JOBS_HEARTBEAT, JOBS_STALLED_AFTER, LLM_RPM, LLM_DAILY_BUDGET_USD,
+      # LLM_CLEARED_HOSTS: see .env.example. Scale with `docker compose up -d --scale worker=3`.
+    volumes:
+      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stop_grace_period: 60s   # SIGTERM drains the running jobs before the process exits
     restart: unless-stopped
 
   frontend:
@@ -34,3 +76,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  pgdata:
