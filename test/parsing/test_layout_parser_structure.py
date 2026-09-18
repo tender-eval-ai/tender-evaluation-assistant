@@ -250,3 +250,27 @@ def test_a_paragraph_under_a_heading_only_node_is_a_node_of_its_own(monkeypatch)
     assert nodes["doc"]["text"].endswith("the same meanings here.")
     assert nodes["doc:PA"]["text"] == "Part A\nItems (a) and (b) below are required."
     assert nodes["doc:PB"]["text"].endswith("No other payment is made.")
+
+
+def test_an_item_flagged_in_the_margin_is_still_its_own_item(monkeypatch):
+    """A one-letter flag before an item's marker - set apart as a block of its
+    own, or in the item's own block - does not stop the item being a node."""
+    from app.parsing.layout_document_index import _attach_item_flags
+    from test.parsing.stub_layout import parse_blocks
+
+    blocks = [(126, "list-item", "(e) A mandatory sample feature.", [126, 190, 520, 202], None),
+              (64, "section-header", "(D)", [64, 245, 76, 257], None),
+              (126, "list-item", "(f) It is a desirable sample feature.", [126, 244, 520, 256], None)]
+    assert [b[2] for b in _attach_item_flags(blocks)] == [
+        "(e) A mandatory sample feature.", "(D) (f) It is a desirable sample feature."]
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (88, "list-item", "4.18 Other Sample Features"),
+        (56, "list-item", "(D) 4.18.1 It is a desirable feature that the sample is blue."),
+        (126, "list-item", "(a) in one respect;"),
+        (60, "list-item", "(D) (b) it is a desirable feature that the sample is light."),
+    ]})
+
+    assert nodes["doc:4.18.1"]["text"].startswith("(D) 4.18.1 It is")
+    assert nodes["doc:4.18.1:(b)"]["text"].startswith("(D) (b) it is")
+    assert nodes["doc:4.18.1:(a)"]["text"] == "(a) in one respect;"

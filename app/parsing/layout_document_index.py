@@ -898,6 +898,38 @@ def _attach_stray_colons(blocks: list) -> list:
     return out
 
 
+# A one-letter flag in round brackets set in the margin before an item - the
+# Technical Specifications mark each desirable (as opposed to mandatory)
+# feature so. It is not a marker of its own: the item's marker follows it.
+_ITEM_FLAG = re.compile(r"^\([A-Z]\)$")
+_FLAGGED_MARKER = re.compile(r"^\([A-Z]\)[ \t]+(?=\S)")
+
+
+def _attach_item_flags(blocks: list) -> list:
+    """Join a block that is nothing but an item flag to the item on its line.
+
+    The layout model returns a flag set apart in the margin as a block of its
+    own, before its item: the flag then opened a heading node of its own and
+    the item started without it. The flag goes in front of the block to its
+    right that shares most of its height; that block keeps its own position,
+    so its marker column is unchanged."""
+    out = list(blocks)
+    for flag in [b for b in blocks if _ITEM_FLAG.match(b[2]) and b[1] != "table"]:
+        fb = flag[3]
+        best, best_overlap = None, 0.0
+        for index, (x0, cls, text, bbox, label) in enumerate(out):
+            if out[index] is flag or cls == "table" or bbox[0] < fb[2] - 1:
+                continue
+            overlap = min(bbox[3], fb[3]) - max(bbox[1], fb[1])
+            if overlap > best_overlap:
+                best, best_overlap = index, overlap
+        if best is not None:
+            x0, cls, text, bbox, label = out[best]
+            out[best] = (x0, cls, f"{flag[2]} {text}", bbox, label)
+            out.remove(flag)
+    return out
+
+
 # Text items a `picture` group must carry to be read as a table instead.
 _PICTURE_MIN_TEXT_ITEMS = 8
 
@@ -969,7 +1001,7 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
                 max(b[2] for line in piece for _, b in line), max(b[3] for line in piece for _, b in line),
             ]
             blocks.append((bbox[0], class_name, text, bbox, row_label))
-    return _attach_stray_colons(header_fields + blocks + footer_fields)
+    return _attach_item_flags(_attach_stray_colons(header_fields + blocks + footer_fields))
 
 
 def _classify_marker(text: str):
@@ -977,6 +1009,14 @@ def _classify_marker(text: str):
     or (None, None, None) if it isn't one. Checked in categorical-rank order:
     part/annex outrank clause, clause outranks subclause, subclause outranks
     subitem - matching document_index's own precedence."""
+    flagged = _FLAGGED_MARKER.match(text)
+    if flagged:
+        # An item flag ahead of the marker (see `_ITEM_FLAG`): the marker after
+        # it is the block's own. Without this, a flagged item was never a node
+        # and ran on into the item before it.
+        kind, number, title = _classify_marker(text[flagged.end():])
+        if kind in ("clause", "subclause", "subitem"):
+            return kind, number, title
     pm = _PART_LAYOUT.match(text)
     if pm:
         number = pm.group("num") or pm.group("letter") or pm.group("tletter")
