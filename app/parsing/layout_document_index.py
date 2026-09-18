@@ -373,7 +373,7 @@ def _detect_running_furniture(blocks_by_page: dict, scope_of_page) -> dict[str, 
     for page_number, blocks in blocks_by_page.items():
         scope = scope_of_page(page_number)
         seen = texts_by_scope.setdefault(scope, {})
-        for _, class_name, raw_text, _bbox in blocks:
+        for _, class_name, raw_text, _bbox, _label in blocks:
             for piece in _split_block(raw_text, class_name):
                 if _classify_marker(piece)[0] is None:
                     seen.setdefault(piece, set()).add(page_number)
@@ -472,6 +472,211 @@ def _join_lines(lines) -> str:
     return " ".join(text for line in lines for text, _ in line)
 
 
+# How much of a layout `table` block a detected grid must cover before its rows
+# are trusted as that block's row boundaries.
+_GRID_MIN_OVERLAP = 0.5
+_GRID_CACHE: dict[tuple[str, int], list] = {}
+
+
+def _page_grids(source_file: str, page_number: int, page):
+    """Detected grids for one page, keeping only those that can describe a
+    block: at least two rows, and a readable bbox.
+
+    A detected table can carry no cells at all, and PyMuPDF then raises
+    `ValueError: min() iterable argument is empty` from `Table.bbox` rather
+    than reporting an empty table - so every grid is probed once, here, and a
+    grid that cannot answer for its own geometry is dropped instead of being
+    re-probed (and re-raised) at each block that overlaps it."""
+    key = (source_file, page_number)
+    if key not in _GRID_CACHE:
+        usable = []
+        try:
+            for table in page.find_tables().tables:
+                try:
+                    if table.row_count >= 2 and len(table.bbox) == 4 and table.rows:
+                        usable.append(table)
+                except (ValueError, TypeError, IndexError):
+                    continue
+        except Exception:
+            usable = []
+        _GRID_CACHE[key] = usable
+    return _GRID_CACHE[key]
+
+
+def _grid_for_block(source_file: str, page_number: int, page, group_bbox):
+    """The detected grid covering a layout `table` block, or None.
+
+    `pymupdf-layout` hands an entire table back as ONE group whose cells are
+    already flattened into one string, so the row structure has to be
+    reconstructed. `_split_table_row_markers` does that from the text alone by
+    walking the markers it can see, which holds while every row opens with a
+    marker and fails two ways when they don't: a markerless row is invisible,
+    and a marker the flattened reading order places away from its own row's
+    start splits in the wrong place - confirmed on the Information Schedule's
+    Table B, where row (g) absorbed the opening of row (h) and row (h) then
+    began mid-sentence.
+
+    Returns None for a borderless table - the Attachment to the Technical
+    Specifications' glossary yields no rows under the default line-based
+    strategy - and the caller then falls back to the text-only split.
+    """
+    rect = fitz.Rect(*group_bbox)
+    if rect.is_empty:
+        return None
+    best, best_share = None, 0.0
+    for table in _page_grids(source_file, page_number, page):
+        overlap = rect & fitz.Rect(*table.bbox)
+        if overlap.is_empty:
+            continue
+        share = overlap.get_area() / rect.get_area()
+        if share > best_share:
+            best, best_share = table, share
+    if best is None or best_share < _GRID_MIN_OVERLAP:
+        return None
+    return best
+
+
+def _table_row_pieces(items, table) -> list:
+    """One piece per grid row, each row read cell by cell in column order.
+
+    Reading a row cell by cell rather than by vertical position is what puts a
+    row's marker at its own start: `_reading_lines` orders a whole block by
+    vertical centre, so a marker set lower than the first line of the cell
+    beside it reads after that line ("Business profile information of the
+    Tenderer including (h) the number and location..." for Table B's row (h)).
+    Within a cell the same vertical grouping is still what orders the text.
+
+    Only the row and cell BOUNDARIES come from the grid; every piece's text is
+    still the layout model's own items, so the text extraction path and every
+    character count are unchanged.
+    """
+    def centre(bbox):
+        return ((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2)
+
+    try:
+        rows = [(row.bbox[1], row.bbox[3], [c for c in row.cells if c]) for row in table.rows]
+    except (ValueError, TypeError, IndexError):
+        return []
+    if not rows or not all(cells for _, _, cells in rows):
+        return []
+    placed = [[[] for _ in cells] + [[]] for _, _, cells in rows]  # a trailing bucket per row for gutter items
+    leftovers = []
+    for text, bbox in items:
+        x, y = centre(bbox)
+        index = next((i for i, (top, bottom, _) in enumerate(rows) if top <= y < bottom), None)
+        if index is None:
+            leftovers.append((text, bbox))
+            continue
+        cells = rows[index][2]
+        cell = next((j for j, c in enumerate(cells) if c[0] <= x < c[2] and c[1] <= y < c[3]), None)
+        placed[index][cell if cell is not None else len(cells)].append((text, bbox))
+    if leftovers:
+        return []  # items outside every row: the grid does not describe this block
+    pieces = []
+    seen: set[str] = set()
+    for index, buckets in enumerate(placed):
+        lines = [line for bucket in buckets if bucket for line in _reading_lines(bucket)]
+        if not lines:
+            continue
+        first_cell = " ".join(text for text, _ in (buckets[0] or []))
+        pieces.append((lines, _row_label(first_cell, index, seen)))
+    return pieces
+
+
+# A markerless table row still needs a name. Its first cell is the row's own
+# key wherever the table has one - a glossary's abbreviation ("β", "μSv/h"), a
+# form's field label - which reads correctly in a citation and matches how the
+# ground-truth keys name these nodes. A first cell that is long (a whole
+# sentence of body text) or repeated elsewhere in the same table is no key at
+# all, and the row falls back to its position.
+_ROW_LABEL_MAX = 40
+
+
+def _row_label(first_cell: str, index: int, seen: set[str]) -> str:
+    text = " ".join(first_cell.split())
+    if text and len(text) <= _ROW_LABEL_MAX and text not in seen:
+        seen.add(text)
+        return text
+    return f"r{index + 1}"
+
+
+# A borderless table has no ruled lines for PyMuPDF's table finder to detect:
+# on the Attachment to the Technical Specifications' three-page glossary it
+# returns a table carrying no cells at all (the one `_page_grids` drops), and
+# `strategy="text"` is not an alternative - it fires on 100% of prose pages
+# tested, shredding paragraphs into mid-token columns. What the page does have
+# is geometry: the layout model's own items are already cell-level, and their
+# left edges fall into a small number of sharp bands (x=58.7 and x=186.0 on that
+# glossary). Grouping items into visual lines and splitting each at the second
+# band recovers all 82 of its rows.
+#
+# Deliberately reached ONLY from a block the layout model already classified as
+# a table, and only once the grid has failed, so it can never see prose.
+_BAND_GAP = 6.0          # left edges this close belong to the same band
+_BAND_SLACK = 2.0        # tolerance when testing which side of a band an item sits
+_BAND_MIN_SHARE = 0.08   # a band needs this share of the block's items to count
+_MIN_CLUSTERED_ROWS = 3  # fewer rows than this is not a table worth splitting
+
+
+def _left_edge_bands(items) -> list[float]:
+    """The sharp left-edge bands of a block's items, or [] when there are not
+    at least two - one band is a paragraph, not a table."""
+    edges = sorted(round(bbox[0], 1) for _, bbox in items)
+    bands: list[list[float]] = []
+    for edge in edges:
+        if bands and edge - bands[-1][-1] <= _BAND_GAP:
+            bands[-1].append(edge)
+        else:
+            bands.append([edge])
+    need = max(2, int(len(items) * _BAND_MIN_SHARE))
+    strong = [band[0] for band in bands if len(band) >= need]
+    return strong if len(strong) >= 2 else []
+
+
+def _column_row_pieces(items) -> list:
+    """One piece per row of a borderless table, named by its first column.
+
+    A line with nothing in the first column is a wrapped continuation of the row
+    above, not a row of its own - without that, a definition running onto a
+    second line ("DEPT | The Example Services Department")
+    leaves an orphan fragment behind."""
+    bands = _left_edge_bands(items)
+    if not bands:
+        return []
+    second = bands[1] - _BAND_SLACK
+    pieces: list = []
+    seen: set[str] = set()
+    for line in _reading_lines(items):
+        label_text = " ".join(text for text, bbox in line if bbox[0] < second)
+        if not label_text.strip() and pieces:
+            pieces[-1][0].append(line)
+            continue
+        pieces.append(([line], _row_label(label_text, len(pieces), seen)))
+    return pieces if len(pieces) >= _MIN_CLUSTERED_ROWS else []
+
+
+# How far a block's left edge may sit from a list's marker column and still
+# count as being in it.
+_MARKER_COLUMN_SLACK = 2.0
+
+
+def _closes_the_list(x0: float, class_name: str, subitem_stack, nodes_by_id) -> bool:
+    """Does this markerless block end the open sub-item list rather than
+    continue its last item?
+
+    True when it starts in the list's own marker column and the layout model
+    did not classify it as a list item. A genuine continuation of an item wraps
+    to the item's TEXT column, which is indented past the marker column, so the
+    two never collide.
+    """
+    if not subitem_stack or class_name == "list-item":
+        return False
+    opener = nodes_by_id.get(subitem_stack[-1][1])
+    if opener is None or not opener.bbox:
+        return False
+    return abs(x0 - opener.bbox[0]) <= _MARKER_COLUMN_SLACK
+
+
 def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str, str, list[float]]]:
     """Ordered (x0, class_name, text, bbox) blocks for one page, boilerplate
     excluded. `bbox` is the block's own [x0, y0, x1, y1] in PDF point
@@ -500,8 +705,13 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
         items = [(all_texts[i], all_bboxes[i]) for i in g.get("indicies", [])
                  if 0 <= i < len(all_texts) and i < len(all_bboxes)]
         lines = _reading_lines(items)
-        pieces = [lines] if g["class_name"] == "table" else _split_at_marker_lines(lines)
-        for piece in pieces:
+        if g["class_name"] == "table":
+            grid = _grid_for_block(source_file, page_number, page, g["group_bbox"])
+            rows = _table_row_pieces(items, grid) if grid else []
+            pieces = (rows or _column_row_pieces(items)) or [(lines, None)]
+        else:
+            pieces = [(piece, None) for piece in _split_at_marker_lines(lines)]
+        for piece, row_label in pieces:
             text = _join_lines(piece).strip()
             if not text:
                 continue
@@ -509,7 +719,7 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
                 min(b[0] for line in piece for _, b in line), min(b[1] for line in piece for _, b in line),
                 max(b[2] for line in piece for _, b in line), max(b[3] for line in piece for _, b in line),
             ]
-            blocks.append((bbox[0], g["class_name"], text, bbox))
+            blocks.append((bbox[0], g["class_name"], text, bbox, row_label))
     return blocks
 
 
@@ -643,7 +853,7 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
     toc_pages = {
         p.page_number for p in pages
         if looks_like_toc(p.native_text)
-        and not any(cls == "table" for _, cls, _, _ in blocks_by_page.get(p.page_number, []))
+        and not any(cls == "table" for _, cls, _, _, _ in blocks_by_page.get(p.page_number, []))
     }
     furniture_by_scope = _detect_running_furniture(
         {pn: b for pn, b in blocks_by_page.items() if pn not in toc_pages}, _scope_of_page
@@ -724,9 +934,13 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
             current_part = None
             reset_below_part()
 
-        for x0, class_name, raw_text, bbox in blocks_by_page.get(page.page_number, []):
-            for text in _split_block(raw_text, class_name):
+        for x0, class_name, raw_text, bbox, row_label in blocks_by_page.get(page.page_number, []):
+            for index, text in enumerate(_split_block(raw_text, class_name)):
                 kind, number, title = _classify_marker(text)
+                # Only the row's own first piece carries its label: a run-in
+                # sub-item split out of the row ("(i) ...; (ii) ...") is a
+                # marker of its own and classifies normally.
+                label_here = row_label if index == 0 else None
 
                 if kind == "note" and text.startswith("[") and clause_node is not None:
                     # A bracketed note means two different things depending
@@ -762,6 +976,57 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                 if kind is None:
                     if text in furniture_by_scope.get(_scope_of_page(page.page_number), ()):
                         continue
+
+                    if label_here is not None:
+                        # A table row the grid found but no marker opens: a
+                        # glossary's "β Beta", a form's "Name of the Tenderer :".
+                        # Without this it absorbs into whatever node preceded the
+                        # table and is unaddressable - the whole Attachment to the
+                        # Technical Specifications (82 key nodes) produced no node
+                        # at all. Named by its own first cell (see `_row_label`),
+                        # parented to the enclosing Table/Part or sub-document so a
+                        # table's rows are siblings, and deliberately NOT pushed
+                        # onto subitem_stack: like a note, it is not a nesting
+                        # level and must not intercept which marker a later
+                        # (a)/(b)/(i) continues.
+                        parent = part_node or current_scope or doc_id
+                        # The id parenthesises the key so a citation reads like
+                        # every other sub-item ("row (β) of the glossary"), but
+                        # `label` is the marker AS WRITTEN: the document prints
+                        # "β Beta", not "(β) Beta", and a label the node's own
+                        # text does not start with is simply wrong - it also
+                        # makes the node fail the exact-location check that asks
+                        # precisely that question.
+                        node_id = _unique(f"{parent}:({label_here})", seen_ids)
+                        add(_WorkingNode(
+                            node_id, parent, "subitem", current_part, None, None,
+                            page.page_number, text, 0, label=label_here,
+                            bbox=bbox, **_ident(doc_ident, page.page_number),
+                        ))
+                        continue
+
+                    if _closes_the_list(x0, class_name, subitem_stack, nodes_by_id):
+                        # Text that resumes the enclosing clause after a list,
+                        # not a continuation of the list's last item: "The
+                        # grounds specified in Paragraphs 20.1(a) to 20.1(g)
+                        # above are separate and independent...". Two signals
+                        # agree and both are already in the block: it sits at
+                        # the list's own MARKER column (x=156.5, where (f)/(g)
+                        # start) while a real continuation of an item is
+                        # indented past it (x=192.5), and the layout model
+                        # classifies it `text` where the items are `list-item`.
+                        # Absorbed into the last item, it inflates that item and
+                        # loses a node the schedules cite in its own right.
+                        parent = nodes_by_id[subitem_stack[0][1]].parent_id
+                        subitem_stack = []
+                        node_id = _unique(f"{parent}:tail", seen_ids)
+                        add(_WorkingNode(
+                            node_id, parent, "subitem", current_part, None, None,
+                            page.page_number, text, 0,
+                            bbox=bbox, **_ident(doc_ident, page.page_number),
+                        ))
+                        continue
+
                     # not a marker - it's the continuation of whatever marker was
                     # opened most recently, however many such blocks follow in a
                     # row (absorbing only the first one here was a real bug,
@@ -838,7 +1103,7 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                     node_id = _unique(f"{parent}:note", seen_ids)
                     add(_WorkingNode(
                         node_id, parent, "subitem", current_part, None, None, page.page_number, text, 0,
-                        label="[note]", bbox=bbox, **_ident(doc_ident, page.page_number),
+                        bbox=bbox, **_ident(doc_ident, page.page_number),
                     ))
                     continue
 
