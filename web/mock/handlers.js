@@ -73,20 +73,28 @@ function escapeXml(s) {
 // The page image. The real route renders the PDF page to PNG and, with
 // `?highlight=<text>`, marks where that text is printed; the mock draws the
 // same thing as SVG so no PDF renderer is needed in the browser or in Vitest.
+// A scanned offer has no text layer, so nothing on it is marked.
 export function pageSvg(docId, page, highlight) {
   const lines = fx.pageLines(docId, page);
-  const needle = (highlight ?? "").trim().toLowerCase();
+  const doc = fx.findDocument(docId);
+  const scanned = doc?.kind === "bid" && fx.TENDERERS[doc.tenderer].scanned;
+  const needle = scanned ? "" : (highlight ?? "").trim().toLowerCase();
   const rows = lines
     .map((text, i) => {
-      const y = 110 + i * 34;
+      const y = fx.lineY(i);
       const size = i === 0 ? 20 : 15;
       const weight = i === 0 ? "bold" : "normal";
-      // A long quote is wrapped over several lines; each of them is marked.
+      // The quote within a line is marked where it is printed (the box a
+      // PageCitation carries); a long quote wrapped over several lines marks
+      // each of them whole.
       const line = text.toLowerCase();
-      const hit = needle && (line.includes(needle) || (line.length >= 12 && needle.includes(line)));
-      const box = hit
-        ? `<rect data-highlight="true" x="52" y="${y - 22}" width="${Math.min(500, 20 + text.length * 8.4)}" height="30" fill="#fde047" fill-opacity="0.45" stroke="#ca8a04" stroke-width="2"/>`
-        : "";
+      const at = needle ? line.indexOf(needle) : -1;
+      const whole = needle && at < 0 && line.length >= 12 && needle.includes(line);
+      const [x0, y0, x1, y1] = at >= 0 ? fx.lineBox(i, at, needle.length) : fx.lineBox(i, 0, text.length);
+      const box =
+        at >= 0 || whole
+          ? `<rect data-highlight="true" x="${x0 - 4}" y="${y0 - 3}" width="${Math.min(535 - x0, x1 - x0 + 8)}" height="${y1 - y0 + 6}" fill="#fde047" fill-opacity="0.45" stroke="#ca8a04" stroke-width="2"/>`
+          : "";
       return `${box}<text x="60" y="${y}" font-family="Georgia, serif" font-size="${size}" font-weight="${weight}" fill="#1f2937">${escapeXml(text)}</text>`;
     })
     .join("");
@@ -214,7 +222,8 @@ export const handlers = [
     const n = Number(params.n);
     if (!(n >= 1 && n <= doc.pages)) return error(404, "not_found", `page ${n} does not exist in ${doc.file}`);
     const url = new URL(request.url);
-    if (!url.searchParams.get("sig") || !url.searchParams.get("exp")) {
+    const q = url.searchParams;
+    if (!fx.verify(params.docId, n, q.get("exp"), q.get("sig"), q.get("highlight"))) {
       return error(403, "forbidden", "the image link is invalid or has expired");
     }
     return new HttpResponse(pageSvg(params.docId, n, url.searchParams.get("highlight")), {

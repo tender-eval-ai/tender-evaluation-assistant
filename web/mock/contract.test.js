@@ -48,7 +48,7 @@ function typeOk(type, v) {
 }
 
 // A small JSON Schema subset, enough for FastAPI's output: $ref, type, enum,
-// required, properties, additionalProperties, items, anyOf. Strict on unknown
+// required, properties, additionalProperties, items, minItems, maxItems, anyOf. Strict on unknown
 // properties: pydantic would drop them, so a mock that sends them lies.
 export function validate(schemaIn, value, path = "$") {
   const schema = deref(schemaIn);
@@ -60,6 +60,12 @@ export function validate(schemaIn, value, path = "$") {
   if (schema.enum && !schema.enum.includes(value)) return [`${path}: ${JSON.stringify(value)} not in ${schema.enum}`];
   if (schema.type && !typeOk(schema.type, value)) return [`${path}: expected ${schema.type}, got ${JSON.stringify(value)}`];
   const errors = [];
+  if (schema.type === "array" && schema.minItems != null && value.length < schema.minItems) {
+    errors.push(`${path}: ${value.length} items, fewer than ${schema.minItems}`);
+  }
+  if (schema.type === "array" && schema.maxItems != null && value.length > schema.maxItems) {
+    errors.push(`${path}: ${value.length} items, more than ${schema.maxItems}`);
+  }
   if (schema.type === "array" && schema.items) {
     value.forEach((v, i) => errors.push(...validate(schema.items, v, `${path}[${i}]`)));
   }
@@ -98,12 +104,14 @@ const REQUESTS = [
   ["get", "/projects/{pid}/events", `/projects/${fx.PID}/events`],
 ];
 
-describe(`mock vs ${specPath.includes("docs/openapi.json") ? "docs/openapi.json" : "openapi.s2.json (PR #27)"}`, () => {
+describe(`mock vs ${specPath.includes("docs/openapi.json") ? "docs/openapi.json" : "openapi.s2.json (PR #35)"}`, () => {
   it("the checker itself rejects an unknown field, a missing field and a wrong enum", () => {
     const cite = { $ref: "#/components/schemas/PageCitation" };
     const ok = { doc_id: "9f849435aa64", file: "offer.pdf", page: 10, image_url: "/x" };
     expect(validate(cite, ok)).toEqual([]);
-    expect(validate(cite, { ...ok, box: [0, 0, 1, 1] })).toEqual(["$: 'box' is not in the contract"]);
+    expect(validate(cite, { ...ok, bbox: [0, 0, 1, 1] })).toEqual(["$: 'bbox' is not in the contract"]);
+    expect(validate(cite, { ...ok, quote: "x", box: [0, 0, 1, 1], page_size: [595, 842] })).toEqual([]);
+    expect(validate(cite, { ...ok, box: [0, 0, 1] })).toHaveLength(1);
     expect(validate(cite, { doc_id: "x", file: "f", page: 1 })).toEqual(["$: missing required 'image_url'"]);
     expect(validate({ $ref: "#/components/schemas/StageSummary" }, { outcome: "fail", items: {} })).toHaveLength(1);
   });
@@ -141,9 +149,43 @@ describe(`mock vs ${specPath.includes("docs/openapi.json") ? "docs/openapi.json"
     const urls = Object.values(result.verdicts).flatMap((v) => v.evidence.map((e) => e.image_url));
     expect(urls.length).toBeGreaterThan(0);
     for (const u of urls) {
-      expect(u).toMatch(/^\/projects\/[^/]+\/documents\/[0-9a-f]{12}\/pages\/\d+\/image\?exp=\d+&sig=\w+$/);
+      expect(u).toMatch(/^\/projects\/[^/]+\/documents\/[0-9a-f]{12}\/pages\/\d+\/image\?exp=\d+&sig=\w+(&highlight=[^&]+)?$/);
       expect(u).not.toMatch(/key/i);
     }
+  });
+
+  it("a citation on a text layer carries its quote, box and a signed highlight; a scanned one none", () => {
+    const quoted = fx.bidResult(t).fields.l.tenderer_name.page;
+    expect(quoted.quote).toBe(fx.TENDERERS[t].name);
+    expect(quoted.box).toHaveLength(4);
+    expect(quoted.page_size).toEqual([595, 842]);
+    expect(new URL(quoted.image_url, BASE).searchParams.get("highlight")).toBe(quoted.quote);
+    // A boolean is not text on the page: the plain page.
+    const plain = fx.bidResult(t).fields.l.document.page;
+    expect([plain.quote, plain.box, plain.page_size]).toEqual([null, null, null]);
+    expect(plain.image_url).not.toMatch(/highlight/);
+    // Tenderer_D's offer is scanned: its name is read, but there is no text layer.
+    const scanned = fx.bidResult("Tenderer_D").fields.l.tenderer_name.page;
+    expect([scanned.quote, scanned.box, scanned.page_size]).toEqual([null, null, null]);
+    expect(scanned.image_url).not.toMatch(/highlight/);
+  });
+
+  it("documents carry the project path a rule set Citation.file names", () => {
+    const docs = fx.documents();
+    expect(docs.find((d) => d.doc_id === doc).path).toBe(`bids/${t}/offer.pdf`);
+    expect(docs.find((d) => d.file === "09 Schedules.pdf").path).toBe("tender/09 Schedules.pdf");
+  });
+
+  it("a tampered signed highlight is refused with 403 in the error envelope", async () => {
+    const signed = fx.bidResult(t).fields.l.tenderer_name.page.image_url;
+    expect((await fetch(BASE + signed)).status).toBe(200);
+    const url = new URL(signed, BASE);
+    url.searchParams.set("highlight", "Tenderer B Chemicals Ltd");
+    const res = await fetch(url);
+    expect(res.status).toBe(403);
+    expect((await res.json()).error).toEqual({ code: "forbidden", message: expect.any(String), details: {} });
+    url.searchParams.delete("highlight");
+    expect((await fetch(url)).status).toBe(403);
   });
 
   it("errors use the {error: {code, message, details}} envelope", async () => {
@@ -163,6 +205,7 @@ describe(`mock vs ${specPath.includes("docs/openapi.json") ? "docs/openapi.json"
     const marked = await (await fetch(`${BASE}${signed}&highlight=${encodeURIComponent(fx.TENDERERS[t].name)}`)).text();
     expect(marked).toContain('data-highlight="true"');
     expect((await fetch(`${BASE}/projects/${fx.PID}/documents/${doc}/pages/${page}/image`)).status).toBe(403);
+    expect((await fetch(`${BASE}${signed.replace(/sig=\w+/, "sig=mock00000000")}`)).status).toBe(403);
   });
 
   it("both rule set fixtures carry the RuleSet fields of app/rulesets/schema.py", () => {
