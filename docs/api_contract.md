@@ -86,9 +86,9 @@ API-only models, to be defined in `backend/schemas_api.py` at S2 and exported in
 - `Correction {value?: any, present?: bool, page?: int, reason: str}`
 - `Document`, `Page`, `Node`, `PriceSummary`, `Evaluation`, `Event` as described in the tables.
 
-## Open questions for S0
+## Questions settled at S0
 
-1. `rubric` (today's name) or `ruleset` (this file): this file proposes `ruleset` for the new routes and keeps `rubric` until S2 only.
+1. Resolved (2026-09-17, both): `ruleset` for the new routes; `rubric` survives only on the legacy routes, which go at S2.
 2. Resolved (2026-09-17, in `schema.py`): `letter` is `a` to `z` for schedule items and `x1`, `x2`, ... for items a person adds.
-3. Should `POST /checks` accept a rule-set version, or always use the latest confirmed one? Proposal: latest confirmed, with `?version=` only on `evaluate`.
-4. Where the OpenAPI snapshot test lives (`test/test_api_contract.py`, added at S2 when the first new route lands).
+3. Resolved (2026-09-17, both): `POST /checks` always uses the latest confirmed rule set; `?version=` exists only on `evaluate`.
+4. Resolved (2026-09-17, both): the OpenAPI snapshot test is `test/test_api_contract.py`, added at S2 when the first new route lands.
