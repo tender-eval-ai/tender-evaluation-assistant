@@ -155,10 +155,16 @@ app/                the pipeline library (shared by CLI and backend)
   usage.py          per-bid token / call / $ accounting, price table, run summaries
   graph.py          LangGraph orchestration: state, checkpoints, interrupts, Send fan-out
   pipeline.py       bidder discovery, offline (fixture) run, console summary
+  jobs/             the run queue and check worker (Procrastinate on Postgres): step pipelines with
+                    per-step checkpoints, pause/resume, results + corrections, `python -m app.jobs.worker`
+  db.py             plain-SQL migrations (migrations/NNN_name.sql, up and down sections)
+  rulesets/         the shared rule-set contract (schema.py), changed only by a `contract` PR
+  engine/           Nasi's rule engine, ported unchanged from Bidding-AI-expert@7e8e273
 backend/            FastAPI service (projects, uploads, jobs, reports API) + Dockerfile
 frontend/           Streamlit review UI (HTTP client of the backend only) + Dockerfile
 mcp_server/         MCP server over the read-only tools + local-model MCP client
 docs/               plan (dated experiment log), detailed specification, interview prep, project report (audit)
+migrations/         SQL migrations applied by app.db.migrate (the worker runs it at start)
 docker-compose.yml  runs both services together
 deploy/cloudrun/    private Cloud Run packaging: nginx ingress sidecar, Cloud Build, setup/deploy scripts
 run_demo.py         CLI (offline demo + orchestrated run over real folders)
