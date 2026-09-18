@@ -1,6 +1,6 @@
 # 0001. Orchestrator for the vendor-check pipeline
 
-Status: **draft for stop point S1**, to be decided by both engineers. Date: 2026-09-15. Author of the measurements: Chenyu.
+Status: **accepted** at stop point S1 by both engineers (Chenyu and Nasi, 2026-09-17). Date: 2026-09-15. Author of the measurements: Chenyu.
 
 ## Context
 
@@ -77,7 +77,7 @@ Same machine, same day, FakeLLM with 0.25 to 0.5 s per call, 1 s worker heartbea
 - **Moving parts and glue (scenario 11).** Shared code is 336 lines in both. Variant-specific code: queue 115 lines (`tasks.py` 93, `adapter.py` 22); LangGraph 162 lines (`graph.py` 82, `tasks.py` 58, `adapter.py` 22) plus four checkpoint tables and a checkpointer whose `setup()` must be run once by the adapter, never inside jobs (concurrent `setup()` raced on `checkpoint_migrations` during the spike). LangGraph also needed a thread id per attempt so a re-run does not resume the old checkpoint. The queue variant has one progress table and one task function that serves fresh starts, crash retries and confirmation resumes alike.
 - **Licences and on-prem fit.** Procrastinate MIT, `langgraph` and `langgraph-checkpoint-postgres` MIT, both on the same Postgres. No difference.
 
-## Decision (proposed)
+## Decision
 
 **The Postgres job queue variant is the product's background worker.** Both pass every gate, so the rule falls to moving parts and glue, where the queue variant is simpler by one library, four tables, one setup-ordering hazard and about fifty lines, with no loss on any measured behaviour.
 

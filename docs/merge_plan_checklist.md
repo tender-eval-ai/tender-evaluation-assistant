@@ -8,7 +8,7 @@ Joint review of the "Tender Review Merge Plan" (10-day version, 2026-09-15). Thi
 
 **Context both of us share.** Two bootcamp students, both in the US, no client and no pilot. Each person works on their own area independently and stops at the joint stop points in section D. The goal is the strongest possible joint project for job applications.
 
-Last updated: 2026-09-17 (Chenyu).
+Last updated: 2026-09-17 (Nasi).
 
 ## Status board
 
@@ -36,7 +36,7 @@ Last updated: 2026-09-17 (Chenyu).
 | E2 | Procrastinate as the run queue in both variants | agreed | — (update the plan) |
 | E3 | Neutral framing of the two variants in the plan | agreed | — (update the plan) |
 | E4 | One full day for the comparison, decision next morning | agreed | — (update the plan) |
-| E5 | Orchestrator decision record 0001 (S1) | open | Nasi to accept or object |
+| E5 | Orchestrator decision record 0001 (S1) | decided | — |
 | F1 | Repo stays private until publishable, then org and public | decided | — |
 | F2 | Data classes and endpoints named per fixture and eval | agreed | — (update the plan) |
 | F3 | Files excluded from the port (commit `7e8e273`, see F5) | agreed | — (update the plan) |
@@ -230,8 +230,8 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 ### E5. Orchestrator decision record (S1)
 - Proposal: `docs/decisions/0001-orchestrator.md` (PR #9) proposes the Postgres job queue on the plan's own decision rule: both variants pass every must-pass gate with identical numbers, and the queue variant has fewer moving parts (115 against 162 variant-specific lines, one table against four). The LangGraph variant stays runnable under `spikes/langgraph` until the record is accepted.
 - Chenyu (2026-09-17): accept the queue variant as the pipeline runner; the V5 agent loop may still be a graph inside a job.
-- Nasi:
-- Decision: open. S1 closes when Nasi accepts (one line here or in the record's status line) or objects with what else to measure.
+- Nasi (2026-09-17): accept the queue variant as the pipeline runner, on the numbers in the record; LangGraph only inside a job for the V5 agent, if it reads better there.
+- Decision: decided (2026-09-17). S1 closed; record 0001 accepted.
 
 ## F. Repository, data and confidentiality
 
