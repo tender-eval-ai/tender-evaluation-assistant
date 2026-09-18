@@ -108,3 +108,36 @@ def test_every_layout_block_carries_its_row_label_field(tmp_path: Path):
     assert blocks, "expected at least one block"
     assert all(len(block) == 5 for block in blocks)
     assert all(block[4] is None for block in blocks), "a non-table block has no row label"
+
+
+def test_a_picture_carrying_a_text_layer_is_read_as_a_table(monkeypatch, tmp_path: Path):
+    """The layout model sometimes classifies a whole ruled table as a picture;
+    dropped as one, every row of it was lost. A picture with at most a few
+    labels is still dropped."""
+    import app.parsing.layout_document_index as layout
+    import pymupdf.layout.pymupdf_util as util
+
+    pdf = tmp_path / "page.pdf"
+    make_text_pdf(pdf, ["placeholder"])
+    rows = [("1", "First sample item"), ("2", "Second sample item"), ("3", "Third sample item"),
+            ("4", "Fourth sample item")]
+    texts, bboxes = [], []
+    for index, (number, description) in enumerate(rows):
+        top = 200 + 20 * index
+        texts += [number, description]
+        bboxes += [[60, top, 70, top + 10], [120, top, 300, top + 10]]
+    texts.append("Figure label")
+    bboxes.append([60, 500, 120, 510])
+    groups = [
+        {"class_name": "picture", "indicies": list(range(8)), "group_bbox": [50, 190, 320, 290]},
+        {"class_name": "picture", "indicies": [8], "group_bbox": [50, 490, 320, 520]},
+    ]
+    model = SimpleNamespace(predict=lambda page, return_raw=True: groups,
+                            input_type=None, feature_set_name=None, feature_extractor=None)
+    monkeypatch.setattr(layout, "_get_model", lambda: model)
+    monkeypatch.setattr(util, "create_input_data_from_page", lambda page, options=None: {"text": texts, "bboxes": bboxes})
+
+    blocks = layout._layout_blocks(str(pdf), 1)
+
+    assert [b[2] for b in blocks] == [f"{n} {d}" for n, d in rows]
+    assert all(b[1] == "table" for b in blocks)

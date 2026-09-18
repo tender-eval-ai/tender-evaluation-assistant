@@ -812,6 +812,10 @@ def _is_heading(text: str, x0: float, class_name: str, subitem_stack, nodes_by_i
     return None
 
 
+# Text items a `picture` group must carry to be read as a table instead.
+_PICTURE_MIN_TEXT_ITEMS = 8
+
+
 def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str, str, list[float]]]:
     """Ordered (x0, class_name, text, bbox) blocks for one page, boilerplate
     excluded. `bbox` is the block's own [x0, y0, x1, y1] in PDF point
@@ -835,12 +839,22 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
 
     blocks = []
     for g in groups:
-        if g["class_name"] in ("page-header", "page-footer", "picture"):
+        class_name = g["class_name"]
+        if class_name == "picture" and len(g.get("indicies") or []) >= _PICTURE_MIN_TEXT_ITEMS:
+            # A table the layout model took for a picture. Dropped as a
+            # picture, its whole text layer was lost - the Price Schedule's
+            # Table 2 (Items 2 to 4, cited on their own by the Completeness
+            # Check Schedule) produced no node at all, and PyMuPDF's table
+            # finder detects no grid there either. A "picture" carrying a real
+            # text layer of its own is read as a table; a picture with at most a
+            # caption or a few labels stays dropped.
+            class_name = "table"
+        if class_name in ("page-header", "page-footer", "picture"):
             continue
         items = [(all_texts[i], all_bboxes[i]) for i in g.get("indicies", [])
                  if 0 <= i < len(all_texts) and i < len(all_bboxes)]
         lines = _reading_lines(items)
-        if g["class_name"] == "table":
+        if class_name == "table":
             grid = _grid_for_block(source_file, page_number, page, g["group_bbox"])
             rows = _table_row_pieces(items, grid) if grid else []
             pieces = (rows or _column_row_pieces(items)) or [(lines, None)]
@@ -854,7 +868,7 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
                 min(b[0] for line in piece for _, b in line), min(b[1] for line in piece for _, b in line),
                 max(b[2] for line in piece for _, b in line), max(b[3] for line in piece for _, b in line),
             ]
-            blocks.append((bbox[0], g["class_name"], text, bbox, row_label))
+            blocks.append((bbox[0], class_name, text, bbox, row_label))
     return blocks
 
 
