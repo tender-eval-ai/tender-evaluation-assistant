@@ -88,9 +88,9 @@ API-only models, defined in `backend/schemas_api.py` and exported into `docs/ope
 - `Correction {value?: any, present?: bool, page?: int, reason: str}`
 - `Document {doc_id, file, kind, tenderer?, pages, data_class}`, `Page {page, has_text, label?, title?, summary?, signed?, has_table?, image_url}`, `Event {id, kind, project, subject?, before?, after?, user, reason?, at}`; `Node`, `PriceSummary`, `Evaluation` as described in the tables.
 
-## Open questions for S0
+## Questions settled at S0
 
-1. `rubric` (today's name) or `ruleset` (this file): this file proposes `ruleset` for the new routes and keeps `rubric` until S2 only.
+1. Resolved (2026-09-17, both): `ruleset` for the new routes; `rubric` survives only on the legacy routes, which go at S2.
 2. Resolved (2026-09-17, in `schema.py`): `letter` is `a` to `z` for schedule items and `x1`, `x2`, ... for items a person adds.
-3. Implemented as proposed (2026-09-17): `POST /checks` uses the latest confirmed rule set; `?version=` only on `evaluate`.
-4. Resolved (2026-09-17): `test/test_api_contract.py` checks `docs/openapi.json`; regenerate with `UPDATE_OPENAPI=1`.
+3. Resolved (2026-09-17, both): `POST /checks` always uses the latest confirmed rule set; `?version=` exists only on `evaluate`. Implemented at S2.
+4. Resolved (2026-09-17, both): `test/test_api_contract.py` checks `docs/openapi.json`; regenerate with `UPDATE_OPENAPI=1`.
