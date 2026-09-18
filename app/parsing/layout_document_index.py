@@ -328,7 +328,10 @@ def _split_leading_bare_marker(text: str) -> list[str]:
 # separate it from what follows). Confirmed real across every Part of
 # `09 Schedules.pdf`'s Price/Compliance Schedules: without this, "Notes:"
 # and note (1) both silently absorb into whichever subitem preceded them.
-_NOTES_HEADING_THEN_MARKER = re.compile(r"^(Notes?:)[ \t]*(\(\d+\)[ \t]*.*)$", re.S)
+# The notes are numbered with letters or roman numerals as often as digits -
+# "Notes: (i) Please use separate sheet(s)..." under every table of the
+# Particulars of Goods Schedule - and those were never split off.
+_NOTES_HEADING_THEN_MARKER = re.compile(r"^(Notes?:)[ \t]*(\((?:\d+|[a-z]{1,2}|[ivx]{1,4})\)[ \t]*.*)$", re.S)
 
 
 def _split_notes_heading(text: str) -> list[str]:

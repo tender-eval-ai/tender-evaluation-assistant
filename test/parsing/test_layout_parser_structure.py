@@ -110,3 +110,12 @@ def test_text_before_the_first_marker_is_the_documents_own_text(monkeypatch):
     assert document["text"].startswith(masthead)
     assert "References to the sample terms" in document["text"]
     assert all(masthead not in n["text"] for n in nodes.values() if n is not document)
+
+
+def test_a_notes_heading_is_split_from_a_first_note_numbered_by_letter_or_roman_numeral():
+    from app.parsing.layout_document_index import _split_notes_heading
+
+    assert _split_notes_heading("Notes: (1) A first note.") == ["Notes:", "(1) A first note."]
+    assert _split_notes_heading("Notes: (i) A first note.") == ["Notes:", "(i) A first note."]
+    assert _split_notes_heading("Notes: (a) A first note.") == ["Notes:", "(a) A first note."]
+    assert _split_notes_heading("Notes: see the table above.") == ["Notes: see the table above."]
