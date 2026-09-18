@@ -14,6 +14,7 @@ ADAPTERS = {
     "reference": "test.jobs.reference:ReferenceAdapter",
     "langgraph": "spikes.langgraph.adapter:LangGraphAdapter",
     "queue": "spikes.queue.adapter:ProcrastinateAdapter",
+    "app": "test.jobs.app_adapter:AppAdapter",          # the promoted runner (app/jobs)
 }
 
 

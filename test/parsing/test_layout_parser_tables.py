@@ -8,7 +8,6 @@ synthetic document.
 from pathlib import Path
 from types import SimpleNamespace
 
-import pytest
 
 from app.parsing.layout_document_index import (
     _layout_blocks,
