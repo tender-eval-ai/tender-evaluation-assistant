@@ -141,3 +141,19 @@ def test_a_picture_carrying_a_text_layer_is_read_as_a_table(monkeypatch, tmp_pat
 
     assert [b[2] for b in blocks] == [f"{n} {d}" for n, d in rows]
     assert all(b[1] == "table" for b in blocks)
+
+
+def test_a_table_row_keyed_by_a_bare_number_carries_that_number(monkeypatch):
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (36, "section-header", "Part A - Sample Prices"),
+        (40, "table", "Item Description Quantity", "Item"),
+        (40, "table", "2 A second sample item 4 sets", "2"),
+        (40, "table", "3 A third sample item 2 sets", "3"),
+    ]})
+
+    rows = {n["label"]: n for n in nodes.values() if n.get("label")}
+    assert rows["2"]["number"] == "2"
+    assert rows["3"]["number"] == "3"
+    assert rows["Item"]["number"] is None, "a header cell is not a number"

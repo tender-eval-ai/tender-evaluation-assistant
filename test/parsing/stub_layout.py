@@ -8,13 +8,14 @@ import app.parsing.layout_document_index as layout
 from app.parsing.loader import Page
 
 
-def parse_blocks(monkeypatch, blocks_by_page: dict[int, list[tuple[float, str, str]]]) -> dict[str, dict]:
-    """Parse stub blocks, given per page as (x0, class_name, text); returns nodes by id."""
+def parse_blocks(monkeypatch, blocks_by_page: dict[int, list[tuple]]) -> dict[str, dict]:
+    """Parse stub blocks, given per page as (x0, class_name, text) or, for a table
+    row, (x0, class_name, text, row_label); returns nodes by id."""
     def blocks(_source, page_number):
         out = []
-        for index, (x0, class_name, text) in enumerate(blocks_by_page.get(page_number, [])):
+        for index, (x0, class_name, text, *label) in enumerate(blocks_by_page.get(page_number, [])):
             top = 100 + 20 * index
-            out.append((x0, class_name, text, [x0, top, 520, top + 12], None))
+            out.append((x0, class_name, text, [x0, top, 520, top + 12], label[0] if label else None))
         return out
 
     monkeypatch.setattr(layout, "_layout_blocks", blocks)

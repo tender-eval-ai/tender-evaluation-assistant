@@ -1228,8 +1228,12 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                         # makes the node fail the exact-location check that asks
                         # precisely that question.
                         node_id = _unique(f"{parent}:({label_here})", seen_ids)
+                        # A row keyed by a bare number ("2", "1.1") is that
+                        # numbered entry of the table - "Item 2 in Part A of the
+                        # Price Schedule" - and is looked up by that number.
+                        row_number = label_here if re.fullmatch(r"\d+(?:\.\d+)*", label_here) else None
                         add(_WorkingNode(
-                            node_id, parent, "subitem", current_part, None, None,
+                            node_id, parent, "subitem", current_part, row_number, None,
                             page.page_number, text, 0, label=label_here,
                             bbox=bbox, **_ident(doc_ident, page.page_number),
                         ))
