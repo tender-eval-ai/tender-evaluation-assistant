@@ -407,7 +407,7 @@ def print_report(report: dict, show_failures: bool) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--key", type=Path, required=True)
+    parser.add_argument("--key", type=Path, help="checklist/reference key; omit to score a deep key alone")
     parser.add_argument("--pdfs", type=Path, required=True)
     parser.add_argument("--nodes", type=Path, help="reuse (or write) parsed nodes as JSON")
     parser.add_argument("--out", type=Path, help="write the full report as JSON")
@@ -415,7 +415,9 @@ def main() -> None:
     parser.add_argument("--deep-key", type=Path, help="also score a node-level key (ground_truth/deep/SPEC.md)")
     args = parser.parse_args()
 
-    key = json.loads(args.key.read_text())
+    if not args.key and not args.deep_key:
+        parser.error("give --key, --deep-key, or both")
+    key = json.loads(args.key.read_text()) if args.key else None
     pdfs = sorted(args.pdfs.glob("*.pdf")) if args.pdfs.is_dir() else [args.pdfs]
     if args.nodes and args.nodes.exists():
         nodes = json.loads(args.nodes.read_text())
@@ -425,8 +427,10 @@ def main() -> None:
             args.nodes.write_text(json.dumps(nodes, ensure_ascii=False))
 
     tender = Tender(nodes, pdfs)
-    report = score(key, tender)
-    print_report(report, args.failures)
+    report = {"tender": None}
+    if key:
+        report = score(key, tender)
+        print_report(report, args.failures)
     if args.deep_key:
         report["deep"] = score_deep(json.loads(args.deep_key.read_text()), tender)
         print_deep_report(report["deep"])
