@@ -1,17 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Badge from "./Badge.jsx";
-import {
-  getStage1VendorCheckAllStatus,
-  getStage1VendorSummary,
-  startStage1VendorCheckAll,
-} from "../api.js";
+import { getBidResult, getJob, getProject, startChecks } from "../api.js";
 
-// Landing page for the Completeness Check step - one row per real vendor
-// (registry.vendors_for_tender, not a placeholder list), clicking through to
-// the existing per-vendor StageResultsWindow detail page. Every real project
-// today has exactly one vendor folder on disk, so this will show a single
-// row until more vendor data exists - the rollup and navigation are real,
-// not populated with fabricated demo rows.
+// Landing page for the Stage I step: one row per tenderer with an uploaded
+// offer (GET /projects/{pid} `bidders`), its Stage I rollup from its
+// BidResult, clicking through to that tenderer's StageResultsWindow. The
+// contract has no per-project rollup route, so this is one results call per
+// tenderer; a tenderer without a finished check shows "not checked".
 const FILTERS = [
   { key: "all", label: "All" },
   { key: "missing", label: "missing" },
@@ -20,73 +15,88 @@ const FILTERS = [
 ];
 
 const POLL_INTERVAL_MS = 2000;
+const ROW_STATUS = { pass: "complete", dormant: "complete", needs_review: "needs_review", disqualified: "missing" };
 
-function formatLastChecked(iso) {
-  if (!iso) return "not checked yet";
-  return new Date(iso).toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+async function loadRow(projectId, tenderer) {
+  try {
+    const r = await getBidResult(projectId, tenderer);
+    const outcomes = Object.values(r.stage1.items);
+    return {
+      tenderer,
+      checked: true,
+      status: ROW_STATUS[r.stage1.outcome] ?? "needs_review",
+      ok: outcomes.filter((o) => o === "pass").length,
+      review: outcomes.filter((o) => o === "needs_review").length,
+      missing: outcomes.filter((o) => o === "disqualified").length,
+      rulesetVersion: r.ruleset_version,
+    };
+  } catch (err) {
+    if (err.code !== "not_found") throw err;
+    return { tenderer, checked: false, status: "not_checked" };
+  }
 }
 
-export default function VendorCompletenessList({ tenderId, onSelectVendor }) {
+export default function VendorCompletenessList({ projectId, onSelectVendor, pollMs = POLL_INTERVAL_MS }) {
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const [batch, setBatch] = useState({ status: "not_started", progress: null, results: {} });
+  const [jobs, setJobs] = useState({}); // tenderer -> Job
   const pollRef = useRef(null);
 
-  function loadSummary() {
-    return getStage1VendorSummary(tenderId).then(setRows);
+  async function loadRows() {
+    const project = await getProject(projectId);
+    const loaded = await Promise.all((project.bidders ?? []).map((t) => loadRow(projectId, t)));
+    setRows(loaded);
   }
 
   function stopPolling() {
     if (pollRef.current) {
-      clearInterval(pollRef.current);
+      clearTimeout(pollRef.current);
       pollRef.current = null;
     }
   }
 
-  function pollBatchUntilDone() {
-    stopPolling();
-    pollRef.current = setInterval(() => {
-      getStage1VendorCheckAllStatus(tenderId).then((status) => {
-        setBatch(status);
-        // Refresh rows as each vendor finishes, not just once at the very
-        // end - a long batch (many vendors) should visibly progress on
-        // screen, not look frozen until everything completes.
-        loadSummary();
-        if (status.status === "done") stopPolling();
-      });
-    }, POLL_INTERVAL_MS);
+  function poll(jobIds) {
+    pollRef.current = setTimeout(async () => {
+      try {
+        const entries = await Promise.all(Object.entries(jobIds).map(async ([t, id]) => [t, await getJob(projectId, id)]));
+        setJobs(Object.fromEntries(entries));
+        await loadRows();
+        const pending = entries.filter(([, j]) => !["done", "failed", "dead"].includes(j.state));
+        if (pending.length > 0) poll(Object.fromEntries(pending.map(([t, j]) => [t, j.job_id])));
+        else stopPolling();
+      } catch (err) {
+        setError(err.message);
+      }
+    }, pollMs);
   }
 
-  function runCheckAll(refresh = false) {
-    startStage1VendorCheckAll(tenderId, { refresh }).then((status) => {
-      setBatch(status);
-      if (status.status === "running") pollBatchUntilDone();
-    });
+  async function runCheckAll() {
+    setError(null);
+    try {
+      const { job_ids } = await startChecks(projectId);
+      setJobs(Object.fromEntries(Object.entries(job_ids).map(([t, id]) => [t, { job_id: id, state: "queued" }])));
+      poll(job_ids);
+    } catch (err) {
+      setError(err.code === "unconfirmed_ruleset" ? "Confirm the rule set before running a check." : err.message);
+    }
   }
 
   useEffect(() => {
     setRows(null);
     setError(null);
-    setBatch({ status: "not_started", progress: null, results: {} });
-    loadSummary().catch((err) => setError(err.message));
-    // Pick up whatever the batch job already is (e.g. still running from
-    // before a page refresh) rather than assuming it's idle.
-    getStage1VendorCheckAllStatus(tenderId).then((status) => {
-      setBatch(status);
-      if (status.status === "running") pollBatchUntilDone();
-    });
+    loadRows().catch((err) => setError(err.message));
     return stopPolling;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenderId]);
+  }, [projectId]);
 
   const filtered = useMemo(() => {
     if (!rows) return [];
     const term = search.trim().toLowerCase();
     return rows
       .filter((r) => filter === "all" || r.status === filter)
-      .filter((r) => !term || r.name.toLowerCase().includes(term));
+      .filter((r) => !term || r.tenderer.toLowerCase().includes(term));
   }, [rows, filter, search]);
 
   const counts = useMemo(() => {
@@ -99,22 +109,15 @@ export default function VendorCompletenessList({ tenderId, onSelectVendor }) {
     };
   }, [rows]);
 
-  if (error) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-xs text-mandatory p-10 text-center">
-        Failed to load: {error}
-      </div>
-    );
-  }
   if (!rows) {
     return (
       <div className="flex-1 flex items-center justify-center text-xs text-ink-3 p-10 text-center">
-        Loading vendors…
+        {error ? <span className="text-mandatory">Failed to load: {error}</span> : "Loading tenderers…"}
       </div>
     );
   }
 
-  const batchRunning = batch.status === "running";
+  const running = Object.values(jobs).filter((j) => !["done", "failed", "dead"].includes(j.state));
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-card">
@@ -122,7 +125,7 @@ export default function VendorCompletenessList({ tenderId, onSelectVendor }) {
         <div className="flex items-center gap-2.5">
           <input
             type="text"
-            placeholder="Search vendors…"
+            placeholder="Search tenderers…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="flex-1 px-2.5 py-1.5 text-xs border border-border-soft rounded bg-card text-ink-2
@@ -131,33 +134,21 @@ export default function VendorCompletenessList({ tenderId, onSelectVendor }) {
           <span className="font-mono text-xs text-ink-4 shrink-0">
             {filtered.length} / {rows.length}
           </span>
-          {batchRunning ? (
-            <span className="font-mono text-xs text-accent shrink-0 whitespace-nowrap truncate max-w-[50%]">
-              Checking {batch.progress?.completed ?? 0}/{batch.progress?.total ?? rows.length}
-              {batch.progress?.in_progress?.length > 0
-                ? ` — ${batch.progress.in_progress.map((v) => v.name).join(", ")}`
-                : ""}
+          {running.length > 0 ? (
+            <span className="font-mono text-xs text-accent shrink-0 whitespace-nowrap">
+              Checking {Object.keys(jobs).length - running.length}/{Object.keys(jobs).length}
             </span>
           ) : (
             <button
               type="button"
-              onClick={() => runCheckAll(false)}
+              onClick={runCheckAll}
               className="font-mono text-xs text-accent hover:underline cursor-pointer shrink-0 whitespace-nowrap"
             >
-              ▶ Run check (all vendors)
+              ▶ Run check (all tenderers)
             </button>
           )}
         </div>
-        {batchRunning && (
-          <div className="w-full h-1 bg-faint rounded overflow-hidden">
-            <div
-              className="h-full bg-accent transition-all"
-              style={{
-                width: `${Math.min(100, Math.round((100 * (batch.progress?.completed ?? 0)) / Math.max(batch.progress?.total ?? rows.length, 1)))}%`,
-              }}
-            />
-          </div>
-        )}
+        {error && <p className="text-xs text-mandatory">{error}</p>}
         <div className="flex items-center gap-1.5 flex-wrap font-mono text-xs">
           {FILTERS.map((f) => (
             <button
@@ -180,8 +171,8 @@ export default function VendorCompletenessList({ tenderId, onSelectVendor }) {
         <table className="w-full text-xs border-collapse">
           <thead className="sticky top-0 bg-bg border-b border-border z-10">
             <tr className="font-mono text-ink-4 uppercase tracking-wider">
-              <th className="text-left px-4 py-2 font-medium">Vendor</th>
-              <th className="text-left px-3 py-2 font-medium">Last checked</th>
+              <th className="text-left px-4 py-2 font-medium">Tenderer</th>
+              <th className="text-left px-3 py-2 font-medium">Rule set</th>
               <th className="text-left px-3 py-2 font-medium">OK</th>
               <th className="text-left px-3 py-2 font-medium">Review</th>
               <th className="text-left px-3 py-2 font-medium">Missing</th>
@@ -191,12 +182,12 @@ export default function VendorCompletenessList({ tenderId, onSelectVendor }) {
           <tbody>
             {filtered.map((row) => (
               <tr
-                key={row.vendor_id}
-                onClick={() => onSelectVendor(row.vendor_id)}
+                key={row.tenderer}
+                onClick={() => onSelectVendor(row.tenderer)}
                 className="cursor-pointer border-b border-border-soft hover:bg-faint transition-colors"
               >
-                <td className="px-4 py-2.5 font-medium text-accent-strong">{row.name}</td>
-                <td className="px-3 py-2.5 text-ink-3 font-mono">{formatLastChecked(row.last_checked)}</td>
+                <td className="px-4 py-2.5 font-medium text-accent-strong">{row.tenderer}</td>
+                <td className="px-3 py-2.5 text-ink-3 font-mono">{row.checked ? `v${row.rulesetVersion}` : "—"}</td>
                 <td className="px-3 py-2.5 font-mono text-ok">{row.checked ? row.ok : "—"}</td>
                 <td className="px-3 py-2.5 font-mono text-rectifiable">{row.checked ? row.review : "—"}</td>
                 <td className="px-3 py-2.5 font-mono text-mandatory">{row.checked ? row.missing : "—"}</td>
@@ -208,7 +199,7 @@ export default function VendorCompletenessList({ tenderId, onSelectVendor }) {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-4 py-8 text-center text-ink-4">
-                  No vendors match.
+                  No tenderers match.
                 </td>
               </tr>
             )}

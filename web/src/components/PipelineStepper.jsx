@@ -5,16 +5,16 @@
 // Stage I completeness and Stage II compliance are now separate pages
 // (window2/window2b) - they used to be one merged screen with two
 // subsections, which live review found wasn't real separation.
-// Every stage past extraction requires the Completeness Check Schedule to be
-// confirmed first (PRD: prd_requirement_confirmation.md) - scoring or
-// reporting on requirements nobody has checked read right is the thing this
-// gate exists to prevent.
+// Every stage past the rules requires a confirmed rule set (POST /checks
+// answers 409 unconfirmed_ruleset without one) - checking offers against
+// rules nobody has confirmed is the thing this gate exists to prevent.
 const STAGES = [
-  { id: "extract", label: "EXTRACT REQUIREMENT", built: true, window: "window1", requiresConfirmation: false },
-  { id: "stage1", label: "STAGE I COMPLETENESS", built: true, window: "window2", requiresConfirmation: true },
-  { id: "stage2", label: "STAGE II COMPLIANCE", built: true, window: "window2b", requiresConfirmation: true },
-  { id: "stage3", label: "SCORING", built: true, window: "window3", requiresConfirmation: true },
-  { id: "report", label: "REPORT", built: true, window: "window4", requiresConfirmation: true },
+  { id: "rules", label: "RULES", built: true, window: "rules", requiresConfirmation: false },
+  { id: "stage1", label: "STAGE I COMPLETENESS", built: true, window: "stage1", requiresConfirmation: true },
+  { id: "stage2", label: "STAGE II COMPLIANCE", built: true, window: "stage2", requiresConfirmation: true },
+  // Price summary, evaluation and reports are S4 routes.
+  { id: "stage3", label: "SCORING", built: false, window: null, requiresConfirmation: true },
+  { id: "report", label: "REPORT", built: false, window: null, requiresConfirmation: true },
 ];
 
 const FILTERS = [
@@ -28,7 +28,6 @@ export default function PipelineStepper({
   tierFilter,
   onTierFilter,
   tierCounts,
-  rtmCsvUrl,
   activeWindow,
   onSelectWindow,
   confirmed = false,
@@ -45,7 +44,7 @@ export default function PipelineStepper({
           const title = !stage.built
             ? "Not yet built"
             : gated
-              ? "Confirm the Completeness Check Schedule first"
+              ? "Confirm the rule set first"
               : undefined;
           return (
             <button
@@ -91,19 +90,6 @@ export default function PipelineStepper({
       )}
 
       <div className="ml-auto flex items-center gap-3 shrink-0">
-        {rtmCsvUrl && (
-          // Plain link, not fetch(): lets the browser handle the download and keeps
-          // the session cookie on the request.
-          <a
-            href={rtmCsvUrl}
-            className="px-2 py-0.5 text-xs rounded border border-border text-ink-3 hover:text-accent-strong
-              hover:border-accent transition-colors font-mono
-              focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
-            title="Download the traceability matrix as a spreadsheet (updated on every decision)"
-          >
-            ↓ RTM.csv
-          </a>
-        )}
         <span className="text-xs text-ink-3 font-mono">
           {STAGES.find((s) => s.window === activeWindow)?.label ?? ""}
         </span>

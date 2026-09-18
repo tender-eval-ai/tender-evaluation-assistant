@@ -4,12 +4,10 @@ const TIER = {
   C: { label: "Discretionary", dot: "bg-discretionary", stripe: "border-l-discretionary" },
 };
 
-// Compact scannable row. No per-item status badge - this list's job is
-// reviewing whether the extraction reads correctly, not tracking a
-// confirmed/rejected/pending decision (that collapsed into one page-level
-// "Confirm all requirements" action). Denser than the previous version -
-// smaller padding, single-line preview - so more of the 15 items fit on
-// screen without scrolling.
+// Compact scannable row for one RuleSetItem. No verdict here - this list's
+// job is reviewing whether the rule set reads the tender correctly; the
+// item's own status (verified, needs_input, novel, gap, edited) shows on the
+// right, and the number of clauses it points to.
 export default function RequirementCard({ item, isActive, onSelect }) {
   const tier = TIER[item.part] ?? TIER.C;
 
@@ -31,11 +29,12 @@ export default function RequirementCard({ item, isActive, onSelect }) {
             <span className="text-xs text-ink-4">{tier.label}</span>
           </span>
         </div>
-        {item.references_paragraphs.length > 0 && (
-          <span className="font-mono text-xs text-ink-4 shrink-0">{item.references_paragraphs.length}&#167;</span>
-        )}
+        <span className="font-mono text-xs text-ink-4 shrink-0">
+          {item.status}
+          {item.clauses?.length > 0 ? ` · ${item.clauses.length}§` : ""}
+        </span>
       </div>
-      <p className="text-xs leading-4 text-ink-2 line-clamp-1">{item.summary ?? item.name}</p>
+      <p className="text-xs leading-4 text-ink-2 line-clamp-1">{item.title}</p>
     </button>
   );
 }

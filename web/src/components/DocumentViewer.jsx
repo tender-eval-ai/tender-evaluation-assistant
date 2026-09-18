@@ -79,7 +79,10 @@ export default function DocumentViewer({ pages, emptyLabel, focusPage }) {
             }}
           >
             <div className="page-stack-image-wrap">
-              <img src={page.url} alt={page.label} loading="lazy" crossOrigin="use-credentials" />
+              {/* A signed link (PageCitation.image_url): no cookie or key goes with it.
+                  With `highlight` the server marks the cited text on the page
+                  itself; `box` is drawn here if a citation ever carries one. */}
+              <img src={page.url} alt={page.label} loading="lazy" />
               {page.box && (
                 <div
                   className="page-highlight"

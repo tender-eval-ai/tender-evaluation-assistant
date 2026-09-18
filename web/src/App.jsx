@@ -2,169 +2,112 @@ import { useEffect, useState } from "react";
 import TopNav from "./components/TopNav.jsx";
 import PipelineStepper from "./components/PipelineStepper.jsx";
 import VendorCompletenessList from "./components/VendorCompletenessList.jsx";
-import Login from "./screens/Login.jsx";
 import ProjectPicker from "./screens/ProjectPicker.jsx";
-import Window1 from "./windows/Window1.jsx";
-import Window2 from "./windows/Window2.jsx";
-import Window2b from "./windows/Window2b.jsx";
-import Window3 from "./windows/Window3.jsx";
-import Window4 from "./windows/Window4.jsx";
-import { getCurrentUser, getRequirementsConfirmation, listTenders, logout, stage1RtmCsvUrl } from "./api.js";
+import RulesWindow from "./windows/RulesWindow.jsx";
+import StageIWindow from "./windows/StageIWindow.jsx";
+import StageIIWindow from "./windows/StageIIWindow.jsx";
+import { getProject, listProjects, listRulesetVersions, USE_MOCK } from "./api.js";
+
+// Until per-user sessions arrive (checklist item B9) the API takes the acting
+// user from X-User; there is no login screen.
+const USER = import.meta.env?.VITE_API_USER || "anonymous";
 
 export default function App() {
-  const [user, setUser] = useState(undefined); // undefined = still checking, null = logged out
-  const [tenders, setTenders] = useState(null);
-  const [tenderId, setTenderId] = useState(null);
-  const [activeWindow, setActiveWindow] = useState("window1");
-  // null = no vendor picked yet - Window2 (Completeness Check) shows the
-  // vendor list landing page in that state, the existing per-vendor detail
-  // page once one is picked. Window2b/Window3 aren't gated by this list (not
-  // asked for), so they fall back to the tender's first vendor when this is
-  // still null, same single-vendor assumption they already had.
-  const [vendorId, setVendorId] = useState(null);
+  const [projects, setProjects] = useState(null);
+  const [projectId, setProjectId] = useState(null);
 
   useEffect(() => {
-    getCurrentUser().then((data) => setUser(data?.user ?? null));
+    listProjects().then(setProjects).catch(() => setProjects([]));
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      listTenders().then(setTenders);
-    }
-  }, [user]);
-
-  useEffect(() => {
-    setVendorId(null);
-  }, [tenderId]);
-
-  function handleChangeProject() {
-    setTenderId(null);
-    setActiveWindow("window1");
+  if (!projectId) {
+    return <ProjectPicker onSelect={setProjectId} />;
   }
-
-  function handleLogout() {
-    logout().then(() => {
-      setUser(null);
-      setTenders(null);
-      setTenderId(null);
-    });
-  }
-
-  if (user === undefined) {
-    return <div className="window-status">Checking session…</div>;
-  }
-  if (!user) {
-    return <Login onLoggedIn={setUser} />;
-  }
-  if (!tenderId) {
-    return <ProjectPicker onSelect={setTenderId} />;
-  }
-
-  const activeTender = tenders?.find((t) => t.id === tenderId);
 
   return (
     <AppShell
-      tenderId={tenderId}
-      vendorId={vendorId}
-      setVendorId={setVendorId}
-      activeTender={activeTender}
-      activeWindow={activeWindow}
-      setActiveWindow={setActiveWindow}
-      handleChangeProject={handleChangeProject}
-      handleLogout={handleLogout}
-      user={user}
+      projectId={projectId}
+      project={projects?.find((p) => p.id === projectId)}
+      onChangeProject={() => setProjectId(null)}
     />
   );
 }
 
-function AppShell({
-  tenderId,
-  vendorId,
-  setVendorId,
-  activeTender,
-  activeWindow,
-  setActiveWindow,
-  handleChangeProject,
-  handleLogout,
-  user,
-}) {
-  // window2b/Window3 aren't gated behind the vendor list (only window2 -
-  // Completeness Check - was asked for), so they keep the same "just use the
-  // tender's first vendor" behavior they always had when nothing's been
-  // explicitly picked via window2 yet.
-  const effectiveVendorId = vendorId ?? activeTender?.vendors?.[0]?.id;
-  // The tier filter lives here rather than in Window1 because it renders in the
-  // stage bar, alongside the pipeline switcher - matching the reference design,
-  // where the phase switcher and its filter share one row. Window1 owns the data,
-  // so it reports the counts back up.
+function AppShell({ projectId, project, onChangeProject }) {
+  const [activeWindow, setActiveWindow] = useState("rules");
+  // null = no tenderer picked yet: the Stage I step shows the bid list, the
+  // tenderer's own page once one is picked. Stage II falls back to the first
+  // tenderer, the single-tenderer assumption it always had.
+  const [tenderer, setTenderer] = useState(null);
+  const [bidders, setBidders] = useState([]);
   const [tierFilter, setTierFilter] = useState("all");
   const [tierCounts, setTierCounts] = useState(null);
-  // Fail-closed default: until this tender's real confirmation state has
-  // loaded, treat it as unconfirmed so the gate below never flashes open
-  // before we actually know. Lives here (not in Window1) so PipelineStepper
-  // can gate on it too - Window1 reads/writes it via props instead of
-  // polling its own copy, so there's one source of truth per tender.
-  const [confirmation, setConfirmation] = useState({ confirmed: false, reviewer: null, confirmed_at: null });
+  // Fail-closed: every step past the rules needs a confirmed rule set
+  // (POST /checks answers 409 unconfirmed_ruleset without one).
+  const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    setConfirmation({ confirmed: false, reviewer: null, confirmed_at: null });
-    getRequirementsConfirmation(tenderId)
-      .then((data) => {
-        if (!cancelled) setConfirmation(data);
-      })
+    setConfirmed(false);
+    setTenderer(null);
+    listRulesetVersions(projectId)
+      .then((versions) => !cancelled && setConfirmed(versions.some((v) => v.status === "confirmed")))
+      .catch(() => {});
+    getProject(projectId)
+      .then((p) => !cancelled && setBidders(p.bidders ?? []))
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [tenderId]);
+  }, [projectId]);
+
+  const effectiveTenderer = tenderer ?? bidders[0];
 
   return (
     <div className="app-shell">
       <TopNav
-        tenderName={activeTender?.name}
-        onChangeProject={handleChangeProject}
-        onLogout={handleLogout}
-        user={user}
+        tenderName={project?.name ?? projectId}
+        dataClass={project?.data_class}
+        mock={USE_MOCK}
+        onChangeProject={onChangeProject}
+        user={USER}
       />
       <PipelineStepper
         tierFilter={tierFilter}
-        onTierFilter={activeWindow === "window1" ? setTierFilter : null}
-        tierCounts={activeWindow === "window1" ? tierCounts : null}
-        rtmCsvUrl={activeWindow === "window1" ? stage1RtmCsvUrl(tenderId) : null}
+        onTierFilter={activeWindow === "rules" ? setTierFilter : null}
+        tierCounts={activeWindow === "rules" ? tierCounts : null}
         activeWindow={activeWindow}
         onSelectWindow={setActiveWindow}
-        confirmed={confirmation.confirmed}
+        confirmed={confirmed}
       />
       <main className="app-main">
-        {activeWindow === "window1" && (
-          <Window1
-            tenderId={tenderId}
+        {activeWindow === "rules" && (
+          <RulesWindow
+            projectId={projectId}
             tierFilter={tierFilter}
             onCountsChange={setTierCounts}
-            confirmation={confirmation}
-            onConfirmationChange={setConfirmation}
+            onConfirmed={() => setConfirmed(true)}
           />
         )}
-        {activeWindow === "window2" &&
-          (vendorId ? (
+        {activeWindow === "stage1" &&
+          (tenderer ? (
             <div className="flex-1 flex flex-col overflow-hidden min-h-0">
               <button
                 type="button"
-                onClick={() => setVendorId(null)}
+                onClick={() => setTenderer(null)}
                 className="font-mono text-xs text-accent hover:underline cursor-pointer text-left px-3 py-2
                   border-b border-border bg-bg shrink-0 w-fit"
               >
-                ← All vendors
+                ← All tenderers
               </button>
-              <Window2 tenderId={tenderId} vendorId={vendorId} />
+              <StageIWindow projectId={projectId} tenderer={tenderer} />
             </div>
           ) : (
-            <VendorCompletenessList tenderId={tenderId} onSelectVendor={setVendorId} />
+            <VendorCompletenessList projectId={projectId} onSelectVendor={setTenderer} />
           ))}
-        {activeWindow === "window2b" && effectiveVendorId && <Window2b tenderId={tenderId} vendorId={effectiveVendorId} />}
-        {activeWindow === "window3" && <Window3 tenderId={tenderId} />}
-        {activeWindow === "window4" && <Window4 tenderId={tenderId} />}
+        {activeWindow === "stage2" && effectiveTenderer && (
+          <StageIIWindow projectId={projectId} tenderer={effectiveTenderer} />
+        )}
       </main>
     </div>
   );

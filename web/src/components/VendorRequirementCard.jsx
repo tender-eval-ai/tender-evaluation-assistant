@@ -1,5 +1,4 @@
 import Badge from "./Badge.jsx";
-import { stageRollup } from "./ValidationResults.jsx";
 
 const TIER = {
   A: { label: "Mandatory", dot: "bg-mandatory", stripe: "border-l-mandatory" },
@@ -7,26 +6,18 @@ const TIER = {
   C: { label: "Discretionary", dot: "bg-discretionary", stripe: "border-l-discretionary" },
 };
 
-// Same layout as RequirementCard (Requirements tab) - same stripe/dot/tier
-// treatment - plus the one thing that screen deliberately doesn't show: a
-// rollup status badge, since this list's whole job is showing per-item
-// vendor-compliance results. `stageFilter` scopes the badge to just this
-// page's stage (Stage I Completeness vs Stage II Compliance are separate
-// pages now) rather than the backend's whole-item rollup across both.
-export default function VendorRequirementCard({ item, checkResult, stageFilter, isActive, onSelect }) {
+// Same layout as RequirementCard (Rules window) - same stripe/dot/tier
+// treatment - plus the one thing that screen deliberately doesn't show: the
+// item's status for this page's stage (Stage I Completeness vs Stage II
+// Compliance), from the tenderer's Verdict.
+export default function VendorRequirementCard({ item, status, isActive, onSelect }) {
   const tier = TIER[item.part] ?? TIER.C;
-
-  let badgeKind = null;
-  let badgeLabel = "not checked";
-  if (checkResult?.available) {
-    badgeKind = stageRollup(checkResult.fields ?? [], stageFilter ?? "I").status;
-  } else if (checkResult && !checkResult.available) {
-    badgeLabel = "not extracted";
-  }
 
   return (
     <button
       type="button"
+      data-letter={item.letter}
+      data-status={status ?? "not_checked"}
       onClick={() => onSelect(item)}
       aria-pressed={isActive}
       className={`w-full text-left border border-border-soft border-l-2 ${tier.stripe} rounded-[4px] bg-card
@@ -42,13 +33,13 @@ export default function VendorRequirementCard({ item, checkResult, stageFilter, 
             <span className="text-xs text-ink-4">{tier.label}</span>
           </span>
         </div>
-        {badgeKind ? (
-          <Badge kind={badgeKind} compact />
+        {status ? (
+          <Badge kind={status} compact />
         ) : (
-          <span className="font-mono text-xs text-ink-4 shrink-0">{badgeLabel}</span>
+          <span className="font-mono text-xs text-ink-4 shrink-0">not checked</span>
         )}
       </div>
-      <p className="text-xs leading-4 text-ink-2 line-clamp-1">{item.summary ?? item.name}</p>
+      <p className="text-xs leading-4 text-ink-2 line-clamp-1">{item.title}</p>
     </button>
   );
 }
