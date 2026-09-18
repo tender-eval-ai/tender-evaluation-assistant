@@ -324,3 +324,12 @@ def test_a_paragraph_of_a_few_words_with_no_stop_runs_on(monkeypatch):
         "To: the Sample Office\nDear Sir/Madam,",
         "BY\nwhose office is at a sample address",
         "The Tenderer certifies the sample matter."]
+
+
+def test_a_part_of_the_chinese_tender_form_is_a_part():
+    from app.parsing.layout_document_index import _classify_marker
+
+    assert _classify_marker("第 4 部分 — 樣本標題")[:2] == ("part", "4")
+    assert _classify_marker("第3甲部分 — 樣本標題")[:2] == ("part", "3A")
+    assert _classify_marker("第 5 部分 樣本標題")[:2] == ("part", "5")
+    assert _classify_marker("第 9.9(z) 段的樣本")[0] is None

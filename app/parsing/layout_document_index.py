@@ -108,7 +108,13 @@ _PART_LAYOUT = re.compile(
     # becoming its own node, and the table's own (a)(b)(c) rows end up
     # parented to that unrelated preceding node instead of to the table.
     r"|^Table[ \t]+(?P<tletter>[A-Z])(?![a-zA-Z])[ \t]*(?:[—\-][ \t]*)?(?P<title3>[A-Z][^\n]*)?"
+    # Fourth alternative: the Chinese Tender Form numbers its Parts "第 4 部分"
+    # ("Part 4"), a lettered one with a Chinese ordinal letter ("第3甲部分",
+    # Part 3A). Unrecognised, its Part 4 (Offer to be Bound) was never a node
+    # and its clauses sat directly under the document.
+    r"|^第[ \t]*(?P<zh>\d+[甲乙丙丁]?)[ \t]*部分[ \t]*(?:[—\-–][ \t]*)?(?P<title4>[^\n]*)"
 )
+_ZH_PART_LETTER = str.maketrans("甲乙丙丁", "ABCD")
 
 # Looser than document_index._CLAUSE: that pattern requires the clause's own
 # text to start with a capital letter, specifically to reject a line-wrapped
@@ -1076,8 +1082,9 @@ def _classify_marker(text: str):
             return kind, number, title
     pm = _PART_LAYOUT.match(text)
     if pm:
-        number = pm.group("num") or pm.group("letter") or pm.group("tletter")
-        title = pm.group("title") or pm.group("title2") or pm.group("title3") or ""
+        number = pm.group("num") or pm.group("letter") or pm.group("tletter") \
+            or pm.group("zh").translate(_ZH_PART_LETTER)
+        title = pm.group("title") or pm.group("title2") or pm.group("title3") or pm.group("title4") or ""
         return "part", number, title.strip()
     am = _ANNEX.match(text)
     if am:
