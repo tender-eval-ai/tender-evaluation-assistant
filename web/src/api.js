@@ -105,7 +105,10 @@ export const listEvents = (pid, params = {}) => request("GET", `${p(pid)}/events
 
 // Page images: `image_url` in a PageCitation or Page is a signed link relative
 // to the API. The browser opens it as a plain <img>, so no key is attached.
-// `highlight` asks the server to mark where that text is printed on the page.
+// A PageCitation's link is used as given: its highlight is inside the
+// signature. `highlight` is only for a page-only link (Page.image_url), where
+// the Rules window marks a rule set quote on a tender page; the API still
+// accepts that unsigned highlight until tender citations are signed (S3).
 export function pageImageUrl(imageUrl, { highlight } = {}) {
   const url = new URL(imageUrl, `${apiBase()}/`);
   if (highlight) url.searchParams.set("highlight", highlight);

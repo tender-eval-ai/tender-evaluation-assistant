@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getBidResult, getJob, getRuleset, listDocuments, startChecks } from "../api.js";
-import { highlightFor, offerPage, tenderPage } from "../citations.js";
+import { offerPage, tenderPage } from "../citations.js";
 import DocumentViewer from "./DocumentViewer.jsx";
 import JobProgress from "./JobProgress.jsx";
 import VendorRequirementCard from "./VendorRequirementCard.jsx";
@@ -133,15 +133,16 @@ export default function StageResultsWindow({ projectId, tenderer, stage, title, 
         setViewer({ file: null, label: null, pages: [], focus: null });
         return;
       }
-      const values = result?.fields?.[activeLetter] ?? {};
+      // Each citation's signed image_url carries its own highlight, and its
+      // box (when on a text layer) is drawn over the page.
       setViewer({
         file: cites[0].file,
         label,
-        pages: cites.map((c) => offerPage(c, highlightFor(values, c))),
+        pages: cites.map((c) => offerPage(c)),
         focus: cites[0].page,
       });
     },
-    [result, activeLetter]
+    []
   );
 
   function handleSelect(item) {

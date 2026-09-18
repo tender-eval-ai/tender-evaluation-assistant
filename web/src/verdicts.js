@@ -27,14 +27,17 @@ export function stageRollup(checks, stage) {
 
 // Where a citation's page sits, deduplicated: the engine cites a page once per
 // field read on it, so one certificate page can appear four times.
+// One citation per page, in first-cited order. Verdict.evidence cites a page
+// once per checked field, and only a field read as text carries a quote (and a
+// signed highlight), so the quoted citation of a page wins over a plain one.
 export function uniqueCitations(citations) {
-  const seen = new Set();
-  return (citations ?? []).filter((c) => {
+  const byPage = new Map();
+  for (const c of citations ?? []) {
     const key = `${c.doc_id}:${c.page}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+    const seen = byPage.get(key);
+    if (!seen || (!seen.quote && c.quote)) byPage.set(key, c);
+  }
+  return [...byPage.values()];
 }
 
 // Problems first: a reviewer opens this page to find what fails, not to read
