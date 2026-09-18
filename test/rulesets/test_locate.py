@@ -329,7 +329,8 @@ def test_real_tender_items_parts_and_clauses(tender):
     assert sorted(found) == sorted(expected_items)
     assert part_ok == len(expected_items)
     assert page_ok == len(expected_items)
-    # Measured 2026-09-17: 45/49, 41/43, 58/65. The misses are parser gaps (a Tender
-    # Form or Price Schedule item with no node) and deep-key links the row does not
-    # write out; see docs/evals/parser_l0.md.
+    # Measured 2026-09-17: 45/49, 41/43, 58/65; 2026-09-18, after the third parser
+    # pass: 45/49, 43/43, 63/65. The misses left are deep-key links the row does not
+    # write out and the Tender Form of the combined PDF, which no scope is named
+    # after; see docs/evals/parser_l0.md.
     assert refs_ok >= 0.85 * refs_total
