@@ -218,3 +218,35 @@ def test_a_colon_set_in_its_own_column_joins_the_label_on_its_line():
               (273, "text", ":", [273, 488, 276, 498], None)]
 
     assert [b[2] for b in _attach_stray_colons(blocks)] == ["Name of the Tenderer :", "Date :"]
+
+
+def test_a_paragraph_under_a_heading_only_node_is_a_node_of_its_own(monkeypatch):
+    """A preamble under a document's title and the body under a titled Part are
+    paragraph nodes, added the way run-in sub-items are (the heading keeps its
+    text). An untitled Part's first block is its intro, not a paragraph, and a
+    paragraph stopped mid-sentence at a page break carries on."""
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {
+        1: [(200, "section-header", "SAMPLE SCHEDULE"),
+            (150, "text", "(To be returned with the offer)"),
+            (36, "text", "Words defined in the sample terms have the same meanings here."),
+            (36, "section-header", "Part A"),
+            (36, "text", "Items (a) and (b) below are required."),
+            (48, "list-item", "(a) A sample."),
+            (36, "section-header", "Part B - Sample Timetable"),
+            (36, "text", "Payment is made in two instalments, the first on delivery of the")],
+        2: [(36, "text", "samples and the second on acceptance."),
+            (36, "text", "No other payment is made.")],
+    })
+
+    paragraphs = {n["node_id"]: n["text"] for n in nodes.values() if ":para" in n["node_id"]}
+    assert paragraphs == {
+        "doc:para": "Words defined in the sample terms have the same meanings here.",
+        "doc:PB:para": "Payment is made in two instalments, the first on delivery of the\n"
+                       "samples and the second on acceptance.",
+        "doc:PB:para#2": "No other payment is made.",
+    }
+    assert nodes["doc"]["text"].endswith("the same meanings here.")
+    assert nodes["doc:PA"]["text"] == "Part A\nItems (a) and (b) below are required."
+    assert nodes["doc:PB"]["text"].endswith("No other payment is made.")

@@ -763,6 +763,23 @@ def _column_row_pieces(items) -> list:
 _MARKER_COLUMN_SLACK = 2.0
 
 
+def _is_heading_only(host) -> bool:
+    """Is `host` a node that is nothing but a heading, and is that heading
+    complete, so that a plain paragraph after it is a paragraph of its own?
+
+    A document's title runs up to its first block that is neither a heading
+    nor an instruction in round brackets beneath it (a schedule's line on how
+    to return it). A Part's or annex's heading is its marker line with a
+    title, or its marker line and the block after it when the marker stands
+    alone (a Completeness Check Schedule's Part intro stays the Part's own
+    text, as the schedule key counts it)."""
+    if host.kind in ("document", "subdocument"):
+        return bool(host.text.strip())
+    if host.kind in ("part", "annex"):
+        return bool(host.title) or "\n" in host.text
+    return False
+
+
 def _closed_list_depth(x0: float, class_name: str, subitem_stack, nodes_by_id) -> int | None:
     """The depth of the open sub-item list this markerless block ends, or None
     when it continues the list's last item instead.
@@ -1160,6 +1177,8 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
     # subitem_stack or become last_marker_id, so the blocks that follow nest
     # and absorb exactly as they would without them.
     run_in_pending: tuple[str, int, list[float]] | None = None
+    # Paragraph nodes under heading-only nodes, in order (see the main loop).
+    paragraphs: list[_WorkingNode] = []
 
     def emit_run_in_items():
         nonlocal run_in_pending
@@ -1375,6 +1394,35 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                             page.page_number, text, 0,
                             bbox=bbox, **_ident(doc_ident, page.page_number),
                         ))
+                        continue
+
+                    host = nodes_by_id.get(last_marker_id)
+                    if class_name == "text" and host is not None and _is_heading_only(host) \
+                            and not (text.startswith("(") and text.endswith(")")):
+                        # A paragraph under a node that is only a heading - a
+                        # schedule's preamble under its title, the body under a
+                        # titled Part or Table, a certificate's addressee -
+                        # could not be located: it only ran on into the
+                        # heading's node. It is added the way run-in sub-items
+                        # are: the heading keeps its whole text (Tender 1's
+                        # hand-checked lengths count a Part's body in the Part)
+                        # and stays the node later text joins, and each
+                        # paragraph is its child. A block that carries on a
+                        # paragraph stopped mid-sentence (at a page break) joins
+                        # that paragraph instead.
+                        host.text += "\n" + text
+                        last_para = paragraphs[-1] if paragraphs and paragraphs[-1].parent_id == host.node_id else None
+                        if last_para is not None and last_para.text.rstrip()[-1:] not in (".", ";", ":", ")"):
+                            last_para.text += "\n" + text
+                        else:
+                            node_id = _unique(f"{host.node_id}:para", seen_ids)
+                            node = _WorkingNode(
+                                node_id, host.node_id, "subitem", current_part, None, None,
+                                page.page_number, text, 0, bbox=bbox, **_ident(doc_ident, page.page_number),
+                            )
+                            nodes.append(node)
+                            nodes_by_id[node_id] = node
+                            paragraphs.append(node)
                         continue
 
                     # not a marker - it's the continuation of whatever marker was
