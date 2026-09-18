@@ -785,6 +785,30 @@ def _closed_list_depth(x0: float, class_name: str, subitem_stack, nodes_by_id) -
         opener = nodes_by_id.get(subitem_stack[depth][1])
         if opener is not None and opener.bbox and abs(x0 - opener.bbox[0]) <= _MARKER_COLUMN_SLACK:
             return depth
+def _is_heading(text: str, x0: float, class_name: str, subitem_stack, nodes_by_id, last_marker_id) -> bool:
+    """Is this markerless block a heading of its own rather than text of the
+    node before it?
+
+    The layout model's `section-header` class, less three things it also
+    covers: a label ending in a colon ("Glossary:") introduces what follows
+    inside the current node; a line indented past the open list's marker column
+    is part of the item (an address block's "the Authority"
+    inside an item of the Appendix's contact list); and the first heading after
+    a Part heading that has no title of its own ("Part I" over "Method of
+    providing the Contract Deposit") is that Part's title.
+    """
+    if class_name != "section-header" or text.rstrip().endswith(":"):
+        return False
+    if subitem_stack:
+        opener = nodes_by_id.get(subitem_stack[-1][1])
+        if opener is not None and opener.bbox and x0 > opener.bbox[0] + _MARKER_COLUMN_SLACK:
+            return False
+    last = nodes_by_id.get(last_marker_id)
+    if last is not None and last.kind in ("part", "annex") and not last.title and "\n" not in last.text:
+        return False
+    return True
+
+
     return None
 
 
@@ -1142,6 +1166,28 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                     if text in furniture_by_scope.get(scope_root, ()) and last_marker_id != scope_root:
                         # A running masthead is dropped on every page but the one
                         # it opens: there, before any marker, it is the document's
+                        continue
+
+                    if _is_heading(text, x0, class_name, subitem_stack, nodes_by_id, last_marker_id) \
+                            and nodes_by_id[scope_root].text.strip():
+                        # A heading with no marker of its own - "Stage I - ...",
+                        # "Non-collusion", "Table 1 - ...", "Section 2 - ...",
+                        # "Particulars of Offer". Absorbed into whatever node
+                        # preceded it, it could not be located, and it inflated
+                        # that node (a clause ran on into the next stage's heading).
+                        # Its own node, under the enclosing Part or document, and
+                        # the text after it joins it until the next marker - but,
+                        # like a note, it is not a nesting level, so markers after
+                        # it nest exactly as before. The document's own title (the
+                        # first heading, before the document has any text) stays
+                        # the document's text; see `_is_heading` for the rest.
+                        parent = current_scope or part_node or doc_id
+                        node_id = _unique(f"{parent}:heading", seen_ids)
+                        add(_WorkingNode(
+                            node_id, parent, "subitem", current_part, None, None,
+                            page.page_number, text, 0,
+                            bbox=bbox, **_ident(doc_ident, page.page_number),
+                        ))
                         # own title ("PRICE SCHEDULE (To be completed and returned
                         # ...)") and belongs to the document node.
                         run_in_pending = None

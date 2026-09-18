@@ -129,3 +129,41 @@ def test_a_part_numbered_with_a_roman_numeral_and_a_letter_is_a_part():
     assert _classify_marker("Part B - Sample Details")[:2] == ("part", "B")
     assert _classify_marker("Party A agrees")[0] is None
     assert _classify_marker("Part II")[0] is None, "a roman numeral alone is not a lettered Part"
+
+
+def test_a_heading_without_a_marker_is_a_node_of_its_own(monkeypatch):
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (200, "section-header", "SAMPLE CERTIFICATE"),
+        (36, "text", "1. The Tenderer certifies the first matter."),
+        (36, "section-header", "Second Matter"),
+        (36, "text", "2. The Tenderer certifies the second matter."),
+        (60, "list-item", "(a) in one respect;"),
+        (90, "section-header", "An address line set in the item's own text column"),
+        (60, "list-item", "(b) in another respect."),
+        (36, "section-header", "Glossary:"),
+    ]})
+
+    headings = [n for n in nodes.values() if n["node_id"].split(":")[-1].startswith("heading")]
+    assert [n["text"] for n in headings] == ["Second Matter"], "a title, an indented line and a label are not headings"
+    assert headings[0]["parent_id"] == "doc"
+    assert nodes["doc"]["text"] == "SAMPLE CERTIFICATE", "the first heading is the document's own title"
+    assert nodes["doc:1"]["text"] == "1. The Tenderer certifies the first matter."
+    assert nodes["doc:2:(a)"]["text"].endswith("own text column")
+    assert nodes["doc:2:(b)"]["parent_id"] == "doc:2"
+
+
+def test_the_first_heading_after_a_part_without_a_title_is_its_title(monkeypatch):
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (200, "section-header", "SAMPLE ANNEX"),
+        (270, "section-header", "Part IA"),
+        (180, "section-header", "Method of Sample Payment"),
+        (270, "section-header", "Part IB - Method of Sample Refund"),
+        (180, "section-header", "Refund Options"),
+    ]})
+
+    assert nodes["doc:PIA"]["text"] == "Part IA\nMethod of Sample Payment"
+    assert nodes["doc:PIB:heading"]["text"] == "Refund Options"
