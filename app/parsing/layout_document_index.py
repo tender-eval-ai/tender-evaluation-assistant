@@ -96,7 +96,10 @@ _SUBITEM_WITH_DIGITS = re.compile(r"^(?:\(([a-z]{1,2}|[ivx]{1,4}|\d+)\)|([ivx]{1
 # ever matching a real word like "Party" or "Parts".
 _PART_LAYOUT = re.compile(
     r"^PART[ \t]+(?P<num>\d+[A-Z]?|[IVX]+)[ \t]*(?:[—\-][ \t]*)?(?P<title>[A-Z][^\n]*)?"
-    r"|^Part[ \t]+(?P<letter>[A-Z])(?![a-zA-Z])[ \t]*(?:[—\-][ \t]*)?(?P<title2>[A-Z][^\n]*)?"
+    # Annex A to the Terms of Tender numbers its Parts "Part IA", "Part IB" - a
+    # roman numeral with a letter - which the single letter never matched, so
+    # both Parts read as plain text of the Annex.
+    r"|^Part[ \t]+(?P<letter>[IVX]{1,4}[A-H]|[A-Z])(?![a-zA-Z])[ \t]*(?:[—\-][ \t]*)?(?P<title2>[A-Z][^\n]*)?"
     # Third alternative: `09 Schedules.pdf`'s Information Schedule names its
     # own sub-tables "Table A - Information required in..." / "Table B -
     # ..." - the same role as a "Part" heading (opens a new scope, resets

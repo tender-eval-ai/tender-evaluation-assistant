@@ -119,3 +119,13 @@ def test_a_notes_heading_is_split_from_a_first_note_numbered_by_letter_or_roman_
     assert _split_notes_heading("Notes: (i) A first note.") == ["Notes:", "(i) A first note."]
     assert _split_notes_heading("Notes: (a) A first note.") == ["Notes:", "(a) A first note."]
     assert _split_notes_heading("Notes: see the table above.") == ["Notes: see the table above."]
+
+
+def test_a_part_numbered_with_a_roman_numeral_and_a_letter_is_a_part():
+    from app.parsing.layout_document_index import _classify_marker
+
+    assert _classify_marker("Part IA")[:2] == ("part", "IA")
+    assert _classify_marker("Part IB Method of refund")[:2] == ("part", "IB")
+    assert _classify_marker("Part B - Sample Details")[:2] == ("part", "B")
+    assert _classify_marker("Party A agrees")[0] is None
+    assert _classify_marker("Part II")[0] is None, "a roman numeral alone is not a lettered Part"
