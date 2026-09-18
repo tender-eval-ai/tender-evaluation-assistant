@@ -51,3 +51,68 @@ def test_a_paragraph_indented_past_the_marker_column_continues_the_last_item(mon
     assert not any(n.endswith(":tail") for n in nodes)
     assert nodes["doc:7:(b)"]["text"].endswith("same item.")
 
+
+def test_a_run_in_list_inside_one_sentence_is_split_at_each_item():
+    from app.parsing.layout_document_index import _split_run_in_items
+
+    pieces = _split_run_in_items(
+        "(c) in the event of (i) a first event occurs; (ii) a second event occurs; or (iii) a third one, "
+        "the offer lapses."
+    )
+
+    assert [text.split()[0] for text, _ in pieces] == ["(c)", "(i)", "(ii)", "(iii)"]
+    assert [opens for _, opens in pieces] == [False, True, False, False]
+
+
+def test_a_nested_run_in_list_is_split_at_both_levels():
+    from app.parsing.layout_document_index import _split_run_in_items
+
+    pieces = _split_run_in_items(
+        "4.1 A sample clause covering (a) a first class of item; (b) every item of the kind listed, being "
+        "(i) the first kind; (ii) the second kind; (c) any further item."
+    )
+
+    assert [text.split()[0] for text, _ in pieces] == ["4.1", "(a)", "(b)", "(i)", "(ii)", "(c)"]
+    assert [opens for _, opens in pieces] == [False, True, False, True, False, False]
+
+
+@pytest.mark.parametrize("text", [
+    "(d) as required by Paragraphs (a) and (b) above and the items (a) to (c) below.",
+    "(d) within two (2) weeks and three (3) days of the date of notice.",
+    "(d) as set out in sub-paragraph 7(a)(i) and 7(a)(ii) of the sample terms.",
+    "(d) a list with a single (a) member only.",
+])
+def test_citations_quantities_and_lone_markers_are_not_run_in_lists(text):
+    from app.parsing.layout_document_index import _split_run_in_items
+
+    assert _split_run_in_items(text) == [(text, False)]
+
+
+def test_run_in_items_are_added_under_their_item_without_changing_what_follows(monkeypatch):
+    """"(i)" continues "(h)" alphabetically; split out of "(h)", it opens (h)'s own
+    list. (h) keeps its whole text, and the next block still continues (h)'s list."""
+    nodes = _parse(monkeypatch, {1: [
+        (72, "text", "3. The Tenderer shall provide:"),
+        (100, "list-item", "(g) a first document;"),
+        (100, "list-item", "(h) contact details (i) telephone number; (ii) email address;"),
+        (100, "list-item", "(i) a further document."),
+    ]})
+
+    assert nodes["doc:3:(h):(i)"]["parent_id"] == "doc:3:(h)"
+    assert nodes["doc:3:(h):(ii)"]["parent_id"] == "doc:3:(h)"
+    assert nodes["doc:3:(h)"]["text"] == "(h) contact details (i) telephone number; (ii) email address;"
+    assert nodes["doc:3:(h):(ii)"]["text"] == "(ii) email address;"
+    assert nodes["doc:3:(i)"]["parent_id"] == "doc:3"
+
+
+def test_nested_run_in_items_nest_and_the_following_text_still_joins_the_host(monkeypatch):
+    nodes = _parse(monkeypatch, {1: [
+        (72, "text", "4.1 A sample clause covering (a) a first class of item; (b) every item of the kind "
+                     "listed, being (i) the first kind; (ii) the second kind; (c) any further item."),
+        (72, "text", "A closing sentence of the same clause."),
+    ]})
+
+    assert nodes["doc:4.1:(a)"]["parent_id"] == "doc:4.1"
+    assert nodes["doc:4.1:(b):(ii)"]["parent_id"] == "doc:4.1:(b)"
+    assert nodes["doc:4.1:(c)"]["parent_id"] == "doc:4.1"
+    assert nodes["doc:4.1"]["text"].endswith("A closing sentence of the same clause.")

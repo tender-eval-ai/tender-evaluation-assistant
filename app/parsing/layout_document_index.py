@@ -336,6 +336,103 @@ def _split_notes_heading(text: str) -> list[str]:
     return [m.group(1), m.group(2)] if m else [text]
 
 
+# A run-in list: sub-items written inside one sentence rather than set out as
+# their own paragraphs - "(c) in the event of (i) a claim ...; (ii) the
+# Authority having grounds ...; or (iii) an agreement ...", "Contact details
+# (i) telephone number (ii) facsimile number (iii) email address". The layout
+# model has no gap to split on, so the whole list arrives inside its parent's
+# block and only the parent was ever a node. The answer keys address each such
+# sub-item on its own (confirmed on the Terms of Tender's 9.1, 14.1 and 20.1(c),
+# the Special Conditions' 6(g) and 12(d), the Information Schedule's contact and
+# insurance rows and the Innovative Suggestion Schedule's notes).
+#
+# A list is only recognised from its FIRST marker - "(a)", "(i)" or "(1)" -
+# followed later in the same text by that marker's successor, so a lone "(b)"
+# or a citation of one item never splits. The guards that keep a citation from
+# splitting are the same ones the table split uses (a citation keyword before
+# the marker, or the marker glued onto a number), widened to plural keywords
+# ("Paragraphs (a) and (b)"); a digit marker after a number word ("two (2)
+# weeks") is a quantity, not an item.
+_RUN_IN_OPENERS = ("a", "i", "1")
+_RUN_IN_PRECEDER = re.compile(
+    r"(?i)(?:paragraphs?|clauses?|sub-?paragraphs?|sub-?clauses?|items?|sub-?items?|rows?|notes?|"
+    r"sections?|parts?|tables?|annex(?:es)?|appendix|schedules?)\s*$"
+)
+_NUMBER_WORD = re.compile(
+    r"(?i)\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|"
+    r"fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|"
+    r"ninety|hundred|thousand)(?:-\w+)?\s*$"
+)
+# Shortest own text a run-in item can have: "(a) and (b)" is a citation of two
+# items, not a list whose first item says "and".
+_RUN_IN_MIN_TEXT = 3
+
+
+def _run_in_marker_at(text: str, marker: str, start: int) -> int | None:
+    """Position of the first "(marker)" at or after `start` that reads as an
+    item marker rather than a citation, or None."""
+    for m in re.finditer(r"\(" + re.escape(marker) + r"\)", text[start:]):
+        at = start + m.start()
+        preceding = text[max(0, at - 40):at]
+        if preceding and preceding[-1] in ")0123456789":
+            continue
+        if _RUN_IN_PRECEDER.search(preceding):
+            continue
+        if marker.isdigit() and _NUMBER_WORD.search(preceding):
+            continue
+        return at
+    return None
+
+
+def _run_in_chain(text: str, start: int) -> list[int]:
+    """Start positions of the first run-in list at or after `start`: an opener
+    and each successor after it, in order. [] when there is no list."""
+    candidates = sorted(
+        (at, marker) for marker in _RUN_IN_OPENERS
+        if (at := _run_in_marker_at(text, marker, start)) is not None
+    )
+    for at, marker in candidates:
+        chain = [at]
+        pos, current = at + len(marker) + 2, marker
+        while True:
+            found = sorted(
+                (nxt, succ) for succ in _successors(current)
+                if (nxt := _run_in_marker_at(text, succ, pos)) is not None
+            )
+            if not found:
+                break
+            nxt, current = found[0]
+            chain.append(nxt)
+            pos = nxt + len(current) + 2
+        if len(chain) < 2:
+            continue
+        ends = chain[1:] + [len(text)]
+        bodies = [re.sub(r"^\([^)]*\)", "", text[s:e]).strip(" \t\n;,") for s, e in zip(chain, ends)]
+        if all(len(b) >= _RUN_IN_MIN_TEXT and b.lower() not in ("and", "or", "to", "and/or") for b in bodies):
+            return chain
+    return []
+
+
+def _split_run_in_items(text: str) -> list[tuple[str, bool]]:
+    """Split `text` at each item of every run-in list inside it, nested lists
+    included. Each piece is (text, opens_list): True for a list's first item,
+    which nests under the piece before it rather than continuing whatever list
+    is open - "(i)" after "(h)" would otherwise read as "(h)"'s successor."""
+    own = _SUBITEM_WITH_DIGITS.match(text) or re.match(r"^\d+(?:\.\d+)*\.?[ \t]", text)
+    chain = _run_in_chain(text, own.end() if own else 0)
+    if not chain:
+        return [(text, False)]
+    pieces: list[tuple[str, bool]] = []
+    head = text[:chain[0]].strip()
+    if head:
+        pieces.append((head, False))
+    for i, start in enumerate(chain):
+        end = chain[i + 1] if i + 1 < len(chain) else len(text)
+        for j, (piece, opens) in enumerate(_split_run_in_items(text[start:end].strip())):
+            pieces.append((piece, opens or (i == 0 and j == 0)))
+    return pieces
+
+
 def _split_block(raw_text: str, class_name: str) -> list[str]:
     """The one entry point every raw layout block goes through before
     classification - chains all the block-splitting heuristics above."""
@@ -922,7 +1019,51 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
         last_marker_id = n.node_id
         return n.node_id
 
+    # Run-in sub-items (see `_split_run_in_items`) are added once their piece
+    # has been placed, as children of the node its text went into. They are
+    # additional nodes, not a re-segmentation: the host keeps its whole text
+    # (a citation of "20.1(c)" still returns all of (c), and the answer key for
+    # Tender 1 measures such an item whole), and they do not enter
+    # subitem_stack or become last_marker_id, so the blocks that follow nest
+    # and absorb exactly as they would without them.
+    run_in_pending: tuple[str, int, list[float]] | None = None
+
+    def emit_run_in_items():
+        nonlocal run_in_pending
+        if run_in_pending is None:
+            return
+        text, page_number, bbox = run_in_pending
+        run_in_pending = None
+        host = last_marker_id if last_marker_id in nodes_by_id else None
+        pieces = _split_run_in_items(text)
+        if host is None or len(pieces) < 2:
+            return
+        levels: list[tuple[str, str]] = []  # (marker, node id) per open run-in level
+        last_id = host
+        for piece, opens in pieces[1:]:
+            number = _SUBITEM_WITH_DIGITS.match(piece)
+            marker = number.group(1) or number.group(2)
+            if opens:
+                parent = last_id
+                levels.append((marker, ""))
+            else:
+                depth = next((d for d in range(len(levels) - 1, -1, -1) if marker in _successors(levels[d][0])), None)
+                if depth is None:
+                    continue
+                del levels[depth + 1:]
+                parent = nodes_by_id[levels[depth][1]].parent_id
+            node_id = _unique(f"{parent}:({marker})", seen_ids)
+            levels[-1] = (marker, node_id)
+            node = _WorkingNode(
+                node_id, parent, "subitem", nodes_by_id[host].part, None, None, page_number, piece, 0,
+                label=f"({marker})", bbox=bbox, **_ident(doc_ident, page_number),
+            )
+            nodes.append(node)
+            nodes_by_id[node_id] = node
+            last_id = node_id
+
     for page in pages:
+        emit_run_in_items()
         # A table-of-contents page reads as a dense run of clause-shaped
         # headings with almost no body text each - the same density check
         # document_index.DocumentText already uses to skip these pages before
@@ -944,6 +1085,8 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
 
         for x0, class_name, raw_text, bbox, row_label in blocks_by_page.get(page.page_number, []):
             for index, text in enumerate(_split_block(raw_text, class_name)):
+                emit_run_in_items()
+                run_in_pending = (text, page.page_number, bbox)
                 kind, number, title = _classify_marker(text)
                 # Only the row's own first piece carries its label: a run-in
                 # sub-item split out of the row ("(i) ...; (ii) ...") is a
@@ -983,6 +1126,7 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
 
                 if kind is None:
                     if text in furniture_by_scope.get(_scope_of_page(page.page_number), ()):
+                        run_in_pending = None
                         continue
 
                     if label_here is not None:
@@ -1138,6 +1282,7 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                     label=f"({number})", bbox=bbox, **_ident(doc_ident, page.page_number),
                 ))
 
+    emit_run_in_items()
     return [
         {
             "doc_name": n.doc_name,
