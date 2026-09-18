@@ -1,0 +1,160 @@
+/* Palette adopted from the Figma Make design (src/index.css @theme inline).
+   That design is light-only; the dark values below are derived to match its
+   character rather than naively inverted, so both themes stay legible and the
+   accent works on either ground. Tailwind's tokens are mapped onto these
+   variables in index.css, so utilities flip with the theme automatically. */
+:root {
+  --nav-bg: #1b3a6b;
+  --nav-ink: #ffffff;
+  --nav-ink-muted: rgba(255, 255, 255, 0.55);
+
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-alt: #e8edf5;
+  --surface-faint: #fafbfd;
+  --border: #d1d9e6;
+  --border-soft: #e8edf5;
+
+  --ink: #0f1b2d;
+  --ink-secondary: #374151;
+  --ink-muted: #6b7280;
+  --ink-faint: #9aa3b2;
+
+  --accent: #2563eb;
+  --accent-strong: #1b3a6b;
+  --accent-wash: #eff4fd;
+
+  --stripe-a: #2563eb;
+  --stripe-b: #0f9e93;
+
+  --good: #059669;
+  --good-wash: #e6f5ef;
+  --warn: #d97706;
+  --warn-wash: #fdf3e6;
+  --crit: #dc2626;
+  --crit-wash: #fdeaea;
+  --pending: #6b7280;
+  --pending-wash: #f0f2f5;
+
+  --radius: 4px;
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --nav-bg: #12203a;
+    --nav-ink: #e7edf7;
+    --nav-ink-muted: rgba(231, 237, 247, 0.55);
+
+    --bg: #0e1420;
+    --surface: #161d2c;
+    --surface-alt: #1d2536;
+    --surface-faint: #1a2130;
+    --border: #2a3448;
+    --border-soft: #222c3d;
+
+    --ink: #e7edf7;
+    --ink-secondary: #c4cede;
+    --ink-muted: #97a1b0;
+    --ink-faint: #798393;
+
+    --accent: #5b8def;
+    --accent-strong: #8fbaf0;
+    --accent-wash: #1a2740;
+
+    --stripe-a: #5b8def;
+    --stripe-b: #35c2b5;
+
+    --good: #3fc28a;
+    --good-wash: #143329;
+    --warn: #e0a53f;
+    --warn-wash: #3d2e10;
+    --crit: #e2716f;
+    --crit-wash: #3d1c1c;
+    --pending: #97a1b0;
+    --pending-wash: #232a33;
+  }
+}
+
+:root[data-theme="dark"] {
+  --nav-bg: #12203a;
+  --nav-ink: #e7edf7;
+  --nav-ink-muted: rgba(231, 237, 247, 0.55);
+  --bg: #0e1420;
+  --surface: #161d2c;
+  --surface-alt: #1d2536;
+  --surface-faint: #1a2130;
+  --border: #2a3448;
+  --border-soft: #222c3d;
+  --ink: #e7edf7;
+  --ink-secondary: #c4cede;
+  --ink-muted: #97a1b0;
+  --ink-faint: #798393;
+  --accent: #5b8def;
+  --accent-strong: #8fbaf0;
+  --accent-wash: #1a2740;
+  --stripe-a: #5b8def;
+  --stripe-b: #35c2b5;
+  --good: #3fc28a;
+  --good-wash: #143329;
+  --warn: #e0a53f;
+  --warn-wash: #3d2e10;
+  --crit: #e2716f;
+  --crit-wash: #3d1c1c;
+  --pending: #97a1b0;
+  --pending-wash: #232a33;
+}
+
+:root[data-theme="light"] {
+  --nav-bg: #1b3a6b;
+  --nav-ink: #ffffff;
+  --nav-ink-muted: rgba(255, 255, 255, 0.55);
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface-alt: #e8edf5;
+  --surface-faint: #fafbfd;
+  --border: #d1d9e6;
+  --border-soft: #e8edf5;
+  --ink: #0f1b2d;
+  --ink-secondary: #374151;
+  --ink-muted: #6b7280;
+  --ink-faint: #9aa3b2;
+  --accent: #2563eb;
+  --accent-strong: #1b3a6b;
+  --accent-wash: #eff4fd;
+  --stripe-a: #2563eb;
+  --stripe-b: #0f9e93;
+  --good: #059669;
+  --good-wash: #e6f5ef;
+  --warn: #d97706;
+  --warn-wash: #fdf3e6;
+  --crit: #dc2626;
+  --crit-wash: #fdeaea;
+  --pending: #6b7280;
+  --pending-wash: #f0f2f5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
