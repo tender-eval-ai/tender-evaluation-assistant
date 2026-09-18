@@ -159,3 +159,18 @@ def test_a_check_through_the_worker_yields_fields_with_citations_a_verdict_and_i
     pages = client.get(f"/projects/{pid}/documents/{doc['doc_id']}/pages").json()
     assert pages[12]["label"] == "noncollusive_certificate" and pages[12]["signed"] is True
     assert pages[0]["label"] == "company_profile"
+
+
+def test_the_driver_script_runs_the_case_end_to_end(api, worker, tmp_path, monkeypatch):
+    """tools/check_synthetic_case.py against the same API: import from the inbox, draft
+    and confirm, check every tenderer, read the results."""
+    from tools.check_synthetic_case import Api, run, table
+    client, _ = api
+    monkeypatch.setenv("INBOX_DIR", str(CASE.parent))
+    import backend.api as backend_api
+    backend_api.deps.configure()
+    rows = run(Api(client), case="synthetic_tender", tenderers=["Tenderer_B", "Tenderer_C"], timeout=120, log=lambda *_: None)
+    by = {r["tenderer"]: r for r in rows}
+    assert by["Tenderer_B"]["outcome"] == "pass" and by["Tenderer_B"]["page"] == 13 and by["Tenderer_B"]["calls"] == 4
+    assert by["Tenderer_C"]["outcome"] == "disqualified" and by["Tenderer_C"]["signature"] is None
+    assert "Tenderer_B" in table(rows)
