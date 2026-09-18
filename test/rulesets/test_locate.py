@@ -18,7 +18,7 @@ import pytest
 
 from app.parsing.loader import Page
 from app.rulesets.locate import _item_starts, _strip_page_header, locate, parse_tender
-from app.rulesets.schema import DataClass, ItemStatus, RuleSetItem, Tier
+from app.rulesets.schema import DataClass, ItemStatus, RuleSetItem, Part
 
 FOOTER = "Completeness Check Schedule"
 
@@ -89,8 +89,8 @@ def test_every_item_is_found_with_its_part():
     schedule = _schedule()
 
     assert [(i.letter, i.part) for i in schedule.items] == [
-        ("a", Tier.A), ("b", Tier.A), ("c", Tier.B), ("d", Tier.B), ("e", Tier.B), ("f", Tier.C)]
-    assert [p.part for p in schedule.parts] == [Tier.A, Tier.B, Tier.C]
+        ("a", Part.A), ("b", Part.A), ("c", Part.B), ("d", Part.B), ("e", Part.B), ("f", Part.C)]
+    assert [p.part for p in schedule.parts] == [Part.A, Part.B, Part.C]
 
 
 def test_an_item_cites_its_own_node_with_a_verbatim_quote():
@@ -132,7 +132,7 @@ def test_a_located_item_becomes_a_rule_set_item():
 
     assert isinstance(rule_item, RuleSetItem)
     assert rule_item.status == ItemStatus.NEEDS_INPUT
-    assert rule_item.part == Tier.A and rule_item.template is None
+    assert rule_item.part == Part.A and rule_item.template is None
     assert [c.node_id for c in rule_item.clauses] == ["T:5.1"]
 
 
@@ -175,7 +175,7 @@ def test_generated_pdf_end_to_end(tmp_path):
 
     schedule = locate(pages, nodes, data_class=DataClass.SYNTHETIC, root=tmp_path)
 
-    assert [(i.letter, i.part) for i in schedule.items] == [("a", Tier.A), ("b", Tier.A), ("c", Tier.B)]
+    assert [(i.letter, i.part) for i in schedule.items] == [("a", Part.A), ("b", Part.A), ("c", Part.B)]
     assert all(i.citation.node_id for i in schedule.items)
     assert [c.quote[:41] for c in schedule.item("b").clauses] == ["5.1 The Tenderer shall supply one sample."]
 

@@ -28,7 +28,7 @@ from pathlib import Path
 
 from app.parsing.citations import CitationIndex, normalise_name
 from app.parsing.document_index import normalize_whitespace
-from app.rulesets.schema import Citation, DataClass, ItemStatus, RuleSetItem, Tier
+from app.rulesets.schema import Citation, DataClass, ItemStatus, RuleSetItem, Part
 
 # Copied from procurement_agent.rules.stage1 at 7e8e273 (stage1 is not ported).
 # Matches the document-name line printed immediately before a page's own "Page X
@@ -120,7 +120,7 @@ class _TextItem:
 
 @dataclass
 class _TextPart:
-    part: Tier
+    part: Part
     intro: str
     page: int
     items: list[_TextItem]
@@ -142,7 +142,7 @@ def _read_schedule_text(schedule_pages: list) -> list[_TextPart]:
     full_text = "\n" + "\n".join(combined)
     offsets = [(offset + 1, number) for offset, number in offsets]
 
-    part_matches = [m for m in _PART_HEADING_PATTERN.finditer(full_text) if m.group(1) in Tier.__members__]
+    part_matches = [m for m in _PART_HEADING_PATTERN.finditer(full_text) if m.group(1) in Part.__members__]
     parts: list[_TextPart] = []
     for index, part_match in enumerate(part_matches):
         block_start = part_match.end()
@@ -151,7 +151,7 @@ def _read_schedule_text(schedule_pages: list) -> list[_TextPart]:
         items = _read_items(block_text, offsets, block_start)
         first = _item_starts(block_text)
         intro = block_text[: first[0].start()] if first else block_text
-        parts.append(_TextPart(Tier(part_match.group(1)), normalize_whitespace(intro),
+        parts.append(_TextPart(Part(part_match.group(1)), normalize_whitespace(intro),
                                _page_number_at(offsets, part_match.start() + 1), items))
     return parts
 
@@ -217,7 +217,7 @@ class LocatedItem:
 
     letter: str
     title: str
-    part: Tier
+    part: Part
     citation: Citation
     clauses: list[Citation] = field(default_factory=list)
     unresolved: list[str] = field(default_factory=list)
@@ -234,7 +234,7 @@ class LocatedPart:
     disqualifies) apply to every item in the Part, so they are kept here, not
     copied onto each item."""
 
-    part: Tier
+    part: Part
     citation: Citation
     clauses: list[Citation] = field(default_factory=list)
     unresolved: list[str] = field(default_factory=list)
@@ -297,14 +297,14 @@ class _NodeTable:
                 return current["text"].strip()
         return normalize_whitespace(node.get("title") or node.get("doc_name") or "")
 
-    def schedule_part(self, file: str, part: Tier, pages: set[int]) -> dict | None:
+    def schedule_part(self, file: str, part: Part, pages: set[int]) -> dict | None:
         found = [n for n in self.nodes
                  if n["kind"] == "part" and _file_name(n.get("source_file")) == file
                  and n.get("page") in pages and (n.get("number") or "") == part.value
                  and _is_schedule(n)]
         return found[0] if found else None
 
-    def schedule_item(self, file: str, part_node: dict | None, part: Tier, letter: str, page: int) -> dict | None:
+    def schedule_item(self, file: str, part_node: dict | None, part: Part, letter: str, page: int) -> dict | None:
         """The item's own node: labelled "(x)" in the right Part of the schedule.
         A direct child of the Part node when there is one, so an item's roman sub-item
         "(i)" is never taken for item (i)."""
