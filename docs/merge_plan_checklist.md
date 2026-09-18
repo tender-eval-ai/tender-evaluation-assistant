@@ -8,7 +8,7 @@ Joint review of the "Tender Review Merge Plan" (10-day version, 2026-09-15). Thi
 
 **Context both of us share.** Two bootcamp students, both in the US, no client and no pilot. Each person works on their own area independently and stops at the joint stop points in section D. The goal is the strongest possible joint project for job applications.
 
-Last updated: 2026-09-17 (Nasi).
+Last updated: 2026-09-18 (Nasi).
 
 ## Status board
 
@@ -46,6 +46,7 @@ Last updated: 2026-09-17 (Nasi).
 | G2 | No cloud named in code; configuration only | agreed | — (update the plan) |
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
+| I1 | Contract gaps found at S2 (locate, web mock) | open | both |
 
 ## A. Corrections to the plan
 
@@ -166,7 +167,7 @@ Proposed because none of these help a job application, and several need a client
 
 ### C1. Unchanged
 - Plan and proposal are the same: the split (Chenyu: pipeline, LLM layers L1 to L4 and V0 to V5, worker, gateway, pricing, reports; Nasi: parser and locator L0, rule engine and templates V6, the React three-column UI for L5 and V7); contracts before code; item (l) through every layer before widening; each LLM layer with fixed input, fixed output shape, code checks and a FakeLLM call-count test; human editing as versioned, attributed records with reasons and engine-only re-evaluation; the orchestrator comparison with its decision record; the "Kept, ported, removed" table apart from A7.
-- Progress (2026-09-17): Chenyu's pre-S0 and S1 items are merged (PRs #2 to #9) and the decision record is proposed (E5). Nasi's engine port is merged (PR #19), the check-kind mapping is in `docs/check_kind_mapping.md` (PR #20) and the AWS account in `infra/` (PR #21). Left for S0: the `contract` PR amending `schema.py` for the seven gaps, the open questions in `api_contract.md`, migration 001 and the compose file.
+- Progress (2026-09-17, Nasi): S1 is closed (E5, PR #29) and API contract questions 1, 3 and 4 are settled. Chenyu's worker is on `main` (PR #24, migration 001). PRs #25 to #28 (gateway, item (l) check, S2 routes with `openapi.json`, compose with Postgres and the worker) were merged into their stacked base branches, not into `main`; all four commits sit on `feat/item-l` and reach `main` with one pull request from that branch. Nasi's S2 work, on branches not yet pushed: parser fixes (`port/parser`), `app/rulesets/locate.py` finding every schedule item with the right Part and page on all three tenders (15/15, 13/13, 21/21; `feat/locate`), and the React UI in `web/` on an MSW mock of the S2 contract with `StageResultsWindow` and `DocumentViewer` (`feat/web-mock`). Contract gaps found on the way are in I1.
 - Chenyu (2026-09-15): agreed.
 - Nasi (2026-09-16): agreed.
 - Decision: agreed (2026-09-16). Plan to be updated.
@@ -297,6 +298,27 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Chenyu (2026-09-17): agree.
 - Nasi (2026-09-16): agree.
 - Decision: agreed (2026-09-17). Plan to be updated.
+
+## I. Contract gaps found at S2
+
+### I1. Gaps in `schema.py` and the S2 API contract
+- Found by: building `locate.py` against `schema.py`, and the React UI against PR #27's `openapi.json` through the mock. Each change goes in a `contract` PR with both approvals.
+- Proposal, needed for the S2 check (item (l) with its page highlighted):
+  1. `PageCitation` has no box or quote, and the served `image_url` has no `highlight`, so nothing on the page can be highlighted. Add an optional `box` (and the quote) to `PageCitation`; if `?highlight=` stays, include it in the signature.
+  2. A rule-set `Citation` names a file by project path (`tender/09 Schedules.pdf`) while `Document` has `doc_id` and the bare file name. Add `doc_id` to `Citation` (or the path to `Document`).
+- Proposal, `schema.py` (from `locate.py`):
+  3. `RuleSet` has nowhere to store a Part's intro and its clauses (the paragraph that makes a missing Part A item disqualify). Add `parts: [{part, title, citation, clauses}]`.
+  4. No `ItemStatus` for "located, no rules yet"; `locate` uses `needs_input` for now. Add `located`, or agree that `needs_input` covers it.
+  5. `Citation` cannot say that one citation resolved to more than one node. Allow a list, or an `ambiguous` flag.
+- Proposal, `openapi.json` and `api_contract.md` agree with each other:
+  6. `GET /ruleset`, `GET /projects` and `GET /projects/{pid}` are untyped in `openapi.json` (so `RuleSet` is not in the spec); type them.
+  7. `GET /jobs` and events are paged (`{items, next_cursor}`) in `openapi.json` but plain lists in the doc; `Job.state` includes `paused`, missing from the doc; `Job.progress` is untyped. Update the doc and type `progress`.
+  8. `Correction` is the stored record in `openapi.json` and the request body in the doc; name them apart (`Correction`, `CorrectionRequest`).
+  9. 422 responses are FastAPI's default body, not the error envelope. `image_url` is relative to the API base; say so in the doc.
+  10. A verdict's checks link to field values only by the last part of `field_id`; give each check its `field` key.
+- Chenyu:
+- Nasi (2026-09-18): proposed; 1 and 2 before the S2 check, the rest at S3.
+- Decision: open
 
 ## Verified facts (no action needed)
 
