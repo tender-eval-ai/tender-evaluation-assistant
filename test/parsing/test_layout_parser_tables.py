@@ -156,3 +156,22 @@ def test_a_table_row_keyed_by_a_bare_number_carries_that_number(monkeypatch):
     assert rows["2"]["number"] == "2"
     assert rows["3"]["number"] == "3"
     assert rows["Item"]["number"] is None, "a header cell is not a number"
+
+
+def test_every_field_of_a_form_row_is_a_node(monkeypatch):
+    """A form laid out as a grid of label-and-blank pairs is read one row at a
+    time and each row is named by its first label; the later fields of the row
+    are its children, and the row keeps its whole text."""
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (36, "section-header", "Table G - Sample Vehicle Information"),
+        (36, "table", "Top Speed: km/hr Load: kg Empty Weight : kg", "Top Speed:"),
+        (36, "table", "Engine Model: (Make & Model)", "Engine Model:"),
+        (36, "table", "Sample Overall Length Overall Width", "Sample"),
+    ]})
+
+    row = nodes["doc:PG:(Top Speed:)"]
+    assert row["text"] == "Top Speed: km/hr Load: kg Empty Weight : kg"
+    assert [(n["parent_id"], n["text"]) for n in nodes.values() if ":field" in n["node_id"]] == [
+        ("doc:PG:(Top Speed:)", "Load: kg"), ("doc:PG:(Top Speed:)", "Empty Weight : kg")]

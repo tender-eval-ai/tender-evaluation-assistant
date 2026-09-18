@@ -878,6 +878,23 @@ def _field_labels(text: str) -> list[str] | None:
     return labels if len(labels) > 1 else [text.strip()]
 
 
+# A field label inside a form row: a capitalised phrase of a few words (a
+# bracketed aside allowed) ending in a colon.
+_ROW_FIELD_LABEL = re.compile(r"(?<=\s)[A-Z][A-Za-z()&/\-*’' ]{0,45}?\s?:")
+
+
+def _row_fields(text: str) -> list[str]:
+    """The fields after the first in one row of a form laid out as a grid of
+    label-and-blank pairs ("<label>: <unit> <label>: <unit>"), each from its
+    label up to the next label. The row itself is named by its first label (see
+    `_row_label`), so every later field of the row could not be located."""
+    first = text.find(":")
+    if first < 0:
+        return []
+    starts = [m.start() for m in _ROW_FIELD_LABEL.finditer(text, first + 1)]
+    return [text[a:b].strip() for a, b in zip(starts, starts[1:] + [len(text)])]
+
+
 def _attach_stray_colons(blocks: list) -> list:
     """Join a block that is nothing but a colon to the label on its line.
 
@@ -1480,6 +1497,17 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                             page.page_number, text, 0, label=label_here,
                             bbox=bbox, **_ident(doc_ident, page.page_number),
                         ))
+                        for field in _row_fields(text) if label_here.endswith(":") else ():
+                            # A form row carrying more fields after its first
+                            # (see `_row_fields`): each is a child of the row,
+                            # which keeps its whole text.
+                            field_id = _unique(f"{node_id}:field", seen_ids)
+                            field_node = _WorkingNode(
+                                field_id, node_id, "subitem", current_part, None, None,
+                                page.page_number, field, 0, bbox=bbox, **_ident(doc_ident, page.page_number),
+                            )
+                            nodes.append(field_node)
+                            nodes_by_id[field_id] = field_node
                         continue
 
                     closed = _closed_list_depth(x0, class_name, subitem_stack, nodes_by_id)
