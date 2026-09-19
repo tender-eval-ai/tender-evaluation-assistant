@@ -6,8 +6,8 @@ from pydantic import ValidationError
 
 from app.engine import core as engine
 from app.rulesets.schema import (NEGATIVE_KEYS, NEUTRAL_KEYS, OUTCOME_KEYS, POSITIVE_KEYS, CheckType, Citation,
-                                 Consequence, ConsequenceDefaults, DataClass, Edit, FollowUp, ItemNote, ItemStatus,
-                                 Normalise, Outcome, Part, RuleSet, RuleSetItem, SlotKind, SlotSpec, SlotValue,
+                                 Consequence, ConsequenceDefaults, DataClass, Edit, FollowUp, Gap, ItemNote, ItemStatus,
+                                 Normalise, Outcome, Part, PartSpec, RuleSet, RuleSetItem, SlotKind, SlotSpec, SlotValue,
                                  Template, TemplateRule)
 
 NOW = datetime(2026, 9, 21, 9, 30, tzinfo=timezone.utc)
@@ -150,3 +150,23 @@ def test_round_trips_through_json():
     again = RuleSet.model_validate_json(rs.model_dump_json())
     assert again == rs
     assert again.item("l").template is None and again.item("l").rules[0].stage == "II"
+
+
+def test_part_intros_are_located_once_each_and_a_citation_may_list_its_candidates():
+    part_a = PartSpec(part=Part.A, title="Part A", citation=cite("Part A Items (a) to (c) are required", "Sched:CCS:PartA"),
+                      clauses=[cite("3.3 A tender without them is not considered", "ToT:3.3")])
+    assert ruleset([item()], parts=[part_a]).parts[0].clauses[0].node_id == "ToT:3.3"
+    with pytest.raises(ValidationError, match="each Part appears once"):
+        ruleset([item()], parts=[part_a, part_a])
+
+    several = Citation(file="tender/01 Terms.pdf", page=4, node_id="ToT:3.3", candidates=["ToT:3.3", "Supp:3.3"],
+                       quote="3.3 A tender without them", data_class=DataClass.SYNTHETIC)
+    assert several.node_id in several.candidates and cite().candidates is None
+
+
+def test_a_gap_reason_is_attributed_and_updated_by_is_read_back_from_the_server():
+    gap = Gap(node_id="Supp:13:(d)", text="shall deliver within 14 days", reason="covered by item (e)",
+              edit=Edit(by="nasi", at=NOW, reason="covered by item (e)"))
+    rs = ruleset([item()], gaps=[gap], updated_by="chenyu")
+    assert rs.gaps[0].edit.by == "nasi" and rs.updated_by == "chenyu"
+    assert RuleSet.model_validate_json(rs.model_dump_json()) == rs

@@ -117,7 +117,7 @@ def _bid_result(pid: str, pdir, run: dict, result, steps: dict) -> BidResult:
             page=cite(result.fields.get(f"{key}_page"), result.fields.get(f"{key}_quote") or value),
             correction=correction, model_value=value if correction else None)
     v = result.verdict
-    checks = [CheckedField(field_id=f["field_id"], status=f["status"], note=f.get("note"), redacted=bool(f.get("redacted")),
+    checks = [CheckedField(field_id=f["field_id"], field=f.get("field"), status=f["status"], note=f.get("note"), redacted=bool(f.get("redacted")),
                            stage=f.get("stage", "I"), follow_up=f.get("follow_up")) for f in v.get("fields", [])]
     evidence = [c for c in (cite(f.get("page"), f.get("value")) for f in v.get("fields", [])) if c]
     letter = v.get("item", "l")

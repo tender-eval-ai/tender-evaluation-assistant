@@ -2,13 +2,22 @@
 app/rulesets/schema.py; these are what the routes send and receive."""
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-from app.rulesets.schema import DataClass
+from app.rulesets.schema import Citation, DataClass, Edit, ItemNote, Part, TemplateRule
 
 JobState = Literal["queued", "running", "paused", "done", "failed", "dead"]
+
+
+class Progress(BaseModel):
+    """How far a job's current step has got: `done` of `total` `unit`s (pages, calls, ...)."""
+
+    done: int = 0
+    total: int | None = None
+    unit: str | None = None
 
 
 class Job(BaseModel):
@@ -18,7 +27,7 @@ class Job(BaseModel):
     tenderer: str | None = None
     state: JobState
     step: str | None = None
-    progress: dict = Field(default_factory=dict)
+    progress: Progress = Field(default_factory=Progress)
     attempt: int = 1
     error: str | None = None
     ruleset_version: int | None = None
@@ -70,6 +79,7 @@ class FieldValue(BaseModel):
 
 class CheckedField(BaseModel):
     field_id: str
+    field: str | None = Field(default=None, description="the field's key inside BidResult.fields[letter]")
     status: Literal["pass", "needs_review", "disqualified", "dormant"]
     note: str | None = None
     redacted: bool = False
@@ -132,9 +142,10 @@ class RuleSetVersion(BaseModel):
     status: Literal["draft", "confirmed"]
     parent_version: int | None = None
     created_by: str | None = None
-    created_at: float | None = None
+    created_at: datetime | None = None
     confirmed_by: str | None = None
-    confirmed_at: float | None = None
+    confirmed_at: datetime | None = None
+    updated_by: str | None = Field(default=None, description="who last saved the draft; confirm refuses that person")
 
 
 class Event(BaseModel):
@@ -157,3 +168,97 @@ class EventPage(BaseModel):
 class JobPage(BaseModel):
     items: list[Job]
     next_cursor: str | None = None
+
+
+class ProjectStatus(BaseModel):
+    """The legacy pipeline's state file: idle, running, waiting, done or error, with a detail line."""
+
+    state: str = "idle"
+    detail: str | None = None
+    updated: float | None = None
+
+
+class Project(BaseModel):
+    """A project as `GET /projects` lists it and `GET /projects/{pid}` describes it (the
+    detail fields are null in the list)."""
+
+    id: str
+    name: str
+    synthetic: bool = False
+    data_class: DataClass = DataClass.CONFIDENTIAL
+    created: float | None = None
+    status: ProjectStatus = Field(default_factory=ProjectStatus, description="an object, not a string: read status.state")
+    tender_files: list[str] | None = None
+    bidders: list[str] | None = None
+    extracted: list[str] | None = None
+    has_rubric: bool | None = None
+    has_evaluation: bool | None = None
+    reports: list[str] | None = None
+
+
+class CorrectionRequest(BaseModel):
+    """The body of `PATCH /bids/{t}/fields/{letter}/{field}` (S4): correct a value, mark a
+    document present or absent, or point at another page. `Correction` is the stored record."""
+
+    value: Any = None
+    present: bool | None = None
+    page: int | None = None
+    reason: str = Field(min_length=1)
+
+
+class SlotPatch(BaseModel):
+    name: str
+    value: Any = None
+
+
+class ItemPatch(BaseModel):
+    """`PATCH /ruleset/items/{letter}` (S3): one of slot, rule, template or note, with a reason.
+    A corrected slot keeps the model's value in `model_value`; the item becomes `edited`."""
+
+    slot: SlotPatch | None = None
+    rule: TemplateRule | None = None
+    template: str | None = None
+    note: ItemNote | None = None
+    reason: str = Field(min_length=1)
+
+
+class NewItem(BaseModel):
+    """`POST /ruleset/items` (S3): an item a person adds from a clause; lettered x1, x2, ...
+    and `edited` with the person's edit record."""
+
+    title: str = Field(min_length=1)
+    part: Part
+    citation: Citation
+    rules: list[TemplateRule] = Field(default_factory=list)
+    reason: str = Field(min_length=1)
+
+
+class DiffChange(BaseModel):
+    letter: str
+    fields: list[str]
+    edit: Edit | None = Field(default=None, description="null when the rule builder, not a person, made the change")
+
+
+class Diff(BaseModel):
+    """`GET /ruleset/diff?from=&to=` (S3)."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    from_version: int = Field(alias="from")
+    to: int
+    added: list[str] = Field(default_factory=list)
+    removed: list[str] = Field(default_factory=list)
+    changed: list[DiffChange] = Field(default_factory=list)
+
+
+class ErrorDetail(BaseModel):
+    code: str = Field(description="snake_case, e.g. validation_failed")
+    message: str
+    details: dict = Field(default_factory=dict)
+
+
+class ErrorBody(BaseModel):
+    """Every error response, 422 included (docs/api_contract.md, Conventions)."""
+
+    error: ErrorDetail
+    detail: str = Field(description="the message again, for the Streamlit UI until S5")
