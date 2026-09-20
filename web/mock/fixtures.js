@@ -10,6 +10,9 @@ import ruleset from "./fixtures/ruleset.json";
 export const PID = "syn-2026-001";
 export const RULESET_VERSION = 1;
 const T0 = 1789646400; // 2026-09-17T12:00:00Z, seconds (the API's float timestamps)
+// RuleSetVersion.created_at/confirmed_at are date-time strings in the contract,
+// unlike ProjectStatus.updated, which is a number.
+const iso = (seconds) => new Date(seconds * 1000).toISOString();
 
 // Documents: doc_id is what backend/deps.py computes, sha1(<path relative to
 // the project>)[:12], so a fixture page can be compared with the real route.
@@ -48,7 +51,8 @@ export const project = {
   created: T0,
   synthetic: true,
   data_class: "synthetic",
-  status: "idle",
+  // A ProjectStatus, not a string: the UI reads status.state.
+  status: { state: "idle", detail: null, updated: T0 },
 };
 
 export function projectDetail() {
@@ -71,9 +75,9 @@ export const rulesetVersions = [
     status: "confirmed",
     parent_version: null,
     created_by: "chenyu",
-    created_at: T0,
+    created_at: iso(T0),
     confirmed_by: "nasi",
-    confirmed_at: T0,
+    confirmed_at: iso(T0),
   },
 ];
 
@@ -82,6 +86,8 @@ export function documents() {
     ...TENDER_DOCS.map(([doc_id, file, pages]) => ({
       doc_id,
       file,
+      // Required, and exactly what doc_id is the sha1 of (backend/deps.py).
+      path: `tender/${file}`,
       kind: "tender",
       tenderer: null,
       pages,
@@ -90,6 +96,7 @@ export function documents() {
     ...Object.entries(TENDERERS).map(([t, info]) => ({
       doc_id: info.docId,
       file: "offer.pdf",
+      path: `bids/${t}/offer.pdf`,
       kind: "bid",
       tenderer: t,
       pages: info.pages,
