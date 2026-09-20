@@ -77,7 +77,7 @@ _LABEL = r"\(\d+\)"
 # (a list with no document name after it - "Paragraphs 1, 2 ... and 14 above"), it
 # tried every reading, and a 14-item list took 18 seconds, a 20-item list minutes.
 # Atomic fixes each id at its longest form and never re-splits it: a 20-item list now
-# parses in under a millisecond (test_a_long_list_parses_quickly).
+# parses in under a millisecond (test_a_long_list_with_no_document_name_parses_quickly).
 _ID = (r"(?>\([^)]+\)"
        r"|\d+(?:\.\d+)*[A-Z]?(?:\s*\([a-z]{1,4}\))*"
        r"|[IVX]{1,4}[AB]?"
