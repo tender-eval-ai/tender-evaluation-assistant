@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 from app.rulesets.nodes import NodeIndex
 from app.rulesets.schema import (Citation, CheckType, DataClass, FollowUp, ItemNote, ItemStatus, Outcome, ParamValue, Part,
                                  RuleSetItem, TemplateRule)
-from app.rulesets.slots import context_of
+from app.rulesets.slots import _file_of, context_of
 
 PROMPT_VERSION = "novel-v1"
 
@@ -95,9 +95,8 @@ def draft_item(item: RuleSetItem, index: NodeIndex, llm, data_class: DataClass) 
         taken.add(rule_id)
         rules.append(TemplateRule(id=rule_id, check=req.check, field=f"{prefix}.{req.field}", params=req.params,
                                   outcomes=outcomes_for(item.part), stage=req.stage, condition=req.condition, note=req.note))
-        file = next((c.file for c in item.clauses if c.node_id and node["node_id"].startswith(c.node_id)), item.citation.file)
         notes.append(ItemNote(kind="reference", text=f"{rule_id}: \"{req.quote.strip()}\"",
-                              citation=Citation(file=node.get("source_file") or file, page=node["page"], node_id=node["node_id"],
+                              citation=Citation(file=_file_of(node, item), page=node["page"], node_id=node["node_id"],
                                                 quote=req.quote.strip(), data_class=data_class)))
         sources[rule_id] = node["node_id"]
     status = ItemStatus.NOVEL if rules else ItemStatus.GAP
