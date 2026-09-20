@@ -278,10 +278,19 @@ def _starts_with_own_marker(node: dict) -> bool:
     text = _LEADING_GLYPH.sub("", node.get("text") or "")
     # `part` is the enclosing Part of every node inside one, so it is only the
     # node's own marker for the Part node itself.
-    marker = node.get("label") or node.get("number") or (node.get("part") if node.get("kind") == "part" else None)
-    if not marker or not text:
+    #
+    # All of them are tried, not the first that happens to be set: a Part node
+    # carries BOTH `number` ("A") and `part` ("Part A"), and the document prints
+    # the second. Stopping at `number` failed every Part heading - "Part A\nThe
+    # Tenderer shall note..." does not start with "A" - which is the case this
+    # check was changed to catch.
+    markers = [node.get("label"), node.get("number")]
+    if node.get("kind") in ("part", "annex"):
+        markers.append(node.get("part"))
+    markers = [m for m in markers if m]
+    if not markers or not text:
         return bool(text)
-    return _squash(text).startswith(_squash(marker))
+    return any(_squash(text).startswith(_squash(m)) for m in markers)
 
 
 def score_deep(deep_key: dict, tender: Tender) -> dict:
