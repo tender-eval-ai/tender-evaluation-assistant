@@ -5,8 +5,6 @@
 `detail` is kept beside it until the Streamlit UI goes at S5, because that UI reads it."""
 from __future__ import annotations
 
-import json
-
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
@@ -59,8 +57,20 @@ def document(app: FastAPI) -> None:
         body = ErrorBody.model_json_schema(ref_template="#/components/schemas/{model}")
         schemas.update(body.pop("$defs", {}))
         schemas["ErrorBody"] = body
-        text = json.dumps(schema).replace("#/components/schemas/HTTPValidationError", "#/components/schemas/ErrorBody")
-        app.openapi_schema = json.loads(text)
+        _swap_refs(schema, "#/components/schemas/HTTPValidationError", "#/components/schemas/ErrorBody")
+        app.openapi_schema = schema
         return app.openapi_schema
 
     app.openapi = openapi
+
+
+def _swap_refs(node, old: str, new: str) -> None:
+    """Rewrite `$ref` values only, never prose that happens to mention the old name."""
+    if isinstance(node, dict):
+        if node.get("$ref") == old:
+            node["$ref"] = new
+        for value in node.values():
+            _swap_refs(value, old, new)
+    elif isinstance(node, list):
+        for value in node:
+            _swap_refs(value, old, new)

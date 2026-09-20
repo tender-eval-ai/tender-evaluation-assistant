@@ -18,12 +18,14 @@ router = APIRouter(dependencies=[Depends(deps.require_key)])
 
 def _ruleset(store, pid: str, spec: dict) -> RuleSet:
     """The stored spec as the shared model, with the server-owned `updated_by` filled in."""
-    editor = next((v["updated_by"] for v in store.versions(pid) if v["version"] == spec.get("version")), None)
-    return RuleSet.model_validate({**spec, "updated_by": editor})
+    return RuleSet.model_validate({**spec, "updated_by": store.editor_of(pid, spec.get("version"))})
 
 
-def _when(epoch: float | None) -> datetime | None:
-    return datetime.fromtimestamp(float(epoch), tz=timezone.utc) if epoch is not None else None   # psycopg gives Decimal
+def _when(value) -> datetime | None:
+    """Epoch seconds (float, or Decimal from psycopg) or an already-built datetime, as ISO."""
+    if value is None or isinstance(value, datetime):
+        return value
+    return datetime.fromtimestamp(float(value), tz=timezone.utc)
 
 
 @router.get("/projects/{pid}/ruleset")
@@ -83,7 +85,7 @@ def confirm(pid: str, user: str = Depends(deps.acting_user)) -> RuleSet:
     if draft is None:
         raise ApiError(409, "conflict", f"project {pid} has no draft to confirm")
     version, spec = draft
-    editor = next((v["updated_by"] for v in store.versions(pid) if v["version"] == version), None)
+    editor = store.editor_of(pid, version)
     if editor and editor == user:
         raise ApiError(403, "self_approval", f"{user} last edited draft v{version}; another person must confirm it")
     try:
