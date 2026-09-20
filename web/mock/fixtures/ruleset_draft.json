@@ -1,0 +1,466 @@
+{
+  "project_id": "syn-2026-001",
+  "version": 2,
+  "parent_version": 1,
+  "status": "draft",
+  "data_class": "synthetic",
+  "items": [
+    {
+      "letter": "a",
+      "title": "The Offer to be Bound in the Tender Form, signed",
+      "part": "A",
+      "template": null,
+      "citation": {
+        "file": "tender/09 Schedules.pdf",
+        "page": 7,
+        "node_id": "Sched:CCS:(a)",
+        "quote": "(a) The Offer to be Bound in the Tender Form, duly signed",
+        "data_class": "synthetic"
+      },
+      "clauses": [
+        {
+          "file": "tender/01 Tender Form.pdf",
+          "page": 2,
+          "node_id": "Form:Offer",
+          "quote": "Offer to be Bound",
+          "data_class": "synthetic"
+        }
+      ],
+      "condition": null,
+      "notes": [
+        {
+          "kind": "reference",
+          "text": "Part A: a missing item means the tender is not considered further",
+          "citation": null
+        }
+      ],
+      "slots": {},
+      "rules": [
+        {
+          "id": "offer_to_be_bound.submitted",
+          "check": "document_present",
+          "field": "offer_to_be_bound.document",
+          "params": {},
+          "consequence": null,
+          "outcomes": {
+            "blank": {
+              "status": "disqualified",
+              "note": "{field} is missing; the tender is not considered further (Part A)",
+              "follow_up": null
+            },
+            "filled": {
+              "status": "pass",
+              "note": null,
+              "follow_up": null
+            },
+            "redacted": {
+              "status": "needs_review",
+              "note": "{field} is covered by a black bar in this copy; a reviewer checks the original",
+              "follow_up": null
+            }
+          },
+          "normalise": [],
+          "stage": "I",
+          "condition": null,
+          "depends_on": [],
+          "note": null
+        },
+        {
+          "id": "offer_to_be_bound.signed",
+          "check": "signature",
+          "field": "offer_to_be_bound.signature",
+          "params": {},
+          "consequence": null,
+          "outcomes": {
+            "blank": {
+              "status": "disqualified",
+              "note": "{field} is missing; the tender is not considered further (Part A)",
+              "follow_up": null
+            },
+            "filled": {
+              "status": "pass",
+              "note": null,
+              "follow_up": null
+            },
+            "redacted": {
+              "status": "needs_review",
+              "note": "{field} is covered by a black bar in this copy; a reviewer checks the original",
+              "follow_up": null
+            }
+          },
+          "normalise": [],
+          "stage": "I",
+          "condition": null,
+          "depends_on": [
+            "offer_to_be_bound.submitted"
+          ],
+          "note": null
+        }
+      ],
+      "status": "novel",
+      "edit": null
+    },
+    {
+      "letter": "c",
+      "title": "The Price Schedule, completed for the estimated quantity",
+      "part": "A",
+      "template": "price_schedule",
+      "citation": {
+        "file": "tender/09 Schedules.pdf",
+        "page": 7,
+        "node_id": "Sched:CCS:(c)",
+        "quote": "(c) The Price Schedule, duly completed",
+        "data_class": "synthetic"
+      },
+      "clauses": [
+        {
+          "file": "tender/09 Schedules.pdf",
+          "page": 3,
+          "node_id": "Sched:Price",
+          "quote": "Estimated quantity: 1,200 tonnes",
+          "data_class": "synthetic"
+        }
+      ],
+      "condition": null,
+      "notes": [
+        {
+          "kind": "definition",
+          "text": "Unit price is per tonne, in HKD",
+          "citation": null
+        }
+      ],
+      "slots": {
+        "estimated_quantity": {
+          "value": 1200,
+          "citation": {
+            "file": "tender/09 Schedules.pdf",
+            "page": 3,
+            "node_id": "Sched:Price",
+            "quote": "Estimated quantity: 1,200 tonnes",
+            "data_class": "synthetic"
+          },
+          "verified": true,
+          "origin": "extracted",
+          "model_value": null,
+          "edit": null
+        },
+        "delivery_period_days": {
+          "value": null,
+          "citation": null,
+          "verified": false,
+          "origin": "extracted",
+          "model_value": null,
+          "edit": null
+        }
+      },
+      "rules": [
+        {
+          "id": "price_schedule.unit_price_present",
+          "check": "filled",
+          "field": "price_schedule.unit_price",
+          "params": {},
+          "consequence": "critical",
+          "outcomes": null,
+          "normalise": [],
+          "stage": "I",
+          "condition": null,
+          "depends_on": [],
+          "note": null
+        },
+        {
+          "id": "price_schedule.quantity_matches",
+          "check": "value",
+          "field": "price_schedule.quantity",
+          "params": {
+            "expected": "{estimated_quantity}"
+          },
+          "consequence": "critical",
+          "outcomes": null,
+          "normalise": [],
+          "stage": "I",
+          "condition": null,
+          "depends_on": [
+            "price_schedule.unit_price_present"
+          ],
+          "note": null
+        }
+      ],
+      "status": "needs_input",
+      "edit": null
+    },
+    {
+      "letter": "k",
+      "title": "The Appendix to the Terms of Tender - Contact Details",
+      "part": "B",
+      "template": null,
+      "citation": {
+        "file": "tender/09 Schedules.pdf",
+        "page": 7,
+        "node_id": "Sched:CCS:(k)",
+        "quote": "(k) The Appendix to the Terms of Tender - Contact Details",
+        "data_class": "synthetic"
+      },
+      "clauses": [
+        {
+          "file": "tender/11 Appendix to the Terms of Tender - Contact Details.pdf",
+          "page": 1,
+          "node_id": "App:Contact",
+          "quote": "Contact Details",
+          "data_class": "synthetic"
+        }
+      ],
+      "condition": null,
+      "notes": [
+        {
+          "kind": "reference",
+          "text": "Part B: the Authority may ask for a missing item before disqualifying",
+          "citation": null
+        }
+      ],
+      "slots": {},
+      "rules": [
+        {
+          "id": "contact_details.submitted",
+          "check": "document_present",
+          "field": "contact_details.document",
+          "params": {},
+          "consequence": null,
+          "outcomes": {
+            "blank": {
+              "status": "needs_review",
+              "note": "{field} is missing; the Authority may request it (Part B)",
+              "follow_up": null
+            },
+            "filled": {
+              "status": "pass",
+              "note": null,
+              "follow_up": null
+            },
+            "redacted": {
+              "status": "needs_review",
+              "note": "{field} is covered by a black bar in this copy; a reviewer checks the original",
+              "follow_up": null
+            }
+          },
+          "normalise": [],
+          "stage": "I",
+          "condition": null,
+          "depends_on": [],
+          "note": null
+        },
+        {
+          "id": "contact_details.contact_person",
+          "check": "filled",
+          "field": "contact_details.contact_person",
+          "params": {},
+          "consequence": null,
+          "outcomes": {
+            "blank": {
+              "status": "needs_review",
+              "note": "{field} is not visible; a reviewer confirms",
+              "follow_up": null
+            },
+            "filled": {
+              "status": "pass",
+              "note": null,
+              "follow_up": null
+            },
+            "redacted": {
+              "status": "needs_review",
+              "note": "{field} is covered by a black bar in this copy; a reviewer checks the original",
+              "follow_up": null
+            }
+          },
+          "normalise": [],
+          "stage": "I",
+          "condition": null,
+          "depends_on": [
+            "contact_details.submitted"
+          ],
+          "note": "The contact person may be printed or handwritten"
+        }
+      ],
+      "status": "edited",
+      "edit": {
+        "by": "chenyu",
+        "at": "2026-09-17T13:05:00Z",
+        "reason": "Handwritten names are accepted on the synthetic Contact Details form"
+      }
+    },
+    {
+      "letter": "l",
+      "title": "The signed Non-collusive Tendering Certificate",
+      "part": "A",
+      "template": null,
+      "citation": {
+        "file": "tender/09 Schedules.pdf",
+        "page": 7,
+        "node_id": "Sched:CCS:(l)",
+        "quote": "(l) The signed Non-collusive Tendering Certificate (see Paragraphs 9.4, 10.1, 12 and 13 of the Terms of Tender (Supplement))",
+        "data_class": "synthetic"
+      },
+      "clauses": [
+        {
+          "file": "tender/04 Terms of Tender (Supplement).pdf",
+          "page": 5,
+          "node_id": "Supp:13",
+          "quote": "Non-collusive Tendering Certificate",
+          "data_class": "synthetic"
+        }
+      ],
+      "condition": null,
+      "notes": [
+        {
+          "kind": "reference",
+          "text": "Part A: a missing item means the tender is not considered further",
+          "citation": null
+        }
+      ],
+      "slots": {},
+      "rules": [
+        {
+          "id": "noncollusive_certificate.submitted",
+          "check": "document_present",
+          "field": "noncollusive_certificate.document",
+          "params": {},
+          "consequence": null,
+          "outcomes": {
+            "blank": {
+              "status": "disqualified",
+              "note": "{field} is missing; the tender is not considered further (Part A)",
+              "follow_up": null
+            },
+            "filled": {
+              "status": "pass",
+              "note": null,
+              "follow_up": null
+            },
+            "redacted": {
+              "status": "needs_review",
+              "note": "{field} is covered by a black bar in this copy; a reviewer checks the original",
+              "follow_up": null
+            }
+          },
+          "normalise": [],
+          "stage": "I",
+          "condition": null,
+          "depends_on": [],
+          "note": "the certificate itself, in the form in the tender documents"
+        },
+        {
+          "id": "noncollusive_certificate.signed",
+          "check": "signature",
+          "field": "noncollusive_certificate.signature",
+          "params": {},
+          "consequence": null,
+          "outcomes": {
+            "blank": {
+              "status": "disqualified",
+              "note": "{field} is missing; the tender is not considered further (Part A)",
+              "follow_up": null
+            },
+            "filled": {
+              "status": "pass",
+              "note": null,
+              "follow_up": null
+            },
+            "redacted": {
+              "status": "needs_review",
+              "note": "{field} is covered by a black bar in this copy; a reviewer checks the original",
+              "follow_up": null
+            }
+          },
+          "normalise": [],
+          "stage": "I",
+          "condition": null,
+          "depends_on": [
+            "noncollusive_certificate.submitted"
+          ],
+          "note": "the schedule row says 'signed'"
+        },
+        {
+          "id": "noncollusive_certificate.tenderer_identified",
+          "check": "filled",
+          "field": "noncollusive_certificate.tenderer_name",
+          "params": {},
+          "consequence": null,
+          "outcomes": {
+            "blank": {
+              "status": "needs_review",
+              "note": "{field} is not visible; a reviewer confirms",
+              "follow_up": null
+            },
+            "filled": {
+              "status": "pass",
+              "note": null,
+              "follow_up": null
+            },
+            "redacted": {
+              "status": "needs_review",
+              "note": "{field} is covered by a black bar in this copy; a reviewer checks the original",
+              "follow_up": null
+            }
+          },
+          "normalise": [],
+          "stage": "I",
+          "condition": null,
+          "depends_on": [
+            "noncollusive_certificate.submitted"
+          ],
+          "note": null
+        },
+        {
+          "id": "noncollusive_certificate.dated",
+          "check": "date",
+          "field": "noncollusive_certificate.date",
+          "params": {},
+          "consequence": null,
+          "outcomes": {
+            "blank": {
+              "status": "needs_review",
+              "note": "{field} is not visible; a reviewer confirms",
+              "follow_up": null
+            },
+            "filled": {
+              "status": "pass",
+              "note": null,
+              "follow_up": null
+            },
+            "redacted": {
+              "status": "needs_review",
+              "note": "{field} is covered by a black bar in this copy; a reviewer checks the original",
+              "follow_up": null
+            }
+          },
+          "normalise": [],
+          "stage": "I",
+          "condition": null,
+          "depends_on": [
+            "noncollusive_certificate.signed"
+          ],
+          "note": "a date next to the signature; missing is a reviewer's call, not a disqualification"
+        }
+      ],
+      "status": "novel",
+      "edit": null
+    }
+  ],
+  "gaps": [
+    {
+      "node_id": "Supp:13:(d)",
+      "text": "The Tenderer shall submit one sample bag of the granules with the tender.",
+      "reason": null
+    },
+    {
+      "node_id": "SCC:5.2",
+      "text": "The Contractor must deliver each order within 30 days.",
+      "reason": "A contract-stage obligation, not a tender completeness check"
+    }
+  ],
+  "created_by": "chenyu",
+  "created_at": "2026-09-17T13:00:00Z",
+  "confirmed_by": null,
+  "confirmed_at": null,
+  "model": "fake-llm",
+  "prompt_version": "l1-l4@s3"
+}

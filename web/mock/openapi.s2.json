@@ -1855,6 +1855,166 @@
         "summary": "Get Ruleset"
       }
     },
+    "/projects/{pid}/ruleset/confirm": {
+      "post": {
+        "description": "403 self_approval if the approver last edited the draft; 409 conflict while an\nitem still needs input or a gap has no reason. Confirms the draft as version N.",
+        "operationId": "confirm_projects__pid__ruleset_confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Confirm Projects  Pid  Ruleset Confirm Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm"
+      }
+    },
+    "/projects/{pid}/ruleset/draft": {
+      "put": {
+        "description": "The whole draft as JSON, validated against app/rulesets/schema.py. The server owns\nversion, status and the audit fields.",
+        "operationId": "put_draft_projects__pid__ruleset_draft_put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "additionalProperties": true,
+                "title": "Body",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Put Draft Projects  Pid  Ruleset Draft Put",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Put Draft"
+      }
+    },
     "/projects/{pid}/ruleset/versions": {
       "get": {
         "operationId": "list_versions_projects__pid__ruleset_versions_get",
@@ -1915,5 +2075,5 @@
       }
     }
   },
-  "x-source": "docs/openapi.json at feat/checks-api c0e3813 (PR #27), trimmed to the routes web/mock serves and the schemas they reference"
+  "x-source": "docs/openapi.json at feat/checks-api c0e3813 (PR #27), trimmed to the routes web/mock serves and the schemas they reference Plus PUT /ruleset/draft and POST /ruleset/confirm from origin/merge/s2-stack at 135191e."
 }

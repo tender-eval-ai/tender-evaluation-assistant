@@ -1,4 +1,4 @@
-// The S2 routes of docs/api_contract.md. Nothing here knows whether it talks
+// The S2 and S3 routes of docs/api_contract.md. Nothing here knows whether it talks
 // to web/mock/ or to backend/: both answer the same shapes.
 //
 //   VITE_API_BASE  the API's origin, e.g. http://localhost:8000. Unset: the
@@ -28,10 +28,18 @@ export class ApiError extends Error {
   }
 }
 
+// The acting user, sent as X-User. On the mock the Rules window can switch it,
+// so one browser can edit a draft as one person and confirm it as another.
+let actingUser = env.VITE_API_USER || "";
+export const getActingUser = () => actingUser || "anonymous";
+export function setActingUser(name) {
+  actingUser = (name ?? "").trim();
+}
+
 function headers(extra = {}) {
   const h = { ...extra };
   if (env.VITE_API_KEY) h["X-API-Key"] = env.VITE_API_KEY;
-  if (env.VITE_API_USER) h["X-User"] = env.VITE_API_USER;
+  if (actingUser) h["X-User"] = actingUser;
   return h;
 }
 
@@ -68,6 +76,16 @@ export const getProject = (pid) => request("GET", p(pid));
 export const getRuleset = (pid, { version } = {}) => request("GET", `${p(pid)}/ruleset${q({ version })}`);
 export const listRulesetVersions = (pid) => request("GET", `${p(pid)}/ruleset/versions`);
 export const confirmRuleset = (pid) => request("POST", `${p(pid)}/ruleset/confirm`, {});
+export const getRulesetDiff = (pid, from, to) => request("GET", `${p(pid)}/ruleset/diff${q({ from, to })}`);
+export const listRulesetGaps = (pid) => request("GET", `${p(pid)}/ruleset/gaps`);
+// ItemPatch {slot?: {name, value}, rule?, template?, note?, reason}
+export const patchRulesetItem = (pid, letter, patch) =>
+  request("PATCH", `${p(pid)}/ruleset/items/${encodeURIComponent(letter)}`, patch);
+// NewItem {title, part, citation, rules, reason}
+export const addRulesetItem = (pid, item) => request("POST", `${p(pid)}/ruleset/items`, item);
+export const deleteRulesetItem = (pid, letter, reason) =>
+  request("DELETE", `${p(pid)}/ruleset/items/${encodeURIComponent(letter)}`, { reason });
+export const putRulesetDraft = (pid, draft) => request("PUT", `${p(pid)}/ruleset/draft`, draft);
 
 // Stage I and II window. POST /checks always runs against the latest
 // confirmed rule set; 409 unconfirmed_ruleset when there is none.

@@ -1,8 +1,9 @@
-// MSW handlers for the S2 routes of docs/api_contract.md. The same handlers run
+// MSW handlers for the S2 and S3 routes of docs/api_contract.md. The same handlers run
 // in the browser (`npm run dev`, mock/browser.js) and in Vitest (mock/node.js).
 // Paths start with `*` so they answer whatever VITE_API_BASE points at.
 import { http, HttpResponse } from "msw";
 import * as fx from "./fixtures.js";
+import * as rs from "./rulesetStore.js";
 
 // The routes this mock serves, as openapi.json names them. contract.test.js
 // checks every one of them exists in the contract.
@@ -11,6 +12,8 @@ export const ROUTES = [
   ["get", "/projects/{pid}"],
   ["get", "/projects/{pid}/ruleset"],
   ["get", "/projects/{pid}/ruleset/versions"],
+  ["put", "/projects/{pid}/ruleset/draft"],
+  ["post", "/projects/{pid}/ruleset/confirm"],
   ["post", "/projects/{pid}/checks"],
   ["get", "/projects/{pid}/jobs"],
   ["get", "/projects/{pid}/jobs/{job_id}"],
@@ -21,12 +24,24 @@ export const ROUTES = [
   ["get", "/projects/{pid}/events"],
 ];
 
+// The S3 rule-set routes of docs/api_contract.md that openapi.json does not
+// have yet. contract.test.js checks their bodies against the models of
+// app/rulesets/schema.py (mock/rulesetSchema.js) until it does.
+export const S3_ROUTES = [
+  ["get", "/projects/{pid}/ruleset/diff"],
+  ["get", "/projects/{pid}/ruleset/gaps"],
+  ["post", "/projects/{pid}/ruleset/items"],
+  ["patch", "/projects/{pid}/ruleset/items/{letter}"],
+  ["delete", "/projects/{pid}/ruleset/items/{letter}"],
+];
+
 // Mutable state: which tenderers have a finished check, and the jobs started
 // through POST /checks. Tenderer_B starts unchecked so the Run check path
 // (202 -> poll the job -> results) has something to do.
 let state;
 export function resetMockState() {
   state = { checked: new Set(["Tenderer_A", "Tenderer_C", "Tenderer_D"]), jobs: new Map(), nextJob: 1 };
+  rs.resetRulesetStore();
 }
 resetMockState();
 
@@ -34,6 +49,18 @@ resetMockState();
 function error(status, code, message, details = {}) {
   return HttpResponse.json({ error: { code, message, details }, detail: message }, { status });
 }
+
+// The acting user, as the API takes it until per-user sessions (B9).
+const actingUser = (request) => request.headers.get("X-User") || "anonymous";
+
+// A rulesetStore result as a response.
+function reply(result) {
+  if (result.error) return error(result.status, result.error.code, result.error.message, result.error.details);
+  if (result.status === 204) return new HttpResponse(null, { status: 204 });
+  return HttpResponse.json(result.body, { status: result.status });
+}
+
+const body = (request) => request.json().catch(() => null);
 
 function projectOr404(pid) {
   return pid === fx.PID ? null : error(404, "not_found", `project '${pid}' not found`);
@@ -80,14 +107,38 @@ export const handlers = [
     const missing = projectOr404(params.pid);
     if (missing) return missing;
     const version = new URL(request.url).searchParams.get("version");
-    if (version && Number(version) !== fx.RULESET_VERSION) {
-      return error(404, "not_found", `rule set version ${version} does not exist for ${params.pid}`);
-    }
-    return HttpResponse.json(fx.ruleset);
+    return reply(rs.getRuleset(version == null ? null : Number(version)));
   }),
 
-  http.get("*/projects/:pid/ruleset/versions", ({ params }) =>
-    projectOr404(params.pid) ?? HttpResponse.json(fx.rulesetVersions)
+  http.get("*/projects/:pid/ruleset/versions", ({ params }) => projectOr404(params.pid) ?? reply(rs.listVersions())),
+
+  http.get("*/projects/:pid/ruleset/diff", ({ params, request }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    const q = new URL(request.url).searchParams;
+    return reply(rs.diff(q.get("from"), q.get("to")));
+  }),
+
+  http.get("*/projects/:pid/ruleset/gaps", ({ params }) => projectOr404(params.pid) ?? reply(rs.listGaps())),
+
+  http.patch("*/projects/:pid/ruleset/items/:letter", async ({ params, request }) =>
+    projectOr404(params.pid) ?? reply(rs.patchItem(params.letter, await body(request), actingUser(request)))
+  ),
+
+  http.post("*/projects/:pid/ruleset/items", async ({ params, request }) =>
+    projectOr404(params.pid) ?? reply(rs.addItem(await body(request), actingUser(request)))
+  ),
+
+  http.delete("*/projects/:pid/ruleset/items/:letter", async ({ params, request }) =>
+    projectOr404(params.pid) ?? reply(rs.deleteItem(params.letter, await body(request), actingUser(request)))
+  ),
+
+  http.put("*/projects/:pid/ruleset/draft", async ({ params, request }) =>
+    projectOr404(params.pid) ?? reply(rs.putDraft(await body(request), actingUser(request)))
+  ),
+
+  http.post("*/projects/:pid/ruleset/confirm", ({ params, request }) =>
+    projectOr404(params.pid) ?? reply(rs.confirm(actingUser(request)))
   ),
 
   http.post("*/projects/:pid/checks", async ({ params, request }) => {
@@ -172,6 +223,6 @@ export const handlers = [
   }),
 
   http.get("*/projects/:pid/events", ({ params }) =>
-    projectOr404(params.pid) ?? HttpResponse.json({ items: fx.events, next_cursor: null })
+    projectOr404(params.pid) ?? HttpResponse.json({ items: [...fx.events, ...rs.events()], next_cursor: null })
   ),
 ];

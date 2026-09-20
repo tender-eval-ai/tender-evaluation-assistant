@@ -6,13 +6,11 @@
 // feat/checks-api). contract.test.js fetches every mocked route and checks the
 // body against the OpenAPI schemas, so a drift fails `npx vitest run`.
 import ruleset from "./fixtures/ruleset.json";
+import rulesetDraft from "./fixtures/ruleset_draft.json";
 
 export const PID = "syn-2026-001";
 export const RULESET_VERSION = 1;
 const T0 = 1789646400; // 2026-09-17T12:00:00Z, seconds (the API's float timestamps)
-// RuleSetVersion.created_at/confirmed_at are date-time strings in the contract,
-// unlike ProjectStatus.updated, which is a number.
-const iso = (seconds) => new Date(seconds * 1000).toISOString();
 
 // Documents: doc_id is what backend/deps.py computes, sha1(<path relative to
 // the project>)[:12], so a fixture page can be compared with the real route.
@@ -67,19 +65,7 @@ export function projectDetail() {
   };
 }
 
-export { ruleset };
-
-export const rulesetVersions = [
-  {
-    version: RULESET_VERSION,
-    status: "confirmed",
-    parent_version: null,
-    created_by: "chenyu",
-    created_at: iso(T0),
-    confirmed_by: "nasi",
-    confirmed_at: iso(T0),
-  },
-];
+export { ruleset, rulesetDraft };
 
 export function documents() {
   return [
@@ -170,10 +156,15 @@ export function pageLines(docId, page) {
   }
   // A tender page prints the rule set's quotes that cite it, so a quote the
   // Rules window asks to highlight is found on the page.
-  const quotes = ruleset.items
-    .flatMap((item) => [item.citation, ...item.clauses])
+  const quotes = [...new Map([...ruleset.items, ...rulesetDraft.items].map((i) => [i.letter, i])).values()]
+    .flatMap((item) => [
+      item.citation,
+      ...item.clauses,
+      ...Object.values(item.slots).map((s) => s.citation).filter(Boolean),
+    ])
     .filter((c) => c.file === `tender/${doc.file}` && c.page === page)
-    .map((c) => c.quote);
+    .map((c) => c.quote)
+    .filter((q, i, all) => all.indexOf(q) === i);
   return [doc.file.replace(/\.pdf$/, "").toUpperCase(), ...quotes.flatMap((q) => wrap(q, 60)), `page ${page}`];
 }
 

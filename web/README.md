@@ -6,7 +6,7 @@ The Streamlit `frontend/` stays until S5.
 
 | Window | Routes | Ready |
 |---|---|---|
-| Rules (`src/windows/RulesWindow.jsx`) | `GET /ruleset`, `POST /ruleset/confirm`, documents and pages | S2 |
+| Rules (`src/windows/RulesWindow.jsx`) | `GET /ruleset` (`?version=`), `/ruleset/versions`, `/ruleset/diff`, `/ruleset/gaps`, `PATCH`/`POST`/`DELETE /ruleset/items`, `PUT /ruleset/draft`, `POST /ruleset/confirm`, documents and pages | S3 (mock) |
 | Stage I / II (`src/components/StageResultsWindow.jsx`) | `GET /projects/{pid}`, `GET /bids/{t}/results`, `POST /checks`, `GET /jobs/{id}` | S2 |
 | Scoring, report | price summary, evaluation, reports | S4, not built here yet |
 
@@ -26,14 +26,29 @@ on p.10 of its offer. Tenderer_C has no certificate, so (l) disqualifies. Tender
 no result until you press "Run check".
 
 - `mock/fixtures.js` and `mock/fixtures/ruleset.json` hold every response in one place.
+- `mock/rulesetStore.js` keeps the rule sets in memory: v1 confirmed
+  (`fixtures/ruleset.json`) and a v2 draft (`fixtures/ruleset_draft.json`) in which
+  item (c) needs input and gap `Supp:13:(d)` has no reason, so v2 cannot be confirmed
+  until both are dealt with. Every edit needs a reason and records who and when; a
+  corrected slot keeps the model's value in `model_value`; the last editor of a draft
+  gets `403 self_approval` on confirm. The top of the Rules window has an "acting as"
+  box on the mock (sent as `X-User`) so one browser can edit as one person and
+  confirm as another. A reload starts from the fixtures again.
+- Adding an item: page images have no text layer, so the clause is picked with a
+  citation picker (document, page, optional clause node, verbatim text typed or taken
+  from text selected anywhere in the window) rather than by selecting on the image.
 - `mock/handlers.js` holds the routes, plus a page image drawn as SVG. With
   `?highlight=` it draws the highlight box, as the real PNG route does.
 - `mock/contract.test.js` fetches every mocked route and checks the body against
   the contract's OpenAPI schemas. Any field the schema does not name fails the test.
   The test reads `../docs/openapi.json` when it exists (after PR #27 merges), else
-  `mock/openapi.s2.json`, a trimmed snapshot of PR #27's file at `c0e3813`.
-- The rule set fixture is checked against the pydantic model with:
-  `python -c "import json; from app.rulesets.schema import RuleSet; RuleSet.model_validate(json.load(open('web/mock/fixtures/ruleset.json')))"`
+  `mock/openapi.s2.json`, a trimmed snapshot of PR #27's file at `c0e3813`, plus
+  `PUT /ruleset/draft` and `POST /ruleset/confirm` from `merge/s2-stack` at `135191e`.
+- openapi.json types the rule set routes as a bare dict and has no diff, gaps or item
+  routes yet, so their bodies are checked against `mock/rulesetSchema.js`, the models
+  of `app/rulesets/schema.py` in JS, strict on unknown fields.
+- The rule set fixtures are checked against the pydantic model with:
+  `python -c "import json; from app.rulesets.schema import RuleSet; [RuleSet.model_validate(json.load(open(f'web/mock/fixtures/{f}'))) for f in ('ruleset.json', 'ruleset_draft.json')]"`
 
 ## Point at the real API
 
@@ -55,7 +70,7 @@ The API must allow the web origin through CORS.
 ## Tests and build
 
 ```sh
-npm test             # vitest run: StageResultsWindow + the mock-vs-contract check
+npm test             # vitest run: StageResultsWindow, RulesWindow + the mock-vs-contract check
 npm run build
 npm run lint         # oxlint
 ```
