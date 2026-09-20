@@ -166,12 +166,12 @@ def _read_schedule_text(schedule_pages: list) -> list[_TextPart]:
 def _item_starts(block_text: str) -> list[re.Match]:
     """The markers that really open an item, in order.
 
-    A line-start "(x)" is not always an item. The Part intro names its own range
-    ("items (d) to (o) specified below"), and when that wraps right before a letter
-    the port kept only the last match per letter, since the intro always comes first
-    (Tender 3 p204). That rule fails the other way round: an item's own roman
-    sub-items (i), (ii) come after it, and "(i)" is also a letter - a later item's
-    "(i)" sub-item would replace the real item (i) and hand its text to (h).
+    A line-start "(x)" is not always an item. The Part intro names its own range of
+    items, and when that range wraps right before a letter the port kept only the last
+    match per letter, since the intro always comes first. That rule fails the other way
+    round: an item's own roman sub-items (i), (ii) come after it, and "(i)" is also a
+    letter - a later item's "(i)" sub-item would replace the real item (i) and hand
+    its text to (h).
 
     Items run in alphabetical order, so the items are the longest run of markers whose
     letters go up one at a time; where two markers could continue the run, the later
