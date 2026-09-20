@@ -1,0 +1,20 @@
+{
+  "id": "noncollusive_certificate",
+  "form_name": "Non-collusive Tendering Certificate",
+  "slots": [],
+  "consequences": {
+    "critical": {
+      "outcomes": {
+        "blank": {"status": "disqualified", "note": "{field} is missing"},
+        "filled": {"status": "pass"},
+        "redacted": {"status": "needs_review", "note": "{field} is covered; ask for an unredacted copy"}
+      }
+    }
+  },
+  "rules": [
+    {"id": "noncollusive_certificate.submitted", "check": "document_present", "field": "noncollusive_certificate.document", "consequence": "critical"},
+    {"id": "noncollusive_certificate.signed", "check": "signature", "field": "noncollusive_certificate.signature", "consequence": "critical", "depends_on": ["noncollusive_certificate.submitted"]},
+    {"id": "noncollusive_certificate.tenderer_identified", "check": "filled", "field": "noncollusive_certificate.tenderer_name", "consequence": "critical", "depends_on": ["noncollusive_certificate.submitted"]},
+    {"id": "noncollusive_certificate.dated", "check": "filled", "field": "noncollusive_certificate.date", "consequence": "critical", "depends_on": ["noncollusive_certificate.submitted"]}
+  ]
+}

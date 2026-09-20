@@ -537,6 +537,78 @@
         "title": "DataClass",
         "type": "string"
       },
+      "Diff": {
+        "description": "`GET /ruleset/diff?from=&to=` (S3).",
+        "properties": {
+          "added": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Added",
+            "type": "array"
+          },
+          "changed": {
+            "items": {
+              "$ref": "#/components/schemas/DiffChange"
+            },
+            "title": "Changed",
+            "type": "array"
+          },
+          "from": {
+            "title": "From",
+            "type": "integer"
+          },
+          "removed": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Removed",
+            "type": "array"
+          },
+          "to": {
+            "title": "To",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "from",
+          "to"
+        ],
+        "title": "Diff",
+        "type": "object"
+      },
+      "DiffChange": {
+        "properties": {
+          "edit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Edit"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null when the rule builder, not a person, made the change"
+          },
+          "fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Fields",
+            "type": "array"
+          },
+          "letter": {
+            "title": "Letter",
+            "type": "string"
+          }
+        },
+        "required": [
+          "letter",
+          "fields"
+        ],
+        "title": "DiffChange",
+        "type": "object"
+      },
       "Document": {
         "properties": {
           "data_class": {
@@ -743,8 +815,9 @@
             "title": "After"
           },
           "at": {
+            "format": "date-time",
             "title": "At",
-            "type": "number"
+            "type": "string"
           },
           "before": {
             "title": "Before"
@@ -1005,6 +1078,62 @@
         "title": "ItemNote",
         "type": "object"
       },
+      "ItemPatch": {
+        "description": "`PATCH /ruleset/items/{letter}` (S3): one of slot, rule, template or note, with a reason.\nA corrected slot keeps the model's value in `model_value`; the item becomes `edited`.",
+        "properties": {
+          "note": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ItemNote"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "rule": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemplateRule"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "slot": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SlotPatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Template"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ItemPatch",
+        "type": "object"
+      },
       "ItemStatus": {
         "enum": [
           "verified",
@@ -1024,8 +1153,9 @@
             "type": "integer"
           },
           "created_at": {
+            "format": "date-time",
             "title": "Created At",
-            "type": "number"
+            "type": "string"
           },
           "error": {
             "anyOf": [
@@ -1099,8 +1229,9 @@
             "title": "Tenderer"
           },
           "updated_at": {
+            "format": "date-time",
             "title": "Updated At",
-            "type": "number"
+            "type": "string"
           }
         },
         "required": [
@@ -1139,6 +1270,42 @@
           "items"
         ],
         "title": "JobPage",
+        "type": "object"
+      },
+      "NewItem": {
+        "description": "`POST /ruleset/items` (S3): an item a person adds from a clause; lettered x1, x2, ...\nand `edited` with the person's edit record.",
+        "properties": {
+          "citation": {
+            "$ref": "#/components/schemas/Citation"
+          },
+          "part": {
+            "$ref": "#/components/schemas/Part"
+          },
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateRule"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "part",
+          "citation",
+          "reason"
+        ],
+        "title": "NewItem",
         "type": "object"
       },
       "NewProject": {
@@ -1208,6 +1375,25 @@
           "op"
         ],
         "title": "Normalise",
+        "type": "object"
+      },
+      "NotePatch": {
+        "description": "`PATCH /ruleset/items/{letter}/notes/{i}`: the note as it should read, and why.",
+        "properties": {
+          "note": {
+            "$ref": "#/components/schemas/ItemNote"
+          },
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "note",
+          "reason"
+        ],
+        "title": "NotePatch",
         "type": "object"
       },
       "Outcome": {
@@ -1558,7 +1744,8 @@
           "created": {
             "anyOf": [
               {
-                "type": "number"
+                "format": "date-time",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1675,13 +1862,21 @@
           },
           "state": {
             "default": "idle",
+            "enum": [
+              "idle",
+              "running",
+              "waiting",
+              "done",
+              "error"
+            ],
             "title": "State",
             "type": "string"
           },
           "updated": {
             "anyOf": [
               {
-                "type": "number"
+                "format": "date-time",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1691,6 +1886,21 @@
           }
         },
         "title": "ProjectStatus",
+        "type": "object"
+      },
+      "ReasonBody": {
+        "description": "The body of a DELETE or a gap PATCH: why.",
+        "properties": {
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ReasonBody",
         "type": "object"
       },
       "ResumeRequest": {
@@ -2088,6 +2298,22 @@
           "status"
         ],
         "title": "RuleSetVersion",
+        "type": "object"
+      },
+      "SlotPatch": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "SlotPatch",
         "type": "object"
       },
       "SlotValue": {
@@ -4365,7 +4591,7 @@
     },
     "/projects/{pid}/ruleset/confirm": {
       "post": {
-        "description": "403 self_approval if the approver last edited the draft; 409 conflict while an\nitem still needs input or a gap has no reason. Confirms the draft as version N.",
+        "description": "403 self_approval if the approver last edited the draft; 409 conflict with\n`details.blockers` while an item needs input, a required slot of its template is\nempty whatever the item's status (I1.15), or a gap has no reason. Confirms the draft\nas version N.",
         "operationId": "confirm_projects__pid__ruleset_confirm_post",
         "parameters": [
           {
@@ -4433,6 +4659,80 @@
           }
         },
         "summary": "Confirm"
+      }
+    },
+    "/projects/{pid}/ruleset/diff": {
+      "get": {
+        "description": "Items added, removed and changed between two versions; a change a person made\ncarries their edit record, one the rule builder made carries none.",
+        "operationId": "get_diff_projects__pid__ruleset_diff_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "from",
+            "required": true,
+            "schema": {
+              "title": "From",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "to",
+            "required": true,
+            "schema": {
+              "title": "To",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Diff"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Diff"
       }
     },
     "/projects/{pid}/ruleset/draft": {
@@ -4517,6 +4817,607 @@
           }
         },
         "summary": "Put Draft"
+      }
+    },
+    "/projects/{pid}/ruleset/gaps": {
+      "get": {
+        "description": "The current rule set's gaps: clauses no rule covers, with reasons once given.",
+        "operationId": "list_gaps_projects__pid__ruleset_gaps_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Gap"
+                  },
+                  "title": "Response List Gaps Projects  Pid  Ruleset Gaps Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Gaps"
+      }
+    },
+    "/projects/{pid}/ruleset/gaps/{node_id}": {
+      "patch": {
+        "description": "Why a gap is acceptable, recorded as `Gap.edit` (I1.12).",
+        "operationId": "patch_gap_projects__pid__ruleset_gaps__node_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Gap"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Gap"
+      }
+    },
+    "/projects/{pid}/ruleset/items": {
+      "post": {
+        "description": "An item a person adds from a clause: lettered x1, x2, ...; `edited` with their record.",
+        "operationId": "add_item_projects__pid__ruleset_items_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewItem"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleSetItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Item"
+      }
+    },
+    "/projects/{pid}/ruleset/items/{letter}": {
+      "delete": {
+        "operationId": "delete_item_projects__pid__ruleset_items__letter__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "letter",
+            "required": true,
+            "schema": {
+              "title": "Letter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Item"
+      },
+      "patch": {
+        "description": "A slot value, a rule, the template or a note; `reason` required. The item becomes\n`edited`; a corrected slot keeps the model's value beside the person's.",
+        "operationId": "patch_item_projects__pid__ruleset_items__letter__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "letter",
+            "required": true,
+            "schema": {
+              "title": "Letter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ItemPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleSetItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Item"
+      }
+    },
+    "/projects/{pid}/ruleset/items/{letter}/notes/{index}": {
+      "delete": {
+        "operationId": "delete_note_projects__pid__ruleset_items__letter__notes__index__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "letter",
+            "required": true,
+            "schema": {
+              "title": "Letter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "index",
+            "required": true,
+            "schema": {
+              "title": "Index",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReasonBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleSetItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Note"
+      },
+      "patch": {
+        "operationId": "patch_note_projects__pid__ruleset_items__letter__notes__index__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "letter",
+            "required": true,
+            "schema": {
+              "title": "Letter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "index",
+            "required": true,
+            "schema": {
+              "title": "Index",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RuleSetItem"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Patch Note"
       }
     },
     "/projects/{pid}/ruleset/versions": {

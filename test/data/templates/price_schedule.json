@@ -1,0 +1,21 @@
+{
+  "id": "price_schedule",
+  "form_name": "Price Schedule",
+  "slots": [
+    {"name": "estimated_quantity", "kind": "number", "unit": "kg", "required": true, "description": "the estimated quantity of the goods stated in the notes to the Price Schedule"},
+    {"name": "currency", "kind": "text", "required": false, "description": "the currency the prices must be quoted in, if the schedule says"}
+  ],
+  "consequences": {
+    "critical": {
+      "outcomes": {
+        "blank": {"status": "disqualified", "note": "{field} is blank"},
+        "filled": {"status": "pass"},
+        "redacted": {"status": "needs_review"}
+      }
+    }
+  },
+  "rules": [
+    {"id": "price_schedule.unit_price_present", "check": "filled", "field": "price_schedule.unit_price", "consequence": "critical"},
+    {"id": "price_schedule.quantity_matches", "check": "value", "field": "price_schedule.quantity", "params": {"expected": "{estimated_quantity}"}, "consequence": "critical", "depends_on": ["price_schedule.unit_price_present"]}
+  ]
+}

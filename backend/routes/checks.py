@@ -12,6 +12,7 @@ from app.ingest import QuoteBox, locate_quote
 from app.jobs.models import RunStatus
 from backend import deps, signing
 from backend.errors import ApiError
+from backend.times import when
 from backend.schemas_api import (BidResult, CheckedField, CheckRequest, CheckResponse, FieldValue, Job, JobPage,
                                  PageCitation, StageSummary, Verdict)
 
@@ -23,7 +24,7 @@ ITEM_OF_PREFIX = {ITEM_L_PREFIX: "l"}
 def _job(s: RunStatus, created_at: float | None = None) -> Job:
     return Job(job_id=s.run_id, kind=s.kind, project=s.project, tenderer=s.tenderer, state=s.state, step=s.step,
                progress=s.progress or {}, attempt=s.attempt, error=s.error, ruleset_version=s.ruleset_version,
-               created_at=created_at or s.updated_at, updated_at=s.updated_at)
+               created_at=when(created_at or s.updated_at), updated_at=when(s.updated_at))
 
 
 @router.post("/projects/{pid}/checks", status_code=202)
@@ -49,7 +50,7 @@ def start_checks(pid: str, req: CheckRequest | None = None, user: str = Depends(
 
 
 def _cursor(job: Job) -> str:
-    return base64.urlsafe_b64encode(f"{job.created_at}|{job.job_id}".encode()).decode()
+    return base64.urlsafe_b64encode(f"{job.created_at.isoformat()}|{job.job_id}".encode()).decode()
 
 
 @router.get("/projects/{pid}/jobs")

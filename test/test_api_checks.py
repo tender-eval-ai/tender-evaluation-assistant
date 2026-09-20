@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import copy
 import importlib
-import json
 import os
 import shutil
 import subprocess
@@ -101,7 +100,7 @@ def test_a_draft_that_still_needs_input_cannot_be_confirmed(api):
     body["items"][0]["status"] = "needs_input"
     assert client.put(f"/projects/{pid}/ruleset/draft", json=body, headers=CHENYU).status_code == 200
     r = client.post(f"/projects/{pid}/ruleset/confirm", headers=NASI)
-    assert r.status_code == 409 and r.json()["error"]["code"] == "conflict" and "need input" in json.dumps(r.json())
+    assert r.status_code == 409 and r.json()["error"]["code"] == "conflict" and r.json()["error"]["details"]["blockers"][0]["kind"] == "item_status"
 
 
 def test_checks_need_a_confirmed_rule_set_then_run_one_job_per_tenderer(api):
