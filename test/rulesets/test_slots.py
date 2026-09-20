@@ -74,11 +74,15 @@ def test_values_are_coerced_by_slot_kind():
     assert l2.coerce("  HK$ ", SlotKind.TEXT) == "HK$" and l2.coerce("", SlotKind.TEXT) is None and l2.coerce(None, SlotKind.DATE) is None
 
 
-def test_the_builder_runs_match_then_slots_with_one_call_per_item_plus_one_per_item_with_slots(located, templates, index):
-    llm = FakeLLM(rules=[Rule(reply=by_item, out_model=l1.Match), Rule(reply=answer(), out_model=l2.SlotFill)])
+def test_the_builder_runs_every_layer_with_one_call_per_item_one_per_item_with_slots_one_per_novel_item(located, templates, index):
+    from app.rulesets import novel as l3
+    llm = FakeLLM(rules=[Rule(reply=by_item, out_model=l1.Match), Rule(reply=answer(), out_model=l2.SlotFill),
+                         Rule(reply=l3.Requirements(), out_model=l3.Requirements)])
     out = build_items(located, templates, index, llm, DataClass.SYNTHETIC)
-    assert llm.count(out_model=l1.Match) == 15 and llm.count(out_model=l2.SlotFill) == 1 and llm.count() == 16
-    by_letter = {i.letter: i for i in out}
+    assert llm.count(out_model=l1.Match) == 15 and llm.count(out_model=l2.SlotFill) == 1
+    assert llm.count(out_model=l3.Requirements) == 13 and llm.count() == 29
+    by_letter = {i.letter: i for i in out.items}
     assert by_letter["b"].status == ItemStatus.VERIFIED and by_letter["b"].slots["estimated_quantity"].value == 875000
     assert by_letter["l"].status == ItemStatus.VERIFIED and by_letter["l"].template == "noncollusive_certificate"
-    assert sum(i.status == ItemStatus.NEEDS_INPUT for i in out) == 13, "the thirteen unmatched items wait for L3"
+    assert sum(i.status == ItemStatus.GAP for i in out.items) == 13, "nothing drafted: the thirteen items are gaps"
+    assert out.gaps and all(g.reason is None for g in out.gaps) and out.sources == {}
