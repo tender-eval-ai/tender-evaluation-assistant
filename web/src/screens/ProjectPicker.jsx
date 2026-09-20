@@ -30,7 +30,7 @@ export default function ProjectPicker({ onSelect }) {
             <div className="project-card-id">{project.id}</div>
             <div className="project-card-name">{project.name}</div>
             <div className="project-card-meta">
-              {project.data_class ?? "confidential"} · {project.status ?? "idle"}
+              {project.data_class ?? "confidential"} · {project.status?.state ?? "idle"}
             </div>
           </button>
         ))}

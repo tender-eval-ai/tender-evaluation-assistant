@@ -49,7 +49,8 @@ export const project = {
   created: T0,
   synthetic: true,
   data_class: "synthetic",
-  status: "idle",
+  // A ProjectStatus, not a string: the UI reads status.state.
+  status: { state: "idle", detail: null, updated: T0 },
 };
 
 export function projectDetail() {
@@ -71,6 +72,7 @@ export function documents() {
     ...TENDER_DOCS.map(([doc_id, file, pages]) => ({
       doc_id,
       file,
+      // Required, and exactly what doc_id is the sha1 of (backend/deps.py).
       path: `tender/${file}`,
       kind: "tender",
       tenderer: null,
