@@ -131,11 +131,30 @@ def test_the_sentence_resuming_after_a_run_in_list_is_a_tail_node(monkeypatch):
         (36, "list-item", "9.3 A sample is (a) blue; or (b) red, as the buyer prefers."),
     ]})
 
-    assert nodes["doc:9.1:tail"]["text"] == "shall comply with the sample requirements."
-    assert nodes["doc:9.1:tail"]["parent_id"] == "doc:9.1"
+    assert nodes["doc:9.1:run-in-tail"]["text"] == "shall comply with the sample requirements."
+    assert nodes["doc:9.1:run-in-tail"]["parent_id"] == "doc:9.1"
     assert nodes["doc:9.1:(b)"]["text"].endswith("shall comply with the sample requirements.")
-    assert nodes["doc:9.2:tail"]["text"] == "Its size is set out below."
-    assert not any(n["node_id"].startswith("doc:9.3:tail") for n in nodes.values())
+    assert nodes["doc:9.2:run-in-tail"]["text"] == "Its size is set out below."
+    assert not any(n["node_id"].startswith("doc:9.3:run-in-tail") for n in nodes.values())
+
+
+def test_a_clause_with_both_tails_keeps_both_ids_distinct(monkeypatch):
+    """The sentence resuming inside a run-in list and the paragraph closing a list on
+    its own block are different nodes of the same clause. Sharing one ":tail" suffix
+    gave the second of them ":tail#2", so which clause carried the "#2" - and the id
+    anything citing it has to use - moved with any change to either."""
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (72, "list-item", "7. A Tender will not be considered further if (a) a first ground applies; "
+                          "or (b) the Tenderer, has been convicted of an offence."),
+        (100, "list-item", "(c) a third ground applies."),
+        (100, "text", "The grounds above are separate and independent of each other."),
+    ]})
+
+    assert nodes["doc:7:run-in-tail"]["text"] == "has been convicted of an offence."
+    assert nodes["doc:7:tail"]["text"] == "The grounds above are separate and independent of each other."
+    assert not any("#" in node_id for node_id in nodes)
 
 
 def test_a_list_lettered_or_numbered_in_capitals_is_a_list(monkeypatch):

@@ -1368,7 +1368,13 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
             # added as a tail node of the host, and the last item keeps it too,
             # as run-in items keep the text they were cut from (the answer key
             # for Tender 2 measures the last item with it).
-            tail_id = _unique(f"{host}:tail", seen_ids)
+            #
+            # Its own suffix, not the ":tail" that a paragraph closing a list on
+            # a block of its own gets: a clause with both tails gave the second
+            # one ":tail#2", and which of the two that is shifts with any change
+            # to either, so an id a schedule or the citation resolver points at
+            # would move under them.
+            tail_id = _unique(f"{host}:run-in-tail", seen_ids)
             tail_node = _WorkingNode(
                 tail_id, host, "subitem", nodes_by_id[host].part, None, None, page_number,
                 last.text[tail.end():].strip(), 0, bbox=bbox, **_ident(doc_ident, page_number),
