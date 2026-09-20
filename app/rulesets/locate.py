@@ -38,7 +38,11 @@ from app.rulesets.schema import Citation, DataClass, ItemStatus, RuleSetItem, Pa
 # This is what makes document identification work on a combined single-PDF tender
 # (Tender 3, 366 pages, one filename) where the filename itself carries no
 # document-name signal at all.
-_PAGE_FOOTER_PATTERN = re.compile(r"\n([^\n]+?)\s{1,}Page \d+ of \d+")
+#
+# The line may be the page's first: the loader strips the extracted text, so a page
+# whose text layer starts with the label has no newline before it and the page was
+# read as having no document label at all.
+_PAGE_FOOTER_PATTERN = re.compile(r"(?:^|\n)([^\n]+?)\s{1,}Page \d+ of \d+")
 
 
 def _page_footer_text(page) -> str:

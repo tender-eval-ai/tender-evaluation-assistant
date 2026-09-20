@@ -17,7 +17,8 @@ from pathlib import Path
 import pytest
 
 from app.parsing.loader import Page
-from app.rulesets.locate import _item_starts, _strip_page_header, locate, parse_tender
+from app.rulesets.locate import (_item_starts, _strip_page_header, find_completeness_check_schedule_pages,
+                                 locate, parse_tender)
 from app.rulesets.schema import DataClass, ItemStatus, RuleSetItem, Part
 
 FOOTER = "Completeness Check Schedule"
@@ -156,6 +157,15 @@ def test_a_deep_roman_sub_list_does_not_fabricate_items_v_and_x():
     assert [m.group(1) for m in _item_starts("\n(g) x\n(viii) sub\n(ix) sub\n(x) sub")] == ["g"]
     # A real item (v) or (x), with no roman sub-list before it, still counts.
     assert [m.group(1) for m in _item_starts("\n(t) a\n(u) b\n(v) c\n(w) d")] == ["t", "u", "v", "w"]
+
+
+def test_a_label_on_a_pages_first_line_is_still_the_page_footer():
+    """The loader strips a page's extracted text, so the label that names the document
+    has no newline before it when the text layer puts it first."""
+    first_line = _page(1, [f"{FOOTER} Page 1 of 1", "Part A", "(a) The signed offer form."])
+
+    assert find_completeness_check_schedule_pages([first_line]) == [first_line]
+    assert [i.letter for i in locate([first_line], [], data_class=DataClass.SYNTHETIC).items] == ["a"]
 
 
 def test_page_header_is_stripped_only_when_it_is_a_header():
