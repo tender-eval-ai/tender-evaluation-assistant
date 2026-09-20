@@ -11,7 +11,7 @@ The React UI is built against this file through `web/mock/`, which answers exact
 - **Data class.** Every project carries a `data_class` (`synthetic`, `redacted_sample`, `confidential`). The LLM gateway refuses to send anything but synthetic text to an endpoint that is not allow-listed for the class; the API surfaces that as `403 data_class_forbidden`. `POST /projects` takes `data_class`; when absent it is derived from today's `synthetic` flag (`synthetic`, else `confidential`) so existing clients keep working.
 - **Errors.** Every error body is `{"error": {"code": "<snake_case>", "message": "<for a person>", "details": {...}}}`. Until the Streamlit UI goes at S5 the body also carries `detail` (the message), which that UI reads. Codes used below: `not_found`, `validation_failed` (422), `conflict` (409), `forbidden` (403), `data_class_forbidden` (403), `self_approval` (403), `unconfirmed_ruleset` (409). A `422` carries the same envelope; `openapi.json` documents it as `ErrorBody` (amended at S2, checklist I1.9).
 - **Jobs.** Anything that calls a model returns `202 {"job_id": ...}` at once and runs on the worker. `GET /projects/{pid}/jobs/{job_id}` reports `{state: queued|running|paused|done|failed|dead, progress: Progress {done, total?, unit?}, error}` (`paused`: waiting for a rule-set confirmation). A second job for the same project and tenderer while one is running returns `409 conflict`. A rule-set build is a job of kind `ruleset_build` with `tenderer: null`.
-- **Versions.** Every stored result carries the `ruleset_version` it was computed against. Confirming a new version does not rewrite old results; re-evaluation creates new ones.
+- **Versions.** Every stored result carries the `ruleset_version` it was computed against. Confirming a new version does not touch results; `POST /evaluate` re-decides them against a version and pins them to it, and the verdict it replaced is kept in the `result.reevaluated` event (amended at S4: one result per check, its history in the events).
 - **Audit.** Every mutating route writes one event `{kind, project, subject, before, after, user, at, reason}` to the append-only `events` table.
 - **Pagination.** List routes accept `?limit=` (default 100, max 1000) and `?cursor=`; paginated responses are `{items: [...], next_cursor}` with `next_cursor` set when more exist (`jobs`, `events`).
 - **Timestamps.** Every timestamp the API sends is an ISO-8601 datetime in UTC (`created_at`, `updated_at`, `at`, `created`, `updated`, `confirmed_at`); a query parameter that filters by time (`since`) takes epoch seconds (I1.17, S3).
@@ -41,11 +41,11 @@ The React UI is built against this file through `web/mock/`, which answers exact
 | POST | `/projects/{pid}/checks` | `{tenderers?: [t]}` | `202 {job_ids: {t: job_id}}` | S2 done | `409 unconfirmed_ruleset` unless a confirmed rule set exists. One job per vendor. |
 | GET | `/projects/{pid}/jobs` | | `[Job]` | S2 | S2 done
 | GET | `/projects/{pid}/jobs/{job_id}` | | `Job` | S2 | S2 done
-| POST | `/projects/{pid}/jobs/{job_id}/retry` | `{}` | `202` | S4 | For `failed` and `dead` jobs. |
+| POST | `/projects/{pid}/jobs/{job_id}/retry` | `{}` | `202 {job_id}` | S4 done | For `failed` and `dead` jobs; the run continues from its saved steps. `409` for any other state. |
 | GET | `/projects/{pid}/bids/{t}/results` | `?version=` | `BidResult` | S2 done | Fields with citations and confidence, item verdicts, Stage I and II conclusion, `ruleset_version`, agent trace, cost. |
-| PATCH | `/projects/{pid}/bids/{t}/fields/{letter}/{field}` | `Correction` | `BidResult` | S4 | Correct a value, mark a document present or absent, or point to another page. `reason` required. The model's value is kept; the verdict is recomputed by the engine with zero LLM calls. |
-| POST | `/projects/{pid}/bids/{t}/review/confirm` | `{}` | `BidResult` | S4 | `409 conflict` while any field is still `needs_review`. Reports wait for this. |
-| POST | `/projects/{pid}/evaluate` | `{version?}` | `202 {job_id}` | S4 | Re-evaluate every checked vendor against a rule-set version. Engine only; LLM calls only for fields a new rule needs that were never extracted. Kept from today's API, now a job. |
+| PATCH | `/projects/{pid}/bids/{t}/fields/{letter}/{field}` | `CorrectionRequest` | `BidResult` | S4 done | Correct a value, mark a document present or absent, or point to another page; `reason` required, an empty request is `400`. The model's value is kept beside the person's (`FieldValue.correction`); the verdict is re-decided by the engine at once, no model call; a review confirmation on the tenderer is withdrawn. `404` for a field the result does not have. |
+| POST | `/projects/{pid}/bids/{t}/review/confirm` | `{}` | `BidResult` | S4 done | `409 conflict` with `details.fields` while any checked field is still `needs_review`. Sets `review_confirmed_by`; a later correction or a re-evaluation that changes the verdict clears it. Reports wait for this. |
+| POST | `/projects/{pid}/evaluate` | `EvaluateRequest {version?}` | `202 {job_id}` | S4 done | Every checked tenderer re-decided against a confirmed rule-set version (default: the latest confirmed) as a job of kind `evaluate` (`tenderer: null`). Engine only, no model call; fields a new rule needs that were never extracted read as blank until S4-3 extracts them. Results are pinned to the version; a result whose verdict changed loses its review confirmation and gets a `result.reevaluated` event with the verdict before and after. |
 
 ## Document viewer
 
@@ -72,7 +72,7 @@ The React UI is built against this file through `web/mock/`, which answers exact
 
 ## Routes removed at S5
 
-`POST /projects/{pid}/run`, `POST /projects/{pid}/resume`, `GET /projects/{pid}/graph`, `GET/PUT /projects/{pid}/rubric`, `GET/PUT /projects/{pid}/bids/{t}/extraction`, and the `?key=` image routes are deprecated from S2 and kept only for the Streamlit UI, which goes at S5 together with them.
+`POST /projects/{pid}/run`, `POST /projects/{pid}/resume`, `GET /projects/{pid}/graph`, `GET/PUT /projects/{pid}/rubric`, `GET/PUT /projects/{pid}/bids/{t}/extraction`, `POST /projects/{pid}/legacy/evaluate` (the old evaluation, moved off `/evaluate` at S4 so the contract's route could take the path), and the `?key=` image routes are deprecated from S2 and kept only for the Streamlit UI, which goes at S5 together with them.
 
 ## Models
 
@@ -88,6 +88,7 @@ API-only models, defined in `backend/schemas_api.py` and exported into `docs/ope
 - `RuleSetVersion {version, status, parent_version, created_by, created_at, confirmed_by, confirmed_at, updated_by}`, ISO datetimes (I1.17)
 - `NotePatch {note: ItemNote, reason}`, `ReasonBody {reason}` (the DELETE bodies and the gap PATCH)
 - `Node {node_id, parent_id?, kind, number?, title?, page?, box?}` (the marker's box in PDF points), `BuildResponse {job_id}`
+- `EvaluateRequest {version?}`, `JobStarted {job_id}` (evaluate and retry)
 - `ErrorBody {error: {code, message, details}, detail}` (I1.9)
 - `BidResult {tenderer, run_id, ruleset_version, fields: {letter: {field: FieldValue}}, verdicts: {letter: Verdict}, stage1: StageSummary, stage2?: StageSummary, trace?, cost: {calls, cache_hits, usd, waited_seconds}, review_confirmed_by?}`
 - `FieldValue {value, redacted, confidence, page?: PageCitation, correction?: {value, by, reason, model_value}, model_value?}`

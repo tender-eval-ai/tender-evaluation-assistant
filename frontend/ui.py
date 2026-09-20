@@ -639,7 +639,7 @@ if page == NAV[3]:
         st.info("The run is paused at an earlier checkpoint — continue it from that step.")
     if st.button("Evaluate / re-evaluate from stored extractions", type="primary",
                  disabled=bool(graph["pending"]) or not (project["has_rubric"] and (project["bidders"] or project["extracted"]))):
-        call("POST", f"/projects/{pid}/evaluate")
+        call("POST", f"/projects/{pid}/legacy/evaluate")
         result = wait_for_job(pid, st.empty())
         if result["state"] == "error":
             st.error(result["detail"])  # stays on screen — no rerun on failure

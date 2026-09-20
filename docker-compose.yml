@@ -46,7 +46,7 @@ services:
     build:
       context: .
       dockerfile: backend/Dockerfile
-    command: ["python", "-m", "app.jobs.worker", "--pipelines", "app.checks.vendor_check,app.rulesets.build_job"]
+    command: ["python", "-m", "app.jobs.worker", "--pipelines", "app.checks.vendor_check,app.rulesets.build_job,app.jobs.evaluate_job"]
     env_file: .env
     environment:
       - DATA_DIR=/data

@@ -280,6 +280,14 @@ class Node(BaseModel):
     box: list[float] | None = Field(default=None, min_length=4, max_length=4, description="[x0, y0, x1, y1] of the marker, PDF points")
 
 
+class EvaluateRequest(BaseModel):
+    version: int | None = Field(default=None, description="a confirmed rule-set version; default: the latest confirmed")
+
+
+class JobStarted(BaseModel):
+    job_id: str
+
+
 class ReasonBody(BaseModel):
     """The body of a DELETE or a gap PATCH: why."""
 

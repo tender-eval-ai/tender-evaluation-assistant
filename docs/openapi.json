@@ -540,6 +540,46 @@
         "title": "Correction",
         "type": "object"
       },
+      "CorrectionRequest": {
+        "description": "The body of `PATCH /bids/{t}/fields/{letter}/{field}` (S4): correct a value, mark a\ndocument present or absent, or point at another page. `Correction` is the stored record.",
+        "properties": {
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "present": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Present"
+          },
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "CorrectionRequest",
+        "type": "object"
+      },
       "DataClass": {
         "description": "Who may see the text. The LLM gateway refuses to send anything but `synthetic`\nto an endpoint that is not on the allowlist for its class.",
         "enum": [
@@ -820,6 +860,24 @@
           "requirement"
         ],
         "title": "EssentialRequirement",
+        "type": "object"
+      },
+      "EvaluateRequest": {
+        "properties": {
+          "version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "a confirmed rule-set version; default: the latest confirmed",
+            "title": "Version"
+          }
+        },
+        "title": "EvaluateRequest",
         "type": "object"
       },
       "Event": {
@@ -1283,6 +1341,19 @@
           "items"
         ],
         "title": "JobPage",
+        "type": "object"
+      },
+      "JobStarted": {
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "title": "JobStarted",
         "type": "object"
       },
       "NewItem": {
@@ -3262,6 +3333,115 @@
         "summary": "Put Extraction"
       }
     },
+    "/projects/{pid}/bids/{tenderer}/fields/{letter}/{field}": {
+      "patch": {
+        "description": "Correct a value, mark a document present or absent, or point at another page. The\nmodel's value is kept beside the person's; the engine re-decides at once, no model\ncall; a review confirmation on this tenderer is withdrawn.",
+        "operationId": "correct_field_projects__pid__bids__tenderer__fields__letter___field__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenderer",
+            "required": true,
+            "schema": {
+              "title": "Tenderer",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "letter",
+            "required": true,
+            "schema": {
+              "title": "Letter",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "field",
+            "required": true,
+            "schema": {
+              "title": "Field",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CorrectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BidResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Correct Field"
+      }
+    },
     "/projects/{pid}/bids/{tenderer}/page": {
       "get": {
         "operationId": "bid_page_image_projects__pid__bids__tenderer__page_get",
@@ -3460,6 +3640,87 @@
           }
         },
         "summary": "Bid Results"
+      }
+    },
+    "/projects/{pid}/bids/{tenderer}/review/confirm": {
+      "post": {
+        "description": "409 while any checked field still needs review; reports wait for this.",
+        "operationId": "confirm_review_projects__pid__bids__tenderer__review_confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "tenderer",
+            "required": true,
+            "schema": {
+              "title": "Tenderer",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BidResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm Review"
       }
     },
     "/projects/{pid}/checks": {
@@ -3853,7 +4114,8 @@
     },
     "/projects/{pid}/evaluate": {
       "post": {
-        "operationId": "run_evaluation_projects__pid__evaluate_post",
+        "description": "Every checked tenderer re-decided against a confirmed rule-set version, as a job.\nEngine only: no model call. Results are pinned to the version; a result whose\nverdict changed loses its review confirmation.",
+        "operationId": "evaluate_projects__pid__evaluate_post",
         "parameters": [
           {
             "in": "path",
@@ -3879,16 +4141,47 @@
               ],
               "title": "X-Api-Key"
             }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EvaluateRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
-          "200": {
+          "202": {
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Run Evaluation Projects  Pid  Evaluate Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/JobStarted"
                 }
               }
             },
@@ -3905,7 +4198,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Run Evaluation"
+        "summary": "Evaluate"
       }
     },
     "/projects/{pid}/evaluation": {
@@ -4346,6 +4639,144 @@
           }
         },
         "summary": "Get Job"
+      }
+    },
+    "/projects/{pid}/jobs/{job_id}/retry": {
+      "post": {
+        "description": "A failed or dead job continues from its saved steps.",
+        "operationId": "retry_job_projects__pid__jobs__job_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobStarted"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Job"
+      }
+    },
+    "/projects/{pid}/legacy/evaluate": {
+      "post": {
+        "operationId": "run_evaluation_projects__pid__legacy_evaluate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Run Evaluation Projects  Pid  Legacy Evaluate Post",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Run Evaluation"
       }
     },
     "/projects/{pid}/reports": {

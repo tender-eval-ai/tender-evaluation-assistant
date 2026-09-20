@@ -95,8 +95,9 @@ class Store:
     # ---------------------------------------------------------------- results
     def results(self, run_id: str) -> Result | None:
         with self.conn() as c:
-            row = c.execute("select run_id, project, tenderer, ruleset_version, fields, verdict, corrections "
-                            "from results where run_id=%s", (run_id,)).fetchone()
+            row = c.execute("select run_id, project, tenderer, ruleset_version, fields, verdict, corrections, "
+                            "review_confirmed_by, extract(epoch from review_confirmed_at) from results where run_id=%s",
+                            (run_id,)).fetchone()
         return Result(*row) if row else None
 
     def store_result(self, run_id: str, project: str, tenderer: str, version: int, fields: dict, spec: dict,
@@ -115,7 +116,13 @@ class Store:
 
     def correct_field(self, run_id: str, name: str, value: Any, reason: str, by: str,
                       decide: Callable[[dict, dict], dict]) -> Result:
-        """A human correction: kept beside the model's value, verdict re-decided at once."""
+        return self.correct_fields(run_id, {name: value}, reason, by, decide)
+
+    def correct_fields(self, run_id: str, values: dict[str, Any], reason: str, by: str,
+                       decide: Callable[[dict, dict], dict]) -> Result:
+        """A human correction of one or more keys (a value and its page, say): each kept beside
+        the model's value, the verdict re-decided at once, a review confirmation withdrawn
+        because the verdict may have changed."""
         with self.conn() as c:
             row = c.execute("select r.fields, r.corrections, r.ruleset_version, s.spec from results r "
                             "join rulesets s on s.project=r.project and s.version=r.ruleset_version "
@@ -123,10 +130,44 @@ class Store:
             if row is None:
                 raise KeyError(run_id)
             fields, corrections, version, spec = row
-            corrections[name] = {"value": value, "reason": reason, "by": by, "model_value": fields.get(name)}
-            c.execute("update results set corrections=%s, verdict=%s, updated_at=now() where run_id=%s",
+            for name, value in values.items():
+                corrections[name] = {"value": value, "reason": reason, "by": by, "model_value": fields.get(name)}
+            c.execute("update results set corrections=%s, verdict=%s, review_confirmed_by=null, review_confirmed_at=null, "
+                      "updated_at=now() where run_id=%s",
                       (Json(corrections), Json(decide(_apply(fields, corrections), spec)), run_id))
         return self.results(run_id)
+
+    def confirm_review(self, run_id: str, by: str) -> Result:
+        with self.conn() as c:
+            c.execute("update results set review_confirmed_by=%s, review_confirmed_at=now(), updated_at=now() where run_id=%s",
+                      (by, run_id))
+        return self.results(run_id)
+
+    def project_results(self, project: str) -> list[Result]:
+        with self.conn() as c:
+            rows = c.execute("select run_id, project, tenderer, ruleset_version, fields, verdict, corrections, "
+                             "review_confirmed_by, extract(epoch from review_confirmed_at) from results where project=%s "
+                             "order by tenderer", (project,)).fetchall()
+        return [Result(*r) for r in rows]
+
+    def redecide(self, project: str, version: int, spec: dict, decide_for: Callable[[str], Callable[[dict, dict], dict]]) -> list[dict]:
+        """Every stored result of the project re-decided against `spec` (rule-set `version`)
+        and pinned to it. Engine only. A result whose verdict changed loses its review
+        confirmation. Returns one row per result: run_id, tenderer, before, after, changed."""
+        out = []
+        with self.conn() as c:
+            rows = c.execute("select r.run_id, r.tenderer, r.fields, r.corrections, r.verdict, u.kind from results r "
+                             "join runs u on u.run_id=r.run_id where r.project=%s order by r.tenderer", (project,)).fetchall()
+            for run_id, tenderer, fields, corrections, before, kind in rows:
+                after = decide_for(kind)(_apply(fields, corrections), spec)
+                changed = after != before
+                if changed:
+                    c.execute("update results set verdict=%s, ruleset_version=%s, review_confirmed_by=null, "
+                              "review_confirmed_at=null, updated_at=now() where run_id=%s", (Json(after), version, run_id))
+                else:
+                    c.execute("update results set ruleset_version=%s, updated_at=now() where run_id=%s", (version, run_id))
+                out.append({"run_id": run_id, "tenderer": tenderer, "before": before, "after": after, "changed": changed})
+        return out
 
     # ---------------------------------------------------------------- rule sets
     def ensure_draft(self, project: str, spec: dict) -> int:

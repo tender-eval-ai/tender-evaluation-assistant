@@ -36,13 +36,16 @@ class JobRunner:
             self._open = False
 
     # ---------------------------------------------------------------- runs
-    def start(self, project: str, tenderer: str, kind: str) -> str:
+    def start(self, project: str, tenderer: str, kind: str, data: dict | None = None) -> str:
         """Enqueue one check and return its run id at once. A second start for the same
-        project and tenderer while one is active returns the active run."""
+        project and tenderer while one is active returns the active run. `data` seeds the
+        run's step data before the job is queued (an evaluation's rule-set version)."""
         existing = self.store.active_run(project, tenderer)
         if existing:
             return existing
         run_id = self.store.create_run(project, tenderer, kind)
+        if data:
+            self.store.save_steps(run_id, [], dict(data))
         lock = f"{project}:{tenderer}"
         try:
             job_id = tasks.run_check.configure(lock=lock, queueing_lock=lock).defer(run_id=run_id)
@@ -105,8 +108,14 @@ class JobRunner:
         return self.store.publish(project, patch, lambda kind: registry.get(kind).decide)
 
     def correct_field(self, run_id: str, name: str, value: Any, reason: str, by: str = "reviewer") -> Result:
+        return self.correct_fields(run_id, {name: value}, reason, by)
+
+    def correct_fields(self, run_id: str, values: dict[str, Any], reason: str, by: str = "reviewer") -> Result:
         run = self.store.run(run_id)
-        return self.store.correct_field(run_id, name, value, reason, by, registry.get(run["kind"]).decide)
+        return self.store.correct_fields(run_id, values, reason, by, registry.get(run["kind"]).decide)
+
+    def confirm_review(self, run_id: str, by: str) -> Result:
+        return self.store.confirm_review(run_id, by)
 
     # ---------------------------------------------------------------- what is stuck
     def list_stuck(self) -> list[dict]:

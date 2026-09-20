@@ -39,7 +39,7 @@ def _result(tenderer: str, page: int) -> tuple[dict, SimpleNamespace]:
     verdict = {"item": "l", "part": "A", "outcome": "pass", "worst": "pass", "rule_ids": ["l-1"], "reasons": [],
                "fields": [{"field_id": f"{PREFIX}.{n}", "status": "pass", "value": v, "page": ref} for n, v in values.items()]}
     run = {"tenderer": tenderer, "run_id": "r1"}
-    return run, SimpleNamespace(fields=fields, corrections={}, verdict=verdict, ruleset_version=1)
+    return run, SimpleNamespace(fields=fields, corrections={}, verdict=verdict, ruleset_version=1, review_confirmed_by=None)
 
 
 def _bid_result(pid, pdir, tenderer, page):

@@ -12,7 +12,7 @@ from backend import deps, jobs
 router = APIRouter(dependencies=[Depends(deps.require_key)])
 
 
-@router.post("/projects/{pid}/evaluate")
+@router.post("/projects/{pid}/legacy/evaluate")   # the contract's /evaluate is the S4 re-evaluation job (routes/review.py); this one goes at S5
 def run_evaluation(pid: str) -> dict:
     pdir = deps._project_dir(pid)
     rubric_path = deps._require_rubric(pdir)
