@@ -315,3 +315,22 @@ The resolver fixes in `8b5ce90` (chains sharing one document name, numbered file
 After the second parser pass (`1770505`, fresh parse, same test): items, Parts, pages and own nodes unchanged on all three tenders; cited clauses resolved Tender 1 43/49, Tender 2 42/43, Tender 3 62/65. The two new Tender 1 misses (items (d) and (e) to the Particulars of Goods Schedule's first clause) came from `14dee7e`: locate still resolves both items to the whole schedule, but the document node now holds its own title and preamble (and, since `56dfa87`, an unnumbered heading is a node), so the test's "first node with text below a whole document" became the document or its heading instead of the first clause. `b338288` makes the test take the first marked node below a whole document: 45/49 again, and the same scores on every earlier commit's nodes.
 
 After the third parser pass (`7e5b731`, same test): items, Parts, pages and own nodes unchanged on all three tenders; cited clauses resolved Tender 1 45/49 (the 4 key links the item text does not write out), Tender 2 43/43 (from 42/43: `f6d2307` resolves Part IB of the Annex A deposit form, whose Parts were already nodes), Tender 3 63/65 (from 62/65: `62a98cd` makes the booklet's Annex A a node). The two left on Tender 3 are Part 4 of the Tender Form in the combined PDF: its sub-documents are named by their footer, so "the Tender Form" names no scope for the resolver.
+
+### Correction to the exact-location rule (2026-09-20)
+
+`738d38c` stopped `part` being read as a marker for every node inside a Part, but
+kept `label or number or part`, and `or` takes the first value that is set. A Part
+node carries both `number` ("A") and `part` ("Part A"), so it stopped at "A" and
+every Part heading still failed - "Part A\nThe Tenderer shall note..." does not
+start with "A" - which is the case that commit was written to catch. All of a
+node's candidate markers are now tried, and `part` counts for an annex as well.
+
+The parser is unchanged; these are the same node tables scored under the corrected
+rule. It lifts Tender 1's exact location over the target it was under, so all
+four metrics clear 90% on all three tenders.
+
+| Tender | recall | page correct | char correct | exact location |
+|---|---|---|---|---|
+| Tender 1 | 95.6% | 95.6% | 95.6% | 92.3% (was 89.4%) |
+| Tender 2 | 97.8% | 97.8% | 97.8% | 95.2% (was 93.4%) |
+| Tender 3 | 95.2% | 95.2% | 95.2% | 91.8% (was 91.0%) |
