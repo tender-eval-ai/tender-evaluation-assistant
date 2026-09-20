@@ -53,7 +53,7 @@ from app.parsing.document_index import (
     _ANNEX,
     _SUBCLAUSE,
     _ident,
-    _successors,
+    _successors as _lowercase_successors,
     _unique,
     derive_doc_id,
     detect_subdocuments,
@@ -70,6 +70,20 @@ from app.parsing.document_index import (
 # letters or digits bare) since "i)"/"ii)" is unambiguous but a bare
 # "a)"/"1)" is common as ordinary prose punctuation elsewhere in the corpus.
 _SUBITEM_WITH_DIGITS = re.compile(r"^(?:\(([a-z]{1,2}|[ivx]{1,4}|\d+)\)|([ivx]{1,4})\))[ \t]*")
+
+# A list lettered or numbered in capitals - a deed's recitals "(A)", "(B)", a
+# maintenance schedule's "(I)", "(II)" - opening its own block, followed by its
+# text. Unrecognised, every such item ran on into the heading or item before
+# the list.
+_UPPERCASE_SUBITEM = re.compile(r"^\(([A-Z]|[IVX]{1,4})\)[ \t]+(?=\S)")
+
+
+def _successors(marker: str) -> set[str]:
+    """`document_index._successors`, for capital markers as well: "(B)" follows
+    "(A)", and "(II)" or "(J)" follows "(I)"."""
+    if marker.isupper():
+        return {s.upper() for s in _lowercase_successors(marker.lower())}
+    return _lowercase_successors(marker)
 
 # Looser than document_index._PART: that pattern requires either an em-dash
 # ("PART 4 — TITLE") or a literal newline before the title ("PART 5 \n TITLE"),
@@ -108,7 +122,13 @@ _PART_LAYOUT = re.compile(
     # becoming its own node, and the table's own (a)(b)(c) rows end up
     # parented to that unrelated preceding node instead of to the table.
     r"|^Table[ \t]+(?P<tletter>[A-Z])(?![a-zA-Z])[ \t]*(?:[—\-][ \t]*)?(?P<title3>[A-Z][^\n]*)?"
+    # Fourth alternative: the Chinese Tender Form numbers its Parts "第 4 部分"
+    # ("Part 4"), a lettered one with a Chinese ordinal letter ("第3甲部分",
+    # Part 3A). Unrecognised, its Part 4 (Offer to be Bound) was never a node
+    # and its clauses sat directly under the document.
+    r"|^第[ \t]*(?P<zh>\d+[甲乙丙丁]?)[ \t]*部分[ \t]*(?:[—\-–][ \t]*)?(?P<title4>[^\n]*)"
 )
+_ZH_PART_LETTER = str.maketrans("甲乙丙丁", "ABCD")
 
 # Looser than document_index._CLAUSE: that pattern requires the clause's own
 # text to start with a capital letter, specifically to reject a line-wrapped
@@ -417,6 +437,13 @@ def _run_in_chain(text: str, start: int) -> list[int]:
         if all(len(b) >= _RUN_IN_MIN_TEXT and b.lower() not in ("and", "or", "to", "and/or") for b in bodies):
             return chain
     return []
+
+
+# Where a sentence resumes after the run-in list inside it: a comma and a
+# finite verb whose subject is the whole list ("(a) ...; or (b) the Tenderer,
+# has been convicted"), or a new sentence after the last item's full stop.
+_RUN_IN_TAIL = re.compile(
+    r",(?=\s+(?:is|are|was|were|has|have|had|shall|will|may|must|does|do)\s)|[.;](?=\s+[A-Z])")
 
 
 def _split_run_in_items(text: str) -> list[tuple[str, bool]]:
@@ -763,6 +790,23 @@ def _column_row_pieces(items) -> list:
 _MARKER_COLUMN_SLACK = 2.0
 
 
+def _is_heading_only(host) -> bool:
+    """Is `host` a node that is nothing but a heading, and is that heading
+    complete, so that a plain paragraph after it is a paragraph of its own?
+
+    A document's title runs up to its first block that is neither a heading
+    nor an instruction in round brackets beneath it (a schedule's line on how
+    to return it). A Part's or annex's heading is its marker line with a
+    title, or its marker line and the block after it when the marker stands
+    alone (a Completeness Check Schedule's Part intro stays the Part's own
+    text, as the schedule key counts it)."""
+    if host.kind in ("document", "subdocument"):
+        return bool(host.text.strip())
+    if host.kind in ("part", "annex"):
+        return bool(host.title) or "\n" in host.text
+    return False
+
+
 def _closed_list_depth(x0: float, class_name: str, subitem_stack, nodes_by_id) -> int | None:
     """The depth of the open sub-item list this markerless block ends, or None
     when it continues the list's last item instead.
@@ -785,6 +829,9 @@ def _closed_list_depth(x0: float, class_name: str, subitem_stack, nodes_by_id) -
         opener = nodes_by_id.get(subitem_stack[depth][1])
         if opener is not None and opener.bbox and abs(x0 - opener.bbox[0]) <= _MARKER_COLUMN_SLACK:
             return depth
+    return None
+
+
 def _is_heading(text: str, x0: float, class_name: str, subitem_stack, nodes_by_id, last_marker_id) -> bool:
     """Is this markerless block a heading of its own rather than text of the
     node before it?
@@ -809,7 +856,170 @@ def _is_heading(text: str, x0: float, class_name: str, subitem_stack, nodes_by_i
     return True
 
 
-    return None
+# A form field is a label and a colon with the answer space left blank (a name,
+# date, address or telephone label, in English or Chinese). A block of nothing
+# but such labels is a row of fields, not prose. What tells a label from a
+# sentence that introduces a list, or a definition ending in "means:", is that
+# the label is a short noun phrase: no verb or pointer word, a capital (or a CJK
+# character) first, at most eight words - unless it offers alternatives with
+# "/" (a signature line naming who may sign), which prose ending in a colon
+# never does.
+_FIELD_STOPWORDS = frozenset(
+    "following follows below above means include includes including shall is are be "
+    "which that if would will may must witnesses contain contains comprising".split())
+_FIELD_CJK_STOPWORDS = ("下列", "以下", "如下", "，", "。")
+_FIELD_MAX_WORDS = 8
+_FIELD_MAX_CHARS = 100
+
+
+def _field_labels(text: str) -> list[str] | None:
+    """The field labels a block consists of, one per label, or None when the
+    block is not a row of blank form fields. A single label keeps the block's
+    own text, answer line of underscores and all."""
+    body = re.sub(r"[\s_.…]+$", "", text.strip())
+    if not body.endswith((":", "：")):
+        return None
+    labels = re.split(r"(?<=[:：])\s+(?=\S)", body)
+    for label in labels:
+        name = label.rstrip(":： ").lstrip("*#^ “\"")
+        if not label.endswith((":", "：")) or not name or len(name) > _FIELD_MAX_CHARS or ". " in name:
+            return None
+        first = name[0]
+        if first.isascii() and not first.isupper():
+            return None
+        if first >= "\u2e80":
+            if any(stop in name for stop in _FIELD_CJK_STOPWORDS) or len(name) > 20:
+                return None
+            continue
+        words = [w.strip("()“”\"',").lower() for w in name.split()]
+        if any(w in _FIELD_STOPWORDS for w in words):
+            return None
+        if len(words) > _FIELD_MAX_WORDS and "/" not in name:
+            return None
+    return labels if len(labels) > 1 else [text.strip()]
+
+
+# A field label inside a form row: a capitalised phrase of a few words (a
+# bracketed aside allowed) ending in a colon.
+_ROW_FIELD_LABEL = re.compile(r"(?<=\s)[A-Z][A-Za-z()&/\-*’' ]{0,45}?\s?:")
+
+
+def _row_fields(text: str) -> list[str]:
+    """The fields after the first in one row of a form laid out as a grid of
+    label-and-blank pairs ("<label>: <unit> <label>: <unit>"), each from its
+    label up to the next label. The row itself is named by its first label (see
+    `_row_label`), so every later field of the row could not be located."""
+    first = text.find(":")
+    if first < 0:
+        return []
+    starts = [m.start() for m in _ROW_FIELD_LABEL.finditer(text, first + 1)]
+    return [text[a:b].strip() for a, b in zip(starts, starts[1:] + [len(text)])]
+
+
+def _attach_stray_colons(blocks: list) -> list:
+    """Join a block that is nothing but a colon to the label on its line.
+
+    A form sets its colons in a column of their own, to the right of its
+    labels, and the layout model returns each colon as a block of
+    its own, listed after the whole form. The label then reads without its
+    colon and the colon is an orphan paragraph of whatever node came last.
+    The colon goes back to the block to its left that shares most of its
+    height."""
+    out = list(blocks)
+    for colon in [b for b in blocks if b[2] in (":", "：") and b[1] != "table"]:
+        cx0, _cls, _text, cb, _label = colon
+        best, best_overlap = None, 0.0
+        for index, (x0, cls, text, bbox, label) in enumerate(out):
+            if out[index] is colon or cls == "table" or bbox[2] > cx0 + 1:
+                continue
+            overlap = min(bbox[3], cb[3]) - max(bbox[1], cb[1])
+            if overlap > best_overlap:
+                best, best_overlap = index, overlap
+        if best is not None:
+            x0, cls, text, bbox, label = out[best]
+            out[best] = (x0, cls, f"{text} {colon[2]}", bbox, label)
+            out.remove(colon)
+    return out
+
+
+# A one-letter flag in round brackets set in the margin before an item - the
+# Technical Specifications mark each desirable (as opposed to mandatory)
+# feature so. It is not a marker of its own: the item's marker follows it.
+_ITEM_FLAG = re.compile(r"^\([A-Z]\)$")
+_FLAGGED_MARKER = re.compile(r"^\([A-Z]\)[ \t]+(?=\S)")
+
+
+def _attach_item_flags(blocks: list) -> list:
+    """Join a block that is nothing but an item flag to the item on its line.
+
+    The layout model returns a flag set apart in the margin as a block of its
+    own, before its item: the flag then opened a heading node of its own and
+    the item started without it. The flag goes in front of the block to its
+    right that shares most of its height; that block keeps its own position,
+    so its marker column is unchanged."""
+    out = list(blocks)
+    for flag in [b for b in blocks if _ITEM_FLAG.match(b[2]) and b[1] != "table"]:
+        fb = flag[3]
+        best, best_overlap = None, 0.0
+        for index, (x0, cls, text, bbox, label) in enumerate(out):
+            if out[index] is flag or cls == "table" or bbox[0] < fb[2] - 1:
+                continue
+            overlap = min(bbox[3], fb[3]) - max(bbox[1], fb[1])
+            if overlap > best_overlap:
+                best, best_overlap = index, overlap
+        if best is not None:
+            x0, cls, text, bbox, label = out[best]
+            out[best] = (x0, cls, f"{flag[2]} {text}", bbox, label)
+            out.remove(flag)
+    return out
+
+
+# The page-header line of an annex bound into a longer document: "Annex A to
+# the Terms of Tender", on its own.
+_ANNEX_TITLE_LINE = re.compile(r"^Annex[ \t]+([A-Z0-9]+)[ \t]+to[ \t]+the\b[^\n]*$")
+
+
+def _open_annexes(blocks_by_page: dict, first_pages: set[int]) -> None:
+    """Turn the header line of an annex bound into a longer document into the
+    annex's heading, on the first page it heads.
+
+    The standard terms booklet carries its annexes (a sub-contractor's
+    undertaking, the deposit form) after its last Part, and names each only in
+    the page header, which the layout model returns as page furniture. Dropped,
+    the annex was never a node: its recitals and execution block ran on into
+    the booklet's last clause and its numbered clauses collided with the
+    booklet's own. On the first page of a run of pages carrying the same
+    header, the header opens the annex, joined to the unnumbered heading right
+    below it (its title); on the following pages it is furniture again. On a
+    document's own first page the annex is the document itself (a standalone
+    annex file), and the header is only its title.
+    """
+    previous: set[str] = set()
+    for page_number in sorted(blocks_by_page):
+        blocks = blocks_by_page[page_number]
+        titles = {b[2] for b in blocks if b[1] == "annex-title"}
+        out = []
+        skip = None
+        for index, block in enumerate(blocks):
+            if index == skip:
+                continue
+            if block[1] != "annex-title":
+                out.append(block)
+                continue
+            if block[2] in previous:
+                continue
+            x0, _cls, text, bbox, label = block
+            if page_number in first_pages:
+                out.append((x0, "section-header", text, bbox, label))
+                continue
+            after = next((j for j in range(index + 1, len(blocks)) if blocks[j][1] != "field"), None)
+            if after is not None and blocks[after][1] == "section-header" \
+                    and _classify_marker(blocks[after][2])[0] is None:
+                text = f"{text}\n{blocks[after][2]}"
+                skip = after
+            out.append((x0, "annex-title", text, bbox, label))
+        blocks_by_page[page_number] = out
+        previous = titles
 
 
 # Text items a `picture` group must carry to be read as a table instead.
@@ -837,9 +1047,32 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
     all_texts = data_dict.get("text", [])
     all_bboxes = data_dict.get("bboxes", [])
 
-    blocks = []
+    blocks, header_fields, footer_fields = [], [], []
     for g in groups:
         class_name = g["class_name"]
+        if class_name in ("page-header", "page-footer"):
+            # The layout model takes a signature line near the foot of a form
+            # (the tenderer's name label above the real footer) or a field row at
+            # its head for page furniture. A header or footer made of blank
+            # form fields is the form's own content and is kept, as class
+            # "field" so the main loop knows no node ever held its text.
+            items = [(all_texts[i], all_bboxes[i]) for i in g.get("indicies", [])
+                     if 0 <= i < len(all_texts) and i < len(all_bboxes)]
+            text = _join_lines(_reading_lines(items)).strip()
+            if _field_labels(text):
+                bbox = list(g["group_bbox"])
+                kept = (header_fields if class_name == "page-header" else footer_fields)
+                kept.append((bbox[0], "field", text, bbox, None))
+            elif class_name == "page-header" and _ANNEX_TITLE_LINE.match(text) \
+                    and g["group_bbox"][0] > page.rect.width / 2:
+                # An annex bound into a longer document names itself only in
+                # the page header of its pages, set to the right; kept as
+                # class "annex-title" for `_open_annexes` to decide where the
+                # annex starts. (A contents page lists annexes too, but at the
+                # left margin.)
+                bbox = list(g["group_bbox"])
+                header_fields.insert(0, (bbox[0], "annex-title", text, bbox, None))
+            continue
         if class_name == "picture" and len(g.get("indicies") or []) >= _PICTURE_MIN_TEXT_ITEMS:
             # A table the layout model took for a picture. Dropped as a
             # picture, its whole text layer was lost - the Price Schedule's
@@ -869,7 +1102,7 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
                 max(b[2] for line in piece for _, b in line), max(b[3] for line in piece for _, b in line),
             ]
             blocks.append((bbox[0], class_name, text, bbox, row_label))
-    return blocks
+    return _attach_item_flags(_attach_stray_colons(header_fields + blocks + footer_fields))
 
 
 def _classify_marker(text: str):
@@ -877,10 +1110,19 @@ def _classify_marker(text: str):
     or (None, None, None) if it isn't one. Checked in categorical-rank order:
     part/annex outrank clause, clause outranks subclause, subclause outranks
     subitem - matching document_index's own precedence."""
+    flagged = _FLAGGED_MARKER.match(text)
+    if flagged:
+        # An item flag ahead of the marker (see `_ITEM_FLAG`): the marker after
+        # it is the block's own. Without this, a flagged item was never a node
+        # and ran on into the item before it.
+        kind, number, title = _classify_marker(text[flagged.end():])
+        if kind in ("clause", "subclause", "subitem"):
+            return kind, number, title
     pm = _PART_LAYOUT.match(text)
     if pm:
-        number = pm.group("num") or pm.group("letter") or pm.group("tletter")
-        title = pm.group("title") or pm.group("title2") or pm.group("title3") or ""
+        number = pm.group("num") or pm.group("letter") or pm.group("tletter") \
+            or pm.group("zh").translate(_ZH_PART_LETTER)
+        title = pm.group("title") or pm.group("title2") or pm.group("title3") or pm.group("title4") or ""
         return "part", number, title.strip()
     am = _ANNEX.match(text)
     if am:
@@ -894,6 +1136,9 @@ def _classify_marker(text: str):
     sm = _SUBITEM_WITH_DIGITS.match(text)
     if sm:
         return "subitem", sm.group(1) or sm.group(2), None
+    um = _UPPERCASE_SUBITEM.match(text)
+    if um:
+        return "subitem", um.group(1), None
     # `09 Schedules.pdf`'s Compliance Schedule glues a footnote-reference
     # glyph (*/^/#) directly onto a subitem's own opening marker - "^(a)
     # I/We confirm...", "^(b) I/We confirm...not in compliance..." - the
@@ -989,6 +1234,8 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
         return segment["node_id"] if segment else doc_id
 
     blocks_by_page = {p.page_number: _layout_blocks(p.source_file, p.page_number) for p in pages}
+    _open_annexes(blocks_by_page, {pages[0].page_number} | {
+        segment["first_page"] for segment in (subdocs if len(subdocs) > 1 else [])})
     # `looks_like_toc` (shared with document_index's flat-text scan) flags a
     # page by heading density alone - >=8 clause-shaped headings averaging
     # under 200 chars each. Confirmed a false positive on `09 Schedules.pdf`
@@ -1077,6 +1324,8 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
     # subitem_stack or become last_marker_id, so the blocks that follow nest
     # and absorb exactly as they would without them.
     run_in_pending: tuple[str, int, list[float]] | None = None
+    # Paragraph nodes under heading-only nodes, in order (see the main loop).
+    paragraphs: list[_WorkingNode] = []
 
     def emit_run_in_items():
         nonlocal run_in_pending
@@ -1111,6 +1360,21 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
             nodes.append(node)
             nodes_by_id[node_id] = node
             last_id = node_id
+        last = nodes_by_id[last_id]
+        tail = _RUN_IN_TAIL.search(last.text) if last_id != host else None
+        if tail:
+            # The sentence resumes after its list: "..., (c) the Tenderer, shall
+            # comply with ..." - "shall comply" is the host's text again. It is
+            # added as a tail node of the host, and the last item keeps it too,
+            # as run-in items keep the text they were cut from (the answer key
+            # for Tender 2 measures the last item with it).
+            tail_id = _unique(f"{host}:tail", seen_ids)
+            tail_node = _WorkingNode(
+                tail_id, host, "subitem", nodes_by_id[host].part, None, None, page_number,
+                last.text[tail.end():].strip(), 0, bbox=bbox, **_ident(doc_ident, page_number),
+            )
+            nodes.append(tail_node)
+            nodes_by_id[tail_id] = tail_node
 
     for page in pages:
         emit_run_in_items()
@@ -1139,6 +1403,9 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                 emit_run_in_items()
                 run_in_pending = (text, page.page_number, bbox)
                 kind, number, title = _classify_marker(text)
+                if class_name == "annex-title":
+                    first_line, _, rest = text.partition("\n")
+                    kind, number, title = "annex", _ANNEX_TITLE_LINE.match(first_line).group(1), rest.strip()
                 # Only the row's own first piece carries its label: a run-in
                 # sub-item split out of the row ("(i) ...; (ii) ...") is a
                 # marker of its own and classifies normally.
@@ -1180,6 +1447,9 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                     if text in furniture_by_scope.get(scope_root, ()) and last_marker_id != scope_root:
                         # A running masthead is dropped on every page but the one
                         # it opens: there, before any marker, it is the document's
+                        # own title ("PRICE SCHEDULE (To be completed and returned
+                        # ...)") and belongs to the document node.
+                        run_in_pending = None
                         continue
 
                     if _is_heading(text, x0, class_name, subitem_stack, nodes_by_id, last_marker_id) \
@@ -1202,8 +1472,37 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                             page.page_number, text, 0,
                             bbox=bbox, **_ident(doc_ident, page.page_number),
                         ))
-                        # own title ("PRICE SCHEDULE (To be completed and returned
-                        # ...)") and belongs to the document node.
+                        run_in_pending = None
+                        continue
+
+                    labels = _field_labels(text) if class_name in ("text", "list-item", "field") else None
+                    if labels:
+                        # Blank form fields - a signature block's name and date
+                        # lines, a contact list's address and telephone labels -
+                        # could not be located: they only
+                        # ran on into the clause or item before them. One node
+                        # per label, added the way run-in sub-items are: the
+                        # host keeps its whole text (Tender 1's hand-checked
+                        # lengths count a signature block in the clause above
+                        # it) and stays the node later text joins, and the field
+                        # is its child. A field the layout model took for page
+                        # furniture (class "field", see `_layout_blocks`) was
+                        # never any node's text, so it stands under the
+                        # enclosing Part or document instead.
+                        rescued = class_name == "field"
+                        host = last_marker_id if last_marker_id in nodes_by_id else None
+                        if rescued or host is None:
+                            host = current_scope or part_node or doc_id
+                        else:
+                            nodes_by_id[host].text += "\n" + text
+                        for label in labels:
+                            node_id = _unique(f"{host}:field", seen_ids)
+                            node = _WorkingNode(
+                                node_id, host, "subitem", current_part, None, None, page.page_number, label, 0,
+                                bbox=bbox, **_ident(doc_ident, page.page_number),
+                            )
+                            nodes.append(node)
+                            nodes_by_id[node_id] = node
                         run_in_pending = None
                         continue
 
@@ -1237,6 +1536,17 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                             page.page_number, text, 0, label=label_here,
                             bbox=bbox, **_ident(doc_ident, page.page_number),
                         ))
+                        for field in _row_fields(text) if label_here.endswith(":") else ():
+                            # A form row carrying more fields after its first
+                            # (see `_row_fields`): each is a child of the row,
+                            # which keeps its whole text.
+                            field_id = _unique(f"{node_id}:field", seen_ids)
+                            field_node = _WorkingNode(
+                                field_id, node_id, "subitem", current_part, None, None,
+                                page.page_number, field, 0, bbox=bbox, **_ident(doc_ident, page.page_number),
+                            )
+                            nodes.append(field_node)
+                            nodes_by_id[field_id] = field_node
                         continue
 
                     closed = _closed_list_depth(x0, class_name, subitem_stack, nodes_by_id)
@@ -1260,6 +1570,38 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                             page.page_number, text, 0,
                             bbox=bbox, **_ident(doc_ident, page.page_number),
                         ))
+                        continue
+
+                    host = nodes_by_id.get(last_marker_id)
+                    if class_name == "text" and host is not None and _is_heading_only(host) \
+                            and not (text.startswith("(") and text.endswith(")")):
+                        # A paragraph under a node that is only a heading - a
+                        # schedule's preamble under its title, the body under a
+                        # titled Part or Table, a certificate's addressee -
+                        # could not be located: it only ran on into the
+                        # heading's node. It is added the way run-in sub-items
+                        # are: the heading keeps its whole text (Tender 1's
+                        # hand-checked lengths count a Part's body in the Part)
+                        # and stays the node later text joins, and each
+                        # paragraph is its child. A block that carries on a
+                        # paragraph stopped mid-sentence (at a page break, or a
+                        # form's line broken around a blank) joins that
+                        # paragraph instead, as does anything after a paragraph
+                        # of a few words with no stop (an addressee's first line).
+                        host.text += "\n" + text
+                        last_para = paragraphs[-1] if paragraphs and paragraphs[-1].parent_id == host.node_id else None
+                        if last_para is not None and last_para.text.rstrip()[-1:] not in (".", ";", ":", ")") \
+                                and (text[:1].islower() or len(last_para.text.split()) <= 4):
+                            last_para.text += "\n" + text
+                        else:
+                            node_id = _unique(f"{host.node_id}:para", seen_ids)
+                            node = _WorkingNode(
+                                node_id, host.node_id, "subitem", current_part, None, None,
+                                page.page_number, text, 0, bbox=bbox, **_ident(doc_ident, page.page_number),
+                            )
+                            nodes.append(node)
+                            nodes_by_id[node_id] = node
+                            paragraphs.append(node)
                         continue
 
                     # not a marker - it's the continuation of whatever marker was

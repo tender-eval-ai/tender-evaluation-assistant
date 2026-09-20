@@ -167,3 +167,169 @@ def test_the_first_heading_after_a_part_without_a_title_is_its_title(monkeypatch
 
     assert nodes["doc:PIA"]["text"] == "Part IA\nMethod of Sample Payment"
     assert nodes["doc:PIB:heading"]["text"] == "Refund Options"
+
+
+def test_blank_form_fields_are_nodes_of_their_own(monkeypatch):
+    """A signature block's and a contact list's blank fields are nodes, added the
+    way run-in sub-items are: the host keeps its text. A field the layout model
+    took for page furniture (class "field") was never in any node and stands
+    under the document."""
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (200, "section-header", "SAMPLE CERTIFICATE"),
+        (36, "list-item", "6. The Tenderer certifies the last matter."),
+        (48, "text", "Name of the signatory (where applicable) : Title of the signatory (where applicable) :"),
+        (48, "text", "Date :"),
+        (36, "text", "The Tenderer shall provide the details below:"),
+        (48, "field", "Name of Bidder:"),
+    ]})
+
+    fields = {n["node_id"]: n for n in nodes.values() if ":field" in n["node_id"]}
+    assert [(n["parent_id"], n["text"]) for n in fields.values()] == [
+        ("doc:6", "Name of the signatory (where applicable) :"),
+        ("doc:6", "Title of the signatory (where applicable) :"),
+        ("doc:6", "Date :"),
+        ("doc", "Name of Bidder:"),
+    ]
+    assert nodes["doc:6"]["text"].endswith("Date :\nThe Tenderer shall provide the details below:")
+    assert "Name of Bidder" not in nodes["doc:6"]["text"]
+
+
+def test_a_field_label_is_told_from_a_sentence_ending_in_a_colon():
+    from app.parsing.layout_document_index import _field_labels
+
+    assert _field_labels("Name of Bidder: ________") == ["Name of Bidder: ________"]
+    assert _field_labels("Name of witness: Title of witness:") == ["Name of witness:", "Title of witness:"]
+    assert _field_labels("日期 ：") == ["日期 ："]
+    assert _field_labels("Signed by the Tenderer / Signed by a signatory for and on behalf of the Tenderer :")
+    for prose in ("The Tenderer shall provide the information below:", "“Tender Form” means:",
+                  "in the presence of :", "Signed by a signatory for and on behalf of the Sample Company:",
+                  "Address: 1 Sample Road", "上述文件亦可在下列辦事處索取："):
+        assert _field_labels(prose) is None, prose
+
+
+def test_a_colon_set_in_its_own_column_joins_the_label_on_its_line():
+    from app.parsing.layout_document_index import _attach_stray_colons
+
+    blocks = [(56, "text", "Name of the Tenderer", [56, 400, 150, 410], None),
+              (56, "text", "Date", [56, 485, 80, 495], None),
+              (273, "text", ":", [273, 403, 276, 413], None),
+              (273, "text", ":", [273, 488, 276, 498], None)]
+
+    assert [b[2] for b in _attach_stray_colons(blocks)] == ["Name of the Tenderer :", "Date :"]
+
+
+def test_a_paragraph_under_a_heading_only_node_is_a_node_of_its_own(monkeypatch):
+    """A preamble under a document's title and the body under a titled Part are
+    paragraph nodes, added the way run-in sub-items are (the heading keeps its
+    text). An untitled Part's first block is its intro, not a paragraph, and a
+    paragraph stopped mid-sentence at a page break carries on."""
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {
+        1: [(200, "section-header", "SAMPLE SCHEDULE"),
+            (150, "text", "(To be returned with the offer)"),
+            (36, "text", "Words defined in the sample terms have the same meanings here."),
+            (36, "section-header", "Part A"),
+            (36, "text", "Items (a) and (b) below are required."),
+            (48, "list-item", "(a) A sample."),
+            (36, "section-header", "Part B - Sample Timetable"),
+            (36, "text", "Payment is made in two instalments, the first on delivery of the")],
+        2: [(36, "text", "samples and the second on acceptance."),
+            (36, "text", "No other payment is made.")],
+    })
+
+    paragraphs = {n["node_id"]: n["text"] for n in nodes.values() if ":para" in n["node_id"]}
+    assert paragraphs == {
+        "doc:para": "Words defined in the sample terms have the same meanings here.",
+        "doc:PB:para": "Payment is made in two instalments, the first on delivery of the\n"
+                       "samples and the second on acceptance.",
+        "doc:PB:para#2": "No other payment is made.",
+    }
+    assert nodes["doc"]["text"].endswith("the same meanings here.")
+    assert nodes["doc:PA"]["text"] == "Part A\nItems (a) and (b) below are required."
+    assert nodes["doc:PB"]["text"].endswith("No other payment is made.")
+
+
+def test_an_item_flagged_in_the_margin_is_still_its_own_item(monkeypatch):
+    """A one-letter flag before an item's marker - set apart as a block of its
+    own, or in the item's own block - does not stop the item being a node."""
+    from app.parsing.layout_document_index import _attach_item_flags
+    from test.parsing.stub_layout import parse_blocks
+
+    blocks = [(126, "list-item", "(e) A mandatory sample feature.", [126, 190, 520, 202], None),
+              (64, "section-header", "(D)", [64, 245, 76, 257], None),
+              (126, "list-item", "(f) It is a desirable sample feature.", [126, 244, 520, 256], None)]
+    assert [b[2] for b in _attach_item_flags(blocks)] == [
+        "(e) A mandatory sample feature.", "(D) (f) It is a desirable sample feature."]
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (88, "list-item", "4.18 Other Sample Features"),
+        (56, "list-item", "(D) 4.18.1 It is a desirable feature that the sample is blue."),
+        (126, "list-item", "(a) in one respect;"),
+        (60, "list-item", "(D) (b) it is a desirable feature that the sample is light."),
+    ]})
+
+    assert nodes["doc:4.18.1"]["text"].startswith("(D) 4.18.1 It is")
+    assert nodes["doc:4.18.1:(b)"]["text"].startswith("(D) (b) it is")
+    assert nodes["doc:4.18.1:(a)"]["text"] == "(a) in one respect;"
+
+
+def test_an_annex_named_only_in_its_page_header_is_an_annex(monkeypatch):
+    """An annex bound into a longer document opens where its header line first
+    appears (joined to the heading below it); the same header on the following
+    pages is furniture, and on a document's own first page it is only the
+    document's title."""
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {
+        1: [(36, "list-item", "35. The last clause of the sample terms.")],
+        2: [(363, "annex-title", "Annex A to the Sample Terms"),
+            (170, "section-header", "SAMPLE UNDERTAKING"),
+            (36, "text", "THIS UNDERTAKING is made on a sample day."),
+            (36, "list-item", "1. The first clause of the undertaking.")],
+        3: [(363, "annex-title", "Annex A to the Sample Terms"),
+            (36, "list-item", "2. The second clause of the undertaking.")],
+    })
+
+    assert nodes["doc:ANNEX-A"]["text"].startswith("Annex A to the Sample Terms\nSAMPLE UNDERTAKING")
+    assert nodes["doc:ANNEX-A:para"]["text"] == "THIS UNDERTAKING is made on a sample day."
+    assert nodes["doc:ANNEX-A:1"]["parent_id"] == nodes["doc:ANNEX-A:2"]["parent_id"] == "doc:ANNEX-A"
+    assert nodes["doc:35"]["text"] == "35. The last clause of the sample terms."
+    assert not any(n["kind"] == "annex" and n["node_id"] != "doc:ANNEX-A" for n in nodes.values())
+
+    standalone = parse_blocks(monkeypatch, {1: [
+        (353, "annex-title", "Annex A to the Sample Terms"),
+        (290, "section-header", "Part IA"),
+        (190, "section-header", "Method of Sample Payment")]})
+
+    assert standalone["doc"]["text"] == "Annex A to the Sample Terms"
+    assert standalone["doc:PIA"]["parent_id"] == "doc"
+
+
+def test_a_paragraph_of_a_few_words_with_no_stop_runs_on(monkeypatch):
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (200, "section-header", "SAMPLE CERTIFICATE"),
+        (36, "text", "To: the Sample Office"),
+        (36, "text", "Dear Sir/Madam,"),
+        (36, "text", "BY"),
+        (240, "text", "whose office is at a sample address"),
+        (36, "text", "The Tenderer certifies the sample matter."),
+    ]})
+
+    assert [n["text"] for n in nodes.values() if ":para" in n["node_id"]] == [
+        "To: the Sample Office\nDear Sir/Madam,",
+        "BY\nwhose office is at a sample address",
+        "The Tenderer certifies the sample matter."]
+
+
+def test_a_part_of_the_chinese_tender_form_is_a_part():
+    from app.parsing.layout_document_index import _classify_marker
+
+    assert _classify_marker("第 4 部分 — 樣本標題")[:2] == ("part", "4")
+    assert _classify_marker("第3甲部分 — 樣本標題")[:2] == ("part", "3A")
+    assert _classify_marker("第 5 部分 樣本標題")[:2] == ("part", "5")
+    assert _classify_marker("第 9.9(z) 段的樣本")[0] is None

@@ -210,3 +210,108 @@ No commit after `6bca266` lowers any metric on any of the three tenders. Tender 
 By level at `1770505` (recall / hierarchy): Tender 2 L0 100 / 100, L1 86.9 / 62.8, L2 100 / 94.3, L3 98.1 / 91.3; Tender 3 L0 96.3 / 95.8, L1 84.5 / 52.8, L2 94.2 / 72.0, L3 98.7 / 100.
 
 Still below target at `1770505`: deep recall (93.1 and 90.8, target 95), hierarchy (77.1 and 65.0) and exact location (89.2 and 87.2) on both tenders, and Tender 3's references citation (90.6). Main causes of the remaining misses: form fields without a marker (signature, name and date lines; the Appendix's address fields), paragraphs and "tail" text the keys count as their own nodes under a heading or after a list, headings and notes that the keys nest their following items under (the parser keeps them as leaves, so every child's parent is off), the Chinese Tender Form's Parts (not recognised as Parts), a desirable-feature flag set as its own block before an item of the Technical Specifications, and Tender 3's Annex A to the Terms of Tender inside TERMS-1, which is not recognised as an annex, so its recitals and execution block run into the clause before it.
+
+### Third pass toward the S3 target (2026-09-18)
+
+Target for this pass: deep recall at or above 95% on both new tenders, with no metric lower on Tender 1. Every column is a fresh parse of all three tenders (layout model output cached, node tables byte-identical to an uncached parse), scored with the evaluator as of `7e5b731`. The first column is the second pass's parser (`1770505`) with the locate branch merged (`75a12a2`); its node tables are byte-identical to `1770505`'s, and only its citation resolver differs (`8b5ce90`), which is why its references citation reads 100 / 95.3 rather than 92.5 / 90.6 above. `b338288` (a locate test fix, below) and `d531643` (two lines put back where a merge left them) change no node.
+
+Columns: `75a12a2` start · `d5335b8` blank form fields (signature, name and date lines, contact-list labels, the tenderer's name line the layout model took for page furniture, colons set in their own column) are nodes · `22d5d95` a paragraph under a heading-only node (a schedule's preamble, a titled Part's body, an addressee) is a node · `3daa151` an item flagged as desirable in the margin is still its own item · `62a98cd` an annex named only in its page header (the terms booklet's Annex A) is an annex · `12b2426` a Part of the Chinese Tender Form is a Part · `f6d2307` several dash-named Parts in brackets each resolve (citation resolver only) · `3396216` every field of a form row is a node · `7d4dfd9` the sentence resuming after a run-in list is a tail node · `7e5b731` a list lettered or numbered in capitals is a list.
+
+The field, paragraph and tail nodes are added the way run-in sub-items are: the node they came from keeps its whole text. Splitting them off instead raised deep length further but lowered Tender 1's no-regression table (AI_camp's hand-checked lengths count a signature block in the clause above it and a Part's body in the Part) and lost key nodes whose first words run from a Part heading into its body (Tender 2's Price Schedule Part B, the last item of a run-in list), so both were measured and not kept.
+
+**Tender 2**
+
+| Metric | 75a12a2 | d5335b8 | 22d5d95 | 3daa151 | 62a98cd | 12b2426 | f6d2307 | 3396216 | 7d4dfd9 | 7e5b731 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| schedule coverage / page / position | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 |
+| schedule length | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 | 93.8 |
+| references coverage / page | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 |
+| references position | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 |
+| references length | 92.5 | 92.5 | 92.5 | 92.5 | 92.5 | 92.5 | 92.5 | 92.5 | 92.5 | 92.5 |
+| references citation | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 |
+| deep recall (= own node, page) | 93.1 | 96.3 | 97.4 | 97.4 | 97.5 | 97.8 | 97.8 | 97.8 | 97.8 | 97.8 |
+| deep exact_location_correct | 89.2 | 92.3 | 93.4 | 93.4 | 93.4 | 93.4 | 93.4 | 93.4 | 93.4 | 93.4 |
+| deep kind_correctness | 99.4 | 99.4 | 99.4 | 99.4 | 99.4 | 99.5 | 99.5 | 99.5 | 99.5 | 99.5 |
+| deep hierarchy_correctness | 77.1 | 78.6 | 79.1 | 79.1 | 79.4 | 80.0 | 80.0 | 80.0 | 80.0 | 80.0 |
+| deep avg_node_length_ratio | 1.51 | 1.49 | 1.49 | 1.49 | 1.49 | 1.49 | 1.49 | 1.49 | 1.49 | 1.49 |
+| deep reachable | 97.6 | 98.5 | 98.5 | 98.5 | 98.7 | 98.9 | 98.9 | 98.9 | 98.9 | 98.9 |
+| deep length (within 10%) | 86.1 | 89.2 | 90.2 | 90.2 | 90.3 | 90.2 | 90.2 | 90.2 | 90.2 | 90.2 |
+| deep parent | 79.4 | 80.7 | 81.6 | 81.6 | 82.0 | 82.7 | 82.7 | 82.7 | 82.7 | 82.7 |
+
+**Tender 3**
+
+| Metric | 75a12a2 | d5335b8 | 22d5d95 | 3daa151 | 62a98cd | 12b2426 | f6d2307 | 3396216 | 7d4dfd9 | 7e5b731 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| schedule coverage / page / position | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 |
+| schedule length | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 | 100 |
+| references coverage / page | 96.9 | 96.9 | 96.9 | 96.9 | 98.4 | 100 | 100 | 100 | 100 | 100 |
+| references position | 95.3 | 95.3 | 95.3 | 95.3 | 96.9 | 98.4 | 98.4 | 98.4 | 98.4 | 98.4 |
+| references length | 92.2 | 92.2 | 92.2 | 92.2 | 93.8 | 95.3 | 95.3 | 95.3 | 95.3 | 95.3 |
+| references citation | 95.3 | 95.3 | 95.3 | 95.3 | 96.9 | 96.9 | 96.9 | 96.9 | 96.9 | 96.9 |
+| split recall / precision | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 | 100 / 100 |
+| deep recall (= own node, page) | 90.8 | 92.2 | 92.9 | 93.4 | 93.5 | 93.6 | 93.6 | 94.2 | 94.8 | 95.2 |
+| deep exact_location_correct | 87.2 | 88.6 | 89.3 | 89.3 | 89.4 | 89.4 | 89.4 | 90.1 | 90.6 | 91.0 |
+| deep kind_correctness | 98.0 | 98.0 | 98.0 | 98.6 | 98.7 | 98.8 | 98.8 | 98.8 | 98.8 | 98.8 |
+| deep hierarchy_correctness | 65.0 | 65.8 | 66.5 | 66.5 | 66.8 | 67.0 | 67.0 | 67.0 | 67.5 | 68.7 |
+| deep avg_node_length_ratio | 1.61 | 1.60 | 1.60 | 1.59 | 1.60 | 1.60 | 1.60 | 1.59 | 1.59 | 1.49 |
+| deep reachable | 97.6 | 97.9 | 97.9 | 98.2 | 98.2 | 98.3 | 98.3 | 98.3 | 98.3 | 98.4 |
+| deep length (within 10%) | 82.0 | 83.1 | 83.8 | 84.3 | 84.3 | 84.3 | 84.3 | 85.0 | 85.5 | 86.2 |
+| deep parent | 68.0 | 68.7 | 69.4 | 69.8 | 70.1 | 70.4 | 70.4 | 70.4 | 70.9 | 71.9 |
+
+**Tender 1**
+
+| Metric | 75a12a2 | d5335b8 | 22d5d95 | 3daa151 | 62a98cd | 12b2426 | f6d2307 | 3396216 | 7d4dfd9 | 7e5b731 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| deep recall (= own node, page) | 92.5 | 94.5 | 95.4 | 95.4 | 95.6 | 95.6 | 95.6 | 95.6 | 95.6 | 95.6 |
+| deep exact_location_correct | 86.6 | 88.5 | 89.4 | 89.4 | 89.4 | 89.4 | 89.4 | 89.4 | 89.4 | 89.4 |
+| deep kind_correctness | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 | 97.7 |
+| deep hierarchy_correctness | 76.7 | 76.7 | 77.2 | 77.2 | 77.2 | 77.2 | 77.2 | 77.2 | 77.2 | 77.2 |
+| deep avg_node_length_ratio | 1.11 | 1.10 | 1.10 | 1.10 | 1.10 | 1.10 | 1.10 | 1.10 | 1.10 | 1.10 |
+
+Tender 1's no-regression table: 141/142 at every column (the same paragraph after a nested list as before). Its Completeness Check Schedule still parses to Parts A-C with items (a)-(o).
+
+Two numbers move the wrong way by one node or less and were kept: `12b2426` takes the next Part's heading out of the Chinese Tender Form's last note of Part 4, where it had been absorbed, and that note (now its own text only) falls outside 10% of the key's length, so Tender 2's deep length (within 10%) goes 90.3 → 90.2; and avg_node_length_ratio is an average over found nodes, so newly found nodes move it slightly up as well as down (Tender 2 1.488 → 1.490 at `12b2426`, Tender 3 1.595 → 1.596 at `62a98cd`). No node found at one column is lost at a later one, on any of the three tenders.
+
+**Deep recall / hierarchy by document**, `75a12a2` → `7e5b731` (%, documents that changed):
+
+| Tender 2 | Nodes | Recall | Hierarchy | Tender 3 | Nodes | Recall | Hierarchy |
+|---|---|---|---|---|---|---|---|
+| ComplianceSchedule | 62 | 96.8 → 98.4 | 37.7 → 37.7 | TechSpec | 269 | 93.7 → 96.7 | 48.5 → 48.5 |
+| InfoSchedule | 55 | 80.0 → 83.6 | 68.5 → 68.5 | InfoSchedule | 178 | 76.4 → 87.1 | 49.4 → 52.8 |
+| NCTC | 33 | 78.8 → 97.0 | 53.1 → 53.1 | ToT | 154 | 98.1 → 100 | 94.9 → 97.4 |
+| PriceSchedule | 25 | 88.0 → 96.0 | 41.7 → 41.7 | SCC | 83 | 95.2 → 98.8 | 78.7 → 98.7 |
+| POGS | 19 | 89.5 → 100 | 44.4 → 44.4 | PriceSchedule | 75 | 86.7 → 89.3 | 43.2 → 44.6 |
+| AppendixToT | 14 | 28.6 → 100 | 0.0 → 100 | AnnexSCCC | 72 | 97.2 → 98.6 | 91.5 → 93.0 |
+| AnnexToTA | 14 | 50.0 → 85.7 | 23.1 → 61.5 | ComplianceSchedule | 64 | 93.8 → 95.3 | 42.9 → 42.9 |
+| TenderForm-EN | 13 | 76.9 → 92.3 | 25.0 → 25.0 | ISS | 52 | 82.7 → 86.5 | 51.0 → 52.9 |
+| TenderForm-ZH | 13 | 53.8 → 92.3 | 0.0 → 33.3 | AnnexToTA | 50 | 76.0 → 88.0 | 28.6 → 38.8 |
+| | | | | POGS | 47 | 91.5 → 95.7 | 26.1 → 28.3 |
+| | | | | NCTC | 34 | 82.4 → 88.2 | 66.7 → 72.7 |
+| | | | | CCS | 27 | 96.3 → 100 | 95.8 → 100 |
+| | | | | AppendixToT | 23 | 52.2 → 100 | 9.1 → 59.1 |
+| | | | | TenderForm-EN | 13 | 76.9 → 92.3 | 27.3 → 27.3 |
+| | | | | TenderForm-ZH | 12 | 58.3 → 91.7 | 0.0 → 36.4 |
+| | | | | AnnexToTB | 5 | 40.0 → 80.0 | 25.0 → 50.0 |
+
+By level at `7e5b731` (recall / hierarchy): Tender 2 L0 100 / 100, L1 95.9 / 68.1, L2 100 / 94.3, L3 98.1 / 91.3; Tender 3 L0 100 / 100, L1 92.4 / 58.0, L2 96.6 / 74.7, L3 98.7 / 100.
+
+Deep recall is now above 95% on both tenders (97.8 and 95.2) and on Tender 1 (95.6). Still below target: hierarchy (80.0 and 68.7), exact location on Tender 3 (91.0; the desirable-flag items start with the flag, not their own marker), references citation on Tender 3 (96.9) and schedule length on Tender 2 (93.8, unchanged). Remaining misses: a Part heading whose key text runs on into the bracketed note below it (4 on the two tenders), Price Schedule tables and their totals (Tender 3, 6), the Information Schedule's paragraphs inside bracketed notes, dash lists and notes (Tender 3, about 15), the booklet's Annex A execution block and a scrambled signature block of the certificate and the Chinese form, and keys that disagree with each other (Tender 2 counts a titled Part's body and a list's closing words in the Part and the last item; Tender 3 and Tender 1 count them as nodes of their own). Hierarchy (nesting items under a heading or a "Notes:" line) was left alone: it changes the ids of every nested node, and no measurement here shows the ids locate and the citation resolver use would stay stable.
+
+
+## Locate (L0 `app/rulesets/locate.py`, 2026-09-17)
+
+`test/rulesets/test_locate.py -m realdata` on nodes parsed at `9877109`. Items and Parts come from the schedule's page text (ported reader); each item's node and its cited clauses come from the node table and `CitationIndex`. Tender 1 has no checklist key, so its items come from the deep key's level-0 rows and its cited clauses from the deep key's `cited_via`. That key also lists links the item text does not write out, which accounts for all 4 of its misses.
+
+| Tender | Items found | Right Part | Right page | Own node | Cited clauses resolved |
+|---|---|---|---|---|---|
+| Tender 1 | 15/15 | 15/15 | 15/15 | 15/15 | 45/49 (91.8%) |
+| Tender 2 | 13/13 | 13/13 | 13/13 | 13/13 | 41/43 (95.3%) |
+| Tender 3 | 21/21 | 21/21 | 21/21 | 21/21 | 58/65 (89.2%) |
+
+Remaining misses are parser gaps, not locate: no node for the Parts of the Annex A deposit form (Tender 2, 2), the Tender Form in the combined PDF (Tender 3, 2), the numbered items of Price Schedule Part A (Tender 3, 4), or the TERMS Annex A (Tender 3, 1).
+
+The resolver fixes in `8b5ce90` (chains sharing one document name, numbered file names, "respectively", wrapped footer labels) also raise the parser evaluator's references citation: Tender 2 87.5% to 95.0%, Tender 3 84.4% to 89.1%. No other metric changes.
+
+After the second parser pass (`1770505`, fresh parse, same test): items, Parts, pages and own nodes unchanged on all three tenders; cited clauses resolved Tender 1 43/49, Tender 2 42/43, Tender 3 62/65. The two new Tender 1 misses (items (d) and (e) to the Particulars of Goods Schedule's first clause) came from `14dee7e`: locate still resolves both items to the whole schedule, but the document node now holds its own title and preamble (and, since `56dfa87`, an unnumbered heading is a node), so the test's "first node with text below a whole document" became the document or its heading instead of the first clause. `b338288` makes the test take the first marked node below a whole document: 45/49 again, and the same scores on every earlier commit's nodes.
+
+After the third parser pass (`7e5b731`, same test): items, Parts, pages and own nodes unchanged on all three tenders; cited clauses resolved Tender 1 45/49 (the 4 key links the item text does not write out), Tender 2 43/43 (from 42/43: `f6d2307` resolves Part IB of the Annex A deposit form, whose Parts were already nodes), Tender 3 63/65 (from 62/65: `62a98cd` makes the booklet's Annex A a node). The two left on Tender 3 are Part 4 of the Tender Form in the combined PDF: its sub-documents are named by their footer, so "the Tender Form" names no scope for the resolver.
