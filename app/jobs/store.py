@@ -160,12 +160,13 @@ class Store:
                              "join runs u on u.run_id=r.run_id where r.project=%s order by r.tenderer", (project,)).fetchall()
             for run_id, tenderer, fields, corrections, before, kind in rows:
                 after = decide_for(kind)(_apply(fields, corrections), spec)
-                changed = after != before
+                changed = not _same_verdict(before, after)          # the version stamp alone is not a change
                 if changed:
                     c.execute("update results set verdict=%s, ruleset_version=%s, review_confirmed_by=null, "
                               "review_confirmed_at=null, updated_at=now() where run_id=%s", (Json(after), version, run_id))
                 else:
-                    c.execute("update results set ruleset_version=%s, updated_at=now() where run_id=%s", (version, run_id))
+                    c.execute("update results set verdict=%s, ruleset_version=%s, updated_at=now() where run_id=%s",
+                              (Json(after), version, run_id))
                 out.append({"run_id": run_id, "tenderer": tenderer, "before": before, "after": after, "changed": changed})
         return out
 
@@ -293,6 +294,12 @@ class Store:
                              f"from events where {' and '.join(where)} order by id limit %s", (*params, limit)).fetchall()
         keys = ["id", "kind", "project", "subject", "before", "after", "user", "reason", "at"]
         return [dict(zip(keys, r)) for r in rows]
+
+
+def _same_verdict(a: dict, b: dict) -> bool:
+    """Equal apart from the rule-set version each was decided against."""
+    strip = lambda v: {k: x for k, x in (v or {}).items() if k != "ruleset_version"}  # noqa: E731
+    return strip(a) == strip(b)
 
 
 def _apply(fields: dict, corrections: dict) -> dict:
