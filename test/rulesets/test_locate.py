@@ -211,11 +211,11 @@ def test_generated_pdf_end_to_end(tmp_path):
     make_text_pdf(tmp_path / "tender" / TERMS,
                   page(["Sample Terms of Tender", "5. Samples", "5.1 The Tenderer shall supply one sample."],
                        "Sample Terms of Tender Page 1 of 1"))
-    make_text_pdf(tmp_path / "tender" / SCHED, page([FOOTER, "Part A", "Items (a) and (b) below are required.",
-                                                     "(a) The signed offer form.",
-                                                     "(b) One sample under Paragraph 5.1 of the Sample Terms of Tender.",
-                                                     "Part B", "Items (c) may be requested.", "(c) A brochure."],
-                                                    f"{FOOTER} Page 1 of 1"))
+    schedule_lines = [FOOTER, "Part A", "Items (a) and (b) below are required.",
+                      "(a) The signed offer form.",
+                      "(b) One sample under Paragraph 5.1 of the Sample Terms of Tender.",
+                      "Part B", "Items (c) may be requested.", "(c) A brochure."]
+    make_text_pdf(tmp_path / "tender" / SCHED, page(schedule_lines, f"{FOOTER} Page 1 of 1"))
     pages, nodes = parse_tender([tmp_path / "tender" / TERMS, tmp_path / "tender" / SCHED])
 
     schedule = locate(pages, nodes, data_class=DataClass.SYNTHETIC)

@@ -134,7 +134,8 @@ def test_a_wrapped_footer_label_is_found_by_its_long_tail():
     def resolve(text):
         return [[n["node_id"] for n in found] for _, found in index.resolve_text(text)]
 
-    assert resolve("part (5) in the Appendix to the Sample Terms of Tender (Contact Details)") == [["W:00-Contacts:(5)"]]
+    assert (resolve("part (5) in the Appendix to the Sample Terms of Tender (Contact Details)")
+            == [["W:00-Contacts:(5)"]])
     # A short known tail is a document of its own, not a wrapped label.
     assert resolve("Paragraph 3 of the Annex Z to the Sample Terms of Tender") == [[]]
 
