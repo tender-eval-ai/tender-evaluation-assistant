@@ -254,8 +254,39 @@
         "title": "CheckResponse",
         "type": "object"
       },
+      "CheckType": {
+        "description": "The only menu of checks a rule may use. Twelve kinds; a short fixed menu is what\nmakes an LLM-drafted rule checkable by code.",
+        "enum": [
+          "filled",
+          "value",
+          "range",
+          "unit",
+          "date",
+          "math",
+          "tick_box",
+          "signature",
+          "document_present",
+          "cross_document_match",
+          "contains",
+          "human_only"
+        ],
+        "title": "CheckType",
+        "type": "string"
+      },
       "CheckedField": {
         "properties": {
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the field's key inside BidResult.fields[letter]",
+            "title": "Field"
+          },
           "field_id": {
             "title": "Field Id",
             "type": "string"
@@ -361,6 +392,63 @@
         "title": "ChecklistItem",
         "type": "object"
       },
+      "Citation": {
+        "description": "Where a value or a rule comes from. `quote` is verbatim; `node_id` is the clause\nnode from the parser (e.g. \"Supp:13:(a)\") or None for a page-level citation when the\ndocument's structure was too messy to trust.",
+        "properties": {
+          "candidates": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "when the resolver matched several nodes: every node id it found; node_id is the one chosen, a person may pick another",
+            "title": "Candidates"
+          },
+          "data_class": {
+            "$ref": "#/components/schemas/DataClass"
+          },
+          "file": {
+            "description": "path relative to the project, e.g. 'tender/09 Schedules.pdf'",
+            "title": "File",
+            "type": "string"
+          },
+          "node_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Node Id"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "quote": {
+            "minLength": 1,
+            "title": "Quote",
+            "type": "string"
+          }
+        },
+        "required": [
+          "file",
+          "page",
+          "quote",
+          "data_class"
+        ],
+        "title": "Citation",
+        "type": "object"
+      },
       "ComplianceFinding": {
         "properties": {
           "complies": {
@@ -400,6 +488,20 @@
         ],
         "title": "ComplianceFinding",
         "type": "object"
+      },
+      "Consequence": {
+        "description": "What a blank or failing field means for one rule, before any rule-level override.\nThe seven tiers the rule files use. The default outcomes for a tier are defined per\ntemplate (`Template.consequences`), because they differ from form to form.",
+        "enum": [
+          "critical",
+          "mandatory_on_request",
+          "on_request_only",
+          "deemed_compliance",
+          "deemed_default",
+          "discretionary",
+          "no_gate"
+        ],
+        "title": "Consequence",
+        "type": "string"
       },
       "Correction": {
         "properties": {
@@ -521,6 +623,75 @@
           "present"
         ],
         "title": "DocumentPresence",
+        "type": "object"
+      },
+      "Edit": {
+        "description": "Who changed something, when and why. Required on every human change.",
+        "properties": {
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "by": {
+            "title": "By",
+            "type": "string"
+          },
+          "reason": {
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "by",
+          "at",
+          "reason"
+        ],
+        "title": "Edit",
+        "type": "object"
+      },
+      "ErrorBody": {
+        "description": "Every error response, 422 included (docs/api_contract.md, Conventions).",
+        "properties": {
+          "detail": {
+            "description": "the message again, for the Streamlit UI until S5",
+            "title": "Detail",
+            "type": "string"
+          },
+          "error": {
+            "$ref": "#/components/schemas/ErrorDetail"
+          }
+        },
+        "required": [
+          "error",
+          "detail"
+        ],
+        "title": "ErrorBody",
+        "type": "object"
+      },
+      "ErrorDetail": {
+        "properties": {
+          "code": {
+            "description": "snake_case, e.g. validation_failed",
+            "title": "Code",
+            "type": "string"
+          },
+          "details": {
+            "additionalProperties": true,
+            "title": "Details",
+            "type": "object"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorDetail",
         "type": "object"
       },
       "EssentialRequirement": {
@@ -702,17 +873,77 @@
         "title": "FieldValue",
         "type": "object"
       },
-      "HTTPValidationError": {
+      "FollowUp": {
+        "description": "What a dormant outcome leads to: what triggers the request, by when the tenderer\nmust answer (prose, always present) and what a missed deadline means.",
         "properties": {
-          "detail": {
-            "items": {
-              "$ref": "#/components/schemas/ValidationError"
-            },
-            "title": "Detail",
-            "type": "array"
+          "deadline": {
+            "minLength": 1,
+            "title": "Deadline",
+            "type": "string"
+          },
+          "if_deadline_missed": {
+            "enum": [
+              "pass",
+              "needs_review",
+              "disqualified",
+              "dormant"
+            ],
+            "title": "If Deadline Missed",
+            "type": "string"
+          },
+          "trigger": {
+            "minLength": 1,
+            "title": "Trigger",
+            "type": "string"
           }
         },
-        "title": "HTTPValidationError",
+        "required": [
+          "trigger",
+          "deadline",
+          "if_deadline_missed"
+        ],
+        "title": "FollowUp",
+        "type": "object"
+      },
+      "Gap": {
+        "description": "A clause the schedule points to, or a 'shall/must' sentence, that no rule covers.\nA gap blocks confirmation until a person gives a reason.",
+        "properties": {
+          "edit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Edit"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "who gave the reason, when and why"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "node_id",
+          "text"
+        ],
+        "title": "Gap",
         "type": "object"
       },
       "ImportRequest": {
@@ -737,6 +968,53 @@
         ],
         "title": "ImportRequest",
         "type": "object"
+      },
+      "ItemNote": {
+        "description": "Prose attached to an item that is not a check: a definition, what triggers a\nrequirement, a consequence stated in the clause, or a cross-reference.",
+        "properties": {
+          "citation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Citation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "enum": [
+              "definition",
+              "trigger",
+              "consequence",
+              "reference"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "text"
+        ],
+        "title": "ItemNote",
+        "type": "object"
+      },
+      "ItemStatus": {
+        "enum": [
+          "verified",
+          "needs_input",
+          "novel",
+          "gap",
+          "edited"
+        ],
+        "title": "ItemStatus",
+        "type": "string"
       },
       "Job": {
         "properties": {
@@ -769,9 +1047,7 @@
             "type": "string"
           },
           "progress": {
-            "additionalProperties": true,
-            "title": "Progress",
-            "type": "object"
+            "$ref": "#/components/schemas/Progress"
           },
           "project": {
             "title": "Project",
@@ -897,6 +1173,82 @@
           "name"
         ],
         "title": "NewProject",
+        "type": "object"
+      },
+      "Normalise": {
+        "description": "A step applied to the field's value before the check, by the engine's own name.",
+        "properties": {
+          "op": {
+            "enum": [
+              "round_significant_figures",
+              "resolve_range_to_lower_bound"
+            ],
+            "title": "Op",
+            "type": "string"
+          },
+          "params": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "number"
+                }
+              ]
+            },
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "op"
+        ],
+        "title": "Normalise",
+        "type": "object"
+      },
+      "Outcome": {
+        "description": "The verdict for one outcome key. `note` may use {field} for the field's label.",
+        "properties": {
+          "follow_up": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowUp"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "status": {
+            "enum": [
+              "pass",
+              "needs_review",
+              "disqualified",
+              "dormant"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "Outcome",
         "type": "object"
       },
       "Page": {
@@ -1053,6 +1405,48 @@
         "title": "PageCitation",
         "type": "object"
       },
+      "Part": {
+        "description": "The Completeness Check Schedule's Parts: what a missing item means for the tender.",
+        "enum": [
+          "A",
+          "B",
+          "C"
+        ],
+        "title": "Part",
+        "type": "string"
+      },
+      "PartSpec": {
+        "description": "A Part's intro in the Completeness Check Schedule: the paragraph that says what\nhappens when an item of that Part is missing or asked for, and the clauses it cites.\nLocated by L0; the engine reads the consequence from the Part.",
+        "properties": {
+          "citation": {
+            "$ref": "#/components/schemas/Citation",
+            "description": "the Part's heading and intro paragraph"
+          },
+          "clauses": {
+            "description": "the clauses the intro points to",
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "title": "Clauses",
+            "type": "array"
+          },
+          "part": {
+            "$ref": "#/components/schemas/Part"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "part",
+          "title",
+          "citation"
+        ],
+        "title": "PartSpec",
+        "type": "object"
+      },
       "PriceScheme": {
         "description": "How the tender says price must be assessed. Drives which Price Summary format is used.",
         "properties": {
@@ -1108,6 +1502,195 @@
           "quantity"
         ],
         "title": "PriceScheme",
+        "type": "object"
+      },
+      "Progress": {
+        "description": "How far a job's current step has got: `done` of `total` `unit`s (pages, calls, ...).",
+        "properties": {
+          "done": {
+            "default": 0,
+            "title": "Done",
+            "type": "integer"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "title": "Progress",
+        "type": "object"
+      },
+      "Project": {
+        "description": "A project as `GET /projects` lists it and `GET /projects/{pid}` describes it (the\ndetail fields are null in the list).",
+        "properties": {
+          "bidders": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Bidders"
+          },
+          "created": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created"
+          },
+          "data_class": {
+            "$ref": "#/components/schemas/DataClass",
+            "default": "confidential"
+          },
+          "extracted": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extracted"
+          },
+          "has_evaluation": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Evaluation"
+          },
+          "has_rubric": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Has Rubric"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "reports": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reports"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProjectStatus",
+            "description": "an object, not a string: read status.state"
+          },
+          "synthetic": {
+            "default": false,
+            "title": "Synthetic",
+            "type": "boolean"
+          },
+          "tender_files": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tender Files"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "Project",
+        "type": "object"
+      },
+      "ProjectStatus": {
+        "description": "The legacy pipeline's state file: idle, running, waiting, done or error, with a detail line.",
+        "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Detail"
+          },
+          "state": {
+            "default": "idle",
+            "title": "State",
+            "type": "string"
+          },
+          "updated": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated"
+          }
+        },
+        "title": "ProjectStatus",
         "type": "object"
       },
       "ResumeRequest": {
@@ -1182,12 +1765,247 @@
         "title": "Rubric",
         "type": "object"
       },
+      "RuleSet": {
+        "description": "A versioned rule set for one project. Draft until a person confirms it; editing a\nconfirmed set opens a new draft whose `parent_version` is the confirmed one.",
+        "properties": {
+          "confirmed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed At"
+          },
+          "confirmed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmed By"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "created_by": {
+            "title": "Created By",
+            "type": "string"
+          },
+          "data_class": {
+            "$ref": "#/components/schemas/DataClass"
+          },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/Gap"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/RuleSetItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "model that drafted it, e.g. 'deepseek-v4-flash'",
+            "title": "Model"
+          },
+          "parent_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Version"
+          },
+          "parts": {
+            "description": "the Part intros the items sit under",
+            "items": {
+              "$ref": "#/components/schemas/PartSpec"
+            },
+            "title": "Parts",
+            "type": "array"
+          },
+          "project_id": {
+            "minLength": 1,
+            "title": "Project Id",
+            "type": "string"
+          },
+          "prompt_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prompt Version"
+          },
+          "status": {
+            "default": "draft",
+            "enum": [
+              "draft",
+              "confirmed"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "who last saved this draft; server-owned, read-only",
+            "title": "Updated By"
+          },
+          "version": {
+            "minimum": 1.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "project_id",
+          "version",
+          "data_class",
+          "items",
+          "created_by",
+          "created_at"
+        ],
+        "title": "RuleSet",
+        "type": "object"
+      },
+      "RuleSetItem": {
+        "description": "One Completeness Check Schedule item, (a) to (o), with its rules. An item a person\nadds has no schedule letter and is numbered x1, x2, ...",
+        "properties": {
+          "citation": {
+            "$ref": "#/components/schemas/Citation",
+            "description": "the schedule row"
+          },
+          "clauses": {
+            "description": "the clauses the row points to",
+            "items": {
+              "$ref": "#/components/schemas/Citation"
+            },
+            "title": "Clauses",
+            "type": "array"
+          },
+          "condition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the item applies only when this holds",
+            "title": "Condition"
+          },
+          "edit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Edit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "letter": {
+            "pattern": "^([a-z]|x[1-9][0-9]*)$",
+            "title": "Letter",
+            "type": "string"
+          },
+          "notes": {
+            "items": {
+              "$ref": "#/components/schemas/ItemNote"
+            },
+            "title": "Notes",
+            "type": "array"
+          },
+          "part": {
+            "$ref": "#/components/schemas/Part"
+          },
+          "rules": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateRule"
+            },
+            "title": "Rules",
+            "type": "array"
+          },
+          "slots": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SlotValue"
+            },
+            "title": "Slots",
+            "type": "object"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ItemStatus"
+          },
+          "template": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "template id; None for a novel item",
+            "title": "Template"
+          },
+          "title": {
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "letter",
+          "title",
+          "part",
+          "citation",
+          "status"
+        ],
+        "title": "RuleSetItem",
+        "type": "object"
+      },
       "RuleSetVersion": {
         "properties": {
           "confirmed_at": {
             "anyOf": [
               {
-                "type": "number"
+                "format": "date-time",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1209,7 +2027,8 @@
           "created_at": {
             "anyOf": [
               {
-                "type": "number"
+                "format": "date-time",
+                "type": "string"
               },
               {
                 "type": "null"
@@ -1247,6 +2066,18 @@
             "title": "Status",
             "type": "string"
           },
+          "updated_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "who last saved the draft; confirm refuses that person",
+            "title": "Updated By"
+          },
           "version": {
             "title": "Version",
             "type": "integer"
@@ -1257,6 +2088,65 @@
           "status"
         ],
         "title": "RuleSetVersion",
+        "type": "object"
+      },
+      "SlotValue": {
+        "description": "A filled slot. An extracted value must cite its source; `verified` is set only by\ncode. When a person corrects it, `origin` becomes manual, `model_value` keeps what the\nmodel said, and `edit` records the change.",
+        "properties": {
+          "citation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Citation"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "edit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Edit"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "model_value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Value"
+          },
+          "origin": {
+            "default": "extracted",
+            "enum": [
+              "extracted",
+              "manual"
+            ],
+            "title": "Origin",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {},
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "verified": {
+            "default": false,
+            "title": "Verified",
+            "type": "boolean"
+          }
+        },
+        "title": "SlotValue",
         "type": "object"
       },
       "StageSummary": {
@@ -1286,44 +2176,128 @@
         "title": "StageSummary",
         "type": "object"
       },
-      "ValidationError": {
+      "TemplateRule": {
+        "description": "One check the engine runs on one vendor field. `params` hold literals or reference\nslots as \"{slot_name}\"; the engine renders them per tender. A rule is a gate: it names\nthe consequence tier whose template defaults apply, or carries its own `outcomes`,\nwhich replace the tier's defaults whole.",
         "properties": {
-          "ctx": {
-            "title": "Context",
-            "type": "object"
+          "check": {
+            "$ref": "#/components/schemas/CheckType"
           },
-          "input": {
-            "title": "Input"
+          "condition": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "applies only when this holds, e.g. 'not manufacturer'",
+            "title": "Condition"
           },
-          "loc": {
+          "consequence": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Consequence"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "depends_on": {
+            "description": "rule ids that must pass first; the engine also accepts one id",
             "items": {
+              "type": "string"
+            },
+            "title": "Depends On",
+            "type": "array"
+          },
+          "field": {
+            "description": "vendor field, e.g. 'price_schedule.unit_price'",
+            "minLength": 1,
+            "title": "Field",
+            "type": "string"
+          },
+          "id": {
+            "description": "e.g. 'price_schedule.unit_price_present'",
+            "pattern": "^[a-z][a-z0-9_.]*$",
+            "title": "Id",
+            "type": "string"
+          },
+          "normalise": {
+            "items": {
+              "$ref": "#/components/schemas/Normalise"
+            },
+            "title": "Normalise",
+            "type": "array"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "outcomes": {
+            "anyOf": [
+              {
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/Outcome"
+                },
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Outcomes"
+          },
+          "params": {
+            "additionalProperties": {
               "anyOf": [
                 {
                   "type": "string"
                 },
                 {
                   "type": "integer"
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "boolean"
+                },
+                {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
                 }
               ]
             },
-            "title": "Location",
-            "type": "array"
+            "title": "Params",
+            "type": "object"
           },
-          "msg": {
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "title": "Error Type",
+          "stage": {
+            "default": "I",
+            "enum": [
+              "I",
+              "II"
+            ],
+            "title": "Stage",
             "type": "string"
           }
         },
         "required": [
-          "loc",
-          "msg",
-          "type"
+          "id",
+          "check",
+          "field"
         ],
-        "title": "ValidationError",
+        "title": "TemplateRule",
         "type": "object"
       },
       "Verdict": {
@@ -1460,7 +2434,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -1497,8 +2471,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/Project"
                   },
                   "title": "Response List Projects Projects Get",
                   "type": "array"
@@ -1511,7 +2484,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -1555,9 +2528,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Project Projects Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/Project"
                 }
               }
             },
@@ -1567,7 +2538,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -1624,7 +2595,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -1667,9 +2638,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Project Projects  Pid  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/Project"
                 }
               }
             },
@@ -1679,7 +2648,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -1755,7 +2724,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -1822,7 +2791,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -1888,7 +2857,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -1963,7 +2932,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2083,7 +3052,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2163,7 +3132,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2252,7 +3221,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2311,7 +3280,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2379,7 +3348,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2499,7 +3468,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2556,7 +3525,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2613,7 +3582,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2726,7 +3695,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2783,7 +3752,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2851,7 +3820,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2932,7 +3901,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -2996,7 +3965,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3055,7 +4024,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3117,7 +4086,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3191,7 +4160,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3248,7 +4217,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3313,7 +4282,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3374,9 +4343,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Ruleset Projects  Pid  Ruleset Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/RuleSet"
                 }
               }
             },
@@ -3386,7 +4353,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3448,9 +4415,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Confirm Projects  Pid  Ruleset Confirm Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/RuleSet"
                 }
               }
             },
@@ -3460,7 +4425,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3534,9 +4499,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Put Draft Projects  Pid  Ruleset Draft Put",
-                  "type": "object"
+                  "$ref": "#/components/schemas/RuleSet"
                 }
               }
             },
@@ -3546,7 +4509,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3605,7 +4568,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3662,7 +4625,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3719,7 +4682,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3786,7 +4749,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3898,7 +4861,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },
@@ -3956,7 +4919,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
+                  "$ref": "#/components/schemas/ErrorBody"
                 }
               }
             },

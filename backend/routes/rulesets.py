@@ -3,6 +3,8 @@ for S2 (a check needs a confirmed rule set); item-level edits, diffs and gaps co
 the rule builder at S3."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends
 from pydantic import ValidationError
 
@@ -14,38 +16,49 @@ from backend.schemas_api import RuleSetVersion
 router = APIRouter(dependencies=[Depends(deps.require_key)])
 
 
+def _ruleset(store, pid: str, spec: dict) -> RuleSet:
+    """The stored spec as the shared model, with the server-owned `updated_by` filled in."""
+    editor = next((v["updated_by"] for v in store.versions(pid) if v["version"] == spec.get("version")), None)
+    return RuleSet.model_validate({**spec, "updated_by": editor})
+
+
+def _when(epoch: float | None) -> datetime | None:
+    return datetime.fromtimestamp(float(epoch), tz=timezone.utc) if epoch is not None else None   # psycopg gives Decimal
+
+
 @router.get("/projects/{pid}/ruleset")
-def get_ruleset(pid: str, version: int | None = None) -> dict:
+def get_ruleset(pid: str, version: int | None = None) -> RuleSet:
     deps._project_dir(pid)
     store = deps.runner().store
     if version is not None:
         spec = store.get_version(pid, version)
         if spec is None:
             raise ApiError(404, "not_found", f"rule set version {version} does not exist for {pid}")
-        return spec
+        return _ruleset(store, pid, spec)
     draft = store.draft(pid)
     if draft:
-        return draft[1]
+        return _ruleset(store, pid, draft[1])
     confirmed = store.latest_confirmed(pid)
     if confirmed:
-        return confirmed[1]
+        return _ruleset(store, pid, confirmed[1])
     raise ApiError(404, "not_found", f"project {pid} has no rule set yet; PUT /projects/{pid}/ruleset/draft")
 
 
 @router.get("/projects/{pid}/ruleset/versions")
 def list_versions(pid: str) -> list[RuleSetVersion]:
     deps._project_dir(pid)
-    return [RuleSetVersion(**v) for v in deps.runner().store.versions(pid)]
+    return [RuleSetVersion(**{**v, "created_at": _when(v["created_at"]), "confirmed_at": _when(v["confirmed_at"])})
+            for v in deps.runner().store.versions(pid)]
 
 
 @router.put("/projects/{pid}/ruleset/draft")
-def put_draft(pid: str, body: dict, user: str = Depends(deps.acting_user)) -> dict:
+def put_draft(pid: str, body: dict, user: str = Depends(deps.acting_user)) -> RuleSet:
     """The whole draft as JSON, validated against app/rulesets/schema.py. The server owns
     version, status and the audit fields."""
     deps._project_dir(pid)
     store = deps.runner().store
     candidate = {**body, "project_id": pid, "version": body.get("version") or 1, "status": "draft",
-                 "confirmed_by": None, "confirmed_at": None}
+                 "confirmed_by": None, "confirmed_at": None, "updated_by": None}
     candidate.setdefault("created_by", user)
     try:
         ruleset = RuleSet.model_validate(candidate)
@@ -57,11 +70,11 @@ def put_draft(pid: str, body: dict, user: str = Depends(deps.acting_user)) -> di
     spec = store.get_version(pid, version)
     store.event("ruleset.draft_saved", pid, f"v{version}", before[1] if before else None, spec, user,
                 "new draft" if created else "draft replaced")
-    return spec
+    return _ruleset(store, pid, spec)
 
 
 @router.post("/projects/{pid}/ruleset/confirm")
-def confirm(pid: str, user: str = Depends(deps.acting_user)) -> dict:
+def confirm(pid: str, user: str = Depends(deps.acting_user)) -> RuleSet:
     """403 self_approval if the approver last edited the draft; 409 conflict while an
     item still needs input or a gap has no reason. Confirms the draft as version N."""
     deps._project_dir(pid)
@@ -82,4 +95,4 @@ def confirm(pid: str, user: str = Depends(deps.acting_user)) -> dict:
     deps.runner().resume_paused(pid)                     # runs waiting for this rule set continue at once
     after = store.get_version(pid, confirmed_version)
     store.event("ruleset.confirmed", pid, f"v{confirmed_version}", spec, after, user)
-    return after
+    return _ruleset(store, pid, after)

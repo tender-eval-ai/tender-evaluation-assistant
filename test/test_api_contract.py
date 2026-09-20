@@ -36,4 +36,14 @@ def test_the_s2_routes_are_in_the_snapshot():
                  "/projects/{pid}/documents/{doc_id}/pages", "/projects/{pid}/documents/{doc_id}/pages/{n}/image",
                  "/projects/{pid}/events"]:
         assert path in spec["paths"], path
-    assert {"BidResult", "Job", "Verdict", "PageCitation", "Document", "Page", "Event"} <= set(spec["components"]["schemas"])
+    assert {"BidResult", "Job", "Verdict", "PageCitation", "Document", "Page", "Event", "Project", "Progress",
+            "RuleSet", "RuleSetItem", "PartSpec", "RuleSetVersion", "ErrorBody"} <= set(spec["components"]["schemas"])
+
+
+def test_errors_are_the_envelope_in_the_snapshot_too():
+    """Checklist I1.9: a 422 is ErrorBody, not FastAPI's HTTPValidationError."""
+    spec = json.loads(SNAPSHOT.read_text())
+    assert "HTTPValidationError" not in spec["components"]["schemas"]
+    put = spec["paths"]["/projects/{pid}/ruleset/draft"]["put"]["responses"]
+    assert put["422"]["content"]["application/json"]["schema"]["$ref"].endswith("/ErrorBody")
+    assert put["200"]["content"]["application/json"]["schema"]["$ref"].endswith("/RuleSet")

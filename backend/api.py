@@ -77,6 +77,7 @@ app.add_middleware(
 )
 
 errors.install(app)
+errors.document(app)
 jobs._reset_interrupted_jobs()
 
 

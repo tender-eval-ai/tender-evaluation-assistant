@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 from backend import deps, jobs
 from backend.routes.runs import _graph_db_scratch
+from backend.schemas_api import Project
 
 router = APIRouter(dependencies=[Depends(deps.require_key)])
 
@@ -28,8 +29,15 @@ class NewProject(BaseModel):
     data_class: Literal["synthetic", "redacted_sample", "confidential"] | None = None
 
 
+def _project(meta: dict, **detail) -> Project:
+    """meta.json as the contract's Project; projects created before data classes existed
+    derive theirs from the synthetic flag."""
+    data_class = meta.get("data_class") or ("synthetic" if meta.get("synthetic") else "confidential")
+    return Project.model_validate({**meta, "data_class": data_class, **detail})
+
+
 @router.post("/projects")
-def create_project(req: NewProject) -> dict:
+def create_project(req: NewProject) -> Project:
     slug = re.sub(r"[^a-z0-9]+", "-", req.name.lower()).strip("-")[:40] or "project"
     pid = f"{slug}-{secrets.token_hex(3)}"
     pdir = deps.PROJECTS / pid
@@ -41,35 +49,32 @@ def create_project(req: NewProject) -> dict:
     deps._write_json(pdir / "meta.json", {"id": pid, "name": req.name, "created": time.time(),
                                           "synthetic": synthetic, "data_class": data_class})
     deps._set_status(pdir, "idle")
-    return {"id": pid, "name": req.name, "synthetic": synthetic, "data_class": data_class}
+    return _project(deps._read_json(pdir / "meta.json"), status=deps._get_status(pdir))
 
 
 @router.get("/projects")
-def list_projects() -> list[dict]:
+def list_projects() -> list[Project]:
     out = []
     if deps.PROJECTS.is_dir():
         for meta_path in sorted(deps.PROJECTS.glob("*/meta.json")):
-            meta = deps._read_json(meta_path)
-            meta["status"] = deps._get_status(meta_path.parent)
-            out.append(meta)
+            out.append(_project(deps._read_json(meta_path), status=deps._get_status(meta_path.parent)))
     return out
 
 
 @router.get("/projects/{pid}")
-def get_project(pid: str) -> dict:
+def get_project(pid: str) -> Project:
     pdir = deps._project_dir(pid)
     work = pdir / "work"
-    return {
-        **deps._read_json(pdir / "meta.json"),
-        "status": deps._get_status(pdir),
-        "tender_files": sorted(p.name for p in (pdir / "tender").glob("*.pdf")),
-        "bidders": sorted(p.name for p in (pdir / "bids").iterdir() if p.is_dir()),
-        "extracted": sorted(p.stem for p in (work / "bids").glob("*.json")),
-        "has_rubric": (work / "rubric.json").is_file(),
-        "has_evaluation": (work / "evaluation.json").is_file(),
-        "reports": sorted(p.name for p in (work / "reports").glob("*.docx"))
-        if (work / "reports").is_dir() else [],
-    }
+    return _project(
+        deps._read_json(pdir / "meta.json"),
+        status=deps._get_status(pdir),
+        tender_files=sorted(p.name for p in (pdir / "tender").glob("*.pdf")),
+        bidders=sorted(p.name for p in (pdir / "bids").iterdir() if p.is_dir()),
+        extracted=sorted(p.stem for p in (work / "bids").glob("*.json")),
+        has_rubric=(work / "rubric.json").is_file(),
+        has_evaluation=(work / "evaluation.json").is_file(),
+        reports=sorted(p.name for p in (work / "reports").glob("*.docx")) if (work / "reports").is_dir() else [],
+    )
 
 
 @router.delete("/projects/{pid}")
