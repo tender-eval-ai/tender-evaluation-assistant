@@ -113,6 +113,30 @@ def test_cited_paragraphs_resolve_to_their_nodes():
     assert [c.node_id for c in schedule.parts[0].clauses] == ["T:3.3"]
 
 
+def test_a_part_with_no_text_of_its_own_is_quoted_by_its_heading():
+    """A quote is checked against the node it cites, so it has to be that node's text:
+    a Part heading with no text is quoted by its title, not by its first child."""
+    price = "03 Sample Price.pdf"
+    pages = [_page(1, ["Tender Ref.: SYN-2", f"{FOOTER} Page 1 of 1", "Part A",
+                       "(a) The price, see Part B of the Sample Price Schedule."])]
+    nodes = [
+        _node("P", "document", 1, price),
+        _node("P:PB", "part", 1, price, number="B", doc_name="Sample Price Schedule"),
+        _node("P:PB:1", "clause", 1, price, number="1", doc_name="Sample Price Schedule",
+              text="1 Payment is made in arrears."),
+        _node("S", "document", 1, SCHED),
+        _node("S:PA", "part", 1, SCHED, number="A", part="Part A", doc_name=FOOTER, text="Part A"),
+        _node("S:PA:(a)", "subitem", 1, SCHED, label="(a)", part="Part A", doc_name=FOOTER,
+              text="(a) The price, see Part B of the Sample Price Schedule."),
+    ]
+    nodes[1]["title"] = "PAYMENT"
+
+    (clause,) = locate(pages, nodes, data_class=DataClass.SYNTHETIC).item("a").clauses
+
+    assert clause.node_id == "P:PB"
+    assert clause.quote == "PAYMENT"
+
+
 def test_a_citation_that_resolves_to_nothing_is_kept_as_written():
     item = _schedule().item("d")
 

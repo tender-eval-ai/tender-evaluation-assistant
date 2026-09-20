@@ -306,11 +306,21 @@ class _NodeTable:
         return out
 
     def quote(self, node: dict) -> str:
-        """The node's own text, or for a container (a document, a Part heading with no
-        text of its own) the first text inside it - verbatim either way."""
-        for current in self.subtree(node):
-            if (current.get("text") or "").strip():
-                return current["text"].strip()
+        """The node's own text, verbatim; failing that its own heading.
+
+        A quote is checked against the node it cites (`app.rulesets.schema`), so it
+        has to be text of that node. Only a whole document, which has no text of its
+        own at all, is quoted by the first text inside it; a Part or a heading with no
+        text is quoted by its own title, not by its first child's text - which reads as
+        the cited node saying something it does not say, and fails that check.
+        """
+        own = (node.get("text") or "").strip()
+        if own:
+            return own
+        if node["kind"] in ("document", "subdocument"):
+            for current in self.subtree(node)[1:]:
+                if (current.get("text") or "").strip():
+                    return current["text"].strip()
         return normalize_whitespace(node.get("title") or node.get("doc_name") or "")
 
     def schedule_part(self, file: str, part: Part, pages: set[int]) -> dict | None:
