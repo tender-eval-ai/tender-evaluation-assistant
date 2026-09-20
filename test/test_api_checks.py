@@ -153,6 +153,9 @@ def test_a_check_through_the_worker_yields_fields_with_citations_a_verdict_and_i
     assert client.get(sig["page"]["image_url"]).headers["content-type"] == "image/png"
     verdict = res["verdicts"]["l"]
     assert verdict["outcome"] == "pass" and verdict["part"] == "A" and len(verdict["checks"]) == 4 and verdict["evidence"]
+    # I1.10: every check's `field` indexes res["fields"][letter]; the engine's display
+    # text ("tenderer name") does not, which is what this asserts against.
+    assert all(c["field"] in res["fields"]["l"] for c in verdict["checks"]), verdict["checks"]
     assert res["stage1"] == {"outcome": "pass", "items": {"l": "pass"}} and res["stage2"] is None
     assert res["cost"]["calls"] == 4 and res["cost"]["usd"] == 0
     assert client.get(f"/projects/{pid}/bids/Tenderer_B/results", params={"version": 2}).status_code == 404

@@ -334,3 +334,8 @@ four metrics clear 90% on all three tenders.
 | Tender 1 | 95.6% | 95.6% | 95.6% | 92.3% (was 89.4%) |
 | Tender 2 | 97.8% | 97.8% | 97.8% | 95.2% (was 93.4%) |
 | Tender 3 | 95.2% | 95.2% | 95.2% | 91.8% (was 91.0%) |
+### Review fixes on the third pass (2026-09-20)
+
+The fixes from the review of the locate and third-parser-pass PRs (`6c4ec2f` .. `131ed48`: the citation pattern's backtracking, the annex-head fallback, roman markers `(v)` and `(x)`, the page-footer anchor, project-relative citation files, a Part's quote, and the run-in tail's own node id) change no metric. A fresh parse of all three tenders scores exactly as `7e5b731`: deep recall 97.8 / 95.2 / 95.6, references citation 100 / 96.9, schedule 100 / 93.8 and 100 / 100, guard 141 of 142; and `test/rulesets/test_locate.py -m realdata` on those nodes gives the same 45/49, 43/43 and 63/65.
+
+The node tables differ only in the ids of the run-in tail nodes, now `:run-in-tail` rather than `:tail` (18, 23 and 12 of them); every other id, page and text is byte-identical, and no clause in these three tenders had both tails, which is how the `:tail#2` collision stayed invisible. The citation resolver's own answers are unchanged: the atomic identifier token is a performance fix only (a plain 14-item list took 17.7 s before it and under a millisecond after), and the annex-head guard is narrowed to a head carrying an identifier plus a bare "Supplement/Schedule to the", because excluding a bare "Appendix to the" and "Annex (title) of" as well loses the two real wrapped footer labels on Tender 3 (locate 63/65 to 60/65).
