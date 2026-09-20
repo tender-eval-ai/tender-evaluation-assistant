@@ -264,6 +264,22 @@ class ErrorBody(BaseModel):
     detail: str = Field(description="the message again, for the Streamlit UI until S5")
 
 
+class BuildResponse(BaseModel):
+    job_id: str
+
+
+class Node(BaseModel):
+    """One node of the clause tree L0 parsed from a document (`GET /documents/{doc_id}/nodes`)."""
+
+    node_id: str
+    parent_id: str | None = None
+    kind: str
+    number: str | None = Field(default=None, description="the marker as printed: a clause number or a label like (a)")
+    title: str | None = None
+    page: int | None = None
+    box: list[float] | None = Field(default=None, min_length=4, max_length=4, description="[x0, y0, x1, y1] of the marker, PDF points")
+
+
 class ReasonBody(BaseModel):
     """The body of a DELETE or a gap PATCH: why."""
 

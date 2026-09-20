@@ -19,3 +19,8 @@ google-auth>=2.40      # Vertex AI OAuth tokens (Application Default Credentials
 # The check worker and the API's job routes (app/jobs, app/gateway_pg): the Postgres queue.
 procrastinate>=3.9
 psycopg[binary]>=3.2
+
+# The rule builder's L0 (app/parsing, app/rulesets/locate.py): PyMuPDF (AGPL-3.0) and pymupdf-layout
+# (PolyForm Noncommercial); see docs/decisions/0002-pymupdf-licences.md.
+pymupdf==1.28.0
+pymupdf-layout==1.28.0

@@ -10,7 +10,7 @@ The React UI is built against this file through `web/mock/`, which answers exact
 - **Authentication.** `X-API-Key` header today. Per-user sessions with a role (`reviewer`, `approver`, `admin`) arrive with checklist item B9; until then the API takes the acting user from the `X-User` header in development, so events and edits already carry a name. Without the header the user is `anonymous`.
 - **Data class.** Every project carries a `data_class` (`synthetic`, `redacted_sample`, `confidential`). The LLM gateway refuses to send anything but synthetic text to an endpoint that is not allow-listed for the class; the API surfaces that as `403 data_class_forbidden`. `POST /projects` takes `data_class`; when absent it is derived from today's `synthetic` flag (`synthetic`, else `confidential`) so existing clients keep working.
 - **Errors.** Every error body is `{"error": {"code": "<snake_case>", "message": "<for a person>", "details": {...}}}`. Until the Streamlit UI goes at S5 the body also carries `detail` (the message), which that UI reads. Codes used below: `not_found`, `validation_failed` (422), `conflict` (409), `forbidden` (403), `data_class_forbidden` (403), `self_approval` (403), `unconfirmed_ruleset` (409). A `422` carries the same envelope; `openapi.json` documents it as `ErrorBody` (amended at S2, checklist I1.9).
-- **Jobs.** Anything that calls a model returns `202 {"job_id": ...}` at once and runs on the worker. `GET /projects/{pid}/jobs/{job_id}` reports `{state: queued|running|paused|done|failed|dead, progress: Progress {done, total?, unit?}, error}` (`paused`: waiting for a rule-set confirmation). A second job for the same project and tenderer while one is running returns `409 conflict`.
+- **Jobs.** Anything that calls a model returns `202 {"job_id": ...}` at once and runs on the worker. `GET /projects/{pid}/jobs/{job_id}` reports `{state: queued|running|paused|done|failed|dead, progress: Progress {done, total?, unit?}, error}` (`paused`: waiting for a rule-set confirmation). A second job for the same project and tenderer while one is running returns `409 conflict`. A rule-set build is a job of kind `ruleset_build` with `tenderer: null`.
 - **Versions.** Every stored result carries the `ruleset_version` it was computed against. Confirming a new version does not rewrite old results; re-evaluation creates new ones.
 - **Audit.** Every mutating route writes one event `{kind, project, subject, before, after, user, at, reason}` to the append-only `events` table.
 - **Pagination.** List routes accept `?limit=` (default 100, max 1000) and `?cursor=`; paginated responses are `{items: [...], next_cursor}` with `next_cursor` set when more exist (`jobs`, `events`).
@@ -21,7 +21,7 @@ The React UI is built against this file through `web/mock/`, which answers exact
 
 | Method | Path | Request | Response | Ready | Notes |
 |---|---|---|---|---|---|
-| POST | `/projects/{pid}/ruleset/build` | `{}` | `202 {job_id}` | S3 | Runs L0 to L4. A rebuild never overwrites a human edit; it stores the new suggestion beside it (`model_value`). |
+| POST | `/projects/{pid}/ruleset/build` | `{}` | `202 {job_id}` | S3 done | Runs L0 to L4 on the worker (job kind `ruleset_build`, `tenderer: null`); the parse is cached under the project. The result is the draft: a new one, or the open one replaced. A rebuild never overwrites a human edit: an edited item keeps its rules, template and notes, a corrected slot gets the new suggestion as `model_value`, a person's own items and gap reasons stay. `409` while a build runs or without tender documents. |
 | GET | `/projects/{pid}/ruleset` | `?version=` | `RuleSet` | S2 done | Latest draft by default; a confirmed version by number. Typed as `RuleSet` in `openapi.json`; `updated_by` is the draft's last editor (I1.6, I1.17). |
 | GET | `/projects/{pid}/ruleset/versions` | | `[RuleSetVersion]` | S2 done | ISO datetimes; `updated_by` is the draft's last editor (I1.17). |
 | GET | `/projects/{pid}/ruleset/diff` | `?from=&to=` | `Diff` | S3 done | Items added, removed, changed; per changed item the fields and the edit record, `null` when the rule builder made the change (I1.14). |
@@ -54,7 +54,7 @@ The React UI is built against this file through `web/mock/`, which answers exact
 | GET | `/projects/{pid}/documents` | | `[Document]` | S2 | S2 done
 | GET | `/projects/{pid}/documents/{doc_id}/pages` | | `[Page]` | S2 | S2 done
 | GET | `/projects/{pid}/documents/{doc_id}/pages/{n}/image` | `?highlight=` | `image/png` | S2 done | Served through a signed, short-lived URL returned inside `BidResult` and `Page`; the API key never appears in a query string. A `PageCitation` with a `quote` carries `highlight` inside the signature: use `image_url` as given. A page-only link with a client-appended `highlight` still opens (pre-S2 clients); that fallback goes once the web UI uses the signed link. |
-| GET | `/projects/{pid}/documents/{doc_id}/nodes` | | `[Node]` | S3 | Clause tree from L0: `{node_id, parent_id, kind, number, title, page, box}`. |
+| GET | `/projects/{pid}/documents/{doc_id}/nodes` | | `[Node]` | S3 done | Clause tree from L0: `{node_id, parent_id, kind, number, title, page, box}`; `409 not_built` before the first build. |
 
 ## Scoring, report, audit
 
@@ -87,6 +87,7 @@ API-only models, defined in `backend/schemas_api.py` and exported into `docs/ope
 - `Project {id, name, synthetic, data_class, created, status: ProjectStatus {state: idle|running|waiting|done|error, detail?, updated?}, tender_files?, bidders?, extracted?, has_rubric?, has_evaluation?, reports?}`; `GET /projects` lists them without the detail fields; `status` is an object (`status.state` is `idle|running|waiting|done|error`), not a string (I1.6)
 - `RuleSetVersion {version, status, parent_version, created_by, created_at, confirmed_by, confirmed_at, updated_by}`, ISO datetimes (I1.17)
 - `NotePatch {note: ItemNote, reason}`, `ReasonBody {reason}` (the DELETE bodies and the gap PATCH)
+- `Node {node_id, parent_id?, kind, number?, title?, page?, box?}` (the marker's box in PDF points), `BuildResponse {job_id}`
 - `ErrorBody {error: {code, message, details}, detail}` (I1.9)
 - `BidResult {tenderer, run_id, ruleset_version, fields: {letter: {field: FieldValue}}, verdicts: {letter: Verdict}, stage1: StageSummary, stage2?: StageSummary, trace?, cost: {calls, cache_hits, usd, waited_seconds}, review_confirmed_by?}`
 - `FieldValue {value, redacted, confidence, page?: PageCitation, correction?: {value, by, reason, model_value}, model_value?}`

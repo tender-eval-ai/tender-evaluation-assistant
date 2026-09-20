@@ -217,6 +217,19 @@
         "title": "Body_upload_tender_projects__pid__tender_post",
         "type": "object"
       },
+      "BuildResponse": {
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id"
+        ],
+        "title": "BuildResponse",
+        "type": "object"
+      },
       "CheckRequest": {
         "properties": {
           "tenderers": {
@@ -1340,6 +1353,87 @@
           "name"
         ],
         "title": "NewProject",
+        "type": "object"
+      },
+      "Node": {
+        "description": "One node of the clause tree L0 parsed from a document (`GET /documents/{doc_id}/nodes`).",
+        "properties": {
+          "box": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "number"
+                },
+                "maxItems": 4,
+                "minItems": 4,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "[x0, y0, x1, y1] of the marker, PDF points",
+            "title": "Box"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "node_id": {
+            "title": "Node Id",
+            "type": "string"
+          },
+          "number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the marker as printed: a clause number or a label like (a)",
+            "title": "Number"
+          },
+          "page": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Page"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "node_id",
+          "kind"
+        ],
+        "title": "Node",
         "type": "object"
       },
       "Normalise": {
@@ -3516,6 +3610,59 @@
         "summary": "List Documents"
       }
     },
+    "/projects/{pid}/documents/{doc_id}/nodes": {
+      "get": {
+        "description": "The clause tree L0 parsed from one document, from the build job's cached parse.",
+        "operationId": "list_nodes_projects__pid__documents__doc_id__nodes_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "doc_id",
+            "required": true,
+            "schema": {
+              "title": "Doc Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Node"
+                  },
+                  "title": "Response List Nodes Projects  Pid  Documents  Doc Id  Nodes Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Nodes"
+      }
+    },
     "/projects/{pid}/documents/{doc_id}/pages": {
       "get": {
         "operationId": "list_pages_projects__pid__documents__doc_id__pages_get",
@@ -4587,6 +4734,78 @@
           }
         },
         "summary": "Get Ruleset"
+      }
+    },
+    "/projects/{pid}/ruleset/build": {
+      "post": {
+        "description": "L0 to L4 on the tender's documents, as a job on the worker. The result is the draft\n(a new one, or the open one replaced), never overwriting a person's edits: an edited\nitem keeps its version and a corrected slot gets the new suggestion as `model_value`.\n409 while a build is running or when the project has no tender documents.",
+        "operationId": "build_projects__pid__ruleset_build_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-user",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-User"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BuildResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Build"
       }
     },
     "/projects/{pid}/ruleset/confirm": {

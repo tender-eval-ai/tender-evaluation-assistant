@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
 STATES = ("queued", "running", "paused", "done", "failed", "dead")
+TENDER = "_tender"     # the tenderer of a run that belongs to the tender itself (a rule-set build)
 
 
 @dataclass
@@ -81,6 +82,6 @@ class Pipeline:
 
     kind: str
     steps: list[Step]
-    fields_key: str
-    decide: Callable[[dict, dict], dict]                   # (fields, ruleset spec) -> verdict; no LLM
+    fields_key: str | None                                 # None: the run stores no result (a build saves its own draft)
+    decide: Callable[[dict, dict], dict] | None = None     # (fields, ruleset spec) -> verdict; no LLM
     resume_when: dict[str, Callable[[Any, dict], bool]] = field(default_factory=dict)   # reason -> (store, run) -> bool

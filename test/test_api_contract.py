@@ -34,10 +34,12 @@ def test_the_s2_routes_are_in_the_snapshot():
                  "/projects/{pid}/bids/{tenderer}/results", "/projects/{pid}/ruleset", "/projects/{pid}/ruleset/draft",
                  "/projects/{pid}/ruleset/confirm", "/projects/{pid}/ruleset/versions", "/projects/{pid}/documents",
                  "/projects/{pid}/documents/{doc_id}/pages", "/projects/{pid}/documents/{doc_id}/pages/{n}/image",
-                 "/projects/{pid}/events"]:
+                 "/projects/{pid}/events", "/projects/{pid}/ruleset/build", "/projects/{pid}/documents/{doc_id}/nodes",
+                 "/projects/{pid}/ruleset/items/{letter}", "/projects/{pid}/ruleset/diff", "/projects/{pid}/ruleset/gaps"]:
         assert path in spec["paths"], path
     assert {"BidResult", "Job", "Verdict", "PageCitation", "Document", "Page", "Event", "Project", "Progress",
-            "RuleSet", "RuleSetItem", "PartSpec", "RuleSetVersion", "ErrorBody"} <= set(spec["components"]["schemas"])
+            "RuleSet", "RuleSetItem", "PartSpec", "RuleSetVersion", "ErrorBody", "Node", "BuildResponse", "ItemPatch", "NewItem",
+            "Diff"} <= set(spec["components"]["schemas"])
 
 
 def test_errors_are_the_envelope_in_the_snapshot_too():

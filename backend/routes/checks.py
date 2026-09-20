@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends
 
 from app.checks.extract_item_l import PREFIX as ITEM_L_PREFIX
 from app.ingest import QuoteBox, locate_quote
-from app.jobs.models import RunStatus
+from app.jobs.models import TENDER, RunStatus
 from backend import deps, signing
 from backend.errors import ApiError
 from backend.times import when
@@ -22,7 +22,8 @@ ITEM_OF_PREFIX = {ITEM_L_PREFIX: "l"}
 
 
 def _job(s: RunStatus, created_at: float | None = None) -> Job:
-    return Job(job_id=s.run_id, kind=s.kind, project=s.project, tenderer=s.tenderer, state=s.state, step=s.step,
+    return Job(job_id=s.run_id, kind=s.kind, project=s.project, tenderer=None if s.tenderer == TENDER else s.tenderer,
+               state=s.state, step=s.step,
                progress=s.progress or {}, attempt=s.attempt, error=s.error, ruleset_version=s.ruleset_version,
                created_at=when(created_at or s.updated_at), updated_at=when(s.updated_at))
 
