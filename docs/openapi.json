@@ -980,6 +980,7 @@
                 "type": "null"
               }
             ],
+            "description": "per field after V4: 1 for a value found on the text layer, the fraction of its words found otherwise; on a scan the mean of the two reads when they agree, half the lower when they differ",
             "title": "Confidence"
           },
           "correction": {
@@ -1012,6 +1013,16 @@
           },
           "value": {
             "title": "Value"
+          },
+          "verification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Verification"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "FieldValue",
@@ -2753,6 +2764,53 @@
           "evidence"
         ],
         "title": "Verdict",
+        "type": "object"
+      },
+      "Verification": {
+        "description": "V4's check of a value (S4). On a page with a text layer the value was looked for\nverbatim: found, `verified` with the quote on the citation and confidence 1. On a scanned\npage a second, independent read was compared with the first: agreement verifies,\ndisagreement leaves the value unverified with `second_value` kept for the reviewer.\n`verified` is null when nothing could be checked (redacted, blank on a text page, a\nsignature on a text layer, no page). An unverified value is `needs_review`.",
+        "properties": {
+          "method": {
+            "anyOf": [
+              {
+                "enum": [
+                  "text_layer",
+                  "second_read"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Note"
+          },
+          "second_value": {
+            "title": "Second Value"
+          },
+          "verified": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified"
+          }
+        },
+        "title": "Verification",
         "type": "object"
       }
     }

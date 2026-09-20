@@ -68,13 +68,30 @@ class Correction(BaseModel):
     model_value: Any = None
 
 
+class Verification(BaseModel):
+    """V4's check of a value (S4). On a page with a text layer the value was looked for
+    verbatim: found, `verified` with the quote on the citation and confidence 1. On a scanned
+    page a second, independent read was compared with the first: agreement verifies,
+    disagreement leaves the value unverified with `second_value` kept for the reviewer.
+    `verified` is null when nothing could be checked (redacted, blank on a text page, a
+    signature on a text layer, no page). An unverified value is `needs_review`."""
+
+    verified: bool | None = None
+    method: Literal["text_layer", "second_read"] | None = None
+    second_value: Any = None
+    note: str | None = None
+
+
 class FieldValue(BaseModel):
     value: Any = None
     redacted: bool = False
-    confidence: float | None = None
+    confidence: float | None = Field(default=None, description="per field after V4: 1 for a value found on the "
+                                     "text layer, the fraction of its words found otherwise; on a scan the mean "
+                                     "of the two reads when they agree, half the lower when they differ")
     page: PageCitation | None = None
     correction: Correction | None = None
     model_value: Any = None
+    verification: Verification | None = None
 
 
 class CheckedField(BaseModel):

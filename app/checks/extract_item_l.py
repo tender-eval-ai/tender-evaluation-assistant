@@ -7,10 +7,19 @@ from pydantic import BaseModel, Field
 
 from app.checks.pages import read_png
 from app.checks.resolve import ItemPages
+from app.checks.verify import FieldSpec
 
 PROMPT_VERSION = "extract-l-v2"   # v2: the model is asked for its confidence
 PREFIX = "noncollusive_certificate"
 FIELDS = ("document", "tenderer_name", "signature", "date")
+# What V4 checks, and what a second read is asked for on a scanned page.
+VERIFY = (
+    FieldSpec(f"{PREFIX}.document", "the certificate's heading as printed"),
+    FieldSpec(f"{PREFIX}.tenderer_name", "the tenderer's name as written on the certificate"),
+    FieldSpec(f"{PREFIX}.signature", "the printed name or title next to the signature; 'signature present' when only "
+              "a signature or chop is visible; null when it is not signed", presence=True),
+    FieldSpec(f"{PREFIX}.date", "the date as printed next to the signature"),
+)
 
 SYSTEM = (
     "You read the Non-collusive Tendering Certificate in ONE tenderer's offer from the page images given. "

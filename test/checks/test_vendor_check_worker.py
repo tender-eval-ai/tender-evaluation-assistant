@@ -65,7 +65,7 @@ def test_a_vendor_check_runs_through_the_worker_and_stores_the_engine_verdict(wo
     status = runner.status(run)
     assert status.step == "await_ruleset" and status.progress == {"reason": "ruleset_confirmed"}
     steps = runner.store.steps(run)
-    assert steps["done"] == ["render", "triage", "resolve", "extract"] and len(steps["data"]["pages"]) == 16
+    assert steps["done"] == ["render", "triage", "resolve", "extract", "verify"] and len(steps["data"]["pages"]) == 16
     assert runner.confirm_ruleset(PID) == 1
     assert _wait(runner, run, "done", "failed", "dead"), runner.status(run)
     result = runner.results(run)

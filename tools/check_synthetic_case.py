@@ -5,8 +5,8 @@ tenderer on the worker, and the results.
     python tools/check_synthetic_case.py                       # against http://localhost:8000
     python tools/check_synthetic_case.py --api http://host:8000 --key sesame --tenderers Tenderer_B
 
-Prints one line per tenderer: the verdict for item (l), the signature read, its page, and
-the model calls the check cost. Exit code 1 if a job failed or the API refused a step."""
+Prints one line per tenderer: the verdict for item (l), the signature read, its page, its
+confidence and whether V4 verified it, and the model calls the check cost. Exit code 1 if a job failed or the API refused a step."""
 from __future__ import annotations
 
 import argparse
@@ -83,15 +83,18 @@ def run(api: Api, case: str = "synthetic_tender", ruleset_path: Path = DEFAULT_R
         signature = res["fields"].get("l", {}).get("signature", {})
         rows.append({"tenderer": tenderer, "state": "done", "outcome": verdict["outcome"], "reason": verdict["reason"],
                      "signature": signature.get("value"), "page": (signature.get("page") or {}).get("page"),
+                     "confidence": signature.get("confidence"), "verified": (signature.get("verification") or {}).get("verified"),
                      "calls": res["cost"].get("calls"), "usd": res["cost"].get("usd")})
     return rows
 
 
 def table(rows: list[dict]) -> str:
-    lines = [f"{'tenderer':<12} {'state':<7} {'item (l)':<13} {'signature':<24} {'page':>4} {'calls':>5} {'usd':>8}  reason"]
+    lines = [f"{'tenderer':<12} {'state':<7} {'item (l)':<13} {'signature':<24} {'page':>4} {'conf':>5} {'verified':<8} "
+             f"{'calls':>5} {'usd':>8}  reason"]
     for r in rows:
         lines.append(f"{r['tenderer']:<12} {r['state']:<7} {r.get('outcome', '-'):<13} {str(r.get('signature', '-')):<24} "
-                     f"{str(r.get('page', '-')):>4} {str(r.get('calls', '-')):>5} {str(r.get('usd', '-')):>8}  "
+                     f"{str(r.get('page', '-')):>4} {str(r.get('confidence', '-')):>5} {str(r.get('verified', '-')):<8} "
+                     f"{str(r.get('calls', '-')):>5} {str(r.get('usd', '-')):>8}  "
                      f"{r.get('reason') or r.get('error') or ''}")
     return "\n".join(lines)
 

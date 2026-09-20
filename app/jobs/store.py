@@ -10,6 +10,7 @@ from typing import Any, Callable
 import psycopg
 from psycopg.types.json import Json
 
+from app.checks.fields import is_meta
 from app.jobs.models import Result, RunStatus
 
 _RUN_COLS = ("run_id", "project", "tenderer", "kind", "state", "step", "progress", "attempt", "job_id",
@@ -303,4 +304,10 @@ def _same_verdict(a: dict, b: dict) -> bool:
 
 
 def _apply(fields: dict, corrections: dict) -> dict:
-    return {**fields, **{k: v["value"] for k, v in corrections.items()}}
+    """The fields as the engine should see them: each corrected key holds the person's value,
+    and its V4 record is dropped (a person's value is not the model's reading to verify)."""
+    out = {**fields, **{k: v["value"] for k, v in corrections.items()}}
+    for k in corrections:
+        if not is_meta(k):
+            out[f"{k}_verification"] = None
+    return out

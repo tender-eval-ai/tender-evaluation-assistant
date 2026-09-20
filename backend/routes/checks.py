@@ -8,6 +8,7 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends
 
 from app.checks.extract_item_l import PREFIX as ITEM_L_PREFIX
+from app.checks.fields import is_meta
 from app.ingest import QuoteBox, locate_quote
 from app.jobs.models import RunStatus, is_project_run
 from backend import deps, signing
@@ -105,7 +106,7 @@ def _bid_result(pid: str, pdir, run: dict, result, steps: dict) -> BidResult:
 
     fields: dict[str, dict[str, FieldValue]] = defaultdict(dict)
     for key, value in result.fields.items():
-        if any(key.endswith(s) for s in ("_redacted", "_confidence", "_page", "_quote")):
+        if is_meta(key):
             continue
         prefix, _, name = key.rpartition(".")
         letter = ITEM_OF_PREFIX.get(prefix)
@@ -119,7 +120,8 @@ def _bid_result(pid: str, pdir, run: dict, result, steps: dict) -> BidResult:
             redacted=bool(result.fields.get(f"{key}_redacted")),
             confidence=result.fields.get(f"{key}_confidence"),
             page=cite(page_ref, result.fields.get(f"{key}_quote") or shown),
-            correction=correction, model_value=value if correction else None)
+            correction=correction, model_value=value if correction else None,
+            verification=None if correction else result.fields.get(f"{key}_verification"))
     v = result.verdict
     # The engine's own "field" is display text ("tenderer name") and may be reworded; the
     # contract's `field` is the key into BidResult.fields[letter], which is built above

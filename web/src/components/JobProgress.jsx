@@ -5,6 +5,7 @@ const STEP_LABEL = {
   triage: "Labelling the offer's pages",
   resolve: "Finding which page(s) match each requirement",
   extract: "Reading values off the vendor's submission",
+  verify: "Checking the values read against the pages",
   evaluate: "Checking against the rules",
 };
 

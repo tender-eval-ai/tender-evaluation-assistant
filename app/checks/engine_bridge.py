@@ -8,7 +8,7 @@ the engine stay untouched by each other."""
 from __future__ import annotations
 
 from app.engine.core import evaluate_item
-from app.engine.field_result import worst_status
+from app.engine.field_result import FieldResult, overall_status, status_counts, worst_status
 from app.rulesets.schema import RuleSet, RuleSetItem, Template, TemplateRule
 
 
@@ -46,11 +46,25 @@ def rules_doc(item: RuleSetItem, template: Template | None = None) -> dict:
             "consequence_tiers": tiers, "rules": [engine_rule(r) for r in item.rules]}
 
 
+def apply_verification(checked: list[FieldResult], fields: dict) -> None:
+    """V4's rule, code not engine: a value the verifier could not confirm (`_verification.verified`
+    is False) is `needs_review` whatever the engine said, never a pass and never a
+    disqualification; the reason is the verifier's note. A field without a verification
+    record (an older result, a person's correction) is left to the engine."""
+    for f in checked:
+        record = fields.get(f"{f.field_id}_verification") or {}
+        if record.get("verified") is False and f.status in ("pass", "disqualified"):
+            f.status = "needs_review"
+            f.note = f"unverified: {record.get('note') or 'the two readings differ'}"
+
+
 def evaluate(item: RuleSetItem, fields: dict, template: Template | None = None) -> dict:
     """The verdict for one item: the engine's overall status (dormant fields do not
     count against a tender as submitted today), the worst status including dormant,
-    every checked field with its status and note, and the reasons a reviewer reads."""
+    every checked field with its status and note, and the reasons a reviewer reads.
+    V4's unverified values are downgraded first (`apply_verification`)."""
     result = evaluate_item([rules_doc(item, template)], fields, item.letter)
+    apply_verification(result.fields, fields)
     checked = [{"field_id": f.field_id, "field": f.field, "status": f.status, "note": f.note, "value": f.value,
                 "redacted": f.redacted, "stage": f.stage,
                 "follow_up": None if f.follow_up is None else vars(f.follow_up),
@@ -58,9 +72,9 @@ def evaluate(item: RuleSetItem, fields: dict, template: Template | None = None) 
     return {
         "item": item.letter,
         "part": item.part.value,
-        "outcome": result.overall_status,
+        "outcome": overall_status(result.fields),
         "worst": worst_status([f["status"] for f in checked]),
-        "counts": result.status_counts,
+        "counts": status_counts(result.fields),
         "rule_ids": [r.id for r in item.rules],
         "fields": checked,
         "reasons": [f["note"] for f in checked if f["status"] != "pass" and f["note"]],
