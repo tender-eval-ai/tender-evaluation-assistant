@@ -267,6 +267,15 @@ def _file_title(source_file: str | None) -> list[str]:
 
 
 _TAIL_WORDS = 5
+# A head that names a container of its own inside another document, rather than
+# the first words of a label that wrapped: "Annex 1 to the", "Supplement to the".
+# An annex or appendix named by an identifier is one of these; named by nothing
+# ("Appendix to the ...") or by a title ("Annex (Details of Local Support) of
+# ...") it is exactly how a wrapped footer label reads, and both of those are
+# real wrapped labels on Tender 3. See `CitationIndex._truncated_scope`.
+_CONTAINER_HEAD = re.compile(
+    r"(?:annex|appendix|supplement|schedule)\s+(?:\d{1,3}|[a-z]|[ivx]{1,4})\s+(?:to|of)\s+the"
+    r"|(?:supplement|schedule)\s+(?:to|of)\s+the")
 _ANNEX_HEADING = re.compile(r"^\s*(Annex\s+\S+\s+(?:to|of)\s+the\s+[^\n]+?)\s*$", re.M)
 
 
@@ -351,9 +360,17 @@ class CitationIndex:
         parenthesised title. A known name of at
         least five words that ends the cited name is taken for it; shorter tails ("Terms
         of Tender" at the end of "Annex A to the Terms of Tender") are real documents
-        of their own, so the longest matching tail wins and short ones never match."""
+        of their own, so the longest matching tail wins and short ones never match.
+
+        A head that names a container of its own is not a wrapped label: "Annex 1 to
+        the <X>" and "Supplement to the <X>" are parts of <X>, not <X>, so dropping
+        the head resolved a paragraph of an annex that has no node to <X>'s own
+        clause of that number - a wrong location, where an unresolved citation is at
+        least visible as `unresolved` in what locate reports."""
         words = key.split()
         for start in range(1, len(words) - _TAIL_WORDS + 1):
+            if _CONTAINER_HEAD.fullmatch(" ".join(words[:start])):
+                continue
             prefixes = self.scopes.get(" ".join(words[start:]))
             if prefixes:
                 return prefixes
