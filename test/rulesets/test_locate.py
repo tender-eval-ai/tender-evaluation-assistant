@@ -149,6 +149,15 @@ def test_intro_range_and_roman_sub_items_are_not_items():
     assert [m.group(1) for m in _item_starts("\n(h) x\n(i) sub\n(ii) sub\n(i) real\n(j) y")] == ["h", "i", "j"]
 
 
+def test_a_deep_roman_sub_list_does_not_fabricate_items_v_and_x():
+    """(v) and (x) are roman numerals too, on a schedule whose items reach (u)."""
+    sub_list = "\n(i) sub\n(ii) sub\n(iii) sub\n(iv) sub\n(v) sub"
+    assert [m.group(1) for m in _item_starts(f"\n(s) x\n(t) y\n(u) z{sub_list}")] == ["s", "t", "u"]
+    assert [m.group(1) for m in _item_starts("\n(g) x\n(viii) sub\n(ix) sub\n(x) sub")] == ["g"]
+    # A real item (v) or (x), with no roman sub-list before it, still counts.
+    assert [m.group(1) for m in _item_starts("\n(t) a\n(u) b\n(v) c\n(w) d")] == ["t", "u", "v", "w"]
+
+
 def test_page_header_is_stripped_only_when_it_is_a_header():
     top = f"Tender Ref.: SYN-1\n{FOOTER} Page 1 of 2\nPart A\n(a) x"
     assert _strip_page_header(top, FOOTER) == "Part A\n(a) x"

@@ -59,6 +59,9 @@ SCHEDULE_NAME = "Completeness Check Schedule"
 _PART_HEADING_PATTERN = re.compile(r"\nPart ([A-Z])\b")
 _LETTERED_ITEM_PATTERN = re.compile(r"\n\(([a-z])\)\s*")
 _ROMAN_II = re.compile(r"\n\(ii\)")
+# The roman numeral that must have come just before, for the two single-letter
+# markers that are also roman numerals deep in a sub-list.
+_ROMAN_PREDECESSOR = {"v": re.compile(r"\n\(iv\)"), "x": re.compile(r"\n\(ix\)")}
 _TITLE_CHARS = 120
 
 
@@ -169,14 +172,23 @@ def _item_starts(block_text: str) -> list[re.Match]:
     Items run in alphabetical order, so the items are the longest run of markers whose
     letters go up one at a time; where two markers could continue the run, the later
     one wins (the intro's mention comes before the item). A roman "(i)" followed by
-    "(ii)" is a sub-item even when no item (i) comes after it.
+    "(ii)" is a sub-item even when no item (i) comes after it, and so are the other
+    two roman numerals that are single letters: "(v)" after "(iv)" and "(x)" after
+    "(ix)". A schedule long enough to reach item (u) - Tender 3's does - then
+    continues the alphabetical run into its last item's own sub-list and reports a
+    fabricated item (v) holding a fragment of (u).
     """
     matches = []
     found = list(_LETTERED_ITEM_PATTERN.finditer(block_text))
     for index, match in enumerate(found):
         following = block_text[match.end():found[index + 1].start() if index + 1 < len(found) else None]
-        if not (match.group(1) == "i" and _ROMAN_II.search(following)):
-            matches.append(match)
+        preceding = block_text[found[index - 1].end() if index else 0:match.start()]
+        letter = match.group(1)
+        if letter == "i" and _ROMAN_II.search(following):
+            continue
+        if letter in _ROMAN_PREDECESSOR and _ROMAN_PREDECESSOR[letter].search(preceding):
+            continue
+        matches.append(match)
     if not matches:
         return []
     length = [1] * len(matches)
