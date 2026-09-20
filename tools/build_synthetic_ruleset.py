@@ -15,7 +15,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tools.check_synthetic_case import Api, log  # noqa: E402
+from tools.check_synthetic_case import Api  # noqa: E402
+
+
+def log(message: str) -> None:
+    print(message, file=sys.stderr, flush=True)
 
 
 def main() -> int:
@@ -26,14 +30,16 @@ def main() -> int:
     parser.add_argument("--project", help="reuse a project id instead of importing the case again")
     parser.add_argument("--timeout", type=float, default=1800.0)
     args = parser.parse_args()
-    api = Api(args.api, args.key)
+    import requests
+
+    api = Api(requests.Session(), args.api, args.key)
     if args.project:
         pid = args.project
     else:
         pid = api.call("POST", "/projects", json={"name": f"synthetic build {args.case}", "data_class": "synthetic"})["id"]
         imported = api.call("POST", f"/projects/{pid}/import", json={"path": args.case, "kind": "case"})
         log(f"project {pid}: {imported['tender_pdfs']} tender documents")
-    job_id = api.call("POST", f"/projects/{pid}/ruleset/build", headers={"X-User": "chenyu"})["job_id"]
+    job_id = api.call("POST", f"/projects/{pid}/ruleset/build", user="chenyu")["job_id"]
     log(f"build job {job_id}")
     started, last = time.time(), ""
     while True:
