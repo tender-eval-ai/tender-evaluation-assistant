@@ -22,6 +22,7 @@ The result is shaped to the rule-set contract (`schema.py`): `LocatedItem` carri
 into one with `as_rule_set_item`. A citation that did not resolve is kept, as written,
 in `unresolved` rather than dropped, so a missing clause is visible.
 """
+import os
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -38,7 +39,11 @@ from app.rulesets.schema import Citation, DataClass, ItemStatus, RuleSetItem, Pa
 # This is what makes document identification work on a combined single-PDF tender
 # (Tender 3, 366 pages, one filename) where the filename itself carries no
 # document-name signal at all.
-_PAGE_FOOTER_PATTERN = re.compile(r"\n([^\n]+?)\s{1,}Page \d+ of \d+")
+#
+# The line may be the page's first: the loader strips the extracted text, so a page
+# whose text layer starts with the label has no newline before it and the page was
+# read as having no document label at all.
+_PAGE_FOOTER_PATTERN = re.compile(r"(?:^|\n)([^\n]+?)\s{1,}Page \d+ of \d+")
 
 
 def _page_footer_text(page) -> str:
@@ -59,6 +64,9 @@ SCHEDULE_NAME = "Completeness Check Schedule"
 _PART_HEADING_PATTERN = re.compile(r"\nPart ([A-Z])\b")
 _LETTERED_ITEM_PATTERN = re.compile(r"\n\(([a-z])\)\s*")
 _ROMAN_II = re.compile(r"\n\(ii\)")
+# The roman numeral that must have come just before, for the two single-letter
+# markers that are also roman numerals deep in a sub-list.
+_ROMAN_PREDECESSOR = {"v": re.compile(r"\n\(iv\)"), "x": re.compile(r"\n\(ix\)")}
 _TITLE_CHARS = 120
 
 
@@ -159,24 +167,33 @@ def _read_schedule_text(schedule_pages: list) -> list[_TextPart]:
 def _item_starts(block_text: str) -> list[re.Match]:
     """The markers that really open an item, in order.
 
-    A line-start "(x)" is not always an item. The Part intro names its own range
-    ("items (d) to (o) specified below"), and when that wraps right before a letter
-    the port kept only the last match per letter, since the intro always comes first
-    (Tender 3 p204). That rule fails the other way round: an item's own roman
-    sub-items (i), (ii) come after it, and "(i)" is also a letter - a later item's
-    "(i)" sub-item would replace the real item (i) and hand its text to (h).
+    A line-start "(x)" is not always an item. The Part intro names its own range of
+    items, and when that range wraps right before a letter the port kept only the last
+    match per letter, since the intro always comes first. That rule fails the other way
+    round: an item's own roman sub-items (i), (ii) come after it, and "(i)" is also a
+    letter - a later item's "(i)" sub-item would replace the real item (i) and hand
+    its text to (h).
 
     Items run in alphabetical order, so the items are the longest run of markers whose
     letters go up one at a time; where two markers could continue the run, the later
     one wins (the intro's mention comes before the item). A roman "(i)" followed by
-    "(ii)" is a sub-item even when no item (i) comes after it.
+    "(ii)" is a sub-item even when no item (i) comes after it, and so are the other
+    two roman numerals that are single letters: "(v)" after "(iv)" and "(x)" after
+    "(ix)". A schedule long enough to reach item (u) - Tender 3's does - then
+    continues the alphabetical run into its last item's own sub-list and reports a
+    fabricated item (v) holding a fragment of (u).
     """
     matches = []
     found = list(_LETTERED_ITEM_PATTERN.finditer(block_text))
     for index, match in enumerate(found):
         following = block_text[match.end():found[index + 1].start() if index + 1 < len(found) else None]
-        if not (match.group(1) == "i" and _ROMAN_II.search(following)):
-            matches.append(match)
+        preceding = block_text[found[index - 1].end() if index else 0:match.start()]
+        letter = match.group(1)
+        if letter == "i" and _ROMAN_II.search(following):
+            continue
+        if letter in _ROMAN_PREDECESSOR and _ROMAN_PREDECESSOR[letter].search(preceding):
+            continue
+        matches.append(match)
     if not matches:
         return []
     length = [1] * len(matches)
@@ -260,6 +277,18 @@ def _file_name(path: str | None) -> str:
     return Path(path or "").name
 
 
+def _file_ref(source: str | None, root: Path | None) -> str:
+    """How a `Citation` names a file: project-relative ("tender/09 Schedules.pdf"),
+    the shape `app.ingest.Document.path` uses, so a caller can match a citation to the
+    document it read. That comes from `root` when the caller says where the project
+    starts, and otherwise from the relative path `parse_tender` records on each node.
+    A bare name is the last resort."""
+    path = Path(source or "")
+    if root and path.is_relative_to(root):
+        return str(path.relative_to(root))
+    return path.name if path.is_absolute() else str(path)
+
+
 def describe(citation) -> str:
     """A parsed citation written back out, for `unresolved` ("Part 4 of the Tender Form")."""
     if not citation.path:
@@ -290,11 +319,21 @@ class _NodeTable:
         return out
 
     def quote(self, node: dict) -> str:
-        """The node's own text, or for a container (a document, a Part heading with no
-        text of its own) the first text inside it - verbatim either way."""
-        for current in self.subtree(node):
-            if (current.get("text") or "").strip():
-                return current["text"].strip()
+        """The node's own text, verbatim; failing that its own heading.
+
+        A quote is checked against the node it cites (`app.rulesets.schema`), so it
+        has to be text of that node. Only a whole document, which has no text of its
+        own at all, is quoted by the first text inside it; a Part or a heading with no
+        text is quoted by its own title, not by its first child's text - which reads as
+        the cited node saying something it does not say, and fails that check.
+        """
+        own = (node.get("text") or "").strip()
+        if own:
+            return own
+        if node["kind"] in ("document", "subdocument"):
+            for current in self.subtree(node)[1:]:
+                if (current.get("text") or "").strip():
+                    return current["text"].strip()
         return normalize_whitespace(node.get("title") or node.get("doc_name") or "")
 
     def schedule_part(self, file: str, part: Part, pages: set[int]) -> dict | None:
@@ -364,8 +403,9 @@ def locate(pages, nodes: list[dict], *, data_class: DataClass, root: Path | None
 
     `pages` are `app.parsing.loader.Page`s for every file of the tender; `nodes` are
     `parse_document` nodes for the same files, each with `source_file` set (see
-    `parse_tender`). `root` makes `Citation.file` relative to the project; without it
-    the file name is used.
+    `parse_tender`). `root` says where the project starts, so `Citation.file` is
+    project-relative ("tender/09 Schedules.pdf"); without it the relative path
+    `parse_tender` recorded on the nodes is used, and failing that the file name.
     """
     schedule_pages = find_completeness_check_schedule_pages(pages)
     if not schedule_pages:
@@ -374,12 +414,19 @@ def locate(pages, nodes: list[dict], *, data_class: DataClass, root: Path | None
     source = schedule_pages[0].source_file
     schedule_pages = [p for p in schedule_pages if p.source_file == source]
     file = _file_name(source)
-    relative = str(Path(source).relative_to(root)) if root and Path(source).is_relative_to(root) else file
     page_numbers = {p.page_number for p in schedule_pages}
 
     table = _NodeTable(nodes)
     own_scope = _schedule_scopes(table)
-    paths = {_file_name(p.source_file): p.source_file for p in pages}
+    # One file reference per file, by name: from the page's own path against `root`,
+    # or, with no root, from whatever path the parser recorded on the file's nodes.
+    refs = {_file_name(p.source_file): _file_ref(p.source_file, root) for p in pages}
+    if root is None:
+        for node in nodes:
+            recorded = node.get("source_file")
+            if recorded:
+                refs[_file_name(recorded)] = _file_ref(recorded, None)
+    relative = refs.get(file, file)
 
     def cite(node: dict | None, page: int, fallback_quote: str) -> Citation:
         quote = table.quote(node) if node else fallback_quote
@@ -388,10 +435,8 @@ def locate(pages, nodes: list[dict], *, data_class: DataClass, root: Path | None
                         data_class=data_class)
 
     def clause_citation(node: dict) -> Citation:
-        source_file = paths.get(_file_name(node.get("source_file")), node.get("source_file") or "")
-        path = Path(source_file)
-        clause_file = str(path.relative_to(root)) if root and path.is_relative_to(root) else path.name
-        return Citation(file=clause_file, page=node["page"], node_id=node["node_id"],
+        name = _file_name(node.get("source_file"))
+        return Citation(file=refs.get(name, name), page=node["page"], node_id=node["node_id"],
                         quote=table.quote(node) or node["node_id"], data_class=data_class)
 
     def clauses_of(node: dict | None, fallback_text: str) -> tuple[list[Citation], list[str]]:
@@ -426,17 +471,36 @@ def locate(pages, nodes: list[dict], *, data_class: DataClass, root: Path | None
     return Schedule(parts=parts)
 
 
-def parse_tender(pdfs: list[Path]) -> tuple[list, list[dict]]:
+def parse_tender(pdfs: list[Path], root: Path | None = None) -> tuple[list, list[dict]]:
     """Load and parse a tender's PDFs: (pages, nodes), each node tagged with the file
-    it came from. Slow (the layout model runs on every page)."""
+    it came from. Slow (the layout model runs on every page).
+
+    A node's `source_file` is the PDF's path relative to `root`, which defaults to the
+    folder holding the folder the PDFs sit in: "tender/09 Schedules.pdf", the shape
+    `app.ingest.Document.path` uses. A bare file name is not enough for a caller to
+    match a `Citation` to the document it read, and two tenders can hold files of the
+    same name."""
     from app.parsing.layout_document_index import parse_document
     from app.parsing.loader import load_pdf
 
+    root = Path(root) if root else _tender_root(pdfs)
     pages, nodes = [], []
     for pdf in pdfs:
         file_pages = load_pdf(pdf)
         pages.extend(file_pages)
+        resolved = Path(pdf).resolve()
+        source = str(resolved.relative_to(root)) if root and resolved.is_relative_to(root) else Path(pdf).name
         for node in parse_document(None, file_pages):
-            node["source_file"] = pdf.name
+            node["source_file"] = source
             nodes.append(node)
     return pages, nodes
+
+
+def _tender_root(pdfs: list[Path]) -> Path | None:
+    """The folder a tender's files are named against: the parent of the folder they
+    share, so a file in "<case>/tender/" is "tender/<name>.pdf"."""
+    folders = {Path(pdf).resolve().parent for pdf in pdfs}
+    if not folders:
+        return None
+    shared = Path(os.path.commonpath([str(folder) for folder in folders]))
+    return shared.parent if shared.parent != shared else None

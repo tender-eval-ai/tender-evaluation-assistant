@@ -17,7 +17,8 @@ from pathlib import Path
 import pytest
 
 from app.parsing.loader import Page
-from app.rulesets.locate import _item_starts, _strip_page_header, locate, parse_tender
+from app.rulesets.locate import (_item_starts, _strip_page_header, find_completeness_check_schedule_pages,
+                                 locate, parse_tender)
 from app.rulesets.schema import DataClass, ItemStatus, RuleSetItem, Part
 
 FOOTER = "Completeness Check Schedule"
@@ -112,6 +113,30 @@ def test_cited_paragraphs_resolve_to_their_nodes():
     assert [c.node_id for c in schedule.parts[0].clauses] == ["T:3.3"]
 
 
+def test_a_part_with_no_text_of_its_own_is_quoted_by_its_heading():
+    """A quote is checked against the node it cites, so it has to be that node's text:
+    a Part heading with no text is quoted by its title, not by its first child."""
+    price = "03 Sample Price.pdf"
+    pages = [_page(1, ["Tender Ref.: SYN-2", f"{FOOTER} Page 1 of 1", "Part A",
+                       "(a) The price, see Part B of the Sample Price Schedule."])]
+    nodes = [
+        _node("P", "document", 1, price),
+        _node("P:PB", "part", 1, price, number="B", doc_name="Sample Price Schedule"),
+        _node("P:PB:1", "clause", 1, price, number="1", doc_name="Sample Price Schedule",
+              text="1 Payment is made in arrears."),
+        _node("S", "document", 1, SCHED),
+        _node("S:PA", "part", 1, SCHED, number="A", part="Part A", doc_name=FOOTER, text="Part A"),
+        _node("S:PA:(a)", "subitem", 1, SCHED, label="(a)", part="Part A", doc_name=FOOTER,
+              text="(a) The price, see Part B of the Sample Price Schedule."),
+    ]
+    nodes[1]["title"] = "PAYMENT"
+
+    (clause,) = locate(pages, nodes, data_class=DataClass.SYNTHETIC).item("a").clauses
+
+    assert clause.node_id == "P:PB"
+    assert clause.quote == "PAYMENT"
+
+
 def test_a_citation_that_resolves_to_nothing_is_kept_as_written():
     item = _schedule().item("d")
 
@@ -149,6 +174,24 @@ def test_intro_range_and_roman_sub_items_are_not_items():
     assert [m.group(1) for m in _item_starts("\n(h) x\n(i) sub\n(ii) sub\n(i) real\n(j) y")] == ["h", "i", "j"]
 
 
+def test_a_deep_roman_sub_list_does_not_fabricate_items_v_and_x():
+    """(v) and (x) are roman numerals too, on a schedule whose items reach (u)."""
+    sub_list = "\n(i) sub\n(ii) sub\n(iii) sub\n(iv) sub\n(v) sub"
+    assert [m.group(1) for m in _item_starts(f"\n(s) x\n(t) y\n(u) z{sub_list}")] == ["s", "t", "u"]
+    assert [m.group(1) for m in _item_starts("\n(g) x\n(viii) sub\n(ix) sub\n(x) sub")] == ["g"]
+    # A real item (v) or (x), with no roman sub-list before it, still counts.
+    assert [m.group(1) for m in _item_starts("\n(t) a\n(u) b\n(v) c\n(w) d")] == ["t", "u", "v", "w"]
+
+
+def test_a_label_on_a_pages_first_line_is_still_the_page_footer():
+    """The loader strips a page's extracted text, so the label that names the document
+    has no newline before it when the text layer puts it first."""
+    first_line = _page(1, [f"{FOOTER} Page 1 of 1", "Part A", "(a) The signed offer form."])
+
+    assert find_completeness_check_schedule_pages([first_line]) == [first_line]
+    assert [i.letter for i in locate([first_line], [], data_class=DataClass.SYNTHETIC).items] == ["a"]
+
+
 def test_page_header_is_stripped_only_when_it_is_a_header():
     top = f"Tender Ref.: SYN-1\n{FOOTER} Page 1 of 2\nPart A\n(a) x"
     assert _strip_page_header(top, FOOTER) == "Part A\n(a) x"
@@ -164,20 +207,29 @@ def test_generated_pdf_end_to_end(tmp_path):
         spaced = [x for line in lines for x in (line, "")]
         return spaced + [""] * (LINES_PER_PAGE - 1 - len(spaced)) + [footer]
 
-    make_text_pdf(tmp_path / TERMS, page(["Sample Terms of Tender", "5. Samples", "5.1 The Tenderer shall supply one sample."],
-                                         "Sample Terms of Tender Page 1 of 1"))
-    make_text_pdf(tmp_path / SCHED, page([FOOTER, "Part A", "Items (a) and (b) below are required.",
-                                          "(a) The signed offer form.",
-                                          "(b) One sample under Paragraph 5.1 of the Sample Terms of Tender.",
-                                          "Part B", "Items (c) may be requested.", "(c) A brochure."],
-                                         f"{FOOTER} Page 1 of 1"))
-    pages, nodes = parse_tender([tmp_path / TERMS, tmp_path / SCHED])
+    (tmp_path / "tender").mkdir()
+    make_text_pdf(tmp_path / "tender" / TERMS,
+                  page(["Sample Terms of Tender", "5. Samples", "5.1 The Tenderer shall supply one sample."],
+                       "Sample Terms of Tender Page 1 of 1"))
+    schedule_lines = [FOOTER, "Part A", "Items (a) and (b) below are required.",
+                      "(a) The signed offer form.",
+                      "(b) One sample under Paragraph 5.1 of the Sample Terms of Tender.",
+                      "Part B", "Items (c) may be requested.", "(c) A brochure."]
+    make_text_pdf(tmp_path / "tender" / SCHED, page(schedule_lines, f"{FOOTER} Page 1 of 1"))
+    pages, nodes = parse_tender([tmp_path / "tender" / TERMS, tmp_path / "tender" / SCHED])
 
-    schedule = locate(pages, nodes, data_class=DataClass.SYNTHETIC, root=tmp_path)
+    schedule = locate(pages, nodes, data_class=DataClass.SYNTHETIC)
 
     assert [(i.letter, i.part) for i in schedule.items] == [("a", Part.A), ("b", Part.A), ("c", Part.B)]
     assert all(i.citation.node_id for i in schedule.items)
     assert [c.quote[:41] for c in schedule.item("b").clauses] == ["5.1 The Tenderer shall supply one sample."]
+    # Without a root, a file is still named the way app.ingest.Document.path names it,
+    # from the relative path parse_tender recorded.
+    assert schedule.item("b").citation.file == f"tender/{SCHED}"
+    assert [c.file for c in schedule.item("b").clauses] == [f"tender/{TERMS}"]
+    # A root the caller gives still wins.
+    assert locate(pages, nodes, data_class=DataClass.SYNTHETIC,
+                  root=tmp_path / "tender").item("b").citation.file == SCHED
 
 
 # ---------------------------------------------------------------- real tenders
