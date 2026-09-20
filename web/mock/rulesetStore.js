@@ -83,7 +83,7 @@ function record(kind, subject, before, after, user, reason) {
     after,
     user,
     reason,
-    at: Date.now() / 1000,
+    at: nowIso(),
   });
 }
 

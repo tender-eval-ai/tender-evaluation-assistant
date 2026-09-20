@@ -10,7 +10,7 @@ import rulesetDraft from "./fixtures/ruleset_draft.json";
 
 export const PID = "syn-2026-001";
 export const RULESET_VERSION = 1;
-const T0 = 1789646400; // 2026-09-17T12:00:00Z, seconds (the API's float timestamps)
+const T0 = "2026-09-17T12:00:00Z"; // every timestamp the API sends is an ISO datetime (api_contract.md, Timestamps)
 
 // Documents: doc_id is what backend/deps.py computes, sha1(<path relative to
 // the project>)[:12], so a fixture page can be compared with the real route.
