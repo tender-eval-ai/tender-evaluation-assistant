@@ -395,6 +395,9 @@ fastapi==0.141.1 \
     --hash=sha256:bfb91aa2d334c61cb35ba9a116fc123b3d3df31640b801cf57a7a78ec3f603b3 \
     --hash=sha256:e8822fc40db1e1858054d7a949a888695bc9bdce70139178e33bd2871a453ca1
     # via -r backend/requirements.txt
+flatbuffers==25.12.19 \
+    --hash=sha256:7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4
+    # via onnxruntime
 google-auth==2.58.0 \
     --hash=sha256:55e30cf15e737de92c5323d78cda8a83fcd57e7ffbaf900c4600039fd60a80fd \
     --hash=sha256:8a9c4645bb4c8e91668fb1934b95ae6a8687084232753639220ba9bf04a1610d
@@ -974,6 +977,10 @@ narwhals==2.26.0 \
     --hash=sha256:29326d74f107c347fd1009bd58e38d9f7c7c5b51e6de97bc93dbc325d9038b54 \
     --hash=sha256:6b9cadca82f375c7e4cf584fdc86ca25da54827307a9c58f94547ee6104b82dd
     # via altair
+networkx==3.6.1 \
+    --hash=sha256:26b7c357accc0c8cde558ad486283728b65b6a95d85ee1cd66bafab4c8168509 \
+    --hash=sha256:d47fbf302e7d9cbbb9e2555a0d267983d2aa476bac30e90dfbe5669bd57f3762
+    # via pymupdf-layout
 numpy==2.5.3 \
     --hash=sha256:012e66aca395d795496446e52aeeb5866312a5d4d3f27da270e5a0b43f70dc5c \
     --hash=sha256:09d5a423c71ad5feb5625844ad58050e35df43871004b52ac9c0ad44a56775be \
@@ -1042,9 +1049,37 @@ numpy==2.5.3 \
     --hash=sha256:fc36dc566135b5eceec4cf89758fcb719266a019ef07dae1754ae7c9f617ef3e \
     --hash=sha256:ffdc76bfcae6b255dff75202c5e7feaf95b40246bc0a17944facc1fecf9f79ab
     # via
+    #   onnxruntime
     #   pandas
     #   pydeck
+    #   pymupdf-layout
     #   streamlit
+onnxruntime==1.30.0 \
+    --hash=sha256:001ed726c9bd5e2bc92faade7d37d889e9606a350b7d5529f0227df2e3bb57fd \
+    --hash=sha256:05e4fc41711d1f4abd19a9124b5be7a65a506cb2670a7f14b16162ef13c58134 \
+    --hash=sha256:0edd0145a6e3fce8a1276491dc784d615e3c58bcb952c9b4e5c876d5c6a12ad7 \
+    --hash=sha256:16506cfa5d218850f2b46e0edce1b952121f2f84f8e0074dafe15f4787f0c8fb \
+    --hash=sha256:265de607ba6f9814264e1d5d413fa7069d70f48e3049b5e460b3b04bdfcef294 \
+    --hash=sha256:3bdd1752a8502ac1a7ccc6e878d16db6943df574d54ed7f01058a6806ae05be4 \
+    --hash=sha256:3f9e002417f1e3bbb31ed43dafa4f22ca1b2b68832244fdee192fcaa1ae19bca \
+    --hash=sha256:4b63041bd623a9a9ac5e353948436c6fa7f43edd12d6b4a4ebc340bca959ba93 \
+    --hash=sha256:5327cf6aa15a02bad805fac8bd6882a62571e8b72f6f2938a8f37e6bd1966ce9 \
+    --hash=sha256:67ad7f03433b6462c627d0f555dece80e6a26bc71e8542ced35cebd32142d1b7 \
+    --hash=sha256:6c32a000d5139a38ba9349030b0032e3331acb559d596b22738d9d2b343a2b83 \
+    --hash=sha256:83d543843cbd352cfa9996a6c7b92f8a480f114a18f95ff2a1acaf6921e85b6d \
+    --hash=sha256:86f940afc801ea9681a4da8af84fbe95e1d9ea7d80903952cc1bfad54faad38f \
+    --hash=sha256:8b611d24db2954545ce6bd9acd4670183cb368e4642450de7a9ab6474eb374ec \
+    --hash=sha256:8b6169c16a48429890d2f4a0c774ebf54dfe9066a998514aad0518a16d398547 \
+    --hash=sha256:bac3aee7b40acd805659fd81a2acd6096312d5b0f014c97ddfe75fb4c1644627 \
+    --hash=sha256:c389b6887fc95e0fcb80e89b156bc2cb18e662c29df55e9326fe64140e7d7b4f \
+    --hash=sha256:d2184fddb6798136e7c478244391ca82443f5c757f59f15bb9e5ad2da5e03175 \
+    --hash=sha256:dc4c706f1935ebb62356e6a095b047859badd854482c40560888e95c328ed262 \
+    --hash=sha256:e5224ba2b00284cb1c48b3edcd303c109245d66df9ec1b861858fd6de672a38e \
+    --hash=sha256:f3501472571f1b1eee50e017851e7929f5ea37312d2d8c2494a19e8fc58b4a38 \
+    --hash=sha256:f36c87ec504f4f328e968ee322e4ba9682abe66280b3425625afcbed5333fed7 \
+    --hash=sha256:fa688e7891a6aa206636fe7372e27ee75fd17713289f6b4fc7b190e0a7de9328 \
+    --hash=sha256:fd54b314ea385bcecac69ab431f020ba503e3878dad4ebb645fec5a24b041242
+    # via pymupdf-layout
 openai==3.14.0 \
     --hash=sha256:232a85a1c0ff6820534630fbfdb99313990ed80e66f39892a3abcff4130e2b16 \
     --hash=sha256:714ba70b91ee1e78e75263694bebfeaca004432032685333a46d0e0206114bf9
@@ -1181,6 +1216,7 @@ packaging==26.3 \
     #   altair
     #   langchain-core
     #   langsmith
+    #   onnxruntime
     #   procrastinate
     #   pytest
     #   streamlit
@@ -1326,7 +1362,9 @@ pluggy==1.6.0 \
 procrastinate==3.9.0 \
     --hash=sha256:5805ab2af35eab12befa700ecd49e572c4f655d654151df9e5ce1ca07efb5e6e \
     --hash=sha256:af4b9ccaeebbf2a1439e02ae1e8ce327f8436a81e9d68a0b1bd26d5e7ac697bd
-    # via -r requirements.txt
+    # via
+    #   -r backend/requirements.txt
+    #   -r requirements.txt
 protobuf==7.36.1 \
     --hash=sha256:0b53ce95272aad50ad25d7ff03373743209822e8ba42ea7fad27d2bee1547d00 \
     --hash=sha256:39c518c05586c016d7874ff6079ee115bcec1ea5fbb1d177fbf7867ef4c67e44 \
@@ -1336,11 +1374,14 @@ protobuf==7.36.1 \
     --hash=sha256:7d951e46b3f963d6c264c367c437921de9d5aedd9c3f9612b9077736b4e3ad5c \
     --hash=sha256:97198b77e369a0abd8e262b8f6c7266c55ddb796a3a12c76d7b8881188ed83aa \
     --hash=sha256:d0f6470f0ce2b84e3feaea2d4b816378b37ba4d4aa08a274305373de93e2d524
-    # via streamlit
+    # via
+    #   onnxruntime
+    #   streamlit
 psycopg==3.3.5 \
     --hash=sha256:ce5aa5cdb4f9379f00f487590e5890bfa7df9a164648c969ffa628505e21af4e \
     --hash=sha256:d0a3d9ccf5788af054cbd745278cb02401b5c312aeaafbf2c6144460aec47da4
     # via
+    #   -r backend/requirements.txt
     #   -r requirements.txt
     #   langgraph-checkpoint-postgres
     #   procrastinate
@@ -1610,6 +1651,27 @@ pyjwt==2.14.0 \
     --hash=sha256:77283c83fb56ecf566a886c757a714bc83668e38156de2cce8263302f42e0b86 \
     --hash=sha256:ad0cef71c756a56e74863c2919cf0985f72decbcfcb550ee2f422e7c62b5eedc
     # via mcp
+pymupdf==1.28.0 \
+    --hash=sha256:44f0973f5e5edbaec95bc34b64e71d1959d4ee90b1328de1b4f4f5b4fa78673f \
+    --hash=sha256:47a5c29ed4eb0744de9c4e37bb49b1259b18d4d75fcc8a7c130f7c9fa15956f6 \
+    --hash=sha256:4d61ec323a706e153a12e262e51febfb43eeaa20977785ace135d18d48bcdc83 \
+    --hash=sha256:4d692dcf44d3566ae96bc6f6346c6ad432274a29ba617bf7a9fe18009e24adb4 \
+    --hash=sha256:74c6d00ba2a9aad3a635db73b07c15db462b480741d831a34a75a56535ebc22b \
+    --hash=sha256:892b89ba88e8f98b53133b62877a9dc9b5e7dc6a4aeb837b612db56a8d2e03ac \
+    --hash=sha256:b3e1399c7a64c6914239116a369efcdaac4cfb9e838bde2656d7accc4a85c72d \
+    --hash=sha256:caea2b3b67347fd79e5d15ed7929b0e886aac594ea228073b6d39de0078189da \
+    --hash=sha256:e01e90fd86abfeb37ceb921eddb951f988a11d45ff6ce6b7664f2039849068ec \
+    --hash=sha256:e53f3567403a92da15caa9e7ae0164327fff48817e9f40175367fb9de524258d
+    # via
+    #   -r requirements.txt
+    #   pymupdf-layout
+pymupdf-layout==1.28.0 \
+    --hash=sha256:07195ec4ad6317dd70bf1d4eca44d9dd93231d8db3648ab9f4b771557a59ea48 \
+    --hash=sha256:35b98e1ce9382709622e03c34b57d1b51a155ceb3d9122f11f8e9b2aa4f1ee55 \
+    --hash=sha256:911aa80b3ddcca2ddbc1df5fc59f652935b392052251397e75963d3de9559dbc \
+    --hash=sha256:a6bd191301570a0863d6e04418324e823d0fd7f18b4fe1db2b9e53e715d2f8ff \
+    --hash=sha256:dc4e2f4b48951633607020d80de0bed00b2450eafd56ecda224f611c19e5f9e8
+    # via -r requirements.txt
 pypdf==6.18.1 \
     --hash=sha256:2441fc839053745638d9b9ddb38ed66beed8d611f47a3036c9838fc4e3074dea \
     --hash=sha256:ee93a2665670ecf57ee81d197a4ca548f3dc15f9cefc56e59b8140866aaa3de5
@@ -1763,6 +1825,7 @@ pyyaml==6.0.3 \
     --hash=sha256:fc09d0aa354569bc501d4e787133afc08552722d3ab34836a80547331bb5d4a0
     # via
     #   langchain-core
+    #   pymupdf-layout
     #   uvicorn
 referencing==0.37.0 \
     --hash=sha256:381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231 \

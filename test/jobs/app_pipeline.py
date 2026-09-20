@@ -3,6 +3,10 @@ FakeLLM steps behind app.jobs' Step and Pipeline shapes, so the twelve scenarios
 certify the promoted runner exactly as they certified the spike."""
 from __future__ import annotations
 
+import os
+
+from app.gateway import Gateway, GatewaySettings
+from app.gateway_pg import PgRateLimiter
 from app.jobs import registry
 from app.jobs.models import Context, Pause, Pipeline, Step
 from test.jobs import knobs
@@ -12,9 +16,16 @@ DEFAULT_SPEC = {"requires_signature": True, "requires_date": False}
 
 
 def _bid(ctx: Context):
+    """The vendor's pages and the LLM: the FakeLLM behind the gateway, with the shared
+    rate limiter when the scenario names a provider limit (LLM_RPM), and no cache, so
+    "repeated LLM calls" still measures the runner's resumption and nothing else."""
     cert_page = int(knobs.get("CERT_PAGE", "13"))
     n_pages = int(knobs.get("N_PAGES", "16"))
-    return sl.make_vendor(ctx.run["tenderer"], n_pages, cert_page), sl.make_llm(cert_page)
+    rpm = int(knobs.get("LLM_RPM", "0") or 0)
+    llm = Gateway(sl.make_llm(cert_page), project=ctx.run["project"], data_class="synthetic",
+                  settings=GatewaySettings(rpm=rpm or None),
+                  limiter=PgRateLimiter(os.environ["DATABASE_URL"]) if rpm else None, limiter_key="fake-provider")
+    return sl.make_vendor(ctx.run["tenderer"], n_pages, cert_page), llm
 
 
 def triage(ctx: Context):

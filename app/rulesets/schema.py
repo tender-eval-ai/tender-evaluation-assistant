@@ -92,10 +92,12 @@ class SlotKind(StrEnum):
 
 class ItemStatus(StrEnum):
     VERIFIED = "verified"        # template matched, every required slot filled and verified
-    NEEDS_INPUT = "needs_input"  # a required slot is empty or unverified; blocks confirmation
+    NEEDS_INPUT = "needs_input"  # a required slot is empty or unverified, or the item is located
+                                 # (L0) with no rules yet; blocks confirmation
     NOVEL = "novel"              # no template; rules drafted from the clause (L3), person must approve
     GAP = "gap"                  # the item is in the schedule but no rule could be built
-    EDITED = "edited"            # a person changed something; the model's version is kept alongside
+    EDITED = "edited"            # a person changed something; the model's version is kept alongside.
+                                 # An item a person adds is `edited` with its edit record (I1.16)
 
 
 OutcomeStatus = Literal["pass", "needs_review", "disqualified", "dormant"]
@@ -133,6 +135,8 @@ class Citation(BaseModel):
     file: str = Field(description="path relative to the project, e.g. 'tender/09 Schedules.pdf'")
     page: int = Field(ge=1)
     node_id: str | None = None
+    candidates: list[str] | None = Field(default=None, description="when the resolver matched several nodes: "
+                                         "every node id it found; node_id is the one chosen, a person may pick another")
     quote: str = Field(min_length=1)
     data_class: DataClass
 
@@ -312,6 +316,18 @@ class Gap(BaseModel):
     node_id: str
     text: str
     reason: str | None = None
+    edit: Edit | None = Field(default=None, description="who gave the reason, when and why")
+
+
+class PartSpec(BaseModel):
+    """A Part's intro in the Completeness Check Schedule: the paragraph that says what
+    happens when an item of that Part is missing or asked for, and the clauses it cites.
+    Located by L0; the engine reads the consequence from the Part."""
+
+    part: Part
+    title: str = Field(min_length=1)
+    citation: Citation = Field(description="the Part's heading and intro paragraph")
+    clauses: list[Citation] = Field(default_factory=list, description="the clauses the intro points to")
 
 
 class RuleSetItem(BaseModel):
@@ -353,11 +369,13 @@ class RuleSet(BaseModel):
     status: Literal["draft", "confirmed"] = "draft"
     data_class: DataClass
     items: list[RuleSetItem]
+    parts: list[PartSpec] = Field(default_factory=list, description="the Part intros the items sit under")
     gaps: list[Gap] = Field(default_factory=list)
     created_by: str
     created_at: datetime
     confirmed_by: str | None = None
     confirmed_at: datetime | None = None
+    updated_by: str | None = Field(default=None, description="who last saved this draft; server-owned, read-only")
     model: str | None = Field(default=None, description="model that drafted it, e.g. 'deepseek-v4-flash'")
     prompt_version: str | None = None
 
@@ -366,6 +384,9 @@ class RuleSet(BaseModel):
         letters = [i.letter for i in self.items]
         if len(letters) != len(set(letters)):
             raise ValueError("item letters must be unique")
+        parts = [p.part for p in self.parts]
+        if len(parts) != len(set(parts)):
+            raise ValueError("each Part appears once in parts")
         if self.parent_version is not None and self.parent_version >= self.version:
             raise ValueError("parent_version must be older than version")
         if self.status == "confirmed":
