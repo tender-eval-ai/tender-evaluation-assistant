@@ -63,11 +63,25 @@ _PLAIN_NAME = (
 _ANNEX_NAME = rf"Annex\s+(?:[A-Z0-9]{{1,2}}|\([^)]+\))\s+(?:to|of)\s+the\s+{_PLAIN_NAME}"
 _NAME = rf"(?:{_ANNEX_NAME}|{_PLAIN_NAME})"
 
-_NUMBER = r"\d+(?:\.\d+)*(?:\s*\([a-z]{1,4}\))*"
-_PART_ID = r"(?:[IVX]{1,4}[AB]?|[A-Z]{1,2}|\d+[A-Z]?)(?![a-zA-Z])"
 _LABEL = r"\(\d+\)"
-_ANNEX_ID = r"(?:[A-Z0-9]{1,2}|\([^)]+\))(?![a-zA-Z])"
-_ID = rf"(?:{_LABEL}|{_NUMBER}|{_PART_ID}|{_ANNEX_ID})"
+# One identifier of whatever kind, longest form first: a parenthesised label or annex
+# title ("(4)", "(Details of Local Support)"), a number with its sub-item markers
+# ("20.2(a)", "3A"), a roman Part ("IA") or a letter ("B", "A1").
+#
+# Written as one **atomic** token, not as an alternation of a number pattern, a Part
+# pattern and an annex pattern: those overlap, so every id in a list matched three
+# ways ("1" is all three, over the same text) and a list of n ids could be read 3**n
+# ways. Which kind an id is comes from the keyword before the list
+# (`_level_targets`), never from which alternative matched, so the engine was
+# re-splitting ids that are all the same to us: when the chain around the list failed
+# (a list with no document name after it - "Paragraphs 1, 2 ... and 14 above"), it
+# tried every reading, and a 14-item list took 18 seconds, a 20-item list minutes.
+# Atomic fixes each id at its longest form and never re-splits it: a 20-item list now
+# parses in under a millisecond (test_a_long_list_parses_quickly).
+_ID = (r"(?>\([^)]+\)"
+       r"|\d+(?:\.\d+)*[A-Z]?(?:\s*\([a-z]{1,4}\))*"
+       r"|[IVX]{1,4}[AB]?"
+       r"|[A-Z]{1,2}\d?)(?![a-zA-Z])")
 # A lowercase aside may sit inside a list: "Tables A, B, C (if applicable), D and E".
 _ASIDE = r"(?:\s*\([a-z]+\s[^)]*\))?"
 _LIST = rf"{_ID}(?:{_ASIDE}\s*(?:,\s*(?:and\s+)?|\s+and\s+|\s+to\s+|\s*[-–]\s*){_ID})*"

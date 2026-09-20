@@ -1,4 +1,6 @@
 """CitationIndex on a hand-built, synthetic node table (no tender data)."""
+import time
+
 from app.parsing.citations import CitationIndex, parse_citations
 
 
@@ -135,3 +137,26 @@ def test_a_wrapped_footer_label_is_found_by_its_long_tail():
     assert resolve("part (5) in the Appendix to the Sample Terms of Tender (Contact Details)") == [["W:00-Contacts:(5)"]]
     # A short known tail is a document of its own, not a wrapped label.
     assert resolve("Paragraph 3 of the Annex Z to the Sample Terms of Tender") == [[]]
+
+
+def test_a_long_list_with_no_document_name_parses_quickly():
+    """A list that is not a citation must fail fast, not backtrack.
+
+    Every id in a list used to be matchable as a number, a Part id and an annex id
+    over the same text, so a chain that failed for want of a document name was
+    re-read 3**n ways: measured before the fix, 14 items took 17.7 s and 20 items
+    over 10 minutes; a chain that did end in a name stayed instant either way.
+    """
+    long_list = "Paragraphs " + ", ".join(str(n) for n in range(1, 20)) + " and 20 above are separate."
+    respectively = ("Paragraphs " + ", ".join(str(n) for n in range(1, 10))
+                    + " and 10 and Tables " + ", ".join(chr(65 + n) for n in range(9)) + " and J respectively.")
+    of_chain = " ".join("paragraph %d of Table A" % n for n in range(1, 11)) + " below."
+
+    start = time.perf_counter()
+    for text in (long_list, respectively, of_chain):
+        assert parse_citations(text) == []
+    assert time.perf_counter() - start < 0.05
+
+    # The same list resolves as before once a document name follows it.
+    named = "Paragraphs " + ", ".join(str(n) for n in range(1, 20)) + " and 20 of the Sample Terms"
+    assert [c.number for c in parse_citations(named)] == [str(n) for n in range(1, 21)]
