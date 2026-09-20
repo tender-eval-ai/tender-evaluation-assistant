@@ -96,8 +96,8 @@ class JobRunner:
         return n
 
     # ---------------------------------------------------------------- rule sets
-    def confirm_ruleset(self, project: str) -> int:
-        version = self.store.confirm(project)
+    def confirm_ruleset(self, project: str, user: str = "system") -> int:
+        version = self.store.confirm(project, user)
         self.resume_paused(project)
         return version
 

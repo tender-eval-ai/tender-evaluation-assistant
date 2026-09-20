@@ -15,3 +15,7 @@ python-docx>=1.1
 langgraph==1.2.11
 langgraph-checkpoint-sqlite==3.1.1
 google-auth>=2.40      # Vertex AI OAuth tokens (Application Default Credentials)
+
+# The check worker and the API's job routes (app/jobs, app/gateway_pg): the Postgres queue.
+procrastinate>=3.9
+psycopg[binary]>=3.2

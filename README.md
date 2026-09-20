@@ -131,6 +131,10 @@ git config core.hooksPath .githooks     # runs the pre-commit hooks on commit; r
 pre-commit run --all-files              # exactly what CI's lint job runs
 # after changing requirements*.txt:
 uv pip compile requirements.txt --python-version 3.12 --universal --generate-hashes -o requirements.lock
+# after changing a route (review docs/api_contract.md first; the snapshot is docs/openapi.json):
+UPDATE_OPENAPI=1 python -m pytest test/test_api_contract.py
+# the Postgres-backed tests (CI's integration job): the check API, the worker, migrations
+DATABASE_URL=postgresql://postgres:dev@localhost:55432/harness python -m pytest -m postgres -q
 ```
 
 CI on every pull request: `lint` (pre-commit: ruff, gitleaks, large files, merge markers, PDF placement), `test` (the offline suite, installed from `requirements.lock`), `security` (gitleaks over the full history, pip-audit over the lockfile). On `main`, `main-guard` fails when a commit did not arrive through a merged pull request. Opt-in test levels are the pytest markers `orchestrator`, `realdata` and `live`; the default run excludes them and needs no network, tokens or client data. Dependabot watches only the GitHub Actions versions; Python versions are fixed by `requirements.lock`, refreshed by hand at each stop point or when pip-audit fails.
@@ -155,6 +159,10 @@ app/                the pipeline library (shared by CLI and backend)
   usage.py          per-bid token / call / $ accounting, price table, run summaries
   graph.py          LangGraph orchestration: state, checkpoints, interrupts, Send fan-out
   pipeline.py       bidder discovery, offline (fixture) run, console summary
+  checks/           the vendor check for one schedule item, layer by layer: V0 page rendering, V1 triage,
+                    V2 resolve, V3 extract (item (l)), V6 engine bridge, the `vendor_check` pipeline
+  gateway.py        the LLM gateway every pipeline call goes through: endpoint policy by data class,
+                    cache, per-project daily budget, shared rate limiter (gateway_pg.py: the Postgres backends)
   jobs/             the run queue and check worker (Procrastinate on Postgres): step pipelines with
                     per-step checkpoints, pause/resume, results + corrections, `python -m app.jobs.worker`
   db.py             plain-SQL migrations (migrations/NNN_name.sql, up and down sections)
@@ -165,7 +173,7 @@ frontend/           Streamlit review UI (HTTP client of the backend only) + Dock
 mcp_server/         MCP server over the read-only tools + local-model MCP client
 docs/               plan (dated experiment log), detailed specification, interview prep, project report (audit)
 migrations/         SQL migrations applied by app.db.migrate (the worker runs it at start)
-docker-compose.yml  runs both services together
+docker-compose.yml  Postgres, the API, the check worker (same image) and the UI together
 deploy/cloudrun/    private Cloud Run packaging: nginx ingress sidecar, Cloud Build, setup/deploy scripts
 run_demo.py         CLI (offline demo + orchestrated run over real folders)
 test/               105 offline tests incl. API, graph, agent, MCP, cost ledger, Cloud Run scratch sync (no network, no client data)
@@ -181,15 +189,30 @@ Requirements are split per service: `backend/requirements.txt` (FastAPI + pipeli
 dev aggregate (both + pytest).
 
 ```bash
-# Local dev, two terminals:
-.venv/bin/uvicorn backend.api:app --reload --port 8000
-BACKEND_URL=http://localhost:8000 .venv/bin/streamlit run frontend/ui.py
-
-# Docker (recommended):
+# Docker (recommended): Postgres, the API, the check worker and the UI.
 cp .env.example .env       # point the models at Ollama/DeepSeek/Vertex; set API_KEY on any shared machine
 docker compose up -d --build
-# UI:  http://localhost:8501     API: http://localhost:8000/health
+# UI:  http://localhost:8501     API: http://localhost:8000/docs     (workers: docker compose up -d --scale worker=3)
+
+# The synthetic tender case end to end through the API: project, import, rule set drafted and
+# confirmed by a second person, one check per tenderer on the worker, the results per tenderer.
+python tools/check_synthetic_case.py             # add --key when API_KEY is set
+
+# Local dev without Docker (needs a Postgres for the check routes and the worker):
+docker run -d --name tea-pg -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=tender -p 55432:5432 postgres:16
+export DATABASE_URL=postgresql://postgres:dev@localhost:55432/tender
+.venv/bin/uvicorn backend.api:app --reload --port 8000
+.venv/bin/python -m app.jobs.worker --pipelines app.checks.vendor_check
+BACKEND_URL=http://localhost:8000 .venv/bin/streamlit run frontend/ui.py
 ```
+
+**How a check runs (S2).** `POST /projects/{pid}/checks` queues one job per tenderer on Postgres; a worker renders every
+page of the offer, labels them six at a time, finds the item's pages, reads the certificate's fields with page
+citations, and hands them to the rule engine under the confirmed rule set. The worker checkpoints after every step
+(and every batch of pages), so a crash or a deploy resumes where it stopped; every model call goes through the
+gateway (endpoint policy by data class, cache, daily budget, one shared pace per provider). `GET /projects/{pid}/jobs`
+follows the jobs, `GET /projects/{pid}/bids/{t}/results` has the fields, the verdict and its evidence; page images
+open by signed links. The measurements behind the design are in `docs/decisions/0001-orchestrator.md`.
 
 UI flow = **one orchestrated run with two human checkpoints** (`POST /run`,
 `POST /resume`): upload documents → *Run* derives the rubric and pauses → review it

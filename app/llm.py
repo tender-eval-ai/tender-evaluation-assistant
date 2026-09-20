@@ -13,7 +13,7 @@ import sys
 import time
 from typing import Type, TypeVar
 
-from openai import BadRequestError, OpenAI, OpenAIError
+from openai import APIConnectionError, APIStatusError, BadRequestError, OpenAI, OpenAIError
 from pydantic import BaseModel, ValidationError
 
 from .config import Config
@@ -21,6 +21,29 @@ from .gcp import ADCToken, is_vertex
 from .usage import UsageLedger, load_prices
 
 T = TypeVar("T", bound=BaseModel)
+
+# Status codes a provider returns when trying again later may succeed. Everything else
+# (400 bad request, 401/403 credentials, 404, 422) is the caller's problem.
+TRANSIENT_STATUSES = frozenset({408, 409, 425, 429, 500, 502, 503, 504})
+
+
+def is_transient(err: BaseException | None) -> bool:
+    """Whether a provider error is worth retrying: no answer at all (connection,
+    timeout) or a status in TRANSIENT_STATUSES."""
+    if isinstance(err, APIStatusError):
+        return err.status_code in TRANSIENT_STATUSES
+    return isinstance(err, APIConnectionError)
+
+
+class LLMError(RuntimeError):
+    """Every entry of a chain failed. `transient` is what the job queue reads to decide
+    between retrying and failing the run; `last` is the last provider error."""
+
+    def __init__(self, chain: list[str], last: BaseException | None):
+        super().__init__(f"All models in chain failed ({' -> '.join(chain)}): {last}")
+        self.chain, self.last = chain, last
+        self.transient = is_transient(last)
+        self.status = getattr(last, "status_code", None)
 
 OCR_SYSTEM = (
     "You transcribe scanned tender/procurement document pages. Output the page content "
@@ -154,18 +177,24 @@ class LLM:
             self.usage.record(entry, getattr(resp, "model", None), getattr(resp, "usage", None),
                               time.time() - t0)
             return resp.choices[0].message.content or ""
-        raise RuntimeError(f"All models in chain failed ({' -> '.join(chain)}): {last_err}")
+        raise LLMError(chain, last_err)
 
     # ---------------------------------------------------------------- JSON extraction
     def chat_json(self, system: str, user: str, out_model: Type[T],
-                  chain: list[str] | None = None) -> T:
+                  chain: list[str] | None = None, images: list[bytes] | None = None) -> T:
         """Chat with JSON-mode output, validated against `out_model`; one retry with
-        the validation error fed back to the model."""
-        chain = chain or self.text_chain
+        the validation error fed back to the model. With `images` (PNG bytes) the user
+        turn carries them as data URLs and the vision chain is the default."""
+        chain = chain or (self.vision_chain if images else self.text_chain)
         schema = out_model.model_json_schema()
         system = (f"{system}\n\nRespond with a single JSON object matching this JSON Schema:\n"
                   f"{json.dumps(schema, ensure_ascii=False)}")
-        messages = [{"role": "system", "content": system}, {"role": "user", "content": user}]
+        content: str | list = user
+        if images:
+            content = [{"type": "text", "text": user}] + [
+                {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{base64.b64encode(b).decode()}"}}
+                for b in images]
+        messages = [{"role": "system", "content": system}, {"role": "user", "content": content}]
         last_err: Exception | None = None
         for _ in range(2):
             content = self._complete(chain, messages, json_mode=True, schema=schema)
