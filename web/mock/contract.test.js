@@ -103,7 +103,10 @@ describe(`mock vs ${specPath.includes("docs/openapi.json") ? "docs/openapi.json"
     const cite = { $ref: "#/components/schemas/PageCitation" };
     const ok = { doc_id: "9f849435aa64", file: "offer.pdf", page: 10, image_url: "/x" };
     expect(validate(cite, ok)).toEqual([]);
-    expect(validate(cite, { ...ok, box: [0, 0, 1, 1] })).toEqual(["$: 'box' is not in the contract"]);
+    // A name the contract will never have, so this cannot go stale the way
+    // `box` did once the citation box became a real PageCitation field.
+    expect(validate(cite, { ...ok, not_a_contract_field: 1 }))
+      .toEqual(["$: 'not_a_contract_field' is not in the contract"]);
     expect(validate(cite, { doc_id: "x", file: "f", page: 1 })).toEqual(["$: missing required 'image_url'"]);
     expect(validate({ $ref: "#/components/schemas/StageSummary" }, { outcome: "fail", items: {} })).toHaveLength(1);
   });

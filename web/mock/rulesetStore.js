@@ -14,7 +14,6 @@ import draftV2 from "./fixtures/ruleset_draft.json";
 import { validateItem, validateItemPatch, validateNewItem, validateRuleSet } from "./rulesetSchema.js";
 
 const clone = (v) => structuredClone(v);
-const seconds = (iso) => (iso ? Date.parse(iso) / 1000 : null);
 const nowIso = () => new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
 
 let state;
@@ -48,7 +47,9 @@ export function getRuleset(version) {
   return spec ? ok(clone(spec)) : fail(404, "not_found", `rule set version ${version} does not exist`);
 }
 
-// RuleSetVersion as openapi.json has it: float timestamps, no updated_by.
+// RuleSetVersion as openapi.json has it: date-time strings, no updated_by. The
+// store already keeps them as ISO, so they pass straight through; `seconds()`
+// was written against the S2 snapshot, when the contract had floats here.
 export function listVersions() {
   return ok(
     state.versions.map(({ spec }) => ({
@@ -56,9 +57,9 @@ export function listVersions() {
       status: spec.status,
       parent_version: spec.parent_version,
       created_by: spec.created_by,
-      created_at: seconds(spec.created_at),
+      created_at: spec.created_at,
       confirmed_by: spec.confirmed_by,
-      confirmed_at: seconds(spec.confirmed_at),
+      confirmed_at: spec.confirmed_at,
     }))
   );
 }
