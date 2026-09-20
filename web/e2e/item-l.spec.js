@@ -24,5 +24,8 @@ test("item (l) shows in Stage I with its page highlighted", async ({ page }) => 
   const img = page.getByAltText("offer.pdf, p.10");
   await expect(img).toBeVisible();
   const src = new URL(await img.getAttribute("src"));
+  // The highlight is signed into the citation's image_url (PR #35), and the
+  // citation's box is drawn over the page.
   expect(src.searchParams.get("highlight")).toBeTruthy();
+  await expect(page.getByTestId("page-highlight-box")).toBeVisible();
 });

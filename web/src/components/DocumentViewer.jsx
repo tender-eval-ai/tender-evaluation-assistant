@@ -9,9 +9,11 @@ export default function DocumentViewer({ pages, emptyLabel, focusPage }) {
   useEffect(() => {
     if (focusPage == null) return;
     const node = pageRefs.current[focusPage];
-    if (node) {
-      node.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    // A cited page with a box scrolls to the marked text; without one, to the
+    // top of the page.
+    const mark = node?.querySelector(".page-highlight");
+    if (mark) mark.scrollIntoView({ behavior: "smooth", block: "center" });
+    else if (node) node.scrollIntoView({ behavior: "smooth", block: "start" });
     setCurrentPage(focusPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusPage, pages]);
@@ -80,12 +82,15 @@ export default function DocumentViewer({ pages, emptyLabel, focusPage }) {
           >
             <div className="page-stack-image-wrap">
               {/* A signed link (PageCitation.image_url): no cookie or key goes with it.
-                  With `highlight` the server marks the cited text on the page
-                  itself; `box` is drawn here if a citation ever carries one. */}
+                  With a signed `highlight` the server marks the cited text on the
+                  page itself; `box` (percent of the page, from PageCitation.box and
+                  page_size) is drawn over it here. No box: the page, unmarked. */}
               <img src={page.url} alt={page.label} loading="lazy" />
               {page.box && (
                 <div
                   className="page-highlight"
+                  data-testid="page-highlight-box"
+                  title={page.quote ?? undefined}
                   style={{
                     left: `${page.box.left}%`,
                     top: `${page.box.top}%`,

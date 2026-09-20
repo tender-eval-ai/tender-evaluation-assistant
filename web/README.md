@@ -38,12 +38,17 @@ no result until you press "Run check".
   citation picker (document, page, optional clause node, verbatim text typed or taken
   from text selected anywhere in the window) rather than by selecting on the image.
 - `mock/handlers.js` holds the routes, plus a page image drawn as SVG. With
-  `?highlight=` it draws the highlight box, as the real PNG route does.
+  `?highlight=` it draws the highlight box, as the real PNG route does. The image
+  link is signed as `backend/signing.py` does it (PR #35): a citation with a
+  `quote` has `highlight` inside the signature, so a changed highlight gets 403;
+  a page-only link still takes an unsigned highlight (the Rules window's tender
+  quotes, until S3). Scanned offers (Tenderer_B, Tenderer_D) have no text layer:
+  their citations have null `quote`/`box`/`page_size` and nothing is marked.
 - `mock/contract.test.js` fetches every mocked route and checks the body against
   the contract's OpenAPI schemas. Any field the schema does not name fails the test.
   The test reads `../docs/openapi.json` when it exists (after PR #27 merges), else
-  `mock/openapi.s2.json`, a trimmed snapshot of PR #27's file at `c0e3813`, plus
-  `PUT /ruleset/draft` and `POST /ruleset/confirm` from `merge/s2-stack` at `135191e`.
+  `mock/openapi.s2.json`, PR #35's file (`contract/page-highlight` at `5206179`)
+  trimmed to the routes the mock serves and the schemas they reference.
 - openapi.json types the rule set routes as a bare dict and has no diff, gaps or item
   routes yet, so their bodies are checked against `mock/rulesetSchema.js`, the models
   of `app/rulesets/schema.py` in JS, strict on unknown fields.

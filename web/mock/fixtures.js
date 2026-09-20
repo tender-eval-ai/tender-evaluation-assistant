@@ -96,10 +96,30 @@ export function findDocument(docId) {
 }
 
 // Signed, short-lived link as backend/signing.py builds it: relative to the
-// API, `exp` and `sig` in the query, never the API key.
-export function imageUrl(docId, page) {
+// API, `exp` and `sig` in the query, never the API key. A citation with a
+// quote signs `highlight` too, so changing it breaks the signature. The mock's
+// "HMAC" is FNV-1a: enough to tell a tampered link from a signed one.
+export function sign(docId, page, exp, highlight = null) {
+  let h = 0x811c9dc5;
+  for (const c of `${PID}|${docId}|${page}|${exp}${highlight ? `|${highlight}` : ""}`) {
+    h = Math.imul(h ^ c.codePointAt(0), 0x01000193) >>> 0;
+  }
+  return `mock${h.toString(16).padStart(8, "0")}`;
+}
+
+// As backend/signing.py verify(): a link signed with this highlight, or a
+// page-only link (a client-added highlight on it still opens, until S3).
+export function verify(docId, page, exp, sig, highlight = null) {
+  if (!exp || !sig || Number(exp) < Math.floor(Date.now() / 1000)) return false;
+  if (highlight && sig === sign(docId, page, exp, highlight)) return true;
+  return sig === sign(docId, page, exp);
+}
+
+export function imageUrl(docId, page, highlight = null) {
   const exp = Math.floor(Date.now() / 1000) + 15 * 60;
-  return `/projects/${PID}/documents/${docId}/pages/${page}/image?exp=${exp}&sig=mock${docId.slice(0, 6)}${page}`;
+  const query = new URLSearchParams({ exp: String(exp), sig: sign(docId, page, exp, highlight) });
+  if (highlight) query.set("highlight", highlight);
+  return `/projects/${PID}/documents/${docId}/pages/${page}/image?${query}`;
 }
 
 const BID_PAGE_LABELS = { a: "tender_form_offer_to_be_bound", k: "contact_details", l: "noncollusive_certificate" };
@@ -183,13 +203,59 @@ function wrap(text, width) {
   return lines;
 }
 
-function cite(t, page) {
+// The mock's page images (handlers.js pageSvg) are A4 in points, one line of
+// text per row: row i has its baseline at y = 110 + 34 i, body text 15 pt at
+// about 7.5 pt per character from x = 60. PAGE_SIZE and lineBox() are that
+// layout, so a box drawn over the image lands on the printed text.
+export const PAGE_SIZE = [595, 842];
+export const lineY = (i) => 110 + i * 34;
+
+export function lineBox(i, start, length) {
+  const cw = i === 0 ? 10 : 7.5;
+  const y = lineY(i);
+  return [60 + start * cw, y - 16, 60 + (start + length) * cw, y + 5];
+}
+
+// Where `text` is printed on a page's text layer, as backend/routes/checks.py
+// locate_quote() answers: {quote, box, page_size}, or null on a scanned offer,
+// for text shorter than 4 characters, or when the page does not print it.
+export function locateQuote(docId, page, text) {
+  const doc = findDocument(docId);
+  if (!doc || typeof text !== "string" || text.trim().length < 4) return null;
+  if (doc.kind === "bid" && TENDERERS[doc.tenderer].scanned) return null;
+  const needle = text.trim().toLowerCase();
+  const lines = pageLines(docId, page);
+  for (let i = 0; i < lines.length; i++) {
+    const start = lines[i].toLowerCase().indexOf(needle);
+    if (start >= 0) {
+      return {
+        quote: lines[i].slice(start, start + needle.length),
+        box: lineBox(i, start, needle.length),
+        page_size: [...PAGE_SIZE],
+      };
+    }
+  }
+  return null;
+}
+
+// A PageCitation. With `text` found on the page, it carries the quote, its box
+// and an image link with the highlight signed in; otherwise the plain page.
+function cite(t, page, text = null) {
   const info = TENDERERS[t];
-  return { doc_id: info.docId, file: "offer.pdf", page, image_url: imageUrl(info.docId, page) };
+  const at = locateQuote(info.docId, page, text);
+  return {
+    doc_id: info.docId,
+    file: "offer.pdf",
+    page,
+    image_url: imageUrl(info.docId, page, at?.quote ?? null),
+    quote: at?.quote ?? null,
+    box: at?.box ?? null,
+    page_size: at?.page_size ?? null,
+  };
 }
 
 function fv(value, t, page, confidence = 0.96) {
-  return { value, redacted: false, confidence, page: page ? cite(t, page) : null, correction: null, model_value: null };
+  return { value, redacted: false, confidence, page: page ? cite(t, page, value) : null, correction: null, model_value: null };
 }
 
 function checked(field_id, status, note = null) {
@@ -248,12 +314,17 @@ export function bidResult(t) {
         },
   };
 
+  // As backend/routes/checks.py builds Verdict.evidence: one citation per
+  // checked field, cited with that field's value, so a boolean ("document
+  // submitted") cites the plain page and a name cites its quote on the page.
+  const evidence = (letter) => Object.values(fields[letter]).map((f) => f.page).filter(Boolean);
+
   const verdicts = {
     a: verdict(
       "A",
       ["offer_to_be_bound.submitted", "offer_to_be_bound.signed"],
       [checked("offer_to_be_bound.document", "pass"), checked("offer_to_be_bound.signature", "pass")],
-      [cite(t, info.a)]
+      evidence("a")
     ),
     k: verdict(
       "B",
@@ -264,7 +335,7 @@ export function bidResult(t) {
           ? checked("contact_details.contact_person", "pass")
           : checked("contact_details.contact_person", "needs_review", "contact person is not visible; a reviewer confirms"),
       ],
-      [cite(t, info.k)]
+      evidence("k")
     ),
     l: hasL
       ? verdict(
@@ -281,7 +352,7 @@ export function bidResult(t) {
             checked("noncollusive_certificate.tenderer_name", "pass"),
             checked("noncollusive_certificate.date", "pass"),
           ],
-          [cite(t, info.l)]
+          evidence("l")
         )
       : verdict(
           "A",
