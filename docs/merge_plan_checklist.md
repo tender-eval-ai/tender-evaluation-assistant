@@ -8,7 +8,7 @@ Joint review of the "Tender Review Merge Plan" (10-day version, 2026-09-15). Thi
 
 **Context both of us share.** Two bootcamp students, both in the US, no client and no pilot. Each person works on their own area independently and stops at the joint stop points in section D. The goal is the strongest possible joint project for job applications.
 
-Last updated: 2026-09-18 (Chenyu).
+Last updated: 2026-09-20 (Chenyu).
 
 ## Status board
 
@@ -46,7 +46,7 @@ Last updated: 2026-09-18 (Chenyu).
 | G2 | No cloud named in code; configuration only | agreed | — (update the plan) |
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
-| I1 | Contract gaps found at S2 (locate, web mock, Rules window) | open | both (1–2 in PR #35) |
+| I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 
 ## A. Corrections to the plan
 
@@ -326,9 +326,9 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   16. The status of an item a person adds is unstated (`edited` or `novel`).
   17. `RuleSetVersion` timestamps are float seconds while `RuleSet` uses ISO datetimes; the draft's last editor is not exposed, so the UI cannot warn before a `self_approval` 403.
 - Items 1 and 2 are proposed in PR #35.
-- Chenyu (2026-09-18): 1 and 2 agreed and merged in #35. 3: agreed, RuleSet.parts: [{part, title, citation, clauses}] in the S3 contract PR. 4: needs_input covers "located, no rules yet"; no new status. 5: keep one node_id and add optional candidates: [node_id] when the resolver returns several; the person picks. 6 to 9: agreed, my routes; the S3 contract PR types the three GETs, pages the doc, names CorrectionRequest, and puts the error envelope on 422 in openapi (the server already returns it). 10: agreed, CheckedField.field (the engine bridge already emits it). 11: agreed, typed when the S3 routes are built. 12: agreed, PATCH /ruleset/gaps/{id} with reason, stored as an Edit. 13: ItemPatch.note becomes an ItemNote; notes addressed by index for edit and delete. 14: Diff.changed[].edit: Edit | null; model_value stays on slots only, the parent version is the model's original for rules and templates. 15: confirm validates each template's required slots and answers 409 naming the items. 16: a person-added item is edited with its edit record; novel stays for L3 drafts. 17: RuleSetVersion timestamps become ISO datetimes and RuleSet exposes updated_by.
+- Chenyu (2026-09-18): 1 and 2 agreed and merged in #35. 3: agreed, RuleSet.parts: [{part, title, citation, clauses}] in the S3 contract PR. 4: needs_input covers "located, no rules yet"; no new status. 5: keep one node_id and add optional candidates: [node_id] when the resolver returns several; the person picks. 6 to 9: agreed, my routes; the S3 contract PR types the three GETs, pages the doc, names CorrectionRequest, and puts the error envelope on 422 in openapi (the server already returns it). 10: agreed, CheckedField.field (the engine bridge already emits it). 11: agreed, typed when the S3 routes are built. 12: agreed, PATCH /ruleset/gaps/{id} with reason, stored as an Edit. 13: ItemPatch.note becomes an ItemNote; notes addressed by index for edit and delete. 14: Diff.changed[].edit: Edit | null; model_value stays on slots only, the parent version is the model's original for rules and templates. 15: confirm validates each template's required slots and answers 409 naming the items (S3, with the editing routes; nothing enforces it yet). 16: a person-added item is edited with its edit record; novel stays for L3 drafts. 17: RuleSetVersion timestamps become ISO datetimes and RuleSet exposes updated_by.
 - Nasi (2026-09-18): proposed; 1 and 2 before the S2 check, the rest at S3.
-- Decision: open
+- Decision: decided (2026-09-20): positions approved by Nasi in the review of PR #40. 1 and 2 in #35; 3 to 10, 14, 16 and 17 in #41 and #44; 11 to 13 and 15 with the S3 rule-set editing routes (Chenyu).
 
 ## Verified facts (no action needed)
 
