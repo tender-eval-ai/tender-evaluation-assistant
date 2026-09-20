@@ -207,20 +207,29 @@ def test_generated_pdf_end_to_end(tmp_path):
         spaced = [x for line in lines for x in (line, "")]
         return spaced + [""] * (LINES_PER_PAGE - 1 - len(spaced)) + [footer]
 
-    make_text_pdf(tmp_path / TERMS, page(["Sample Terms of Tender", "5. Samples", "5.1 The Tenderer shall supply one sample."],
-                                         "Sample Terms of Tender Page 1 of 1"))
-    make_text_pdf(tmp_path / SCHED, page([FOOTER, "Part A", "Items (a) and (b) below are required.",
-                                          "(a) The signed offer form.",
-                                          "(b) One sample under Paragraph 5.1 of the Sample Terms of Tender.",
-                                          "Part B", "Items (c) may be requested.", "(c) A brochure."],
-                                         f"{FOOTER} Page 1 of 1"))
-    pages, nodes = parse_tender([tmp_path / TERMS, tmp_path / SCHED])
+    (tmp_path / "tender").mkdir()
+    make_text_pdf(tmp_path / "tender" / TERMS,
+                  page(["Sample Terms of Tender", "5. Samples", "5.1 The Tenderer shall supply one sample."],
+                       "Sample Terms of Tender Page 1 of 1"))
+    make_text_pdf(tmp_path / "tender" / SCHED, page([FOOTER, "Part A", "Items (a) and (b) below are required.",
+                                                     "(a) The signed offer form.",
+                                                     "(b) One sample under Paragraph 5.1 of the Sample Terms of Tender.",
+                                                     "Part B", "Items (c) may be requested.", "(c) A brochure."],
+                                                    f"{FOOTER} Page 1 of 1"))
+    pages, nodes = parse_tender([tmp_path / "tender" / TERMS, tmp_path / "tender" / SCHED])
 
-    schedule = locate(pages, nodes, data_class=DataClass.SYNTHETIC, root=tmp_path)
+    schedule = locate(pages, nodes, data_class=DataClass.SYNTHETIC)
 
     assert [(i.letter, i.part) for i in schedule.items] == [("a", Part.A), ("b", Part.A), ("c", Part.B)]
     assert all(i.citation.node_id for i in schedule.items)
     assert [c.quote[:41] for c in schedule.item("b").clauses] == ["5.1 The Tenderer shall supply one sample."]
+    # Without a root, a file is still named the way app.ingest.Document.path names it,
+    # from the relative path parse_tender recorded.
+    assert schedule.item("b").citation.file == f"tender/{SCHED}"
+    assert [c.file for c in schedule.item("b").clauses] == [f"tender/{TERMS}"]
+    # A root the caller gives still wins.
+    assert locate(pages, nodes, data_class=DataClass.SYNTHETIC,
+                  root=tmp_path / "tender").item("b").citation.file == SCHED
 
 
 # ---------------------------------------------------------------- real tenders
