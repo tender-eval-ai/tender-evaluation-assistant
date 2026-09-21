@@ -47,6 +47,7 @@ Last updated: 2026-09-20 (Chenyu).
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
+| J1 | Parser follow-ups after the S3 recall gate | proposed | Nasi: which to take first |
 
 ## A. Corrections to the plan
 
@@ -329,6 +330,29 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Chenyu (2026-09-18): 1 and 2 agreed and merged in #35. 3: agreed, RuleSet.parts: [{part, title, citation, clauses}] in the S3 contract PR. 4: needs_input covers "located, no rules yet"; no new status. 5: keep one node_id and add optional candidates: [node_id] when the resolver returns several; the person picks. 6 to 9: agreed, my routes; the S3 contract PR types the three GETs, pages the doc, names CorrectionRequest, and puts the error envelope on 422 in openapi (the server already returns it). 10: agreed, CheckedField.field (the engine bridge already emits it). 11: agreed, typed when the S3 routes are built. 12: agreed, PATCH /ruleset/gaps/{id} with reason, stored as an Edit. 13: ItemPatch.note becomes an ItemNote; notes addressed by index for edit and delete. 14: Diff.changed[].edit: Edit | null; model_value stays on slots only, the parent version is the model's original for rules and templates. 15: confirm validates each template's required slots and answers 409 naming the items (S3, with the editing routes; nothing enforces it yet). 16: a person-added item is edited with its edit record; novel stays for L3 drafts. 17: RuleSetVersion timestamps become ISO datetimes and RuleSet exposes updated_by.
 - Nasi (2026-09-18): proposed; 1 and 2 before the S2 check, the rest at S3.
 - Decision: decided (2026-09-20): positions approved by Nasi in the review of PR #40. 1 and 2 in #35; 3 to 10, 14, 16 and 17 in #41 and #44; 11 to 13 and 15 with the S3 rule-set editing routes (Chenyu).
+
+### J1. Parser follow-ups after the S3 recall gate
+- Found by: scoring all three tenders against the deep keys on 2026-09-21, with the
+  benchmark pinned in `tools/benchmark.py` (`09f277c`). All three clear the S3 gate
+  of 95% recall: 95.6 / 97.8 / 95.2, exact location 92.3 / 95.2 / 91.8.
+- Open, in the order proposed:
+  1. A `Table A` heading records `part = "Part A"`, and the Chinese Tender Form's
+     `第 4 部分` records `"Part 4"`: the scope is named for the word "Part" whatever
+     the document prints. 11 of Tender 3's 64 references fail exact location on
+     this, so the reference-level metric reads 75.0% against 91.8% at node level. It
+     is also what a citation would show a reviewer, so the label is wrong in the UI,
+     not only in the score.
+  2. Tender 3 clears the S3 recall gate by 4 nodes (1506/1582). Worth widening
+     before the number is quoted anywhere.
+  3. Five sub-document nodes (POGS, NCTC, Compliance Schedule, two annexes) carry no
+     bbox, and `exact_location_correct` requires one. Either the parser gives a
+     container a bbox, or the metric stops asking a container for one - a decision to
+     make deliberately, since it changes what the benchmark means.
+  4. `hierarchy_correctness` on POGS is 0/21 on Tender 1: every node found, every
+     parent wrong. Not a gate (it is a diagnostic, see `tools/benchmark.py`), but a
+     whole document's parenting being wrong is one containment bug, and it breaks
+     "everything under this schedule" queries.
+- Nasi (2026-09-21): proposed. 1 first - bounded, measurable, and user-visible.
 
 ## Verified facts (no action needed)
 

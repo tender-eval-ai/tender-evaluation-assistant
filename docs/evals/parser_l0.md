@@ -339,3 +339,29 @@ four metrics clear 90% on all three tenders.
 The fixes from the review of the locate and third-parser-pass PRs (`6c4ec2f` .. `131ed48`: the citation pattern's backtracking, the annex-head fallback, roman markers `(v)` and `(x)`, the page-footer anchor, project-relative citation files, a Part's quote, and the run-in tail's own node id) change no metric. A fresh parse of all three tenders scores exactly as `7e5b731`: deep recall 97.8 / 95.2 / 95.6, references citation 100 / 96.9, schedule 100 / 93.8 and 100 / 100, guard 141 of 142; and `test/rulesets/test_locate.py -m realdata` on those nodes gives the same 45/49, 43/43 and 63/65.
 
 The node tables differ only in the ids of the run-in tail nodes, now `:run-in-tail` rather than `:tail` (18, 23 and 12 of them); every other id, page and text is byte-identical, and no clause in these three tenders had both tails, which is how the `:tail#2` collision stayed invisible. The citation resolver's own answers are unchanged: the atomic identifier token is a performance fix only (a plain 14-item list took 17.7 s before it and under a millisecond after), and the annex-head guard is narrowed to a head carrying an identifier plus a bare "Supplement/Schedule to the", because excluding a bare "Appendix to the" and "Annex (title) of" as well loses the two real wrapped footer labels on Tender 3 (locate 63/65 to 60/65).
+
+## 2026-09-21: the benchmark pinned, and where the parser stands
+
+The four metrics now live in `tools/benchmark.py`, which the evaluator imports rather
+than restating; `test/parsing/test_benchmark.py` pins them. `kind_correctness` and
+`hierarchy_correctness` are still computed but are not the benchmark, and the module
+says why. Scored on `faa8671`, all three tenders, deep keys:
+
+| Tender | Nodes | recall | page correct | char correct | exact location |
+|---|---|---|---|---|---|
+| Tender 1 | 454 | 95.6% | 95.6% | 95.6% | 92.3% |
+| Tender 2 | 756 | 97.8% | 97.8% | 97.8% | 95.2% |
+| Tender 3 | 1582 | 95.2% | 95.2% | 95.2% | 91.8% |
+
+All three clear the S3 gate of 95% recall, Tender 3 by 4 nodes.
+
+On Tender 3, the hardest of the three (25 documents inside one 366-page PDF), the
+checklist-level metrics read: schedule coverage / page / position / length 100%,
+references coverage / page 100%, references citation 96.9%, position 98.4%, length
+95.3%, and **document split recall and precision both 100%** (25/25) - it was 92%
+recall when this file's first section was written, with two documents never found.
+
+One number is out of line and is recorded as checklist J1: references
+`exact_location_correct` is **75.0%** (48/64) against 91.8% at node level. All 16
+failures are containers - 11 are `Table A`/`第 4 部分` headings whose scope is named
+"Part A"/"Part 4" whatever the document prints, and 5 are sub-documents with no bbox.
