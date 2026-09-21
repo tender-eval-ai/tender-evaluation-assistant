@@ -32,12 +32,15 @@ def test_a_redacted_signature_is_flagged_not_treated_as_missing(monkeypatch):
     fields = extract(PAGES, ItemPages(pages=[13], confidence=0.9), "Tenderer_B", llm)
     assert fields[f"{PREFIX}.signature"] is None and fields[f"{PREFIX}.signature_redacted"] is True
     assert fields[f"{PREFIX}.signature_page"] is not None, "a redacted field still cites its page"
+    # A blank value carries no confidence, whatever the model said about the rest.
+    assert fields[f"{PREFIX}.signature_confidence"] == 0.0 and fields[f"{PREFIX}.date_confidence"] == 0.92
 
 
 def test_the_model_is_asked_for_its_confidence():
-    """extract-l-v2: without a description the model left confidence at 0 on every live run."""
-    from app.checks.extract_item_l import PROMPT_VERSION, SYSTEM, Certificate
+    """extract-l-v2: without a description the model left confidence at 0 on every live run.
+    The schema the model fills must describe the field; the wording is free to change, the
+    version is not without an eval."""
+    from app.checks.extract_item_l import PROMPT_VERSION, Certificate
 
     assert PROMPT_VERSION == "extract-l-v2"
-    assert "confidence" in SYSTEM and "between 0 and 1" in SYSTEM
-    assert "0 to 1" in Certificate.model_json_schema()["properties"]["confidence"]["description"]
+    assert Certificate.model_json_schema()["properties"]["confidence"].get("description")

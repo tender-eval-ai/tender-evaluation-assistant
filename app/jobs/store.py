@@ -158,6 +158,14 @@ class Store:
         keys = ["version", "status", "parent_version", "created_by", "created_at", "confirmed_by", "confirmed_at", "updated_by"]
         return [dict(zip(keys, r)) for r in rows]
 
+    def editor_of(self, project: str, version: int | None) -> str | None:
+        """Who last saved that version's draft (the server-owned `updated_by`)."""
+        if version is None:
+            return None
+        with self.conn() as c:
+            row = c.execute("select updated_by from rulesets where project=%s and version=%s", (project, version)).fetchone()
+        return row[0] if row else None
+
     def get_version(self, project: str, version: int) -> dict | None:
         with self.conn() as c:
             row = c.execute("select spec from rulesets where project=%s and version=%s", (project, version)).fetchone()

@@ -68,6 +68,6 @@ def fields_from(cert: Certificate, refs: list[dict]) -> dict:
         key = f"{PREFIX}.{name}"
         fields[key] = None if redacted else values[name]
         fields[f"{key}_redacted"] = redacted
-        fields[f"{key}_confidence"] = cert.confidence
+        fields[f"{key}_confidence"] = 0.0 if redacted else cert.confidence      # a blank value carries no confidence
         fields[f"{key}_page"] = citation if (values[name] is not None or redacted) else None
     return fields
