@@ -147,7 +147,9 @@ def test_a_check_through_the_worker_yields_fields_with_citations_a_verdict_and_i
     assert res["tenderer"] == "Tenderer_B" and res["run_id"] == job_id and res["ruleset_version"] == 1
     sig = res["fields"]["l"]["signature"]
     assert sig["value"] == "authorised signatory" and sig["page"]["page"] == 13 and sig["page"]["file"] == "offer.pdf"
-    assert sig["confidence"] == 0.92 and sig["redacted"] is False
+    assert sig["confidence"] == 0.9 and sig["redacted"] is False, "V4: the mean of the two reads"
+    assert sig["verification"] == {"verified": True, "method": "second_read", "second_value": "authorised signatory",
+                                   "note": "a second, independent read agrees"}
     assert sig["page"]["quote"] is None and sig["page"]["box"] is None      # Tenderer_B is scanned: no text layer
     assert client.get(sig["page"]["image_url"]).headers["content-type"] == "image/png"
     verdict = res["verdicts"]["l"]
@@ -156,7 +158,7 @@ def test_a_check_through_the_worker_yields_fields_with_citations_a_verdict_and_i
     # text ("tenderer name") does not, which is what this asserts against.
     assert all(c["field"] in res["fields"]["l"] for c in verdict["checks"]), verdict["checks"]
     assert res["stage1"] == {"outcome": "pass", "items": {"l": "pass"}} and res["stage2"] is None
-    assert res["cost"]["calls"] == 4 and res["cost"]["usd"] == 0
+    assert res["cost"]["calls"] == 5 and res["cost"]["usd"] == 0, "three triage, one extract, one second read"
     assert client.get(f"/projects/{pid}/bids/Tenderer_B/results", params={"version": 2}).status_code == 404
     doc = next(d for d in client.get(f"/projects/{pid}/documents").json() if d["tenderer"] == "Tenderer_B")
     pages = client.get(f"/projects/{pid}/documents/{doc['doc_id']}/pages").json()
@@ -174,6 +176,7 @@ def test_the_driver_script_runs_the_case_end_to_end(api, worker, tmp_path, monke
     backend_api.deps.configure()
     rows = run(Api(client), case="synthetic_tender", tenderers=["Tenderer_B", "Tenderer_C"], timeout=120, log=lambda *_: None)
     by = {r["tenderer"]: r for r in rows}
-    assert by["Tenderer_B"]["outcome"] == "pass" and by["Tenderer_B"]["page"] == 13 and by["Tenderer_B"]["calls"] == 4
+    assert by["Tenderer_B"]["outcome"] == "pass" and by["Tenderer_B"]["page"] == 13 and by["Tenderer_B"]["calls"] == 5
+    assert by["Tenderer_B"]["verified"] is True and by["Tenderer_B"]["confidence"] == 0.9
     assert by["Tenderer_C"]["outcome"] == "disqualified" and by["Tenderer_C"]["signature"] is None
     assert "Tenderer_B" in table(rows)

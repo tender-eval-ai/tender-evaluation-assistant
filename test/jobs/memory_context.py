@@ -10,6 +10,7 @@ class MemoryContext:
         self.done: list[str] = []
         self._ruleset = ruleset
         self.events: list[tuple] = []
+        self.store = None
 
     def progress(self, step, done, total, unit="pages"):
         self.events.append(("progress", step, done, total))

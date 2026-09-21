@@ -5,6 +5,13 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Protocol
 
 STATES = ("queued", "running", "paused", "done", "failed", "dead")
+TENDER = "_tender"     # the tenderer of a run that belongs to the tender itself (a rule-set build)
+EVALUATE = "_evaluate"  # the tenderer of a run that re-decides every result (an evaluation)
+
+
+def is_project_run(tenderer: str | None) -> bool:
+    """Runs of the project itself use a sentinel tenderer; the API shows them as null."""
+    return bool(tenderer) and tenderer.startswith("_")
 
 
 @dataclass
@@ -33,6 +40,8 @@ class Result:
     fields: dict
     verdict: dict
     corrections: dict = field(default_factory=dict)
+    review_confirmed_by: str | None = None
+    review_confirmed_at: float | None = None
 
 
 class Pause:
@@ -81,6 +90,6 @@ class Pipeline:
 
     kind: str
     steps: list[Step]
-    fields_key: str
-    decide: Callable[[dict, dict], dict]                   # (fields, ruleset spec) -> verdict; no LLM
+    fields_key: str | None                                 # None: the run stores no result (a build saves its own draft)
+    decide: Callable[[dict, dict], dict] | None = None     # (fields, ruleset spec) -> verdict; no LLM
     resume_when: dict[str, Callable[[Any, dict], bool]] = field(default_factory=dict)   # reason -> (store, run) -> bool

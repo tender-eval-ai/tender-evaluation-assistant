@@ -13,6 +13,7 @@ import pytest
 from app.checks.extract_item_l import Certificate
 from app.checks.resolve import ItemPages
 from app.checks.triage import PageLabel, PageLabels
+from app.checks.verify import Reading, SecondRead
 from test.fakes import FakeLLM, Rule
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -22,6 +23,10 @@ RULESET = json.loads((CASE / "ruleset_item_l.json").read_text())
 PID = "syn-2026-001"
 
 _RANGE = re.compile(r"label pages (\d+)-(\d+)")
+_ASKED = re.compile(r"^- (\w+):", re.M)
+# The date as printed on Tenderer_A's text layer; the scans' dates are only on their images.
+DATES = {"Tenderer_A": "14 August 2026"}
+DEFAULT_DATE = "12 August 2026"
 _PAGES = re.compile(r"from pages \[([\d, ]+)\]")
 
 
@@ -30,8 +35,11 @@ def cert_page(tenderer: str) -> int | None:
 
 
 def fake_llm(tenderer: str, *, signed: bool = True, dated: bool = True, redacted: tuple[str, ...] = (),
-             label_certificate: bool = True) -> FakeLLM:
+             label_certificate: bool = True, second: dict | None = None, second_confidence: float = 0.88) -> FakeLLM:
+    """`second` overrides what V4's second read reports, field by field; by default it agrees
+    with the first read."""
     page = cert_page(tenderer)
+    date = DATES.get(tenderer, DEFAULT_DATE)
 
     def label(call):
         lo, hi = map(int, _RANGE.search(call.user).groups())
@@ -52,10 +60,17 @@ def fake_llm(tenderer: str, *, signed: bool = True, dated: bool = True, redacted
         pages = [int(p) for p in _PAGES.search(call.user).group(1).split(",")]
         return Certificate(present=True, title="Non-collusive Tendering Certificate", tenderer_name=tenderer.replace("_", " "),
                            signatory="authorised signatory" if signed else None, signed=signed,
-                           date="12 August 2026" if dated else None, redacted=list(redacted), page=pages[0], confidence=0.92)
+                           date=date if dated else None, redacted=list(redacted), page=pages[0], confidence=0.92)
+
+    def second_reply(call):
+        first = {"document": "Non-collusive Tendering Certificate", "tenderer_name": tenderer.replace("_", " "),
+                 "signature": "authorised signatory" if signed else None, "date": date if dated else None}
+        values = {**first, **(second or {})}
+        return SecondRead(readings=[Reading(field=n, value=values.get(n), confidence=second_confidence)
+                                    for n in _ASKED.findall(call.user)])
 
     return FakeLLM([Rule(reply=label, out_model=PageLabels), Rule(reply=resolve_reply, out_model=ItemPages),
-                    Rule(reply=extract_reply, out_model=Certificate)])
+                    Rule(reply=extract_reply, out_model=Certificate), Rule(reply=second_reply, out_model=SecondRead)])
 
 
 @pytest.fixture

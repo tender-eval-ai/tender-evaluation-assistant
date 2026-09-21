@@ -11,10 +11,11 @@ from pydantic import ValidationError
 
 from app.rulesets import edit as ed
 from app.rulesets.library import load_templates
+from app.jobs.models import TENDER
 from app.rulesets.schema import Gap, RuleSet, RuleSetItem
 from backend import deps
 from backend.errors import ApiError
-from backend.schemas_api import Diff, ItemPatch, NewItem, NotePatch, ReasonBody, RuleSetVersion
+from backend.schemas_api import BuildResponse, Diff, ItemPatch, NewItem, NotePatch, ReasonBody, RuleSetVersion
 from backend.times import when
 
 router = APIRouter(dependencies=[Depends(deps.require_key)])
@@ -274,3 +275,23 @@ def get_diff(pid: str, from_version: int = Query(alias="from"), to: int = Query(
             raise ApiError(404, "not_found", f"rule set version {version} does not exist for {pid}")
         specs[version] = RuleSet.model_validate(spec)
     return Diff.model_validate(ed.diff(specs[from_version], specs[to]))
+
+
+# ---------------------------------------------------------------- the rule builder (S3)
+
+@router.post("/projects/{pid}/ruleset/build", status_code=202)
+def build(pid: str, user: str = Depends(deps.acting_user)) -> BuildResponse:
+    """L0 to L4 on the tender's documents, as a job on the worker. The result is the draft
+    (a new one, or the open one replaced), never overwriting a person's edits: an edited
+    item keeps its version and a corrected slot gets the new suggestion as `model_value`.
+    409 while a build is running or when the project has no tender documents."""
+    pdir = deps._project_dir(pid)
+    if not any((pdir / "tender").glob("*.pdf")):
+        raise ApiError(409, "conflict", f"project {pid} has no tender documents to build from")
+    runner = deps.runner()
+    active = runner.store.active_run(pid, TENDER)
+    if active:
+        raise ApiError(409, "conflict", "a rule-set build is already running", {"job_id": active})
+    job_id = runner.start(pid, TENDER, "ruleset_build")
+    runner.store.event("ruleset.build_started", pid, None, None, {"job_id": job_id}, user)
+    return BuildResponse(job_id=job_id)

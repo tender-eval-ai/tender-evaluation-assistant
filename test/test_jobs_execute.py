@@ -94,7 +94,7 @@ def test_every_migration_has_an_up_and_a_down_section():
     assert [p.name for p in paths][:3] == ["001_jobs.sql", "002_gateway.sql", "003_api.sql"]
     for path in paths:
         up, down = db.split(path.read_text())
-        assert "create table if not exists" in up and "drop table if exists" in down
+        assert ("create table if not exists" in up or "alter table" in up) and "drop" in down, path.name
     with pytest.raises(ValueError, match="sections"):
         db.split("create table x (a int);")
 

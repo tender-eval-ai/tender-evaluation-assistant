@@ -8,8 +8,9 @@ from collections import defaultdict
 from fastapi import APIRouter, Depends
 
 from app.checks.extract_item_l import PREFIX as ITEM_L_PREFIX
+from app.checks.fields import is_meta
 from app.ingest import QuoteBox, locate_quote
-from app.jobs.models import RunStatus
+from app.jobs.models import RunStatus, is_project_run
 from backend import deps, signing
 from backend.errors import ApiError
 from backend.times import when
@@ -22,7 +23,8 @@ ITEM_OF_PREFIX = {ITEM_L_PREFIX: "l"}
 
 
 def _job(s: RunStatus, created_at: float | None = None) -> Job:
-    return Job(job_id=s.run_id, kind=s.kind, project=s.project, tenderer=s.tenderer, state=s.state, step=s.step,
+    return Job(job_id=s.run_id, kind=s.kind, project=s.project, tenderer=None if is_project_run(s.tenderer) else s.tenderer,
+               state=s.state, step=s.step,
                progress=s.progress or {}, attempt=s.attempt, error=s.error, ruleset_version=s.ruleset_version,
                created_at=when(created_at or s.updated_at), updated_at=when(s.updated_at))
 
@@ -104,19 +106,22 @@ def _bid_result(pid: str, pdir, run: dict, result, steps: dict) -> BidResult:
 
     fields: dict[str, dict[str, FieldValue]] = defaultdict(dict)
     for key, value in result.fields.items():
-        if any(key.endswith(s) for s in ("_redacted", "_confidence", "_page", "_quote")):
+        if is_meta(key):
             continue
         prefix, _, name = key.rpartition(".")
         letter = ITEM_OF_PREFIX.get(prefix)
         if not letter:
             continue
         correction = result.corrections.get(key)
+        page_ref = (result.corrections.get(f"{key}_page") or {}).get("value") or result.fields.get(f"{key}_page")
+        shown = correction["value"] if correction else value
         fields[letter][name] = FieldValue(
-            value=correction["value"] if correction else value,
+            value=shown,
             redacted=bool(result.fields.get(f"{key}_redacted")),
             confidence=result.fields.get(f"{key}_confidence"),
-            page=cite(result.fields.get(f"{key}_page"), result.fields.get(f"{key}_quote") or value),
-            correction=correction, model_value=value if correction else None)
+            page=cite(page_ref, result.fields.get(f"{key}_quote") or shown),
+            correction=correction, model_value=value if correction else None,
+            verification=None if correction else result.fields.get(f"{key}_verification"))
     v = result.verdict
     # The engine's own "field" is display text ("tenderer name") and may be reworded; the
     # contract's `field` is the key into BidResult.fields[letter], which is built above
@@ -130,7 +135,7 @@ def _bid_result(pid: str, pdir, run: dict, result, steps: dict) -> BidResult:
     return BidResult(tenderer=run["tenderer"], run_id=run["run_id"], ruleset_version=result.ruleset_version,
                      fields=dict(fields), verdicts={letter: verdict},
                      stage1=StageSummary(outcome=v["outcome"], items={letter: v["outcome"]}),
-                     cost=steps.get("data", {}).get("cost") or {})
+                     cost=steps.get("data", {}).get("cost") or {}, review_confirmed_by=result.review_confirmed_by)
 
 
 @router.get("/projects/{pid}/bids/{tenderer}/results")

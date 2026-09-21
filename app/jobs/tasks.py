@@ -62,6 +62,9 @@ def execute(run_id: str, attempts: int = 0) -> None:
         outcome = run_pipeline(pipeline, ctx)
         if outcome.state == "paused":
             return
+        if pipeline.fields_key is None:               # the pipeline saved its own output (a rule-set build)
+            store.update_run(run_id, state="done", step=None, progress={})
+            return
         confirmed = ctx.ruleset()
         if confirmed is None:
             raise RuntimeError("no confirmed rule set to decide against")

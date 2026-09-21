@@ -1,6 +1,6 @@
 """The pipeline of kind "vendor_check": one tenderer's offer checked for item (l).
 
-    render -> triage -> resolve -> extract -> await_ruleset -> (decide, by the job)
+    render -> triage -> resolve -> extract -> verify -> await_ruleset -> (decide, by the job)
 
 Progress is checkpointed after rendering, after every triage batch, and after each
 later step, so a retried or resumed job continues from the first missing piece. The
@@ -13,8 +13,9 @@ import os
 from pathlib import Path
 
 from app.checks import engine_bridge, pages as pg, triage as v1
-from app.checks.extract_item_l import extract
+from app.checks.extract_item_l import VERIFY, extract
 from app.checks.resolve import ItemPages, resolve
+from app.checks.verify import text_reader, verify_fields
 from app.config import Config
 from app.gateway import Gateway, GatewaySettings, MemoryCache
 from app.jobs import registry
@@ -119,6 +120,19 @@ def extract_step(ctx: Context):
     return {"fields": fields, "cost": _cost(ctx, llm, before)}
 
 
+def verify_step(ctx: Context):
+    """V4: the extracted values checked against the text layer (no call) or by a second read of
+    the scanned pages (one call); `fields` is replaced by the verified copy."""
+    ctx.progress("verify", 0, 1, "calls")
+    llm = _llm(ctx)
+    before = dict(getattr(llm, "stats", {}))
+    bid_dir = project_dir(ctx.run["project"]) / "bids" / ctx.run["tenderer"]
+    with llm.scope(ctx.run["tenderer"]):
+        fields = verify_fields(ctx.data["fields"], ctx.data["pages"], ctx.data["item_pages"]["pages"], VERIFY,
+                               ctx.run["tenderer"], llm, text_reader(bid_dir))
+    return {"fields": fields, "cost": _cost(ctx, llm, before)}
+
+
 def await_ruleset(ctx: Context):
     return None if ctx.ruleset() else Pause("ruleset_confirmed")
 
@@ -126,7 +140,8 @@ def await_ruleset(ctx: Context):
 PIPELINE = registry.register(Pipeline(
     kind="vendor_check",
     steps=[Step("render", render), Step("triage", triage), Step("resolve", resolve_step, "calls"),
-           Step("extract", extract_step, "calls"), Step("await_ruleset", await_ruleset, "steps")],
+           Step("extract", extract_step, "calls"), Step("verify", verify_step, "calls"),
+           Step("await_ruleset", await_ruleset, "steps")],
     fields_key="fields",
     decide=engine_bridge.decide_item_l,
     resume_when={"ruleset_confirmed": lambda store, run: store.latest_confirmed(run["project"]) is not None},

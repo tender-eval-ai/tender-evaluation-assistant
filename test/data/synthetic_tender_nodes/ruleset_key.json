@@ -1,0 +1,21 @@
+{
+  "case": "SYN-2026-001",
+  "source": "Part and page from test/data/synthetic_tender/ground_truth.json; templates from the two test templates under test/data/templates; expected check kinds are the author's reading of the synthetic clauses",
+  "items": {
+    "a": {"part": "A", "page": 5, "template": null, "checks": ["signature"]},
+    "b": {"part": "A", "page": 5, "template": "price_schedule", "slots": {"estimated_quantity": 875000}},
+    "c": {"part": "A", "page": 5, "template": "price_schedule", "slots": {"estimated_quantity": 875000}},
+    "d": {"part": "A", "page": 5, "template": null},
+    "e": {"part": "B", "page": 5, "template": null},
+    "f": {"part": "B", "page": 6, "template": null, "checks": ["filled"]},
+    "g": {"part": "B", "page": 6, "template": null},
+    "h": {"part": "B", "page": 6, "template": null, "checks": ["document_present"]},
+    "i": {"part": "A", "page": 6, "template": null, "checks": ["document_present"]},
+    "j": {"part": "B", "page": 6, "template": null, "checks": ["document_present"]},
+    "k": {"part": "B", "page": 7, "template": null, "checks": ["filled"]},
+    "l": {"part": "A", "page": 7, "template": "noncollusive_certificate"},
+    "m": {"part": "C", "page": 7, "template": "price_schedule"},
+    "n": {"part": "A", "page": 7, "template": null, "checks": ["document_present"]},
+    "o": {"part": "B", "page": 7, "template": null, "checks": ["document_present"]}
+  }
+}

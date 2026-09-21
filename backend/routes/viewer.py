@@ -10,7 +10,7 @@ from app.checks.pages import render_pdf
 from app.ingest import SCAN_THRESHOLD, render_page_png
 from backend import deps, signing
 from backend.errors import ApiError
-from backend.schemas_api import Document, Page
+from backend.schemas_api import Node, Document, Page
 
 router = APIRouter()
 keyed = APIRouter(dependencies=[Depends(deps.require_key)])
@@ -68,3 +68,19 @@ def page_image(pid: str, doc_id: str, n: int, exp: int | None = None, sig: str |
         return Response(content=render_page_png(doc["path"], n - 1, scale=1.5, highlight=highlight), media_type="image/png")
     refs = render_pdf(doc["path"], pdir / "work" / "pages")          # V0's cache: rendered once, served many times
     return Response(content=open(refs[n - 1].path, "rb").read(), media_type="image/png")
+
+
+@router.get("/projects/{pid}/documents/{doc_id}/nodes")
+def list_nodes(pid: str, doc_id: str) -> list[Node]:
+    """The clause tree L0 parsed from one document, from the build job's cached parse."""
+    import json
+
+    pdir = deps._project_dir(pid)
+    d = deps.find_document(pdir, doc_id)
+    path = pdir / "work" / "nodes.json"
+    if not path.is_file():
+        raise ApiError(409, "not_built", f"the tender is not parsed yet; POST /projects/{pid}/ruleset/build")
+    nodes = json.loads(path.read_text())
+    mine = [n for n in nodes if n.get("source_file") in (d["rel"], d["file"])]
+    return [Node(node_id=n["node_id"], parent_id=n.get("parent_id"), kind=n["kind"], number=n.get("number") or n.get("label"),
+                 title=n.get("title") or None, page=n.get("page"), box=n.get("bbox")) for n in mine]

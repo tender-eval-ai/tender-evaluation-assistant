@@ -21,7 +21,7 @@ def test_api_and_worker_share_the_image_the_database_and_the_data_volume():
         assert env["DATABASE_URL"].startswith("postgresql://postgres:") and "@postgres:5432/tender" in env["DATABASE_URL"]
         assert env["DATA_DIR"] == "/data" and "./data:/data" in svc["volumes"]
         assert svc["depends_on"]["postgres"]["condition"] == "service_healthy"
-    assert worker["command"] == ["python", "-m", "app.jobs.worker", "--pipelines", "app.checks.vendor_check"]
+    assert worker["command"] == ["python", "-m", "app.jobs.worker", "--pipelines", "app.checks.vendor_check,app.rulesets.build_job,app.jobs.evaluate_job"]
     assert worker["stop_grace_period"] == "60s", "SIGTERM must have time to drain the running jobs"
 
 

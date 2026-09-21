@@ -68,13 +68,30 @@ class Correction(BaseModel):
     model_value: Any = None
 
 
+class Verification(BaseModel):
+    """V4's check of a value (S4). On a page with a text layer the value was looked for
+    verbatim: found, `verified` with the quote on the citation and confidence 1. On a scanned
+    page a second, independent read was compared with the first: agreement verifies,
+    disagreement leaves the value unverified with `second_value` kept for the reviewer.
+    `verified` is null when nothing could be checked (redacted, blank on a text page, a
+    signature on a text layer, no page). An unverified value is `needs_review`."""
+
+    verified: bool | None = None
+    method: Literal["text_layer", "second_read"] | None = None
+    second_value: Any = None
+    note: str | None = None
+
+
 class FieldValue(BaseModel):
     value: Any = None
     redacted: bool = False
-    confidence: float | None = None
+    confidence: float | None = Field(default=None, description="per field after V4: 1 for a value found on the "
+                                     "text layer, the fraction of its words found otherwise; on a scan the mean "
+                                     "of the two reads when they agree, half the lower when they differ")
     page: PageCitation | None = None
     correction: Correction | None = None
     model_value: Any = None
+    verification: Verification | None = None
 
 
 class CheckedField(BaseModel):
@@ -262,6 +279,30 @@ class ErrorBody(BaseModel):
 
     error: ErrorDetail
     detail: str = Field(description="the message again, for the Streamlit UI until S5")
+
+
+class BuildResponse(BaseModel):
+    job_id: str
+
+
+class Node(BaseModel):
+    """One node of the clause tree L0 parsed from a document (`GET /documents/{doc_id}/nodes`)."""
+
+    node_id: str
+    parent_id: str | None = None
+    kind: str
+    number: str | None = Field(default=None, description="the marker as printed: a clause number or a label like (a)")
+    title: str | None = None
+    page: int | None = None
+    box: list[float] | None = Field(default=None, min_length=4, max_length=4, description="[x0, y0, x1, y1] of the marker, PDF points")
+
+
+class EvaluateRequest(BaseModel):
+    version: int | None = Field(default=None, description="a confirmed rule-set version; default: the latest confirmed")
+
+
+class JobStarted(BaseModel):
+    job_id: str
 
 
 class ReasonBody(BaseModel):

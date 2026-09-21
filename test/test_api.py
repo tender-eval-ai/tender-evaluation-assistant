@@ -47,7 +47,7 @@ def test_full_project_flow_offline(tmp_path, monkeypatch):
     assert client.get(f"/projects/{pid}/rubric").json()["tender_ref"] == "DEMO0012026"
 
     # Evaluation without bids must be rejected.
-    assert client.post(f"/projects/{pid}/evaluate").status_code == 400
+    assert client.post(f"/projects/{pid}/legacy/evaluate").status_code == 400
 
     # Inject the four fixture extractions (correction path — no LLM involved).
     for path in sorted((FIXTURES / "bids").glob("*.json")):
@@ -55,7 +55,7 @@ def test_full_project_flow_offline(tmp_path, monkeypatch):
         r = client.put(f"/projects/{pid}/bids/{ext['tenderer']}/extraction", json=ext)
         assert r.status_code == 200
 
-    assert client.post(f"/projects/{pid}/evaluate").json()["started"] is True
+    assert client.post(f"/projects/{pid}/legacy/evaluate").json()["started"] is True
     status = wait_done(client, pid)
     assert status["state"] == "done", status
 
