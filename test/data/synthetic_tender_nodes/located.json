@@ -1,0 +1,747 @@
+{
+ "case": "synthetic_tender",
+ "data_class": "synthetic",
+ "files": [
+  "tender/00 Guidelines for Electronic Tendering.pdf",
+  "tender/01 Tender Form.pdf",
+  "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+  "tender/03 Interpretation (Supplement).pdf",
+  "tender/04 Terms of Tender (Supplement).pdf",
+  "tender/05 Annex A (Reply Slip) to the Terms of Tender (Supplement).pdf",
+  "tender/06 Annex B (Procedures and Conditions of Plant Trial) to the Terms of Tender (Supplement).pdf",
+  "tender/07 Special Conditions of Contract.pdf",
+  "tender/08 Technical Specifications.pdf",
+  "tender/08A Attachment A to the Technical Specifications.pdf",
+  "tender/08B Attachment B to the Technical Specifications.pdf",
+  "tender/08C Attachment C to the Technical Specifications.pdf",
+  "tender/08D Attachment D to the Technical Specifications.pdf",
+  "tender/09 Schedules.pdf",
+  "tender/10 Non-collusive Tendering Certificate.pdf",
+  "tender/11 Appendix to the Terms of Tender - Contact Details.pdf",
+  "tender/12 Annex A to the Terms of Tender Part I - Method of Production Statement.pdf"
+ ],
+ "items": [
+  {
+   "letter": "a",
+   "title": "An Offer to be Bound in Part 4 of the Tender Form, duly signed by the Tenderer (see Paragraph 3.3 of the Terms of ...",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PA:(a)",
+    "candidates": null,
+    "quote": "(a) An Offer to be Bound in Part 4 of the Tender Form, duly signed by the Tenderer (see Paragraph 3.3 of the Terms of Tender and Paragraph 9 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/01 Tender Form.pdf",
+     "page": 3,
+     "node_id": "01-Tender-Form:P4",
+     "candidates": null,
+     "quote": "PART 4 ? OFFER TO BE BOUND",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 5,
+     "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:3.3",
+     "candidates": null,
+     "quote": "3.3 The nominated store keeper shall maintain the insurance policy in force throughout the Contract Period. The Tenderer shall allow inspection of the production facility on each occasion that a delivery is made.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 4,
+     "node_id": "04-Terms-of-Tender-Supplement:9",
+     "candidates": null,
+     "quote": "9.\nOffer to be Bound\nThe Authority may reject any consignment that fails the acceptance test unless otherwise agreed in writing. The Supplier may reject any consignment that fails the acceptance test throughout the Contract Period.",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "b",
+   "title": "The one-time unit price quotation for Item 1 as specified in Part A of the Price Schedule (see Paragraph 5 of the Terms ...",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PA:(b)",
+    "candidates": null,
+    "quote": "(b) The one-time unit price quotation for Item 1 as specified in Part A of the Price Schedule (see Paragraph 5 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/09 Schedules.pdf",
+     "page": 1,
+     "node_id": "09-Schedules:00-Price-Schedule:PA",
+     "candidates": null,
+     "quote": "Part A - Item 1",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 2,
+     "node_id": "04-Terms-of-Tender-Supplement:5",
+     "candidates": null,
+     "quote": "5.\nPrice Basis\nThe nominated store keeper may reject any consignment that fails the acceptance test where the Goods are supplied in bulk. The Contractor shall provide a certificate of analysis for each batch throughout the Contract Period. The Supplier shall return the empty containers at its own cost without prejudice to any other remedy. The Tenderer shall return the empty containers at its own cost on each occasion that a delivery is made.",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "c",
+   "title": "The optimal dosage for Item 1 as specified in Part A of the Price Schedule (see Paragraph 6 of the Terms of Tender ...",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PA:(c)",
+    "candidates": null,
+    "quote": "(c) The optimal dosage for Item 1 as specified in Part A of the Price Schedule (see Paragraph 6 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/09 Schedules.pdf",
+     "page": 1,
+     "node_id": "09-Schedules:00-Price-Schedule:PA",
+     "candidates": null,
+     "quote": "Part A - Item 1",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 2,
+     "node_id": "04-Terms-of-Tender-Supplement:6",
+     "candidates": null,
+     "quote": "6.\nOptimal Dosage\nThe Contractor shall deliver the Goods to the nominated store throughout the Contract Period. The Tenderer shall notify the other party in writing throughout the Contract Period.\nThe Tenderer shall state the optimal dosage of Item 1 in milligrams per litre (mg/L) determined in the Plant Trial.",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "d",
+   "title": "The essential information required in the Particulars of Goods Schedule (see Paragraph 8 of the Terms of Tender ...",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PA:(d)",
+    "candidates": null,
+    "quote": "(d) The essential information required in the Particulars of Goods Schedule (see Paragraph 8 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 3,
+     "node_id": "04-Terms-of-Tender-Supplement:8",
+     "candidates": null,
+     "quote": "8.\nParticulars of Goods Schedule\nThe nominated store keeper shall keep a record of every batch supplied at no additional cost to the Authority. The Contractor shall allow inspection of the production facility throughout the Contract Period. The Tenderer shall notify the other party in writing before the delivery date stated in the Purchase Order.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/09 Schedules.pdf",
+     "page": 3,
+     "node_id": "09-Schedules:01-Particulars-of-Goods-Schedule",
+     "candidates": null,
+     "quote": "PARTICULARS OF GOODS SCHEDULE",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "e",
+   "title": "Other information required in the Particulars of Goods Schedule (see Paragraph 8.4 of the Terms of Tender (Supplement)).",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PB:(e)",
+    "candidates": null,
+    "quote": "(e) Other information required in the Particulars of Goods Schedule (see Paragraph\n8.4 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 3,
+     "node_id": "04-Terms-of-Tender-Supplement:8.4",
+     "candidates": null,
+     "quote": "8.4 The Contractor shall comply with the Technical Specifications unless otherwise agreed in writing. The Supplier shall bear the cost of replacement within fourteen days of the Purchase Order.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/09 Schedules.pdf",
+     "page": 3,
+     "node_id": "09-Schedules:01-Particulars-of-Goods-Schedule",
+     "candidates": null,
+     "quote": "PARTICULARS OF GOODS SCHEDULE",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "f",
+   "title": "Information and documents required in Tables A, B and C of the Information Schedule (see Paragraph 10 of the Terms of ...",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 6,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PB:(f)",
+    "candidates": null,
+    "quote": "(f) Information and documents required in Tables A, B and C of the Information Schedule (see Paragraph 10 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/09 Schedules.pdf",
+     "page": 8,
+     "node_id": "09-Schedules:04-Information-Schedule:PA",
+     "candidates": null,
+     "quote": "Table A - Track Record of Supply\nThe Authority Representative shall return the empty containers at its own cost without prejudice to any other remedy. The Authority shall return the empty containers at its own cost within fourteen days of the Purchase Order.\nContract  Client  Quantity  Year",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/09 Schedules.pdf",
+     "page": 8,
+     "node_id": "09-Schedules:04-Information-Schedule:PB",
+     "candidates": null,
+     "quote": "Table B - Quality Certification\nThe Authority Representative shall maintain the insurance policy in force unless otherwise agreed in writing. The Authority Representative shall keep a record of every batch supplied subject to the Special Conditions of Contract.\nContract  Client  Quantity  Year",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/09 Schedules.pdf",
+     "page": 8,
+     "node_id": "09-Schedules:04-Information-Schedule:PC",
+     "candidates": null,
+     "quote": "Table C - Production Capacity\nThe Tenderer shall label each container with the batch number and the date of manufacture unless otherwise agreed in writing. The nominated store keeper shall submit the monthly delivery programme within fourteen days of the Purchase Order.\nContract  Client  Quantity  Year",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 4,
+     "node_id": "04-Terms-of-Tender-Supplement:10",
+     "candidates": null,
+     "quote": "10. Information Schedule\nThe nominated store keeper shall return the empty containers at its own cost before the delivery date stated in the Purchase Order. The Contractor shall maintain the insurance policy in force unless otherwise agreed in writing. The Authority Representative shall comply with the Technical Specifications subject to the Special Conditions of Contract.",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "g",
+   "title": "Samples of the Goods, if requested by the Authority at any time after the Tender Closing Date (see Paragraph 11 of the ...",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 6,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PB:(g)",
+    "candidates": null,
+    "quote": "(g) Samples of the Goods, if requested by the Authority at any time after the Tender Closing Date (see Paragraph 11 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 5,
+     "node_id": "04-Terms-of-Tender-Supplement:11",
+     "candidates": null,
+     "quote": "11.",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "h",
+   "title": "Documentary evidence proving compliance with the Technical Specifications (see Paragraph 12 of the Terms of Tender ...",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 6,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PB:(h)",
+    "candidates": null,
+    "quote": "(h) Documentary evidence proving compliance with the Technical Specifications (see Paragraph 12 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 5,
+     "node_id": "04-Terms-of-Tender-Supplement:12",
+     "candidates": null,
+     "quote": "12.\nDocumentary Evidence of Compliance\nThe Contractor shall maintain the insurance policy in force throughout the Contract Period. The Supplier may extend the period on written request on each occasion that a delivery is made. The Supplier shall deliver the Goods to the nominated store at no additional cost to the Authority.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/08 Technical Specifications.pdf",
+     "page": 1,
+     "node_id": "08-Technical-Specifications",
+     "candidates": null,
+     "quote": "TECHNICAL SPECIFICATIONS",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "i",
+   "title": "Where the Tenderer is not the manufacturer of the Goods, the letter of intent from the manufacturer (see Paragraph 15 ...",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 6,
+    "node_id": null,
+    "candidates": null,
+    "quote": "(i) Where the Tenderer is not the manufacturer of the Goods, the letter of intent from the manufacturer (see Paragraph 15 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 7,
+     "node_id": "04-Terms-of-Tender-Supplement:15",
+     "candidates": null,
+     "quote": "15.\nManufacturer’s Letter of Intent\nThe Authority Representative shall submit the monthly delivery programme subject to the Special Conditions of Contract. The Contractor may reject any consignment that fails the acceptance test within fourteen days of the Purchase Order.",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "j",
+   "title": "A certified extract of the board resolution authorising the signatory of the Tender (see Paragraph 16 of the Terms of ...",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 6,
+    "node_id": null,
+    "candidates": null,
+    "quote": "(j) A certified extract of the board resolution authorising the signatory of the Tender (see Paragraph 16 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 7,
+     "node_id": "04-Terms-of-Tender-Supplement:16",
+     "candidates": null,
+     "quote": "16. Boar d Resolution\nThe Tenderer shall provide a certificate of analysis for each batch before the delivery date stated in the Purchase Order. The Authority Representative may extend the period on written request throughout the Contract Period.",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "k",
+   "title": "The contact details of the Tenderer in the Appendix to the Terms of Tender (see Paragraph 17 of the Terms of Tender ...",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 7,
+    "node_id": null,
+    "candidates": null,
+    "quote": "(k) The contact details of the Tenderer in the Appendix to the Terms of Tender (see Paragraph 17 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 8,
+     "node_id": "04-Terms-of-Tender-Supplement:17",
+     "candidates": null,
+     "quote": "17.\nContact Details\nThe Supplier shall maintain the insurance policy in force in the form set out in the Schedules. The Authority shall maintain the insurance policy in force where the Goods are supplied in bulk.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/11 Appendix to the Terms of Tender - Contact Details.pdf",
+     "page": 1,
+     "node_id": "11-Appendix-to-the-Terms-of-Tender-Conta",
+     "candidates": null,
+     "quote": "APPENDIX TO THE TERMS OF TENDER - CONTACT DETAILS",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "l",
+   "title": "The signed Non-collusive Tendering Certificate (see Paragraphs 9.4, 10.1, 12 and 20.2 of the Terms of Tender and ...",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 7,
+    "node_id": null,
+    "candidates": null,
+    "quote": "(l) The signed Non-collusive Tendering Certificate (see Paragraphs 9.4, 10.1, 12 and 20.2 of the Terms of Tender and Paragraph 13 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 8,
+     "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:9.4",
+     "candidates": null,
+     "quote": "9.4 The nominated store keeper shall submit the monthly delivery programme at no additional cost to the Authority. The Authority may reject any consignment that fails the acceptance test on each occasion that a delivery is made.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 8,
+     "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:10.1",
+     "candidates": null,
+     "quote": "10.1 The Tenderer shall provide a certificate of analysis for each batch throughout the Contract Period. The Supplier shall allow inspection of the production facility where the Goods are supplied in bulk.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 9,
+     "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:12",
+     "candidates": null,
+     "quote": "12.\nNon-collusive Tendering Certificate\nThe Authority shall allow inspection of the production facility unless otherwise agreed in writing. The Authority Representative shall notify the other party in writing at no additional cost to the Authority.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 13,
+     "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:20.2",
+     "candidates": null,
+     "quote": "20.2 The nominated store keeper shall return the empty containers at its own cost in the form set out in the Schedules. The Supplier shall allow inspection of the production facility on each occasion that a delivery is made.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 5,
+     "node_id": "04-Terms-of-Tender-Supplement:13",
+     "candidates": null,
+     "quote": "13.\nNon-collusive Tendering Certificate\nThe Authority may extend the period on written request without prejudice to any other remedy. The Authority Representative may extend the period on written request throughout the Contract Period. The nominated store keeper shall deliver the Goods to the nominated store within fourteen days of the Purchase Order.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/10 Non-collusive Tendering Certificate.pdf",
+     "page": 1,
+     "node_id": "10-Non-collusive-Tendering-Certificate",
+     "candidates": null,
+     "quote": "NON-COLLUSIVE TENDERING CERTIFICATE",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "m",
+   "title": "Parts C and D of the Price Schedule (see Paragraph 20 of the Terms of Tender (Supplement)).",
+   "part": "C",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 7,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PC:(m)",
+    "candidates": null,
+    "quote": "(m) Parts C and D of the Price Schedule (see Paragraph 20 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/09 Schedules.pdf",
+     "page": 2,
+     "node_id": "09-Schedules:00-Price-Schedule:PC",
+     "candidates": null,
+     "quote": "Part C - Optional Items\nThe Tenderer shall bear the cost of replacement throughout the Contract Period. The Authority Representative shall comply with the Technical Specifications at no additional cost to the Authority.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/09 Schedules.pdf",
+     "page": 2,
+     "node_id": "09-Schedules:00-Price-Schedule:PD",
+     "candidates": null,
+     "quote": "Part D - Price Adjustment\nThe Authority Representative shall submit the monthly delivery programme subject to the Special Conditions of Contract. The Contractor shall return the empty containers at its own cost at no additional cost to the Authority.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 9,
+     "node_id": "04-Terms-of-Tender-Supplement:20",
+     "candidates": null,
+     "quote": "20.\nPrice Schedule Parts C and D\nThe Supplier may reject any consignment that fails the acceptance test unless otherwise agreed in writing. The nominated store keeper may extend the period on written request without prejudice to any other remedy. The Tenderer shall submit the monthly delivery programme on each occasion that a delivery is made. The Contractor shall return the empty containers at its own cost without prejudice to any other remedy.",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "n",
+   "title": "The Compliance Schedule (see Paragraph 7 of the Terms of Tender).",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 7,
+    "node_id": null,
+    "candidates": null,
+    "quote": "(n) The Compliance Schedule (see Paragraph 7 of the Terms of Tender).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 6,
+     "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:7",
+     "candidates": null,
+     "quote": "7.\nCompliance Schedule\nThe Tenderer shall deliver the Goods to the nominated store on each occasion that a delivery is made. The Authority Representative shall provide a certificate of analysis for each batch before the delivery date stated in the Purchase Order. The\nSupplier shall bear the cost of replacement on each occasion that a delivery is made.",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/09 Schedules.pdf",
+     "page": 4,
+     "node_id": "09-Schedules:02-Compliance-Schedule",
+     "candidates": null,
+     "quote": "Compliance Schedule",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  },
+  {
+   "letter": "o",
+   "title": "Annex A to the Terms of Tender - Part I - Method of Production Statement (see Paragraph 21 of the Terms of Tender ...",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 7,
+    "node_id": null,
+    "candidates": null,
+    "quote": "(o) Annex A to the Terms of Tender - Part I - Method of Production Statement (see Paragraph 21 of the Terms of Tender (Supplement)).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 9,
+     "node_id": "04-Terms-of-Tender-Supplement:21",
+     "candidates": null,
+     "quote": "21.\nMethod of Production Statement\nThe Authority Representative shall provide a certificate of analysis for each batch subject to the Special Conditions of Contract. The Contractor shall deliver the Goods to the nominated store in the form set out in the Schedules. The Supplier shall provide a certificate of analysis for each batch at no additional cost to the Authority.",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [],
+   "slots": {},
+   "rules": [],
+   "status": "needs_input",
+   "edit": null
+  }
+ ],
+ "unresolved": {
+  "o": [
+   "Part I of the Annex A to the Terms of Tender"
+  ]
+ },
+ "parts": [
+  {
+   "part": "A",
+   "title": "Part A",
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PA",
+    "candidates": null,
+    "quote": "Part A",
+    "data_class": "synthetic"
+   },
+   "clauses": []
+  },
+  {
+   "part": "B",
+   "title": "Part B",
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PB",
+    "candidates": null,
+    "quote": "Part B",
+    "data_class": "synthetic"
+   },
+   "clauses": []
+  },
+  {
+   "part": "A",
+   "title": "Part A",
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PA",
+    "candidates": null,
+    "quote": "Part A",
+    "data_class": "synthetic"
+   },
+   "clauses": []
+  },
+  {
+   "part": "B",
+   "title": "Part B",
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PB",
+    "candidates": null,
+    "quote": "Part B",
+    "data_class": "synthetic"
+   },
+   "clauses": []
+  },
+  {
+   "part": "A",
+   "title": "Part A",
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PA",
+    "candidates": null,
+    "quote": "Part A",
+    "data_class": "synthetic"
+   },
+   "clauses": []
+  },
+  {
+   "part": "C",
+   "title": "Part C",
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 7,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PC",
+    "candidates": null,
+    "quote": "Part C\nThe Authority may at its discretion request the following item after the Tender Closing Date or evaluate the Tender as submitted (see Paragraph 16.1 of the Terms of Tender).",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 11,
+     "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:16.1",
+     "candidates": null,
+     "quote": "16.1 The nominated store keeper may reject any consignment that fails the acceptance test subject to the Special Conditions of Contract. The Tenderer shall maintain the insurance policy in force on each occasion that a delivery is made.",
+     "data_class": "synthetic"
+    }
+   ]
+  },
+  {
+   "part": "A",
+   "title": "Part A",
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PA",
+    "candidates": null,
+    "quote": "Part A",
+    "data_class": "synthetic"
+   },
+   "clauses": []
+  },
+  {
+   "part": "B",
+   "title": "Part B",
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "09-Schedules:03-Completeness-Check-Schedule:PB",
+    "candidates": null,
+    "quote": "Part B",
+    "data_class": "synthetic"
+   },
+   "clauses": []
+  }
+ ]
+}
