@@ -14,6 +14,7 @@ The React UI is built against this file through `web/mock/`, which answers exact
 - **Versions.** Every stored result carries the `ruleset_version` it was computed against. Confirming a new version does not rewrite old results; re-evaluation creates new ones.
 - **Audit.** Every mutating route writes one event `{kind, project, subject, before, after, user, at, reason}` to the append-only `events` table.
 - **Pagination.** List routes accept `?limit=` (default 100, max 1000) and `?cursor=`; paginated responses are `{items: [...], next_cursor}` with `next_cursor` set when more exist (`jobs`, `events`).
+- **Timestamps.** Every timestamp the API sends is an ISO-8601 datetime in UTC (`created_at`, `updated_at`, `at`, `created`, `updated`, `confirmed_at`); a query parameter that filters by time (`since`) takes epoch seconds (I1.17, S3).
 - **Image links.** `image_url` in `Page` and `PageCitation` is a path relative to the API base, signed and short-lived; use it as given (I1.9).
 
 ## Rules window (L0 to L5)
@@ -23,15 +24,15 @@ The React UI is built against this file through `web/mock/`, which answers exact
 | POST | `/projects/{pid}/ruleset/build` | `{}` | `202 {job_id}` | S3 | Runs L0 to L4. A rebuild never overwrites a human edit; it stores the new suggestion beside it (`model_value`). |
 | GET | `/projects/{pid}/ruleset` | `?version=` | `RuleSet` | S2 done | Latest draft by default; a confirmed version by number. Typed as `RuleSet` in `openapi.json`; `updated_by` is the draft's last editor (I1.6, I1.17). |
 | GET | `/projects/{pid}/ruleset/versions` | | `[RuleSetVersion]` | S2 done | ISO datetimes; `updated_by` is the draft's last editor (I1.17). |
-| GET | `/projects/{pid}/ruleset/diff` | `?from=&to=` | `Diff` | S3 | Items added, removed, changed; per changed item the fields and the edit record. |
-| PATCH | `/projects/{pid}/ruleset/items/{letter}` | `ItemPatch` | `RuleSetItem` | S3 | Change a slot value, a rule, the template or a note (`note` is an `ItemNote`, I1.13). `reason` required. Sets `status: edited`; an item a person adds is `edited` too, with its edit record (I1.16). |
-| POST | `/projects/{pid}/ruleset/items` | `NewItem` | `RuleSetItem` | S3 | Add an item from clause text selected in the viewer; the selection becomes its citation. `reason` required. |
-| DELETE | `/projects/{pid}/ruleset/items/{letter}` | `{reason}` | `204` | S3 | |
+| GET | `/projects/{pid}/ruleset/diff` | `?from=&to=` | `Diff` | S3 done | Items added, removed, changed; per changed item the fields and the edit record, `null` when the rule builder made the change (I1.14). |
+| PATCH | `/projects/{pid}/ruleset/items/{letter}` | `ItemPatch` | `RuleSetItem` | S3 done | One of a slot value, a rule (replaced by id or appended), the template or a note (`ItemNote`, I1.13); `reason` required, else `400 bad_request`. Sets `status: edited` with the person's `edit`; a corrected slot keeps the model's value in `model_value` through every later correction. An edit to a confirmed set opens draft N+1 (parent N). |
+| POST | `/projects/{pid}/ruleset/items` | `NewItem` | `201 RuleSetItem` | S3 done | An item a person adds from a clause; lettered `x1`, `x2`, ...; `edited` with their record (I1.16). No template, so its rules carry their own outcomes or the body is `422`. |
+| DELETE | `/projects/{pid}/ruleset/items/{letter}` | `{reason}` | `204` | S3 done | |
 | PUT | `/projects/{pid}/ruleset/draft` | `RuleSet` | `RuleSet` | S2 done | Whole-draft JSON editor. Validated against `schema.py`; `422 validation_failed` lists the errors. |
-| POST | `/projects/{pid}/ruleset/confirm` | `{}` | `RuleSet` | S2 done | `403 self_approval` if the approver is the last editor; `409 conflict` while an item needs input or a gap has no reason. I1.15 (409 when a required slot of the item's template is empty whatever the status) needs the template lookup and lands at S3; nothing enforces it yet. Creates version N, status confirmed. |
-| GET | `/projects/{pid}/ruleset/gaps` | | `[Gap]` | S3 | Uncovered clauses and "shall/must" sentences, with reasons once given. |
-| PATCH | `/projects/{pid}/ruleset/gaps/{node_id}` | `{reason}` | `Gap` | S3 | Gives a gap its reason, recorded as `Gap.edit` (I1.12). |
-| PATCH, DELETE | `/projects/{pid}/ruleset/items/{letter}/notes/{i}` | `ItemNote` / `{reason}` | `RuleSetItem` | S3 | Edit or remove note `i` of an item (I1.13). |
+| POST | `/projects/{pid}/ruleset/confirm` | `{}` | `RuleSet` | S2 done | `403 self_approval` if the approver is the last editor; `409 conflict` with `details.blockers` naming each cause: an item that needs input or is a gap, an empty required slot of the item's template whatever the item's status (I1.15, S3), a template the server cannot load, a gap without a reason. Creates version N, status confirmed. |
+| GET | `/projects/{pid}/ruleset/gaps` | | `[Gap]` | S3 done | The current rule set's gaps (uncovered clauses, filled by L4 at S3-4), with reasons once given. |
+| PATCH | `/projects/{pid}/ruleset/gaps/{node_id}` | `{reason}` | `Gap` | S3 done | Gives a gap its reason, recorded as `Gap.edit` (I1.12). |
+| PATCH, DELETE | `/projects/{pid}/ruleset/items/{letter}/notes/{i}` | `NotePatch {note, reason}` / `{reason}` | `RuleSetItem` | S3 done | Edit or remove note `i` of an item (I1.13); `404` past the last note. |
 
 ## Stage I and II window (V0 to V7)
 
@@ -83,8 +84,9 @@ API-only models, defined in `backend/schemas_api.py` and exported into `docs/ope
 - `ItemPatch {slot?: {name, value}, rule?: TemplateRule, template?: str, note?: ItemNote, reason: str}`
 - `NewItem {title, part, citation: Citation, rules: [TemplateRule], reason: str}`
 - `Diff {from, to, added: [letter], removed: [letter], changed: [{letter, fields: [str], edit: Edit | null}]}`; `edit` is null for a change the rule builder made, not a person (I1.14)
-- `Project {id, name, synthetic, data_class, created, status: ProjectStatus {state, detail?, updated?}, tender_files?, bidders?, extracted?, has_rubric?, has_evaluation?, reports?}`; `GET /projects` lists them without the detail fields; `status` is an object (`status.state` is `idle|running|waiting|done|error`), not a string (I1.6)
+- `Project {id, name, synthetic, data_class, created, status: ProjectStatus {state: idle|running|waiting|done|error, detail?, updated?}, tender_files?, bidders?, extracted?, has_rubric?, has_evaluation?, reports?}`; `GET /projects` lists them without the detail fields; `status` is an object (`status.state` is `idle|running|waiting|done|error`), not a string (I1.6)
 - `RuleSetVersion {version, status, parent_version, created_by, created_at, confirmed_by, confirmed_at, updated_by}`, ISO datetimes (I1.17)
+- `NotePatch {note: ItemNote, reason}`, `ReasonBody {reason}` (the DELETE bodies and the gap PATCH)
 - `ErrorBody {error: {code, message, details}, detail}` (I1.9)
 - `BidResult {tenderer, run_id, ruleset_version, fields: {letter: {field: FieldValue}}, verdicts: {letter: Verdict}, stage1: StageSummary, stage2?: StageSummary, trace?, cost: {calls, cache_hits, usd, waited_seconds}, review_confirmed_by?}`
 - `FieldValue {value, redacted, confidence, page?: PageCitation, correction?: {value, by, reason, model_value}, model_value?}`
@@ -98,7 +100,7 @@ API-only models, defined in `backend/schemas_api.py` and exported into `docs/ope
 
 Items 1 and 2 landed in PR #35; 3 to 10, 14, 16 and 17 in #41 and #44. Items 8 (`CorrectionRequest`) and 12 (`PATCH /ruleset/gaps/{node_id}`) are rows in this file only until S4 and S3; 11 to 13 and 15 land with the S3 rule-set editing routes, when `ItemPatch`, `NewItem` and `Diff` enter `openapi.json`.
 
-3. `RuleSet.parts: [PartSpec]` for the Part intros. 4. `needs_input` covers "located, no rules yet"; no new status. 5. `Citation.candidates` beside `node_id`; a person picks. 6. `GET /projects`, `GET /projects/{pid}` and the three rule-set routes are typed (`Project`, `RuleSet`). 7. `jobs` and `events` are paged; `Job.state` includes `paused`; `Job.progress` is `Progress`. 8. `CorrectionRequest` is the request body, `Correction` the stored record. 9. `422` is `ErrorBody` in `openapi.json`; `image_url` is relative to the API base. 10. `CheckedField.field`. 11. The S3 rule-set routes get typed as they are built. 12. `PATCH /ruleset/gaps/{node_id}` with `reason`, recorded as `Gap.edit`. 13. `ItemPatch.note` is an `ItemNote`; notes are edited and removed by index. 14. `Diff.changed[].edit` may be null; `model_value` stays on slots only, the parent version is the model's original for rules and templates. 15. Confirm checks every template's required slots, not the status alone (agreed; implemented at S3, see the confirm row). 16. An item a person adds is `edited` with its edit record; `novel` stays for L3 drafts. 17. `RuleSetVersion` uses ISO datetimes and carries `updated_by`; `RuleSet.updated_by` too.
+3. `RuleSet.parts: [PartSpec]` for the Part intros. 4. `needs_input` covers "located, no rules yet"; no new status. 5. `Citation.candidates` beside `node_id`; a person picks. 6. `GET /projects`, `GET /projects/{pid}` and the three rule-set routes are typed (`Project`, `RuleSet`). 7. `jobs` and `events` are paged; `Job.state` includes `paused`; `Job.progress` is `Progress`. 8. `CorrectionRequest` is the request body, `Correction` the stored record. 9. `422` is `ErrorBody` in `openapi.json`; `image_url` is relative to the API base. 10. `CheckedField.field`. 11. The S3 rule-set routes are typed (done at S3-1). 12. `PATCH /ruleset/gaps/{node_id}` with `reason`, recorded as `Gap.edit` (done). 13. `ItemPatch.note` is an `ItemNote`; notes are edited and removed by index (done). 14. `Diff.changed[].edit` may be null; `model_value` stays on slots only, the parent version is the model's original for rules and templates (done). 15. Confirm checks every template's required slots, not the status alone (done: `details.blockers`). 16. An item a person adds is `edited` with its edit record; `novel` stays for L3 drafts. 17. `RuleSetVersion` uses ISO datetimes and carries `updated_by`; `RuleSet.updated_by` too. Every other timestamp is ISO as well and `ProjectStatus.state` is a closed list (S3-1, from the #41 review).
 
 ## Questions settled at S0
 

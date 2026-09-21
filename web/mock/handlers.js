@@ -22,17 +22,19 @@ export const ROUTES = [
   ["get", "/projects/{pid}/documents/{doc_id}/pages"],
   ["get", "/projects/{pid}/documents/{doc_id}/pages/{n}/image"],
   ["get", "/projects/{pid}/events"],
+  // The S3 editing routes reached openapi.json with PR #48 (S3-1).
+  ["get", "/projects/{pid}/ruleset/diff"],
+  ["get", "/projects/{pid}/ruleset/gaps"],
+  ["post", "/projects/{pid}/ruleset/items"],
+  ["patch", "/projects/{pid}/ruleset/items/{letter}"],
+  ["delete", "/projects/{pid}/ruleset/items/{letter}"],
 ];
 
 // The S3 rule-set routes of docs/api_contract.md that openapi.json does not
 // have yet. contract.test.js checks their bodies against the models of
 // app/rulesets/schema.py (mock/rulesetSchema.js) until it does.
 export const S3_ROUTES = [
-  ["get", "/projects/{pid}/ruleset/diff"],
-  ["get", "/projects/{pid}/ruleset/gaps"],
-  ["post", "/projects/{pid}/ruleset/items"],
-  ["patch", "/projects/{pid}/ruleset/items/{letter}"],
-  ["delete", "/projects/{pid}/ruleset/items/{letter}"],
+  // Empty since PR #48: every S3 route the mock serves is in openapi.json (see ROUTES).
 ];
 
 // Mutable state: which tenderers have a finished check, and the jobs started

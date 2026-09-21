@@ -31,8 +31,8 @@ class Job(BaseModel):
     attempt: int = 1
     error: str | None = None
     ruleset_version: int | None = None
-    created_at: float
-    updated_at: float
+    created_at: datetime
+    updated_at: datetime
 
 
 class CheckRequest(BaseModel):
@@ -157,7 +157,7 @@ class Event(BaseModel):
     after: Any = None
     user: str
     reason: str | None = None
-    at: float
+    at: datetime
 
 
 class EventPage(BaseModel):
@@ -173,9 +173,9 @@ class JobPage(BaseModel):
 class ProjectStatus(BaseModel):
     """The legacy pipeline's state file: idle, running, waiting, done or error, with a detail line."""
 
-    state: str = "idle"
+    state: Literal["idle", "running", "waiting", "done", "error"] = "idle"
     detail: str | None = None
-    updated: float | None = None
+    updated: datetime | None = None
 
 
 class Project(BaseModel):
@@ -186,7 +186,7 @@ class Project(BaseModel):
     name: str
     synthetic: bool = False
     data_class: DataClass = DataClass.CONFIDENTIAL
-    created: float | None = None
+    created: datetime | None = None
     status: ProjectStatus = Field(default_factory=ProjectStatus, description="an object, not a string: read status.state")
     tender_files: list[str] | None = None
     bidders: list[str] | None = None
@@ -262,3 +262,16 @@ class ErrorBody(BaseModel):
 
     error: ErrorDetail
     detail: str = Field(description="the message again, for the Streamlit UI until S5")
+
+
+class ReasonBody(BaseModel):
+    """The body of a DELETE or a gap PATCH: why."""
+
+    reason: str = Field(min_length=1)
+
+
+class NotePatch(BaseModel):
+    """`PATCH /ruleset/items/{letter}/notes/{i}`: the note as it should read, and why."""
+
+    note: ItemNote
+    reason: str = Field(min_length=1)

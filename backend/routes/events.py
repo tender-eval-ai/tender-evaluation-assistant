@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends
 
 from backend import deps
 from backend.schemas_api import Event, EventPage
+from backend.times import when
 
 router = APIRouter(dependencies=[Depends(deps.require_key)])
 
@@ -17,4 +18,5 @@ def list_events(pid: str, since: float | None = None, kind: str | None = None, l
     after_id = int(cursor) if cursor else 0
     rows = deps.runner().store.events(pid, kind=kind, after_id=after_id, since=since, limit=limit + 1)
     page, more = rows[:limit], len(rows) > limit
-    return EventPage(items=[Event(**r) for r in page], next_cursor=str(page[-1]["id"]) if more and page else None)
+    return EventPage(items=[Event(**{**r, "at": when(r["at"])}) for r in page],
+                     next_cursor=str(page[-1]["id"]) if more and page else None)

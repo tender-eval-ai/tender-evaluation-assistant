@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from backend import deps, jobs
 from backend.routes.runs import _graph_db_scratch
 from backend.schemas_api import Project
+from backend.times import when
 
 router = APIRouter(dependencies=[Depends(deps.require_key)])
 
@@ -33,7 +34,9 @@ def _project(meta: dict, **detail) -> Project:
     """meta.json as the contract's Project; projects created before data classes existed
     derive theirs from the synthetic flag."""
     data_class = meta.get("data_class") or ("synthetic" if meta.get("synthetic") else "confidential")
-    return Project.model_validate({**meta, "data_class": data_class, **detail})
+    status = dict(detail.pop("status", None) or {})
+    status["updated"] = when(status.get("updated"))
+    return Project.model_validate({**meta, "data_class": data_class, "created": when(meta.get("created")), "status": status, **detail})
 
 
 @router.post("/projects")
