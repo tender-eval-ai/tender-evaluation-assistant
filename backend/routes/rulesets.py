@@ -43,6 +43,11 @@ def _errors(err: ValidationError) -> dict:
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)
+def _when(value) -> datetime | None:
+    """Epoch seconds (float, or Decimal from psycopg) or an already-built datetime, as ISO."""
+    if value is None or isinstance(value, datetime):
+        return value
+    return datetime.fromtimestamp(float(value), tz=timezone.utc)
 
 
 @router.get("/projects/{pid}/ruleset")
