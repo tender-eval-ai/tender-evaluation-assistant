@@ -12,7 +12,7 @@ import time
 
 import pytest
 
-from test.checks.conftest import CASE, PID, RULESET
+from test.checks.conftest import CASE, PID, RULESET, TEMPLATES
 
 pytestmark = pytest.mark.postgres
 
@@ -23,6 +23,7 @@ def worker(tmp_path, monkeypatch):
         pytest.skip("DATABASE_URL not set")
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setenv("VENDOR_CHECK_LLM_FACTORY", "test.checks.fake_factory:factory")
+    monkeypatch.setenv("RULESET_TEMPLATES_DIR", str(TEMPLATES))
     for k, v in {"JOBS_HEARTBEAT": "1", "JOBS_STALLED_AFTER": "3", "JOBS_SWEEP_EVERY": "1", "JOBS_POLL": "0.5"}.items():
         monkeypatch.setenv(k, v)
     pdir = tmp_path / "projects" / PID
@@ -70,7 +71,8 @@ def test_a_vendor_check_runs_through_the_worker_and_stores_the_engine_verdict(wo
     assert _wait(runner, run, "done", "failed", "dead"), runner.status(run)
     result = runner.results(run)
     assert runner.status(run).state == "done" and result.ruleset_version == 1
-    assert result.verdict["outcome"] == "pass" and result.verdict["part"] == "A"
+    assert result.verdict["outcome"] == "pass" and result.verdict["items"]["l"]["part"] == "A"
     assert result.fields["noncollusive_certificate.signature_page"]["page"] == 13
     corrected = runner.correct_field(run, "noncollusive_certificate.signature", None, "signature is a photocopy", by="nasi")
     assert corrected.verdict["outcome"] == "disqualified" and corrected.corrections["noncollusive_certificate.signature"]["by"] == "nasi"
+    assert corrected.verdict["items"]["l"]["outcome"] == "disqualified"

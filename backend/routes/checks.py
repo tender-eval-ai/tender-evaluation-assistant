@@ -3,14 +3,14 @@ jobs, read a tenderer's result."""
 from __future__ import annotations
 
 import base64
-from collections import defaultdict
 
 from fastapi import APIRouter, Depends
 
-from app.checks.extract_item_l import PREFIX as ITEM_L_PREFIX
-from app.checks.fields import is_meta
+from app.checks.corrections import item_verdicts
+from app.checks.forms import Form, form_for, forms_for_letter
 from app.ingest import QuoteBox, locate_quote
 from app.jobs.models import RunStatus, is_project_run
+from app.rulesets.schema import RuleSet
 from backend import deps, signing
 from backend.errors import ApiError
 from backend.times import when
@@ -18,9 +18,6 @@ from backend.schemas_api import (BidResult, CheckedField, CheckRequest, CheckRes
                                  PageCitation, StageSummary, Verdict)
 
 router = APIRouter(dependencies=[Depends(deps.require_key)])
-
-ITEM_OF_PREFIX = {ITEM_L_PREFIX: "l"}
-
 
 def _job(s: RunStatus, created_at: float | None = None) -> Job:
     return Job(job_id=s.run_id, kind=s.kind, project=s.project, tenderer=None if is_project_run(s.tenderer) else s.tenderer,
@@ -81,7 +78,10 @@ def get_job(pid: str, job_id: str) -> Job:
     return _job(s)
 
 
-def _bid_result(pid: str, pdir, run: dict, result, steps: dict) -> BidResult:
+def _bid_result(pid: str, pdir, run: dict, result, steps: dict, spec: dict | None = None) -> BidResult:
+    """The contract's BidResult: the fields of every item through its form, one verdict per
+    item, the Stage I and II summaries. `spec` is the rule set the result was decided
+    against; without it the forms are taken from the letters alone."""
     docs = {d["file"]: d for d in deps.documents_of(pdir) if d["tenderer"] == run["tenderer"]}
 
     located: dict[tuple, QuoteBox | None] = {}
@@ -104,37 +104,53 @@ def _bid_result(pid: str, pdir, run: dict, result, steps: dict) -> BidResult:
         return PageCitation(doc_id=d["doc_id"], file=d["file"], page=page, quote=at.quote, box=list(at.box),
                             page_size=list(at.page_size), image_url=signing.image_url(pid, d["doc_id"], page, at.quote))
 
-    fields: dict[str, dict[str, FieldValue]] = defaultdict(dict)
-    for key, value in result.fields.items():
-        if is_meta(key):
-            continue
-        prefix, _, name = key.rpartition(".")
-        letter = ITEM_OF_PREFIX.get(prefix)
-        if not letter:
-            continue
+    def field_value(key: str) -> FieldValue:
+        value = result.fields.get(key)
         correction = result.corrections.get(key)
         page_ref = (result.corrections.get(f"{key}_page") or {}).get("value") or result.fields.get(f"{key}_page")
         shown = correction["value"] if correction else value
-        fields[letter][name] = FieldValue(
+        printed = result.fields.get(f"{key}_printed")
+        return FieldValue(
             value=shown,
             redacted=bool(result.fields.get(f"{key}_redacted")),
             confidence=result.fields.get(f"{key}_confidence"),
-            page=cite(page_ref, result.fields.get(f"{key}_quote") or shown),
+            page=cite(page_ref, result.fields.get(f"{key}_quote") or (printed if printed is not None and not correction else shown)),
             correction=correction, model_value=value if correction else None,
             verification=None if correction else result.fields.get(f"{key}_verification"))
-    v = result.verdict
-    # The engine's own "field" is display text ("tenderer name") and may be reworded; the
-    # contract's `field` is the key into BidResult.fields[letter], which is built above
-    # from the same field_id, so derive it the same way rather than from the engine.
-    checks = [CheckedField(field_id=f["field_id"], field=f["field_id"].rsplit(".", 1)[-1], status=f["status"], note=f.get("note"), redacted=bool(f.get("redacted")),
-                           stage=f.get("stage", "I"), follow_up=f.get("follow_up")) for f in v.get("fields", [])]
-    evidence = [c for c in (cite(f.get("page"), f.get("value")) for f in v.get("fields", [])) if c]
-    letter = v.get("item", "l")
-    verdict = Verdict(outcome=v["outcome"], worst=v.get("worst", v["outcome"]), part=v["part"], rule_ids=v["rule_ids"],
-                      reason="; ".join(v.get("reasons", [])), checks=checks, evidence=evidence)
+
+    verdict = result.verdict or {}
+    items = item_verdicts(verdict)
+    forms: dict[str, Form] = {}
+    if spec:
+        for item in RuleSet.model_validate(spec).items:
+            form = form_for(item)
+            if form is not None:
+                forms[item.letter] = form
+    for letter in items:
+        if letter not in forms and forms_for_letter(letter):
+            forms[letter] = forms_for_letter(letter)[0]
+    fields: dict[str, dict[str, FieldValue]] = {}
+    for letter, form in forms.items():
+        fields[letter] = {name: field_value(form.key(name)) for name in form.names if form.key(name) in result.fields}
+    verdicts: dict[str, Verdict] = {}
+    for letter, v in items.items():
+        # The engine's own "field" is display text ("tenderer name") and may be reworded; the
+        # contract's `field` is the key into BidResult.fields[letter], built above from the same
+        # field_id, so derive it the same way rather than from the engine.
+        checks = [CheckedField(field_id=f["field_id"], field=f["field_id"].rsplit(".", 1)[-1], status=f["status"], note=f.get("note"),
+                               redacted=bool(f.get("redacted")), stage=f.get("stage", "I"), follow_up=f.get("follow_up"))
+                  for f in v.get("fields", [])]
+        evidence = [c for c in (cite(f.get("page"), f.get("value")) for f in v.get("fields", [])) if c]
+        verdicts[letter] = Verdict(outcome=v["outcome"], worst=v.get("worst", v["outcome"]), part=v["part"], rule_ids=v["rule_ids"],
+                                   reason="; ".join(v.get("reasons", [])), checks=checks, evidence=evidence)
+    if "stage1" in verdict:
+        stage1 = StageSummary(**verdict["stage1"])
+        stage2 = StageSummary(**verdict["stage2"]) if verdict.get("stage2") else None
+    else:                                                          # a single-item verdict (S2 to S4-2)
+        stage1 = StageSummary(outcome=verdict.get("outcome", "needs_review"), items={k: v["outcome"] for k, v in items.items()})
+        stage2 = None
     return BidResult(tenderer=run["tenderer"], run_id=run["run_id"], ruleset_version=result.ruleset_version,
-                     fields=dict(fields), verdicts={letter: verdict},
-                     stage1=StageSummary(outcome=v["outcome"], items={letter: v["outcome"]}),
+                     fields=fields, verdicts=verdicts, stage1=stage1, stage2=stage2,
                      cost=steps.get("data", {}).get("cost") or {}, review_confirmed_by=result.review_confirmed_by)
 
 
@@ -150,4 +166,4 @@ def bid_results(pid: str, tenderer: str, version: int | None = None) -> BidResul
         raise ApiError(404, "not_found", f"no result stored for {tenderer}")
     if version is not None and result.ruleset_version != version:
         raise ApiError(404, "not_found", f"{tenderer}'s result is at rule-set version {result.ruleset_version}, not {version}")
-    return _bid_result(pid, pdir, run, result, runner.store.steps(run["run_id"]))
+    return _bid_result(pid, pdir, run, result, runner.store.steps(run["run_id"]), runner.store.get_version(pid, result.ruleset_version))

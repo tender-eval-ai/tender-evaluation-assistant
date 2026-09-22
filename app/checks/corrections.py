@@ -23,6 +23,16 @@ def correction_entries(fields: dict, key: str, value: Any = None, present: bool 
     return out
 
 
+def item_verdicts(verdict: dict) -> dict[str, dict]:
+    """The per-item verdicts of a stored verdict: `items` since S4-3; a single-item verdict
+    (S2 to S4-2) keyed by its letter."""
+    if not verdict:
+        return {}
+    if "items" in verdict:
+        return verdict["items"]
+    return {verdict.get("item", "l"): verdict}
+
+
 def open_reviews(verdict: dict) -> list[str]:
     """The checked fields a person still has to look at."""
-    return [f["field_id"] for f in verdict.get("fields", []) if f.get("status") == OPEN]
+    return [f["field_id"] for v in item_verdicts(verdict).values() for f in v.get("fields", []) if f.get("status") == OPEN]

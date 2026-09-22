@@ -150,7 +150,8 @@ def second_read(specs: Sequence[FieldSpec], scan_refs: list[dict], vendor: str, 
     The prompt names the fields and says what each is; it never shows the first reading."""
     seqs = [r["seq"] for r in scan_refs]
     asked = "\n".join(f"- {short_name(s.key)}: {s.hint}" for s in specs)
-    user = f"Offer of {vendor}: read these fields from pages {seqs}:\n{asked}"
+    prefix = specs[0].key.rpartition(".")[0] if specs else ""
+    user = f"Offer of {vendor}: read these fields of form {prefix} from pages {seqs}:\n{asked}"
     reply = llm.chat_json(SYSTEM, user, SecondRead, images=[read_png(r) for r in scan_refs])
     return {r.field: r for r in reply.readings}
 
@@ -168,6 +169,8 @@ def verify_fields(fields: dict, pages: list[dict], item_pages: Sequence[int], sp
     for spec in specs:
         key = spec.key
         value = fields.get(key)
+        printed = fields.get(f"{key}_printed")
+        shown = printed if printed is not None else value      # a number is checked as printed
         if fields.get(f"{key}_redacted"):
             out[f"{key}_verification"] = _record(None, None, "covered by a black bar; nothing to check")
             continue
@@ -179,7 +182,7 @@ def verify_fields(fields: dict, pages: list[dict], item_pages: Sequence[int], sp
             order = sorted(text_refs, key=lambda r: r["seq"] != cited)
             best: tuple[str | None, float, dict] = (None, 0.0, order[0])
             for ref in order:
-                found, fraction = find_on_text(value, text_of(ref))
+                found, fraction = find_on_text(shown, text_of(ref))
                 if fraction > best[1]:
                     best = (found, fraction, ref)
                 if fraction == 1.0:
@@ -193,9 +196,9 @@ def verify_fields(fields: dict, pages: list[dict], item_pages: Sequence[int], sp
                     out[f"{key}_page"] = {"doc": ref["doc"], "page": ref["page"], "seq": ref["seq"]}
                 continue
             if not scan_refs and not spec.presence:
-                n = len(str(value).split())
+                n = len(str(shown).split())
                 note = (f"not on the text layer of page {', '.join(str(r['seq']) for r in order)}" if fraction == 0.0
-                        else f"only '{found}' of '{value}' is on the text layer of page {ref['seq']}")
+                        else f"only '{found}' of '{shown}' is on the text layer of page {ref['seq']}")
                 out[f"{key}_verification"] = _record(False, "text_layer", note)
                 out[f"{key}_confidence"] = round(fraction, 2) if n else 0.0
                 continue
@@ -210,6 +213,8 @@ def verify_fields(fields: dict, pages: list[dict], item_pages: Sequence[int], sp
         for spec in pending:
             key = spec.key
             first, first_conf = fields.get(key), float(fields.get(f"{key}_confidence") or 0.0)
+            printed = fields.get(f"{key}_printed")
+            first = printed if printed is not None else first
             reading = readings.get(short_name(key))
             second = reading.value if reading else None
             second_conf = reading.confidence if reading else 0.0
