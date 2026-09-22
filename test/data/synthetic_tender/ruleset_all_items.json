@@ -1,0 +1,1571 @@
+{
+ "project_id": "SYN-2026-001",
+ "version": 1,
+ "parent_version": null,
+ "status": "confirmed",
+ "data_class": "synthetic",
+ "items": [
+  {
+   "letter": "a",
+   "title": "The Offer to be Bound in Part 4 of the Tender Form, duly signed",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "Sched:CCS:(a)",
+    "candidates": null,
+    "quote": "(a) An Offer to be Bound in Part 4 of the Tender Form, duly signed by the Tenderer",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 5,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 3.3",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 4,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 9",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part A: a missing item means the tender is not considered further",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "offer_to_be_bound.submitted",
+     "check": "document_present",
+     "field": "offer_to_be_bound.document",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    },
+    {
+     "id": "offer_to_be_bound.signed",
+     "check": "signature",
+     "field": "offer_to_be_bound.signature",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "offer_to_be_bound.submitted"
+     ],
+     "note": null
+    },
+    {
+     "id": "offer_to_be_bound.dated",
+     "check": "date",
+     "field": "offer_to_be_bound.date",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "offer_to_be_bound.signed"
+     ],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "b",
+   "title": "The one-time unit price quotation for Item 1 in Part A of the Price Schedule",
+   "part": "A",
+   "template": "price_schedule",
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "Sched:CCS:(b)",
+    "candidates": null,
+    "quote": "(b) The one-time unit price quotation for Item 1 as specified in Part A of the Price Schedule",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 2,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 5",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part A: a missing item means the tender is not considered further",
+     "citation": null
+    }
+   ],
+   "slots": {
+    "estimated_quantity": {
+     "value": 875000,
+     "citation": {
+      "file": "tender/09 Schedules.pdf",
+      "page": 1,
+      "node_id": null,
+      "candidates": null,
+      "quote": "is 875,000 kg",
+      "data_class": "synthetic"
+     },
+     "verified": true,
+     "origin": "extracted",
+     "model_value": null,
+     "edit": null
+    },
+    "currency": {
+     "value": null,
+     "citation": null,
+     "verified": false,
+     "origin": "extracted",
+     "model_value": null,
+     "edit": null
+    }
+   },
+   "rules": [
+    {
+     "id": "price_schedule.unit_price_present",
+     "check": "filled",
+     "field": "price_schedule.unit_price",
+     "params": {},
+     "consequence": "critical",
+     "outcomes": null,
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    },
+    {
+     "id": "price_schedule.quantity_matches",
+     "check": "value",
+     "field": "price_schedule.quantity",
+     "params": {
+      "expected": "{estimated_quantity}"
+     },
+     "consequence": "critical",
+     "outcomes": null,
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "price_schedule.unit_price_present"
+     ],
+     "note": null
+    },
+    {
+     "id": "price_schedule.currency_permitted",
+     "check": "unit",
+     "field": "price_schedule.unit_price",
+     "params": {
+      "allowed": [
+       "HK$",
+       "US$"
+      ]
+     },
+     "consequence": "critical",
+     "outcomes": null,
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "price_schedule.unit_price_present"
+     ],
+     "note": null
+    },
+    {
+     "id": "price_schedule.total_is_unit_price_times_quantity",
+     "check": "math",
+     "field": "price_schedule.total",
+     "params": {
+      "inputs": [
+       "unit_price",
+       "quantity"
+      ],
+      "op": "product"
+     },
+     "consequence": "critical",
+     "outcomes": null,
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "price_schedule.unit_price_present"
+     ],
+     "note": null
+    }
+   ],
+   "status": "verified",
+   "edit": null
+  },
+  {
+   "letter": "c",
+   "title": "The optimal dosage for Item 1 in Part A of the Price Schedule",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "Sched:CCS:(c)",
+    "candidates": null,
+    "quote": "(c) The optimal dosage for Item 1 as specified in Part A of the Price Schedule",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 2,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 6",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part A: a missing item means the tender is not considered further",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "price_schedule.dosage_present",
+     "check": "filled",
+     "field": "price_schedule.optimal_dosage",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    },
+    {
+     "id": "price_schedule.dosage_unit",
+     "check": "unit",
+     "field": "price_schedule.optimal_dosage",
+     "params": {
+      "allowed": [
+       "mg/L"
+      ]
+     },
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "price_schedule.dosage_present"
+     ],
+     "note": null
+    },
+    {
+     "id": "price_schedule.dosage_plausible",
+     "check": "range",
+     "field": "price_schedule.optimal_dosage",
+     "params": {
+      "min": 0.5,
+      "max": 20
+     },
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "II",
+     "condition": null,
+     "depends_on": [
+      "price_schedule.dosage_present"
+     ],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "d",
+   "title": "The essential information required in the Particulars of Goods Schedule",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "Sched:CCS:(d)",
+    "candidates": null,
+    "quote": "(d) The essential information required in the Particulars of Goods Schedule",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 3,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 8",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part A: a missing item means the tender is not considered further",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "particulars_of_goods.submitted",
+     "check": "document_present",
+     "field": "particulars_of_goods.document",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    },
+    {
+     "id": "particulars_of_goods.manufacturer_named",
+     "check": "filled",
+     "field": "particulars_of_goods.manufacturer",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "particulars_of_goods.submitted"
+     ],
+     "note": null
+    },
+    {
+     "id": "particulars_of_goods.shelf_life_stated",
+     "check": "filled",
+     "field": "particulars_of_goods.shelf_life_months",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "particulars_of_goods.submitted"
+     ],
+     "note": null
+    },
+    {
+     "id": "particulars_of_goods.shelf_life_at_least_twelve_months",
+     "check": "range",
+     "field": "particulars_of_goods.shelf_life_months",
+     "params": {
+      "min": 12
+     },
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "II",
+     "condition": null,
+     "depends_on": [
+      "particulars_of_goods.shelf_life_stated"
+     ],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "e",
+   "title": "Other information required in the Particulars of Goods Schedule",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 5,
+    "node_id": "Sched:CCS:(e)",
+    "candidates": null,
+    "quote": "(e) Other information required in the Particulars of Goods Schedule",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 3,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 8.4",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part B: a missing item may be requested by the Authority before it decides",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "particulars_of_goods.country_stated",
+     "check": "filled",
+     "field": "particulars_of_goods.country_of_origin",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "dormant",
+       "note": "{field} is missing: a Part B item the Authority may request",
+       "follow_up": {
+        "trigger": "the Authority requests it",
+        "deadline": "as stated in the request",
+        "if_deadline_missed": "disqualified"
+       }
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "f",
+   "title": "Information and documents required in Tables A, B and C of the Information Schedule",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 6,
+    "node_id": "Sched:CCS:(f)",
+    "candidates": null,
+    "quote": "(f) Information and documents required in Tables A, B and C of the Information Schedule",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 4,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 10",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part B: a missing item may be requested by the Authority before it decides",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "information_schedule.submitted",
+     "check": "document_present",
+     "field": "information_schedule.document",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "dormant",
+       "note": "{field} is missing: a Part B item the Authority may request",
+       "follow_up": {
+        "trigger": "the Authority requests it",
+        "deadline": "as stated in the request",
+        "if_deadline_missed": "disqualified"
+       }
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    },
+    {
+     "id": "information_schedule.track_record_given",
+     "check": "filled",
+     "field": "information_schedule.track_record",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "dormant",
+       "note": "{field} is missing: a Part B item the Authority may request",
+       "follow_up": {
+        "trigger": "the Authority requests it",
+        "deadline": "as stated in the request",
+        "if_deadline_missed": "disqualified"
+       }
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "information_schedule.submitted"
+     ],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "g",
+   "title": "Samples of the Goods, if requested by the Authority",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 6,
+    "node_id": "Sched:CCS:(g)",
+    "candidates": null,
+    "quote": "(g) Samples of the Goods, if requested by the Authority at any time after the Tender Closing Date",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 5,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 11",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part B: a missing item may be requested by the Authority before it decides",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "tender_sample_declaration.submitted",
+     "check": "document_present",
+     "field": "tender_sample_declaration.document",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "dormant",
+       "note": "{field} is missing: a Part B item the Authority may request",
+       "follow_up": {
+        "trigger": "the Authority requests it",
+        "deadline": "as stated in the request",
+        "if_deadline_missed": "disqualified"
+       }
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "h",
+   "title": "Documentary evidence proving compliance with the Technical Specifications",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 6,
+    "node_id": "Sched:CCS:(h)",
+    "candidates": null,
+    "quote": "(h) Documentary evidence proving compliance with the Technical Specifications",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 5,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 12",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part B: a missing item may be requested by the Authority before it decides",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "documentary_evidence.submitted",
+     "check": "document_present",
+     "field": "documentary_evidence.document",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "dormant",
+       "note": "{field} is missing: a Part B item the Authority may request",
+       "follow_up": {
+        "trigger": "the Authority requests it",
+        "deadline": "as stated in the request",
+        "if_deadline_missed": "disqualified"
+       }
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "i",
+   "title": "Where the Tenderer is not the manufacturer of the Goods, the letter of intent from the manufacturer",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 6,
+    "node_id": "Sched:CCS:(i)",
+    "candidates": null,
+    "quote": "(i) Where the Tenderer is not the manufacturer of the Goods, the letter of intent from the manufacturer",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 7,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 15",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part A: a missing item means the tender is not considered further",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "manufacturer_letter.submitted",
+     "check": "document_present",
+     "field": "manufacturer_letter.document",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "needs_review",
+       "note": "{field} is missing; required only where the tenderer is not the manufacturer, so a reviewer decides",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "not_applicable": {
+       "status": "pass",
+       "note": "{field} not required: the tenderer is the manufacturer",
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": "the Tenderer is not the manufacturer of the Goods",
+     "depends_on": [],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "j",
+   "title": "A certified extract of the board resolution authorising the signatory of the Tender",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 6,
+    "node_id": "Sched:CCS:(j)",
+    "candidates": null,
+    "quote": "(j) A certified extract of the board resolution authorising the signatory of the Tender",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 7,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 16",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part B: a missing item may be requested by the Authority before it decides",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "board_resolution.submitted",
+     "check": "document_present",
+     "field": "board_resolution.document",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "dormant",
+       "note": "{field} is missing: a Part B item the Authority may request",
+       "follow_up": {
+        "trigger": "the Authority requests it",
+        "deadline": "as stated in the request",
+        "if_deadline_missed": "disqualified"
+       }
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "k",
+   "title": "The contact details in the Appendix to the Terms of Tender",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 7,
+    "node_id": "Sched:CCS:(k)",
+    "candidates": null,
+    "quote": "(k) The contact details of the Tenderer in the Appendix to the Terms of Tender",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 8,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 17",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part B: a missing item may be requested by the Authority before it decides",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "contact_details.submitted",
+     "check": "document_present",
+     "field": "contact_details.document",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "dormant",
+       "note": "{field} is missing: a Part B item the Authority may request",
+       "follow_up": {
+        "trigger": "the Authority requests it",
+        "deadline": "as stated in the request",
+        "if_deadline_missed": "disqualified"
+       }
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    },
+    {
+     "id": "contact_details.contact_person_given",
+     "check": "filled",
+     "field": "contact_details.contact_person",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "dormant",
+       "note": "{field} is missing: a Part B item the Authority may request",
+       "follow_up": {
+        "trigger": "the Authority requests it",
+        "deadline": "as stated in the request",
+        "if_deadline_missed": "disqualified"
+       }
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "contact_details.submitted"
+     ],
+     "note": null
+    },
+    {
+     "id": "contact_details.email_given",
+     "check": "filled",
+     "field": "contact_details.email",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "dormant",
+       "note": "{field} is missing: a Part B item the Authority may request",
+       "follow_up": {
+        "trigger": "the Authority requests it",
+        "deadline": "as stated in the request",
+        "if_deadline_missed": "disqualified"
+       }
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "contact_details.submitted"
+     ],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "l",
+   "title": "The signed Non-collusive Tendering Certificate",
+   "part": "A",
+   "template": "noncollusive_certificate",
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 7,
+    "node_id": "Sched:CCS:(l)",
+    "candidates": null,
+    "quote": "(l) The signed Non-collusive Tendering Certificate",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 8,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 9.4",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 8,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 10.1",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 9,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 12",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 13,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 20.2",
+     "data_class": "synthetic"
+    },
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 5,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 13",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part A: a missing item means the tender is not considered further",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "noncollusive_certificate.submitted",
+     "check": "document_present",
+     "field": "noncollusive_certificate.document",
+     "params": {},
+     "consequence": "critical",
+     "outcomes": null,
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    },
+    {
+     "id": "noncollusive_certificate.signed",
+     "check": "signature",
+     "field": "noncollusive_certificate.signature",
+     "params": {},
+     "consequence": "critical",
+     "outcomes": null,
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "noncollusive_certificate.submitted"
+     ],
+     "note": null
+    },
+    {
+     "id": "noncollusive_certificate.tenderer_identified",
+     "check": "filled",
+     "field": "noncollusive_certificate.tenderer_name",
+     "params": {},
+     "consequence": "critical",
+     "outcomes": null,
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "noncollusive_certificate.submitted"
+     ],
+     "note": null
+    },
+    {
+     "id": "noncollusive_certificate.dated",
+     "check": "filled",
+     "field": "noncollusive_certificate.date",
+     "params": {},
+     "consequence": "critical",
+     "outcomes": null,
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "noncollusive_certificate.submitted"
+     ],
+     "note": null
+    }
+   ],
+   "status": "verified",
+   "edit": null
+  },
+  {
+   "letter": "m",
+   "title": "Parts C and D of the Price Schedule",
+   "part": "C",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 7,
+    "node_id": "Sched:CCS:(m)",
+    "candidates": null,
+    "quote": "(m) Parts C and D of the Price Schedule",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 9,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 20",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part C: a discretionary item; the Authority may ask for it later",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "price_schedule_parts_c_d.submitted",
+     "check": "document_present",
+     "field": "price_schedule_parts_c_d.document",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "pass",
+       "note": "{field} is missing: a Part C item, discretionary",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "n",
+   "title": "The Compliance Schedule",
+   "part": "A",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 7,
+    "node_id": "Sched:CCS:(n)",
+    "candidates": null,
+    "quote": "(n) The Compliance Schedule",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
+     "page": 6,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 7",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part A: a missing item means the tender is not considered further",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "compliance_schedule.submitted",
+     "check": "document_present",
+     "field": "compliance_schedule.document",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    },
+    {
+     "id": "compliance_schedule.delivery_stated",
+     "check": "filled",
+     "field": "compliance_schedule.delivery_days",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [
+      "compliance_schedule.submitted"
+     ],
+     "note": null
+    },
+    {
+     "id": "compliance_schedule.delivery_within_thirty_days",
+     "check": "range",
+     "field": "compliance_schedule.delivery_days",
+     "params": {
+      "max": 30
+     },
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "disqualified",
+       "note": "{field} is missing: a Part A item",
+       "follow_up": null
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "II",
+     "condition": null,
+     "depends_on": [
+      "compliance_schedule.delivery_stated"
+     ],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  },
+  {
+   "letter": "o",
+   "title": "The Method of Production Statement in Annex A Part I",
+   "part": "B",
+   "template": null,
+   "citation": {
+    "file": "tender/09 Schedules.pdf",
+    "page": 7,
+    "node_id": "Sched:CCS:(o)",
+    "candidates": null,
+    "quote": "(o) Annex A to the Terms of Tender - Part I - Method of Production Statement",
+    "data_class": "synthetic"
+   },
+   "clauses": [
+    {
+     "file": "tender/04 Terms of Tender (Supplement).pdf",
+     "page": 9,
+     "node_id": null,
+     "candidates": null,
+     "quote": "Paragraph 21",
+     "data_class": "synthetic"
+    }
+   ],
+   "condition": null,
+   "notes": [
+    {
+     "kind": "reference",
+     "text": "Part B: a missing item may be requested by the Authority before it decides",
+     "citation": null
+    }
+   ],
+   "slots": {},
+   "rules": [
+    {
+     "id": "method_of_production.submitted",
+     "check": "document_present",
+     "field": "method_of_production.document",
+     "params": {},
+     "consequence": null,
+     "outcomes": {
+      "blank": {
+       "status": "dormant",
+       "note": "{field} is missing: a Part B item the Authority may request",
+       "follow_up": {
+        "trigger": "the Authority requests it",
+        "deadline": "as stated in the request",
+        "if_deadline_missed": "disqualified"
+       }
+      },
+      "filled": {
+       "status": "pass",
+       "note": null,
+       "follow_up": null
+      },
+      "redacted": {
+       "status": "needs_review",
+       "note": "{field} is covered; ask for an unredacted copy",
+       "follow_up": null
+      }
+     },
+     "normalise": [],
+     "stage": "I",
+     "condition": null,
+     "depends_on": [],
+     "note": null
+    }
+   ],
+   "status": "novel",
+   "edit": null
+  }
+ ],
+ "parts": [],
+ "gaps": [],
+ "created_by": "chenyu",
+ "created_at": "2026-09-22T12:00:00Z",
+ "confirmed_by": "nasi",
+ "confirmed_at": "2026-09-22T12:00:00Z",
+ "updated_by": null,
+ "model": null,
+ "prompt_version": null
+}

@@ -33,16 +33,16 @@ def test_a_drafted_rule_needs_a_verified_quote_and_carries_a_reference_note(loca
     drafted, sources = l3.draft_item(item_of(located, "a"), index, llm, DataClass.SYNTHETIC)
 
     assert llm.count(out_model=l3.Requirements) == 1
-    assert [r.id for r in drafted.rules] == ["item_a.offer_signed", "item_a.validity_stated"]
+    assert [r.id for r in drafted.rules] == ["offer_to_be_bound.offer_signed", "offer_to_be_bound.validity_stated"]
     signed = drafted.rules[0]
-    assert signed.check == CheckType.SIGNATURE and signed.field == "item_a.offer_signature" and signed.stage == "I"
+    assert signed.check == CheckType.SIGNATURE and signed.field == "offer_to_be_bound.offer_signature" and signed.stage == "I"
     assert signed.outcomes["blank"].status == "disqualified" and signed.outcomes["filled"].status == "pass"
-    assert sources == {"item_a.offer_signed": SIGNATURE_NODE, "item_a.validity_stated": VALIDITY_NODE}, \
+    assert sources == {"offer_to_be_bound.offer_signed": SIGNATURE_NODE, "offer_to_be_bound.validity_stated": VALIDITY_NODE}, \
         "a wrong or missing node id is repaired from the quote"
     assert drafted.status == ItemStatus.NOVEL
     notes = {n.text.split(":")[0]: n for n in drafted.notes}
-    assert notes["item_a.offer_signed"].citation.node_id == SIGNATURE_NODE and notes["item_a.offer_signed"].citation.page == 3
-    assert notes["item_a.offer_signed"].citation.file == "tender/01 Tender Form.pdf"
+    assert notes["offer_to_be_bound.offer_signed"].citation.node_id == SIGNATURE_NODE and notes["offer_to_be_bound.offer_signed"].citation.page == 3
+    assert notes["offer_to_be_bound.offer_signed"].citation.file == "tender/01 Tender Form.pdf"
     unverified = next(n for n in drafted.notes if n.text.startswith("unverified draft blue_ink"))
     assert unverified.citation is None and "blue ink" in unverified.text
 
@@ -77,7 +77,7 @@ def test_duplicate_names_get_distinct_ids(located, index):
         l3.Requirement(name="signed", check=CheckType.FILLED, field="s", quote=SIGNATURE_QUOTE)])
     llm = FakeLLM(rules=[Rule(reply=twice, out_model=l3.Requirements)])
     drafted, _ = l3.draft_item(item_of(located, "a"), index, llm, DataClass.SYNTHETIC)
-    assert [r.id for r in drafted.rules] == ["item_a.signed", "item_a.signed_2"]
+    assert [r.id for r in drafted.rules] == ["offer_to_be_bound.signed", "offer_to_be_bound.signed_2"]
 
 
 def test_matched_items_pass_through_l3_untouched(located, templates, index):

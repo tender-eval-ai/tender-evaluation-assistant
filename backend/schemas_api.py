@@ -316,3 +316,72 @@ class NotePatch(BaseModel):
 
     note: ItemNote
     reason: str = Field(min_length=1)
+
+
+# ---------------------------------------------------------------- S4-4: pricing, evaluation, reports
+class PriceSchemeOut(BaseModel):
+    """The tender's price scheme as the confirmed rule set states it."""
+
+    type: Literal["cost_effectiveness", "unit_price_x_quantity"]
+    quantity: float | None = Field(default=None, description="the estimated quantity, from the price schedule item's slot")
+    unit: str = "kg"
+    currency: str = "HK$"
+    usd_hkd: float = Field(description="what a US$ quotation is converted at (PRICING_USD_HKD)")
+    source: str = Field(default="", description="where the quantity came from")
+
+
+class PriceRow(BaseModel):
+    tenderer: str
+    run_id: str
+    conforming: bool = Field(description="Stage I and II both pass")
+    currency: str
+    unit_price: float | None = None
+    unit_price_hkd: float | None = None
+    dosage: float | None = None
+    dosage_rounded: float | None = Field(default=None, description="two significant figures, per the Terms of Tender")
+    estimated_goods_price: float | None = None
+    quoted_total: float | None = None
+    arithmetic_ok: bool | None = None
+    cost_effectiveness: float | None = None
+    ranking: int | None = None
+    remark: str = ""
+    stage1: str | None = None
+    stage2: str | None = None
+    reviewed_by: str | None = None
+    corrected: list[str] = Field(default_factory=list, description="price fields a reviewer corrected")
+
+
+class PriceSummary(BaseModel):
+    ruleset_version: int
+    scheme: PriceSchemeOut
+    rows: list[PriceRow]
+    recommended: str | None = Field(default=None, description="the best-ranked conforming offer")
+    missing: list[str] = Field(default_factory=list, description="tenderers whose result is at another rule-set version")
+
+
+class TendererEvaluation(BaseModel):
+    tenderer: str
+    run_id: str
+    stage1: str | None
+    stage2: str | None
+    items: dict[str, str]
+    reviewed_by: str | None = None
+    corrections: int = 0
+    conforming: bool
+
+
+class Evaluation(BaseModel):
+    ruleset_version: int
+    tenderers: list[TendererEvaluation]
+    stage1_conclusion: str
+    stage2_conclusion: str
+    recommendation: str
+    recommended: str | None = None
+    price: PriceSummary
+
+
+class ReportInfo(BaseModel):
+    name: str
+    version: int
+    generated_at: datetime | None = Field(default=None, description="null until first downloaded")
+    approver: str | None = Field(default=None, description="who confirmed the reviews the report rests on")

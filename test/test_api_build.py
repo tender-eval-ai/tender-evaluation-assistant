@@ -28,7 +28,11 @@ def build_worker(monkeypatch):
                              "app.rulesets.build_job", "--no-migrate"], env=os.environ.copy())
     yield proc
     proc.terminate()
-    proc.wait(timeout=10)
+    try:
+        proc.wait(timeout=10)                # SIGTERM drains a running job; a slow runner may need longer
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=10)
 
 
 def _whole_tender(client, pid):
@@ -70,7 +74,7 @@ def test_the_build_job_drafts_the_rule_set_from_the_tender(api, build_worker):
     quantity = by["b"]["slots"]["estimated_quantity"]
     assert by["b"]["status"] == "verified" and quantity["value"] == 875000 and quantity["verified"]
     assert quantity["citation"]["node_id"] == "09-Schedules:00-Price-Schedule:PA:(2)" and quantity["citation"]["file"] == "tender/09 Schedules.pdf"
-    assert by["a"]["status"] == "novel" and [r["id"] for r in by["a"]["rules"]] == ["item_a.offer_signed"]
+    assert by["a"]["status"] == "novel" and [r["id"] for r in by["a"]["rules"]] == ["offer_to_be_bound.offer_signed"]
     assert by["a"]["notes"][-1]["citation"]["node_id"] == "01-Tender-Form:P4:3"
     assert sum(i["status"] == "gap" for i in rs["items"]) == 12 and rs["gaps"] and all(g["reason"] is None for g in rs["gaps"])
 

@@ -1,0 +1,80 @@
+Tender: SYN-2026-001 Supply of Synthetic Coagulant Granules (Type S)
+Rule set version 1, confirmed by nasi on 2026-09-22 12:00 UTC
+Models: text deepseek-chat, vision qwen3-vl:8b-16k
+Reviews confirmed by: nasi
+Generated 2026-09-22 09:30 UTC
+Detailed Evaluation Record
+Tenderer_A: Stage I pass, Stage II pass, review confirmed by nasi
+Tenderer_B: Stage I pass, Stage II pass, review confirmed by nasi
+Tenderer_C: Stage I disqualified, Stage II pass, review confirmed by nasi
+Tenderer_D: Stage I pass, Stage II pass, review confirmed by nasi
+Corrections by the reviewers:
+Tenderer_A: manufacturer_letter.document corrected by nasi to 'N/A' (the model read None): the tenderer is the manufacturer
+Tenderer_B: manufacturer_letter.document corrected by nasi to 'N/A' (the model read None): the tenderer is the manufacturer
+Tenderer_C: manufacturer_letter.document corrected by nasi to 'N/A' (the model read None): the tenderer is the manufacturer
+Rule-set items edited by a person:
+item (n) The Compliance Schedule: chenyu: delivery within 30 days per the Special Conditions
+Item | Part | Outcome | Reasons | Corrections
+(a) The Offer to be Bound in Part 4 of the Tender Form, duly signed | A | pass | - | -
+(b) The one-time unit price quotation for Item 1 in Part A of the Price Schedule | A | pass | - | -
+(c) The optimal dosage for Item 1 in Part A of the Price Schedule | A | pass | - | -
+(d) The essential information required in the Particulars of Goods Schedule | A | pass | - | -
+(e) Other information required in the Particulars of Goods Schedule | B | pass | - | -
+(f) Information and documents required in Tables A, B and C of the Information Schedule | B | pass | - | -
+(g) Samples of the Goods, if requested by the Authority | B | dormant | document is missing: a Part B item the Authority may request | -
+(h) Documentary evidence proving compliance with the Technical Specifications | B | pass | - | -
+(i) Where the Tenderer is not the manufacturer of the Goods, the letter of intent from the manufacturer | A | pass | - | document by nasi
+(j) A certified extract of the board resolution authorising the signatory of the Tender | B | pass | - | -
+(k) The contact details in the Appendix to the Terms of Tender | B | pass | - | -
+(l) The signed Non-collusive Tendering Certificate | A | pass | - | -
+(m) Parts C and D of the Price Schedule | C | pass | - | -
+(n) The Compliance Schedule | A | pass | - | -
+(o) The Method of Production Statement in Annex A Part I | B | pass | - | -
+Item | Part | Outcome | Reasons | Corrections
+(a) The Offer to be Bound in Part 4 of the Tender Form, duly signed | A | pass | - | -
+(b) The one-time unit price quotation for Item 1 in Part A of the Price Schedule | A | pass | - | -
+(c) The optimal dosage for Item 1 in Part A of the Price Schedule | A | pass | - | -
+(d) The essential information required in the Particulars of Goods Schedule | A | pass | - | -
+(e) Other information required in the Particulars of Goods Schedule | B | dormant | country of origin is missing: a Part B item the Authority may request | -
+(f) Information and documents required in Tables A, B and C of the Information Schedule | B | pass | - | -
+(g) Samples of the Goods, if requested by the Authority | B | dormant | document is missing: a Part B item the Authority may request | -
+(h) Documentary evidence proving compliance with the Technical Specifications | B | pass | - | -
+(i) Where the Tenderer is not the manufacturer of the Goods, the letter of intent from the manufacturer | A | pass | - | document by nasi
+(j) A certified extract of the board resolution authorising the signatory of the Tender | B | pass | - | -
+(k) The contact details in the Appendix to the Terms of Tender | B | pass | - | -
+(l) The signed Non-collusive Tendering Certificate | A | pass | - | -
+(m) Parts C and D of the Price Schedule | C | pass | - | -
+(n) The Compliance Schedule | A | pass | - | -
+(o) The Method of Production Statement in Annex A Part I | B | pass | - | -
+Item | Part | Outcome | Reasons | Corrections
+(a) The Offer to be Bound in Part 4 of the Tender Form, duly signed | A | pass | - | -
+(b) The one-time unit price quotation for Item 1 in Part A of the Price Schedule | A | pass | - | -
+(c) The optimal dosage for Item 1 in Part A of the Price Schedule | A | pass | - | -
+(d) The essential information required in the Particulars of Goods Schedule | A | pass | - | -
+(e) Other information required in the Particulars of Goods Schedule | B | pass | - | -
+(f) Information and documents required in Tables A, B and C of the Information Schedule | B | pass | - | -
+(g) Samples of the Goods, if requested by the Authority | B | dormant | document is missing: a Part B item the Authority may request | -
+(h) Documentary evidence proving compliance with the Technical Specifications | B | pass | - | -
+(i) Where the Tenderer is not the manufacturer of the Goods, the letter of intent from the manufacturer | A | pass | - | document by nasi
+(j) A certified extract of the board resolution authorising the signatory of the Tender | B | pass | - | -
+(k) The contact details in the Appendix to the Terms of Tender | B | pass | - | -
+(l) The signed Non-collusive Tendering Certificate | A | disqualified | document is missing | -
+(m) Parts C and D of the Price Schedule | C | pass | - | -
+(n) The Compliance Schedule | A | pass | - | -
+(o) The Method of Production Statement in Annex A Part I | B | pass | - | -
+Item | Part | Outcome | Reasons | Corrections
+(a) The Offer to be Bound in Part 4 of the Tender Form, duly signed | A | pass | - | -
+(b) The one-time unit price quotation for Item 1 in Part A of the Price Schedule | A | pass | - | -
+(c) The optimal dosage for Item 1 in Part A of the Price Schedule | A | pass | - | -
+(d) The essential information required in the Particulars of Goods Schedule | A | pass | - | -
+(e) Other information required in the Particulars of Goods Schedule | B | dormant | country of origin is missing: a Part B item the Authority may request | -
+(f) Information and documents required in Tables A, B and C of the Information Schedule | B | pass | - | -
+(g) Samples of the Goods, if requested by the Authority | B | dormant | document is missing: a Part B item the Authority may request | -
+(h) Documentary evidence proving compliance with the Technical Specifications | B | pass | - | -
+(i) Where the Tenderer is not the manufacturer of the Goods, the letter of intent from the manufacturer | A | pass | - | -
+(j) A certified extract of the board resolution authorising the signatory of the Tender | B | dormant | document is missing: a Part B item the Authority may request | -
+(k) The contact details in the Appendix to the Terms of Tender | B | pass | - | -
+(l) The signed Non-collusive Tendering Certificate | A | pass | - | -
+(m) Parts C and D of the Price Schedule | C | pass | - | -
+(n) The Compliance Schedule | A | pass | - | -
+(o) The Method of Production Statement in Annex A Part I | B | pass | - | -

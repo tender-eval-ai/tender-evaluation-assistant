@@ -25,7 +25,11 @@ def worker():
                              "app.checks.vendor_check,app.jobs.evaluate_job", "--no-migrate"], env=os.environ.copy())
     yield proc
     proc.terminate()
-    proc.wait(timeout=10)
+    try:
+        proc.wait(timeout=10)                # SIGTERM drains a running job; a slow runner may need longer
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=10)
 
 
 def _checked(client, pid, tenderers: list[str]) -> dict:
@@ -84,10 +88,10 @@ def test_a_review_is_confirmed_only_when_nothing_needs_review_and_a_correction_w
 
     with psycopg.connect(os.environ["DATABASE_URL"], autocommit=True) as c:          # a field the engine flagged
         verdict = c.execute("select verdict from results where run_id=%s", (job_ids["Tenderer_A"],)).fetchone()[0]
-        verdict["fields"][0]["status"] = "needs_review"
+        verdict["items"]["l"]["fields"][0]["status"] = "needs_review"
         c.execute("update results set verdict=%s where run_id=%s", (Json(verdict), job_ids["Tenderer_A"]))
     r = client.post(f"/projects/{pid}/bids/Tenderer_A/review/confirm", headers=NASI)
-    assert r.status_code == 409 and r.json()["error"]["details"]["fields"] == [verdict["fields"][0]["field_id"]]
+    assert r.status_code == 409 and r.json()["error"]["details"]["fields"] == [verdict["items"]["l"]["fields"][0]["field_id"]]
     assert client.post(f"/projects/{pid}/bids/Tenderer_B/review/confirm", headers=NASI).status_code == 404
     kinds = [e["kind"] for e in client.get(f"/projects/{pid}/events").json()["items"]]
     assert "review.confirmed" in kinds

@@ -15,9 +15,10 @@ Project lifecycle (mirrors the CLI checkpoints, which stay human-editable):
     POST /projects/{id}/evaluate            re-evaluate from the stored extractions
                                             (deterministic; no LLM)
     GET  /projects/{id}/status              poll background job state
-    GET  /projects/{id}/evaluation          full EvaluationResult JSON
+    GET  /projects/{id}/legacy/evaluation   the Streamlit pipeline's EvaluationResult JSON (goes at S5)
     GET  /projects/{id}/usage               tokens, calls, seconds and $ per bid
-    GET  /projects/{id}/reports[/{name}]    list / download the Word deliverables
+    GET  /projects/{id}/legacy/reports[/{name}]  the Streamlit pipeline's Word files (goes at S5)
+    GET  /projects/{id}/price-summary, /evaluation, /reports[/{name}]  the S4 summary, evaluation and reports (routes/pricing.py)
     PUT  /projects/{id}/bids/{tenderer}/extraction   inject or correct an extraction
 
 S2 routes (docs/api_contract.md; they need DATABASE_URL, the queue's Postgres):
@@ -53,7 +54,8 @@ load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 deps.configure()   # re-read DATA_DIR / INBOX_DIR / API_KEY (tests reload this module after changing them)
 
 from backend import errors  # noqa: E402
-from backend.routes import checks, documents, events, projects, reports, results, review, rubric, rulesets, runs, viewer  # noqa: E402
+from backend.routes import (checks, documents, events, pricing, projects, reports, results, review, rubric, rulesets,  # noqa: E402
+                            runs, viewer)
 
 # Re-exported: tests and scripts reach these through backend.api.
 PROJECTS = deps.PROJECTS
@@ -89,5 +91,5 @@ def health() -> dict:
 
 
 for router in (projects.router, rubric.router, documents.router, runs.router, results.router, reports.router,
-               rulesets.router, checks.router, review.router, viewer.keyed, viewer.router, events.router):
+               rulesets.router, checks.router, review.router, pricing.router, viewer.keyed, viewer.router, events.router):
     app.include_router(router)

@@ -15,6 +15,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.checks.forms import form_for
 from app.rulesets.nodes import NodeIndex
 from app.rulesets.schema import (Citation, CheckType, DataClass, FollowUp, ItemNote, ItemStatus, Outcome, ParamValue, Part,
                                  RuleSetItem, TemplateRule)
@@ -65,7 +66,19 @@ def outcomes_for(part: Part) -> dict[str, Outcome]:
 
 
 def prefix_of(item: RuleSetItem) -> str:
-    return f"item_{item.letter}"
+    """The prefix of a drafted rule's field: the form the item's values come from (so the
+    engine finds what V3 extracted), else `item_<letter>` for an item no form serves."""
+    form = form_for(item)
+    return form.id if form else f"item_{item.letter}"
+
+
+def field_menu(item: RuleSetItem) -> str:
+    form = form_for(item)
+    if form is None:
+        return ""
+    names = ", ".join(f"{f.name} ({f.kind})" for f in form.all_fields)
+    return (f"\n\nFields of this form ({form.title}): {names}. Name one of these as `field` when it is what the clause "
+            f"is about; a short snake_case name otherwise.")
 
 
 def draft_item(item: RuleSetItem, index: NodeIndex, llm, data_class: DataClass) -> tuple[RuleSetItem, dict[str, str]]:
@@ -73,7 +86,7 @@ def draft_item(item: RuleSetItem, index: NodeIndex, llm, data_class: DataClass) 
     if not item.clauses:
         return item.model_copy(update={"status": ItemStatus.GAP}), {}
     kinds = ", ".join(k.value for k in CheckType)
-    user = (f"Item ({item.letter}), Part {item.part.value}: {item.citation.quote}\n\nCheck kinds: {kinds}\n\n"
+    user = (f"Item ({item.letter}), Part {item.part.value}: {item.citation.quote}\n\nCheck kinds: {kinds}{field_menu(item)}\n\n"
             f"Clauses:\n{context_of(item, index)}")
     reply: Requirements = llm.chat_json(SYSTEM, user, Requirements)
     roots = [c.node_id for c in item.clauses if c.node_id]

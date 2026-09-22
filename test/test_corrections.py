@@ -37,3 +37,11 @@ def test_a_corrected_value_is_the_persons_and_carries_no_verification_record():
     out = _apply(fields, corrections)
     assert out["x.date"] == "14 August 2026" and out["x.date_verification"] is None
     assert out["x.date_page"]["page"] == 14 and "x.date_page_verification" not in out
+
+
+def test_open_reviews_walks_every_item_and_still_reads_a_single_item_verdict():
+    multi = {"items": {"l": {"fields": [{"field_id": "x.a", "status": "needs_review"}, {"field_id": "x.b", "status": "pass"}]},
+                       "b": {"fields": [{"field_id": "y.c", "status": "needs_review"}]}}}
+    assert open_reviews(multi) == ["x.a", "y.c"]
+    single = {"item": "l", "fields": [{"field_id": "x.a", "status": "disqualified"}, {"field_id": "x.b", "status": "needs_review"}]}
+    assert open_reviews(single) == ["x.b"] and open_reviews({}) == []

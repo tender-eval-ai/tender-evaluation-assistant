@@ -5,8 +5,10 @@ tenderer on the worker, and the results.
     python tools/check_synthetic_case.py                       # against http://localhost:8000
     python tools/check_synthetic_case.py --api http://host:8000 --key sesame --tenderers Tenderer_B
 
-Prints one line per tenderer: the verdict for item (l), the signature read, its page, its
-confidence and whether V4 verified it, and the model calls the check cost. Exit code 1 if a job failed or the API refused a step."""
+Prints one line per tenderer: the Stage I and II outcomes, the items by outcome, the verdict
+for item (l), the signature read, its page, its confidence and whether V4 verified it, and
+the model calls the check cost. `--ruleset test/data/synthetic_tender/ruleset_all_items.json` checks
+every item; the default rule set names item (l) alone. Exit code 1 if a job failed or the API refused a step."""
 from __future__ import annotations
 
 import argparse
@@ -79,9 +81,14 @@ def run(api: Api, case: str = "synthetic_tender", ruleset_path: Path = DEFAULT_R
                          "reason": f"{job.get('step') or ''} {job.get('progress') or ''}".strip() if job["state"] == "running" else None})
             continue
         res = api.call("GET", f"/projects/{pid}/bids/{tenderer}/results")
-        verdict = res["verdicts"]["l"]
+        verdict = res["verdicts"].get("l") or {"outcome": res["stage1"]["outcome"], "reason": ""}
         signature = res["fields"].get("l", {}).get("signature", {})
+        counts: dict[str, int] = {}
+        for outcome in res["stage1"]["items"].values():
+            counts[outcome] = counts.get(outcome, 0) + 1
         rows.append({"tenderer": tenderer, "state": "done", "outcome": verdict["outcome"], "reason": verdict["reason"],
+                     "stage1": res["stage1"]["outcome"], "stage2": (res.get("stage2") or {}).get("outcome"),
+                     "items": ", ".join(f"{n} {o}" for o, n in sorted(counts.items())),
                      "signature": signature.get("value"), "page": (signature.get("page") or {}).get("page"),
                      "confidence": signature.get("confidence"), "verified": (signature.get("verification") or {}).get("verified"),
                      "calls": res["cost"].get("calls"), "usd": res["cost"].get("usd")})
@@ -89,10 +96,11 @@ def run(api: Api, case: str = "synthetic_tender", ruleset_path: Path = DEFAULT_R
 
 
 def table(rows: list[dict]) -> str:
-    lines = [f"{'tenderer':<12} {'state':<7} {'item (l)':<13} {'signature':<24} {'page':>4} {'conf':>5} {'verified':<8} "
-             f"{'calls':>5} {'usd':>8}  reason"]
+    lines = [f"{'tenderer':<12} {'state':<7} {'stage I':<13} {'stage II':<9} {'items':<34} {'item (l)':<13} {'signature':<24} "
+             f"{'page':>4} {'conf':>5} {'verified':<8} {'calls':>5} {'usd':>8}  reason"]
     for r in rows:
-        lines.append(f"{r['tenderer']:<12} {r['state']:<7} {r.get('outcome', '-'):<13} {str(r.get('signature', '-')):<24} "
+        lines.append(f"{r['tenderer']:<12} {r['state']:<7} {str(r.get('stage1', '-')):<13} {str(r.get('stage2', '-')):<9} "
+                     f"{str(r.get('items', '-')):<34} {r.get('outcome', '-'):<13} {str(r.get('signature', '-')):<24} "
                      f"{str(r.get('page', '-')):>4} {str(r.get('confidence', '-')):>5} {str(r.get('verified', '-')):<8} "
                      f"{str(r.get('calls', '-')):>5} {str(r.get('usd', '-')):>8}  "
                      f"{r.get('reason') or r.get('error') or ''}")
