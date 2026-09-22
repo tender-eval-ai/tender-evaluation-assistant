@@ -151,6 +151,7 @@ def _bid_result(pid: str, pdir, run: dict, result, steps: dict, spec: dict | Non
         stage2 = None
     return BidResult(tenderer=run["tenderer"], run_id=run["run_id"], ruleset_version=result.ruleset_version,
                      fields=fields, verdicts=verdicts, stage1=stage1, stage2=stage2,
+                     trace=steps.get("data", {}).get("agent_trace") or None,
                      cost=steps.get("data", {}).get("cost") or {}, review_confirmed_by=result.review_confirmed_by)
 
 
