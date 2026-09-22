@@ -32,7 +32,32 @@ only the forms not yet read.
 
 ## Live run through the stack (compose, DeepSeek vision, `tools/check_synthetic_case.py --ruleset test/data/synthetic_tender/ruleset_all_items.json`)
 
-_pending: the run of 2026-09-22 is recorded below when it finishes._
+Vision model: the local Ollama `qwen3-vl:8b-16k` (the stack's `VISION_MODEL`); text model
+DeepSeek. Two workers' worth of concurrency on one laptop, so the four bids took about
+three hours in all; the numbers are the point, not the time.
+
+| tenderer | offer | Stage I | Stage II | items not passing | values read | verified | caught by V4 | unchecked | numbers vs truth | new calls (cached) |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Tenderer_A | digital, 12 pages | needs_review | pass | (g) dormant, (i) needs_review | 46 | 43 | 1: contact-details name read as "Tender A" (page says "Tenderer A"), confidence 0 | 2 signatures | unit price 4.40 HK$, dosage 4.3, total 3,850,000, shelf life 12, delivery 28: all equal | 13 (2) |
+| Tenderer_B | scanned, 16 pages | needs_review | pass | (g) dormant, (i) needs_review | 46 | 46 | 0 | 0 | 4.86 HK$, 4.3, 4,252,500, 18, 21: all equal | 24 (3) |
+| Tenderer_C | digital, no certificate | disqualified | pass | (g) dormant, (i) needs_review, (l) disqualified | 42 | 40 | 1: contact-details name read as "Tender C" | 1 signature | 5.89 HK$, 3.3, 5,153,750, 24, 28: all equal | 13 (2) |
+| Tenderer_D | scanned, not the manufacturer, US$ | pass | pass | (g), (j) dormant | 46 | 46 | 0 | 0 | 7.22 US$, 3.0, 6,317,500, 18, 28: all equal | 30 (0) |
+
+"Values read" counts the fields with a value across the eleven forms present (the two
+letters that share a form with another are counted once). Every price, dosage, total,
+shelf life and delivery period equals the generator's. The two misreads (the local model
+dropped two letters of a tenderer's name on the contact page) were caught on the text
+layer and flagged unverified at confidence 0; no rule reads that field, so no verdict
+changed, but a reviewer sees the flag. On the scans every value agreed with its second
+read. (e) passed on the scans here, unlike in the fake's tests: the real model reads the
+country off the image.
+
+Tenderer_D's first two attempts failed in triage: the local model answered a six-page
+labelling batch with an empty object twice, the schema check refused it, and the job
+failed loudly (`RuntimeError: ... PageLabels ... Field required`). The third attempt, with
+`TRIAGE_PAGES_PER_CALL=3` on the worker, went through (6 triage calls instead of 3). A
+small local vision model wants smaller batches; the design number of six stays for the
+cloud models. `POST /jobs/{id}/retry` continued each attempt from the rendered pages.
 
 ## Boundaries
 
