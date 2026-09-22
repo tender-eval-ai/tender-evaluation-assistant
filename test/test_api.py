@@ -59,13 +59,13 @@ def test_full_project_flow_offline(tmp_path, monkeypatch):
     status = wait_done(client, pid)
     assert status["state"] == "done", status
 
-    ev = client.get(f"/projects/{pid}/evaluation").json()
+    ev = client.get(f"/projects/{pid}/legacy/evaluation").json()
     assert ev["recommended"] == "Bidder B"
     assert len(ev["stage1"]) == 4
 
-    reports = client.get(f"/projects/{pid}/reports").json()
+    reports = client.get(f"/projects/{pid}/legacy/reports").json()
     assert sorted(reports) == ["evaluation_record.docx", "price_summary.docx", "summary_list.docx"]
-    docx = client.get(f"/projects/{pid}/reports/price_summary.docx")
+    docx = client.get(f"/projects/{pid}/legacy/reports/price_summary.docx")
     assert docx.status_code == 200
     assert docx.content[:2] == b"PK"  # docx is a zip container
 
@@ -264,14 +264,14 @@ def test_orchestrated_run_pauses_at_both_checkpoints_and_honours_edits(tmp_path,
     status = wait_done(client, pid)
     assert status["state"] == "done", status
 
-    ev = client.get(f"/projects/{pid}/evaluation").json()
+    ev = client.get(f"/projects/{pid}/legacy/evaluation").json()
     assert ev["rubric"]["subject"] == "EDITED IN THE UI"
     assert next(r for r in ev["stage1"] if r["tenderer"] == "Bidder A")["passed"] is False
     g = client.get(f"/projects/{pid}/graph").json()
     assert g["pending"] is None and g["corrected"] == ["Bidder A"]
     assert client.post(f"/projects/{pid}/resume", json={}).status_code == 409
     assert client.get(f"/projects/{pid}/bids/Bidder A/agent").status_code == 404
-    assert sorted(client.get(f"/projects/{pid}/reports").json()) == [
+    assert sorted(client.get(f"/projects/{pid}/legacy/reports").json()) == [
         "evaluation_record.docx", "price_summary.docx", "summary_list.docx"]
 
 
@@ -303,7 +303,7 @@ def test_pause_state_survives_losing_the_scratch_disk(tmp_path, monkeypatch):
     assert client.post(f"/projects/{pid}/resume", json={}).json()["resumed"] == "review"
     assert wait_done(client, pid)["state"] == "done"
     assert client.get(f"/projects/{pid}/graph").json()["pending"] is None
-    assert sorted(client.get(f"/projects/{pid}/reports").json()) == [
+    assert sorted(client.get(f"/projects/{pid}/legacy/reports").json()) == [
         "evaluation_record.docx", "price_summary.docx", "summary_list.docx"]
 
     # Deleting the project removes its scratch copy too.

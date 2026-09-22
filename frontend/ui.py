@@ -647,7 +647,7 @@ if page == NAV[3]:
             st.rerun()
 
     if project["has_evaluation"]:
-        ev = call("GET", f"/projects/{pid}/evaluation").json()
+        ev = call("GET", f"/projects/{pid}/legacy/evaluation").json()
         rubric = ev["rubric"]
         st.markdown(f"**{rubric['tender_ref']}** — {rubric['subject']}")
         if ev.get("recommended"):
@@ -693,11 +693,11 @@ if page == NAV[3]:
 
 if page == NAV[4]:
     st.subheader("Word deliverables (editable)")
-    reports = call("GET", f"/projects/{pid}/reports").json()
+    reports = call("GET", f"/projects/{pid}/legacy/reports").json()
     if not reports:
         st.info("Run an evaluation first.")
     for name in reports:
-        data = call("GET", f"/projects/{pid}/reports/{name}").content
+        data = call("GET", f"/projects/{pid}/legacy/reports/{name}").content
         st.download_button(f"Download {name}", data, file_name=name,
                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
 

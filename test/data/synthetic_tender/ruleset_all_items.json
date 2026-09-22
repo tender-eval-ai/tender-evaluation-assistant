@@ -934,6 +934,11 @@
        "note": null,
        "follow_up": null
       },
+      "not_applicable": {
+       "status": "pass",
+       "note": "{field} not required: the tenderer is the manufacturer",
+       "follow_up": null
+      },
       "redacted": {
        "status": "needs_review",
        "note": "{field} is covered; ask for an unredacted copy",
