@@ -35,6 +35,10 @@ import fitz  # noqa: E402
 from app.parsing.citations import CitationIndex  # noqa: E402
 from app.parsing.layout_document_index import parse_document  # noqa: E402
 from app.parsing.loader import load_pdf  # noqa: E402
+# The four benchmark metrics are defined once, in tools/benchmark.py. This module
+# scores against them; it does not restate them.
+from tools.benchmark import BENCHMARK, score as benchmark_score  # noqa: E402
+from tools.benchmark import starts_with_own_marker as _starts_with_own_marker  # noqa: E402
 
 LENGTH_TOLERANCE = 0.10
 CONTAINER_KINDS = ("document", "subdocument", "part", "annex")
@@ -250,8 +254,7 @@ def score(key: dict, tender: Tender) -> dict:
 
 # ---------------------------------------------------------------- deep (node-level) key
 
-DEEP_METRICS = ("recall", "page_correct", "char_correct", "exact_location_correct",
-                "kind_correctness", "hierarchy_correctness")
+DEEP_METRICS = BENCHMARK + ("kind_correctness", "hierarchy_correctness")
 HEADING_SLACK = 12  # squashed characters allowed before a node's first words
 _LEADING_GLYPH = re.compile(r"^[*^#\s]+")
 
@@ -271,26 +274,6 @@ def expected_kind(node_id: str) -> tuple[str, ...] | None:
     if segment.startswith("Annex"):
         return ("annex", "part", "subdocument")
     return None
-
-
-def _starts_with_own_marker(node: dict) -> bool:
-    """AI_camp's "exact location": the node's own text starts with its own label or number."""
-    text = _LEADING_GLYPH.sub("", node.get("text") or "")
-    # `part` is the enclosing Part of every node inside one, so it is only the
-    # node's own marker for the Part node itself.
-    #
-    # All of them are tried, not the first that happens to be set: a Part node
-    # carries BOTH `number` ("A") and `part` ("Part A"), and the document prints
-    # the second. Stopping at `number` failed every Part heading - "Part A\nThe
-    # Tenderer shall note..." does not start with "A" - which is the case this
-    # check was changed to catch.
-    markers = [node.get("label"), node.get("number")]
-    if node.get("kind") in ("part", "annex"):
-        markers.append(node.get("part"))
-    markers = [m for m in markers if m]
-    if not markers or not text:
-        return bool(text)
-    return any(_squash(text).startswith(_squash(m)) for m in markers)
 
 
 def score_deep(deep_key: dict, tender: Tender) -> dict:
@@ -343,15 +326,10 @@ def score_deep(deep_key: dict, tender: Tender) -> dict:
                "exact_location_correct": False,
                "kind_correctness": False if kinds else None,
                "hierarchy_correctness": False if has_parent else None}
+        row.update(benchmark_score(key_node, node))
         if node is not None:
             length = len(node.get("text") or "")
-            page_ok = node["page"] == start
-            char_ok = length > 0 or node["kind"] in CONTAINER_KINDS
-            row.update(
-                parser_node=node["node_id"], parser_kind=node["kind"], parser_chars=length,
-                page_correct=page_ok, char_correct=char_ok,
-                exact_location_correct=page_ok and char_ok and bool(node.get("bbox")) and _starts_with_own_marker(node),
-            )
+            row.update(parser_node=node["node_id"], parser_kind=node["kind"], parser_chars=length)
             if kinds:
                 row["kind_correctness"] = node["kind"] in kinds
             if has_parent:
