@@ -1,0 +1,151 @@
+"""The closed menu of forms an offer is made of, one per page label that serves a
+Completeness Check Schedule item, each with its fixed field menu.
+
+A form's id is the prefix of its flat keys (`price_schedule.unit_price`); the same names
+are what a template's rules and a drafted rule refer to, so extraction (V3), verification
+(V4), the rule builder (L1 to L3) and the engine bridge (V6) all speak one vocabulary.
+A field is read as printed; `number` fields are also coerced (the printed form is kept
+beside them as `_printed`), a `signature` field holds the printed name or title next to
+the signature, "signature present" when only a signature or chop is visible, and null
+when unsigned. Every form has `document`: its heading as printed, null when absent."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Literal
+
+from app.checks.labels import PAGE_LABELS, labels_for
+from app.checks.verify import FieldSpec
+
+Kind = Literal["text", "number", "date", "signature"]
+
+
+@dataclass(frozen=True)
+class FieldDef:
+    name: str
+    kind: Kind
+    hint: str
+
+
+@dataclass(frozen=True)
+class Form:
+    id: str                       # the key prefix
+    label: str                    # the page label V1 gives its pages
+    title: str
+    fields: tuple[FieldDef, ...]  # after the implicit `document`
+
+    @property
+    def letters(self) -> tuple[str, ...]:
+        """The schedule items this form serves, by the label vocabulary."""
+        return PAGE_LABELS[self.label]
+
+    @property
+    def all_fields(self) -> tuple[FieldDef, ...]:
+        return (DOCUMENT,) + self.fields
+
+    @property
+    def names(self) -> tuple[str, ...]:
+        return tuple(f.name for f in self.all_fields)
+
+    def key(self, name: str) -> str:
+        return f"{self.id}.{name}"
+
+    def specs(self) -> tuple[FieldSpec, ...]:
+        """What V4 checks: every field; a signature agrees on presence, not wording."""
+        return tuple(FieldSpec(self.key(f.name), f.hint, presence=f.kind == "signature") for f in self.all_fields)
+
+
+DOCUMENT = FieldDef("document", "text", "the form's heading as printed")
+SIGNATURE_HINT = ("the printed name or title next to the signature; 'signature present' when only a signature "
+                  "or chop is visible; null when it is not signed")
+
+_FORMS = (
+    Form("offer_to_be_bound", "tender_form_offer_to_be_bound", "Tender Form, Offer to be Bound", (
+        FieldDef("tenderer_name", "text", "the tenderer's name as written in the offer"),
+        FieldDef("signature", "signature", SIGNATURE_HINT),
+        FieldDef("date", "date", "the date as printed next to the signature"),
+        FieldDef("chop", "text", "what says a company chop or seal is affixed, as printed; null when none"),
+    )),
+    Form("price_schedule", "price_schedule_part_a", "Price Schedule, Part A", (
+        FieldDef("unit_price", "number", "the unit price quoted, with its currency and unit as printed"),
+        FieldDef("currency", "text", "the currency the unit price is quoted in, as printed (e.g. HK$, US$)"),
+        FieldDef("optimal_dosage", "number", "the optimal dosage quoted, with its unit as printed"),
+        FieldDef("quantity", "number", "the estimated quantity printed on the schedule, with its unit"),
+        FieldDef("total", "number", "the total quoted, with its currency as printed"),
+        FieldDef("signature", "signature", SIGNATURE_HINT),
+    )),
+    Form("price_schedule_parts_c_d", "price_schedule_parts_c_d", "Price Schedule, Parts C and D", (
+        FieldDef("part_c", "text", "what is entered under Part C, as printed"),
+        FieldDef("part_d", "text", "what is entered under Part D, as printed"),
+    )),
+    Form("particulars_of_goods", "particulars_of_goods_schedule", "Particulars of Goods Schedule", (
+        FieldDef("product_name", "text", "the product name and grade as printed"),
+        FieldDef("manufacturer", "text", "the manufacturer's name (and address) as printed"),
+        FieldDef("country_of_origin", "text", "the country of origin as printed"),
+        FieldDef("shelf_life_months", "number", "the shelf life as printed, with its unit"),
+        FieldDef("packaging", "text", "the packaging and container size as printed"),
+        FieldDef("active_ingredient_pct", "number", "the active ingredient content as printed"),
+        FieldDef("bulk_density", "number", "the bulk density as printed, with its unit"),
+    )),
+    Form("information_schedule", "information_schedule", "Information Schedule", (
+        FieldDef("track_record", "text", "what Table A (track record of supply) lists, as printed"),
+        FieldDef("quality_certification", "text", "what Table B (quality certification) says, as printed"),
+        FieldDef("production_capacity", "text", "what Table C (production capacity) says, as printed"),
+    )),
+    Form("tender_sample_declaration", "tender_sample_declaration", "Tender Sample Declaration", (
+        FieldDef("declaration", "text", "the declaration as printed"),
+    )),
+    Form("documentary_evidence", "documentary_evidence_of_compliance", "Documentary Evidence of Compliance", (
+        FieldDef("evidence", "text", "the evidence listed or attached, as printed (report numbers, certificates)"),
+    )),
+    Form("manufacturer_letter", "manufacturer_letter_of_intent", "Manufacturer's Letter of Intent", (
+        FieldDef("manufacturer", "text", "the manufacturer's name as printed"),
+        FieldDef("tenderer_name", "text", "the tenderer the letter names, as printed"),
+        FieldDef("signature", "signature", SIGNATURE_HINT),
+    )),
+    Form("board_resolution", "board_resolution", "Certified Extract of Board Resolution", (
+        FieldDef("resolution", "text", "what is resolved, as printed"),
+        FieldDef("certified_by", "text", "who certifies the extract, as printed"),
+    )),
+    Form("contact_details", "contact_details", "Appendix to the Terms of Tender, Contact Details", (
+        FieldDef("tenderer_name", "text", "the name of the tenderer as printed"),
+        FieldDef("contact_person", "text", "the contact person as printed"),
+        FieldDef("telephone", "text", "the telephone number as printed"),
+        FieldDef("email", "text", "the e-mail address as printed"),
+        FieldDef("address", "text", "the correspondence address as printed"),
+    )),
+    Form("noncollusive_certificate", "noncollusive_certificate", "Non-collusive Tendering Certificate", (
+        FieldDef("tenderer_name", "text", "the tenderer's name as written on the certificate"),
+        FieldDef("signature", "signature", SIGNATURE_HINT),
+        FieldDef("date", "date", "the date as printed next to the signature"),
+    )),
+    Form("compliance_schedule", "compliance_schedule", "Compliance Schedule", (
+        FieldDef("delivery_days", "number", "the delivery period the tenderer states, as printed, with its unit"),
+        FieldDef("non_compliances", "text", "the rows marked 'Not comply', as printed; null when every row complies"),
+    )),
+    Form("method_of_production", "method_of_production_statement", "Method of Production Statement", (
+        FieldDef("statement", "text", "the statement as printed, its first sentence"),
+    )),
+)
+
+FORMS: dict[str, Form] = {f.id: f for f in _FORMS}
+FORM_OF_LABEL: dict[str, Form] = {f.label: f for f in _FORMS}
+
+
+def forms_for_letter(letter: str) -> list[Form]:
+    """The forms that serve a schedule item, by the label vocabulary."""
+    return [FORM_OF_LABEL[label] for label in labels_for(letter) if label in FORM_OF_LABEL]
+
+
+def form_for(item) -> Form | None:
+    """The form a rule-set item's fields come from: the template's form when its id is one,
+    else the form serving the item's letter. None for an item no form serves."""
+    template = getattr(item, "template", None)
+    if template and template in FORMS:
+        return FORMS[template]
+    forms = forms_for_letter(getattr(item, "letter", ""))
+    return forms[0] if forms else None
+
+
+def form_of_key(key: str) -> Form | None:
+    prefix = key.rpartition(".")[0]
+    return FORMS.get(prefix)

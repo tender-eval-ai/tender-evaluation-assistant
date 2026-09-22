@@ -4,7 +4,8 @@ when they differ, and an unverified value is a reviewer's call through the bridg
 from __future__ import annotations
 
 from app.checks.engine_bridge import evaluate
-from app.checks.extract_item_l import FIELDS, PREFIX, VERIFY, Certificate, fields_from
+from app.checks.extract import fields_from, reading_model
+from app.checks.extract_item_l import FIELDS, FORM, PREFIX, VERIFY
 from app.checks.verify import SecondRead, agree, find_on_text, normalise, second_read, text_reader, verify_fields
 from app.rulesets.schema import RuleSet
 from test.checks.conftest import CASE, RULESET, fake_llm
@@ -16,11 +17,13 @@ B_PAGES = [{"seq": i, "doc": "offer.pdf", "page": i, "path": "", "has_text": Fal
 
 def first_read(tenderer: str, page: int, **kw) -> dict:
     """Item (l) as V3 reports it: the fake's reading, with the page cited."""
-    cert = Certificate(present=True, title="Non-collusive Tendering Certificate", tenderer_name=tenderer.replace("_", " "),
-                       signatory=kw.get("signatory", "authorised signatory"), signed=kw.get("signed", True),
-                       date=kw.get("date", "14 August 2026"), redacted=list(kw.get("redacted", ())), page=page, confidence=0.92)
+    signed = kw.get("signed", True)
+    signature = (kw.get("signatory", "authorised signatory") or "signature present") if signed else None
+    reading = reading_model(FORM)(present=True, document="Non-collusive Tendering Certificate", tenderer_name=tenderer.replace("_", " "),
+                                  signature=signature, date=kw.get("date", "14 August 2026"), redacted=list(kw.get("redacted", ())),
+                                  page=page, confidence=0.92)
     refs = [p for p in (A_PAGES if tenderer == "Tenderer_A" else B_PAGES) if p["seq"] == page]
-    return fields_from(cert, refs)
+    return fields_from(FORM, reading, refs)
 
 
 def verification(fields: dict, name: str) -> dict:
@@ -165,8 +168,7 @@ def test_a_redacted_field_and_an_absent_certificate_are_not_checked(monkeypatch)
     assert verification(out, "signature") == {"verified": None, "method": None, "second_value": None,
                                               "note": "covered by a black bar; nothing to check"}
     assert verification(out, "date")["verified"] is True and llm.count() == 1
-    absent = verify_fields(fields_from(Certificate(present=False, confidence=0.3), []), B_PAGES, [], VERIFY, "Tenderer_C",
-                           fake_llm("Tenderer_C"), lambda ref: "")
+    absent = verify_fields(fields_from(FORM, None, []), B_PAGES, [], VERIFY, "Tenderer_C", fake_llm("Tenderer_C"), lambda ref: "")
     assert all(verification(absent, n) == {"verified": None, "method": None, "second_value": None,
                                            "note": "no page to check against"} for n in FIELDS)
 
@@ -176,6 +178,6 @@ def test_the_second_read_names_the_fields_and_never_shows_the_first_reading(monk
     llm = fake_llm("Tenderer_B")
     readings = second_read(VERIFY, [B_PAGES[12]], "Tenderer_B", llm)
     prompt = llm.calls[0].user
-    assert prompt.startswith("Offer of Tenderer_B: read these fields from pages [13]:")
+    assert prompt.startswith("Offer of Tenderer_B: read these fields of form noncollusive_certificate from pages [13]:")
     assert all(f"- {n}:" in prompt for n in FIELDS) and set(readings) == set(FIELDS)
     assert "Non-collusive" not in prompt and "authorised" not in prompt

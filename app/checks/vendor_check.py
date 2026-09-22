@@ -1,4 +1,4 @@
-"""The pipeline of kind "vendor_check": one tenderer's offer checked for item (l).
+"""The pipeline of kind "vendor_check": one tenderer's offer checked, every form.
 
     render -> triage -> resolve -> extract -> verify -> await_ruleset -> (decide, by the job)
 
@@ -13,15 +13,14 @@ import os
 from pathlib import Path
 
 from app.checks import engine_bridge, pages as pg, triage as v1
-from app.checks.extract_item_l import VERIFY, extract
-from app.checks.resolve import ItemPages, resolve
+from app.checks.extract import extract_form
+from app.checks.forms import FORMS
+from app.checks.resolve import resolve_form
 from app.checks.verify import text_reader, verify_fields
 from app.config import Config
 from app.gateway import Gateway, GatewaySettings, MemoryCache
 from app.jobs import registry
 from app.jobs.models import Context, Pause, Pipeline, Step
-
-ITEM = "l"
 
 
 def project_dir(project: str) -> Path:
@@ -102,35 +101,55 @@ def triage(ctx: Context):
 
 
 def resolve_step(ctx: Context):
-    ctx.progress("resolve", 0, 1, "calls")
+    """V2 for every form of the menu: the labels answer; the model is asked only for a form no
+    page is labelled as (an absent form costs one call)."""
+    forms = list(FORMS.values())
     llm = _llm(ctx)
     before = dict(getattr(llm, "stats", {}))
+    form_pages: dict[str, dict] = {}
     with llm.scope(ctx.run["tenderer"]):
-        pages = resolve(ctx.data["labels"], ITEM, ctx.run["tenderer"], llm).model_dump()
-    return {"item_pages": pages, "cost": _cost(ctx, llm, before)}
+        for i, form in enumerate(forms):
+            ctx.progress("resolve", i, len(forms), "forms")
+            form_pages[form.id] = resolve_form(ctx.data["labels"], form, ctx.run["tenderer"], llm).model_dump()
+    return {"form_pages": form_pages, "cost": _cost(ctx, llm, before)}
 
 
 def extract_step(ctx: Context):
-    ctx.progress("extract", 0, 1, "calls")
+    """V3 per form present, one call each, checkpointed after every form so a retry continues
+    with the next one. `fields` grows across the forms."""
     llm = _llm(ctx)
-    before = dict(getattr(llm, "stats", {}))
+    fields = dict(ctx.data.get("fields") or {})
+    done = set(ctx.data.get("extracted") or [])
     with llm.scope(ctx.run["tenderer"]):
-        item_pages = ItemPages.model_validate(ctx.data["item_pages"])
-        fields = extract(ctx.data["pages"], item_pages, ctx.run["tenderer"], llm)
-    return {"fields": fields, "cost": _cost(ctx, llm, before)}
+        for form in FORMS.values():
+            if form.id in done:
+                continue
+            ctx.progress("extract", len(done), len(FORMS), "forms")
+            before = dict(getattr(llm, "stats", {}))
+            fields.update(extract_form(form, ctx.data["pages"], ctx.data["form_pages"][form.id]["pages"], ctx.run["tenderer"], llm))
+            done.add(form.id)
+            ctx.checkpoint(fields=fields, extracted=sorted(done), cost=_cost(ctx, llm, before))
+    return None
 
 
 def verify_step(ctx: Context):
-    """V4: the extracted values checked against the text layer (no call) or by a second read of
-    the scanned pages (one call); `fields` is replaced by the verified copy."""
-    ctx.progress("verify", 0, 1, "calls")
+    """V4 per form: the values checked against the text layer (no call) or by a second read of
+    the scanned pages (one call per form); `fields` is replaced by the verified copy."""
     llm = _llm(ctx)
-    before = dict(getattr(llm, "stats", {}))
-    bid_dir = project_dir(ctx.run["project"]) / "bids" / ctx.run["tenderer"]
+    fields = dict(ctx.data["fields"])
+    done = set(ctx.data.get("verified") or [])
+    text_of = text_reader(project_dir(ctx.run["project"]) / "bids" / ctx.run["tenderer"])
     with llm.scope(ctx.run["tenderer"]):
-        fields = verify_fields(ctx.data["fields"], ctx.data["pages"], ctx.data["item_pages"]["pages"], VERIFY,
-                               ctx.run["tenderer"], llm, text_reader(bid_dir))
-    return {"fields": fields, "cost": _cost(ctx, llm, before)}
+        for form in FORMS.values():
+            if form.id in done:
+                continue
+            ctx.progress("verify", len(done), len(FORMS), "forms")
+            before = dict(getattr(llm, "stats", {}))
+            fields = verify_fields(fields, ctx.data["pages"], ctx.data["form_pages"][form.id]["pages"], form.specs(),
+                                   ctx.run["tenderer"], llm, text_of)
+            done.add(form.id)
+            ctx.checkpoint(fields=fields, verified=sorted(done), cost=_cost(ctx, llm, before))
+    return None
 
 
 def await_ruleset(ctx: Context):
@@ -139,10 +158,10 @@ def await_ruleset(ctx: Context):
 
 PIPELINE = registry.register(Pipeline(
     kind="vendor_check",
-    steps=[Step("render", render), Step("triage", triage), Step("resolve", resolve_step, "calls"),
-           Step("extract", extract_step, "calls"), Step("verify", verify_step, "calls"),
+    steps=[Step("render", render), Step("triage", triage), Step("resolve", resolve_step, "forms"),
+           Step("extract", extract_step, "forms"), Step("verify", verify_step, "forms"),
            Step("await_ruleset", await_ruleset, "steps")],
     fields_key="fields",
-    decide=engine_bridge.decide_item_l,
+    decide=engine_bridge.decide,
     resume_when={"ruleset_confirmed": lambda store, run: store.latest_confirmed(run["project"]) is not None},
 ))

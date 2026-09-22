@@ -1,7 +1,7 @@
 """V1: six pages a call, every page answered, unknown labels never leak through."""
 from app.checks.pages import as_dicts, render_offer
 from app.checks.triage import PageLabel, PageLabels, triage
-from test.checks.conftest import CASE, cert_page, fake_llm
+from test.checks.conftest import CASE, cert_page, fake_llm, page_labels
 from test.fakes import FakeLLM, Rule
 
 
@@ -18,7 +18,8 @@ def test_sixteen_pages_take_three_calls_and_every_page_gets_one_label(tmp_path):
     assert [lab["seq"] for lab in labels] == list(range(1, 17))
     assert labels[cert_page("Tenderer_B") - 1]["label"] == "noncollusive_certificate"
     assert labels[cert_page("Tenderer_B") - 1]["signed"] is True
-    assert {lab["label"] for lab in labels} == {"noncollusive_certificate", "company_profile"}
+    assert {lab["label"] for lab in labels} == set(page_labels("Tenderer_B").values()) | {"company_profile"}
+    assert sum(lab["label"] == "company_profile" for lab in labels) == 16 - len(page_labels("Tenderer_B"))
     assert all(len(c.images) == 6 or c.images == [] for c in llm.calls[:2]) and len(llm.calls[2].images) == 4
 
 

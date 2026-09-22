@@ -126,12 +126,14 @@ class FakeLLM:
 
     # ---------------------------------------------------------------- counting
     def count(self, *, scope: str | None = None, kind: str | None = None, out_model: type | None = None,
-              failed: bool | None = None) -> int:
+              failed: bool | None = None, match: str | None = None) -> int:
+        """Calls so far, filtered by scope, kind, output model, failure, or a regex over the prompt."""
         name = out_model.__name__ if out_model else None
         return sum(1 for c in self.calls
                    if (scope is None or c.scope == scope) and (kind is None or c.kind == kind)
                    and (name is None or c.out_model == name)
-                   and (failed is None or (c.error is not None) == failed))
+                   and (failed is None or (c.error is not None) == failed)
+                   and (match is None or re.search(match, c.user)))
 
     @property
     def ocr_calls(self) -> int:

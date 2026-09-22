@@ -5,27 +5,35 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends
 
-from app.checks.corrections import correction_entries, open_reviews
-from app.checks.extract_item_l import PREFIX as ITEM_L_PREFIX
+from app.checks.corrections import correction_entries, item_verdicts, open_reviews
+from app.checks.forms import form_for
 from app.jobs.models import EVALUATE
 from backend import deps
 from backend.errors import ApiError
 from backend.routes.checks import _bid_result
+from app.rulesets.schema import RuleSet
 from backend.schemas_api import BidResult, CorrectionRequest, EvaluateRequest, JobStarted
 
 router = APIRouter(dependencies=[Depends(deps.require_key)])
 
-PREFIX_OF_ITEM = {"l": ITEM_L_PREFIX}
-
-
 def _checked(runner, pid: str, tenderer: str):
+    """The tenderer's latest finished run, its result and the rule set it was decided against."""
     run = runner.store.latest_run(pid, tenderer, done_only=True)
     if run is None:
         raise ApiError(404, "not_found", f"no finished check for {tenderer} in {pid}")
     result = runner.results(run["run_id"])
     if result is None:
         raise ApiError(404, "not_found", f"no result stored for {tenderer}")
-    return run, result
+    return run, result, runner.store.get_version(pid, result.ruleset_version)
+
+
+def _key_of(spec: dict | None, letter: str, field: str) -> str | None:
+    """The stored key behind BidResult.fields[letter][field]: through the item's form."""
+    if not spec:
+        return None
+    item = next((i for i in RuleSet.model_validate(spec).items if i.letter == letter), None)
+    form = form_for(item) if item is not None else None
+    return form.key(field) if form is not None else None
 
 
 @router.patch("/projects/{pid}/bids/{tenderer}/fields/{letter}/{field}")
@@ -36,19 +44,22 @@ def correct_field(pid: str, tenderer: str, letter: str, field: str, body: Correc
     call; a review confirmation on this tenderer is withdrawn."""
     pdir = deps._project_dir(pid)
     runner = deps.runner()
-    run, result = _checked(runner, pid, tenderer)
-    prefix = PREFIX_OF_ITEM.get(letter)
-    key = f"{prefix}.{field}" if prefix else None
+    run, result, spec = _checked(runner, pid, tenderer)
+    key = _key_of(spec, letter, field)
     if key is None or key not in result.fields:
         raise ApiError(404, "not_found", f"item ({letter}) has no field {field!r} in {tenderer}'s result")
     entries = correction_entries(result.fields, key, body.value, body.present, body.page)
     if not entries:
         raise ApiError(400, "bad_request", "the correction changes nothing: give a value, present or a page")
-    before = {"fields": {k: result.fields.get(k) for k in entries}, "verdict": result.verdict.get("outcome")}
+
+    def outcome(verdict: dict) -> str | None:
+        return (item_verdicts(verdict).get(letter) or verdict).get("outcome")
+
+    before = {"fields": {k: result.fields.get(k) for k in entries}, "verdict": outcome(result.verdict)}
     corrected = runner.correct_fields(run["run_id"], entries, body.reason, user)
-    after = {"fields": entries, "verdict": corrected.verdict.get("outcome")}
+    after = {"fields": entries, "verdict": outcome(corrected.verdict)}
     runner.store.event("result.corrected", pid, f"{tenderer}:{letter}.{field}", before, after, user, body.reason)
-    return _bid_result(pid, pdir, run, corrected, runner.store.steps(run["run_id"]))
+    return _bid_result(pid, pdir, run, corrected, runner.store.steps(run["run_id"]), spec)
 
 
 @router.post("/projects/{pid}/bids/{tenderer}/review/confirm")
@@ -56,13 +67,13 @@ def confirm_review(pid: str, tenderer: str, user: str = Depends(deps.acting_user
     """409 while any checked field still needs review; reports wait for this."""
     pdir = deps._project_dir(pid)
     runner = deps.runner()
-    run, result = _checked(runner, pid, tenderer)
+    run, result, spec = _checked(runner, pid, tenderer)
     still_open = open_reviews(result.verdict)
     if still_open:
         raise ApiError(409, "conflict", f"{len(still_open)} field(s) still need review", {"fields": still_open})
     confirmed = runner.confirm_review(run["run_id"], user)
     runner.store.event("review.confirmed", pid, tenderer, None, {"ruleset_version": confirmed.ruleset_version}, user)
-    return _bid_result(pid, pdir, run, confirmed, runner.store.steps(run["run_id"]))
+    return _bid_result(pid, pdir, run, confirmed, runner.store.steps(run["run_id"]), spec)
 
 
 @router.post("/projects/{pid}/evaluate", status_code=202)

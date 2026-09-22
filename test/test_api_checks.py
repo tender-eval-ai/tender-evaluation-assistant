@@ -14,7 +14,7 @@ import time
 import pytest
 from fastapi.testclient import TestClient
 
-from test.checks.conftest import CASE, RULESET
+from test.checks.conftest import CASE, RULESET, RULESET_ALL, TEMPLATES
 
 pytestmark = pytest.mark.postgres
 
@@ -35,6 +35,7 @@ def api(tmp_path, monkeypatch):
     monkeypatch.setenv("INBOX_DIR", str(tmp_path / "inbox"))
     monkeypatch.delenv("API_KEY", raising=False)
     monkeypatch.setenv("VENDOR_CHECK_LLM_FACTORY", "test.checks.fake_factory:factory")
+    monkeypatch.setenv("RULESET_TEMPLATES_DIR", str(TEMPLATES))
     for k, v in {"JOBS_HEARTBEAT": "1", "JOBS_STALLED_AFTER": "3", "JOBS_SWEEP_EVERY": "1", "JOBS_POLL": "0.5"}.items():
         monkeypatch.setenv(k, v)
     from app import db
@@ -158,7 +159,8 @@ def test_a_check_through_the_worker_yields_fields_with_citations_a_verdict_and_i
     # text ("tenderer name") does not, which is what this asserts against.
     assert all(c["field"] in res["fields"]["l"] for c in verdict["checks"]), verdict["checks"]
     assert res["stage1"] == {"outcome": "pass", "items": {"l": "pass"}} and res["stage2"] is None
-    assert res["cost"]["calls"] == 5 and res["cost"]["usd"] == 0, "three triage, one extract, one second read"
+    assert res["cost"]["calls"] == 27 and res["cost"]["usd"] == 0, "3 triage, 2 resolve, 11 extracts, 11 second reads"
+    assert list(res["fields"]) == ["l"] and list(res["verdicts"]) == ["l"], "the rule set names item (l) alone"
     assert client.get(f"/projects/{pid}/bids/Tenderer_B/results", params={"version": 2}).status_code == 404
     doc = next(d for d in client.get(f"/projects/{pid}/documents").json() if d["tenderer"] == "Tenderer_B")
     pages = client.get(f"/projects/{pid}/documents/{doc['doc_id']}/pages").json()
@@ -176,7 +178,40 @@ def test_the_driver_script_runs_the_case_end_to_end(api, worker, tmp_path, monke
     backend_api.deps.configure()
     rows = run(Api(client), case="synthetic_tender", tenderers=["Tenderer_B", "Tenderer_C"], timeout=120, log=lambda *_: None)
     by = {r["tenderer"]: r for r in rows}
-    assert by["Tenderer_B"]["outcome"] == "pass" and by["Tenderer_B"]["page"] == 13 and by["Tenderer_B"]["calls"] == 5
+    assert by["Tenderer_B"]["outcome"] == "pass" and by["Tenderer_B"]["page"] == 13 and by["Tenderer_B"]["calls"] == 27
     assert by["Tenderer_B"]["verified"] is True and by["Tenderer_B"]["confidence"] == 0.9
     assert by["Tenderer_C"]["outcome"] == "disqualified" and by["Tenderer_C"]["signature"] is None
     assert "Tenderer_B" in table(rows)
+
+
+def test_every_item_is_checked_against_a_fifteen_item_rule_set_and_corrected_per_form(api, worker):
+    """S4-3: Tenderer_D (scanned, not the manufacturer) against the all-items rule set: one
+    verdict per item, the fields of every form, Stage I and II summaries; a correction on the
+    price schedule's unit price is judged by the math rule at once."""
+    client, pid = api
+    body = {k: copy.deepcopy(v) for k, v in RULESET_ALL.items() if k not in ("status", "confirmed_by", "confirmed_at", "version", "project_id")}
+    assert client.put(f"/projects/{pid}/ruleset/draft", json=body, headers=CHENYU).status_code == 200
+    assert client.post(f"/projects/{pid}/ruleset/confirm", headers=NASI).status_code == 200
+    job_id = client.post(f"/projects/{pid}/checks", json={"tenderers": ["Tenderer_D"]}).json()["job_ids"]["Tenderer_D"]
+    assert _wait_done(client, pid, job_id)["state"] == "done"
+    res = client.get(f"/projects/{pid}/bids/Tenderer_D/results").json()
+    assert set(res["verdicts"]) == set("abcdefghijklmno") and set(res["fields"]) == set("abcdefghijklmno")
+    assert res["stage1"]["outcome"] == "pass" and res["stage1"]["items"]["j"] == "dormant" and res["stage2"]["outcome"] == "pass"
+    price = res["fields"]["b"]
+    assert price["unit_price"]["value"] == 7.22 and price["unit_price"]["page"]["page"] == 3 and price["currency"]["value"] == "US$"
+    assert price["unit_price"]["verification"]["method"] == "second_read" and price["unit_price"]["confidence"] == 0.9
+    assert res["fields"]["c"]["optimal_dosage"]["value"] == 3.0 and res["fields"]["i"]["manufacturer"]["value"] == "Northfield Polymers D Inc"
+    assert res["fields"]["l"]["signature"]["value"] == "authorised signatory" and res["verdicts"]["l"]["outcome"] == "pass"
+    checks = {c["field"]: c for c in res["verdicts"]["b"]["checks"]}
+    assert checks["total"]["status"] == "pass" and checks["total"]["field_id"] == "price_schedule.total"
+    r = client.patch(f"/projects/{pid}/bids/Tenderer_D/fields/b/unit_price", json={"value": 7.5, "reason": "misread 7.22"}, headers=NASI)
+    assert r.status_code == 200, r.json()
+    after = r.json()
+    assert after["fields"]["b"]["unit_price"]["value"] == 7.5 and after["fields"]["b"]["unit_price"]["model_value"] == 7.22
+    assert after["fields"]["b"]["unit_price"]["verification"] is None, "a person's value carries no verification record"
+    total = next(c for c in after["verdicts"]["b"]["checks"] if c["field"] == "total")
+    assert total["status"] == "needs_review" and "product" in total["note"] and after["verdicts"]["b"]["outcome"] == "needs_review"
+    assert after["stage1"]["outcome"] == "needs_review"
+    assert client.patch(f"/projects/{pid}/bids/Tenderer_D/fields/q/nothing", json={"value": 1, "reason": "x"}, headers=NASI).status_code == 404
+    confirm = client.post(f"/projects/{pid}/bids/Tenderer_D/review/confirm", headers=NASI)
+    assert confirm.status_code == 409 and confirm.json()["error"]["details"]["fields"] == ["price_schedule.total"]
