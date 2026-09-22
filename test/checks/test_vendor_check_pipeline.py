@@ -48,8 +48,10 @@ def test_a_digital_offer_is_verified_on_its_text_layer_with_fifteen_calls(projec
     llm, ctx = run_for("Tenderer_A", monkeypatch)
     ctx.confirm(RULESET_ALL)
     assert run_pipeline(vendor_check.PIPELINE, ctx).state == "done"
-    assert ctx.data["form_pages"]["noncollusive_certificate"]["pages"] == [10] and llm.count() == 15, \
-        "two triage calls for 12 pages, two resolve calls for the absent forms, eleven extracts, no second read"
+    assert ctx.data["form_pages"]["noncollusive_certificate"]["pages"] == [10] and llm.count() == 15 + 1, \
+        "two triage calls for 12 pages, two resolve calls for the absent forms, eleven extracts, no second read; " \
+        "then one agent step for the absent Part A letter of intent, finished not found"
+    assert [e["tool"] for e in ctx.data["agent_trace"]["manufacturer_letter"]] == ["finish"] and ctx.data["agent_done"] == ["manufacturer_letter"]
     fields = ctx.data["fields"]
     assert all(fields[f"{PREFIX}.{n}_verification"]["method"] == "text_layer" and fields[f"{PREFIX}.{n}_confidence"] == 1.0
                for n in ("document", "tenderer_name", "signature", "date"))
@@ -74,7 +76,8 @@ def test_an_offer_without_the_certificate_is_disqualified_after_three_resolve_ca
     ctx.confirm(RULESET)
     assert run_pipeline(vendor_check.PIPELINE, ctx).state == "done"
     assert ctx.data["form_pages"]["noncollusive_certificate"]["pages"] == []
-    assert llm.count() == 2 + 3 + 10, "two triage calls for 12 pages, three resolve calls (certificate, sample, letter), ten extracts"
+    assert llm.count() == 2 + 3 + 10 + 1, "two triage calls for 12 pages, three resolve calls (certificate, sample, letter), ten " \
+        "extracts; then the agent's one look for the absent Part A certificate, finished not found"
     verdict = vendor_check.PIPELINE.decide(ctx.data["fields"], RULESET)
     assert verdict["outcome"] == "disqualified" and verdict["items"]["l"]["fields"][0]["value"] is None
     assert ctx.data["fields"][f"{PREFIX}.document_verification"]["note"] == "no page to check against"
@@ -96,7 +99,7 @@ def test_a_retried_extract_step_continues_with_the_forms_not_yet_read(project, m
 def test_the_pipeline_is_registered_for_the_worker():
     from app.jobs import registry
     assert registry.get("vendor_check") is vendor_check.PIPELINE
-    assert [s.name for s in vendor_check.PIPELINE.steps] == ["render", "triage", "resolve", "extract", "verify", "await_ruleset"]
+    assert [s.name for s in vendor_check.PIPELINE.steps] == ["render", "triage", "resolve", "extract", "verify", "await_ruleset", "agent"]
 
 
 def test_the_project_data_class_decides_where_the_model_may_be(project):

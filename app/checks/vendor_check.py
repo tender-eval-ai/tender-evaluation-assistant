@@ -1,6 +1,6 @@
 """The pipeline of kind "vendor_check": one tenderer's offer checked, every form.
 
-    render -> triage -> resolve -> extract -> verify -> await_ruleset -> (decide, by the job)
+    render -> triage -> resolve -> extract -> verify -> await_ruleset -> agent -> (decide, by the job)
 
 Progress is checkpointed after rendering, after every triage batch, and after each
 later step, so a retried or resumed job continues from the first missing piece. The
@@ -13,14 +13,16 @@ import os
 from pathlib import Path
 
 from app.checks import engine_bridge, pages as pg, triage as v1
+from app.checks.agent import search_form
 from app.checks.extract import extract_form
-from app.checks.forms import FORMS
+from app.checks.forms import FORMS, form_for
 from app.checks.resolve import resolve_form
 from app.checks.verify import text_reader, verify_fields
 from app.config import Config
 from app.gateway import Gateway, GatewaySettings, MemoryCache
 from app.jobs import registry
 from app.jobs.models import Context, Pause, Pipeline, Step
+from app.rulesets.schema import Part, RuleSet
 
 
 def project_dir(project: str) -> Path:
@@ -156,11 +158,46 @@ def await_ruleset(ctx: Context):
     return None if ctx.ruleset() else Pause("ruleset_confirmed")
 
 
+def agent_step(ctx: Context):
+    """V5, once the rule set is known: for every Part A item whose form no page was labelled
+    as, the bounded agent looks for the form; a verified pointer sends that form through V3
+    and V4. Checkpointed per form; the trace of every action is kept."""
+    confirmed = ctx.ruleset()
+    if confirmed is None:
+        return None
+    ruleset = RuleSet.model_validate(confirmed[1])
+    form_pages = dict(ctx.data["form_pages"])
+    wanted = sorted({form_for(item).id for item in ruleset.items
+                     if item.part == Part.A and form_for(item) is not None and not form_pages[form_for(item).id]["pages"]})
+    done = set(ctx.data.get("agent_done") or [])
+    todo = [f for f in wanted if f not in done]
+    if not todo:
+        return None
+    llm = _llm(ctx)
+    fields = dict(ctx.data["fields"])
+    trace = dict(ctx.data.get("agent_trace") or {})
+    text_of = text_reader(project_dir(ctx.run["project"]) / "bids" / ctx.run["tenderer"])
+    with llm.scope(ctx.run["tenderer"]):
+        for i, form_id in enumerate(todo):
+            form = FORMS[form_id]
+            ctx.progress("agent", i, len(todo), "forms")
+            before = dict(getattr(llm, "stats", {}))
+            found, steps = search_form(form, ctx.data["pages"], ctx.data["labels"], text_of, llm)
+            if found:
+                form_pages[form_id] = {"pages": found, "confidence": 0.8, "reason": "found by the agent with a verified quote"}
+                fields.update(extract_form(form, ctx.data["pages"], found, ctx.run["tenderer"], llm))
+                fields = verify_fields(fields, ctx.data["pages"], found, form.specs(), ctx.run["tenderer"], llm, text_of)
+            trace[form_id] = steps
+            done.add(form_id)
+            ctx.checkpoint(fields=fields, form_pages=form_pages, agent_trace=trace, agent_done=sorted(done), cost=_cost(ctx, llm, before))
+    return None
+
+
 PIPELINE = registry.register(Pipeline(
     kind="vendor_check",
     steps=[Step("render", render), Step("triage", triage), Step("resolve", resolve_step, "forms"),
            Step("extract", extract_step, "forms"), Step("verify", verify_step, "forms"),
-           Step("await_ruleset", await_ruleset, "steps")],
+           Step("await_ruleset", await_ruleset, "steps"), Step("agent", agent_step, "forms")],
     fields_key="fields",
     decide=engine_bridge.decide,
     resume_when={"ruleset_confirmed": lambda store, run: store.latest_confirmed(run["project"]) is not None},

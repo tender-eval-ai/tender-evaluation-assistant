@@ -13,6 +13,7 @@ from pathlib import Path
 
 import pytest
 
+from app.checks.agent import AgentAction
 from app.checks.forms import FORMS
 from app.checks.labels import labels_for
 from app.checks.resolve import ItemPages
@@ -32,7 +33,7 @@ _RANGE = re.compile(r"label pages (\d+)-(\d+)")
 _ASKED = re.compile(r"^- (\w+):", re.M)
 _FORM_FIND = re.compile(r"find the pages of form (\w+)")
 _FORM_EXTRACT = re.compile(r"extract form (\w+) .*? from pages \[([\d, ]*)\]")
-_FORM_SECOND = re.compile(r"read these fields of form (\w+)")
+_FORM_SECOND = re.compile(r"read these fields of form (\w+) from pages \[([\d, ]*)\]")
 # The date as printed on Tenderer_A's certificate; the scans' dates are only on their images.
 DATES = {"Tenderer_A": "14 August 2026"}
 DEFAULT_DATE = "12 August 2026"
@@ -134,11 +135,14 @@ def form_values(tenderer: str, form_id: str, *, signed: bool = True, dated: bool
 
 def fake_llm(tenderer: str, *, signed: bool = True, dated: bool = True, redacted: tuple[str, ...] = (),
              label_certificate: bool = True, second: dict | None = None, second_confidence: float = 0.88,
-             values: dict[str, dict] | None = None) -> FakeLLM:
+             values: dict[str, dict] | None = None, agent: list | None = None, ocr_text: str | list = "") -> FakeLLM:
     """`signed`, `dated` and `redacted` shape the certificate's reading; `values` overrides
     any form's first reading field by field ({form id: {field: value}}); `second` overrides
     what V4's second read reports, by field name across forms. By default the second read
-    agrees with the first."""
+    agrees with the first. `agent` scripts V5's actions in order (by default the agent
+    finishes with found=false); `ocr_text` is what a transcribed scan reads (a list is
+    consumed in order). Extraction reads the page it is given: a form asked for on a page
+    that is not its own is reported absent, as a model reading the image would."""
     labels = page_labels(tenderer)
     if not label_certificate:
         labels = {p: lab for p, lab in labels.items() if lab != "noncollusive_certificate"}
@@ -168,18 +172,26 @@ def fake_llm(tenderer: str, *, signed: bool = True, dated: bool = True, redacted
     def extract_reply(call):
         m = _FORM_EXTRACT.search(call.user)
         form_id, pages = m.group(1), [int(p) for p in m.group(2).split(",") if p.strip()]
+        true_page = form_page(tenderer, form_id)
+        if true_page is None or true_page not in pages:
+            return {"present": False, "redacted": [], "page": None, "confidence": 0.9}
         out = reading(form_id)
         redacted_names = [n for n in redacted if form_id == "noncollusive_certificate" or n in out]
         return {"present": True, **out, "redacted": redacted_names, "page": pages[0] if pages else None, "confidence": 0.92}
 
     def second_reply(call):
         m = _FORM_SECOND.search(call.user)
-        first = reading(m.group(1)) if m else {}
+        pages = [int(p) for p in m.group(2).split(",") if p.strip()] if m else []
+        true_page = form_page(tenderer, m.group(1)) if m else None
+        first = reading(m.group(1)) if m and true_page in pages else {}
         merged = {**first, **(second or {})}
         return SecondRead(readings=[Reading(field=n, value=merged.get(n), confidence=second_confidence) for n in _ASKED.findall(call.user)])
 
-    return FakeLLM([Rule(reply=label, out_model=PageLabels), Rule(reply=resolve_reply, out_model=ItemPages),
-                    Rule(reply=extract_reply, match=r"extract form "), Rule(reply=second_reply, out_model=SecondRead)])
+    rules = [Rule(reply=label, out_model=PageLabels), Rule(reply=resolve_reply, out_model=ItemPages),
+             Rule(reply=extract_reply, match=r"extract form "), Rule(reply=second_reply, out_model=SecondRead)]
+    if agent is None:
+        rules.append(Rule(reply=AgentAction(tool="finish", found=False, thought="the labels did not find it"), out_model=AgentAction))
+    return FakeLLM(rules, sequence=list(agent or []), ocr_text=ocr_text)
 
 
 @pytest.fixture
