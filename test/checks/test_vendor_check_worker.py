@@ -45,7 +45,11 @@ def worker(tmp_path, monkeypatch):
         yield runner
     finally:
         proc.terminate()
-        proc.wait(timeout=10)
+        try:
+            proc.wait(timeout=10)                # SIGTERM drains a running job; a slow runner may need longer
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait(timeout=10)
         runner.close()
 
 

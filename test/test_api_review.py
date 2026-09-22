@@ -25,7 +25,11 @@ def worker():
                              "app.checks.vendor_check,app.jobs.evaluate_job", "--no-migrate"], env=os.environ.copy())
     yield proc
     proc.terminate()
-    proc.wait(timeout=10)
+    try:
+        proc.wait(timeout=10)                # SIGTERM drains a running job; a slow runner may need longer
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait(timeout=10)
 
 
 def _checked(client, pid, tenderers: list[str]) -> dict:
