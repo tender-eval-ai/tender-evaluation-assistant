@@ -48,6 +48,7 @@ Last updated: 2026-09-20 (Chenyu).
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | proposed | Nasi: which to take first |
+| J2 | Where a form's own notes and trigger live | proposed | Chenyu: contract approval; blocks the rule-file split |
 
 ## A. Corrections to the plan
 
@@ -353,6 +354,34 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      whole document's parenting being wrong is one containment bug, and it breaks
      "everything under this schedule" queries.
 - Nasi (2026-09-21): proposed. 1 first - bounded, measurable, and user-visible.
+
+### J2. Where a form's own notes and trigger live (blocks the rule-file split)
+- Found by: starting the S1 split of the 13 rule files (`tools/split_rule_files.py`).
+  The classifier reproduces `check_kind_mapping.md`'s own totals independently: 126
+  rules, 99 checks, 27 not a rule, 0 unmapped.
+- The problem: S0 gap 6 put `notes` and `condition` on `RuleSetItem`, and both are
+  implemented there. But the split produces **templates**, not items - items are built
+  per tender by L1. So the 27 non-rules have nowhere to go. They are facts about the
+  FORM, not the tender: "required only if the Tenderer is not itself the Manufacturer
+  of the offered Item 1", "the Terms of Tender (Supplement) may require certification
+  of the Goods and/or the Tenderer", "separate sheets may be used if the space
+  provided is inadequate". Left on the item only, every tender has to rediscover them,
+  which is what a template library exists to prevent.
+- Options:
+  1. `Template.notes: list[ItemNote]` and `Template.condition: str | None`, inherited
+     when L1 matches an item to the template; the item may override `condition` and
+     never loses the form's notes. Prototyped on `feat/production-templates`.
+  2. Keep them item-only: the split drops all 27, and each tender's build re-derives
+     them through the model. Cheapest now, but the library carries less than the rule
+     files it replaced, and a trigger the model misses silently changes an item's
+     applicability.
+  3. Put them in the per-tender params file. Wrong shape: they do not vary by tender,
+     which is the test for what belongs in params.
+- Not decided here: `schema.py` is the shared contract, so this is a `contract` PR
+  with both approvals (the I1 convention).
+- Nasi (2026-09-22): proposes 1. `na_allowed` needs nothing - the engine already reads
+  "N/A" as `not_applicable` (`app/engine/state.py`). `overflow_allowed` becomes a note
+  under whichever option wins.
 
 ## Verified facts (no action needed)
 

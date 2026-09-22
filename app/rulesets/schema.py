@@ -262,6 +262,15 @@ class FollowUpDeadline(BaseModel):
     offset: int = Field(ge=1)
 
 
+class ItemNote(BaseModel):
+    """Prose attached to an item that is not a check: a definition, what triggers a
+    requirement, a consequence stated in the clause, or a cross-reference."""
+
+    kind: Literal["definition", "trigger", "consequence", "reference"]
+    text: str = Field(min_length=1)
+    citation: Citation | None = None
+
+
 class ConsequenceDefaults(BaseModel):
     """A template's default outcomes for one consequence tier."""
 
@@ -283,6 +292,15 @@ class Template(BaseModel):
     form_name: str = Field(min_length=1)
     slots: list[SlotSpec] = Field(default_factory=list)
     consequences: dict[Consequence, ConsequenceDefaults] = Field(default_factory=dict)
+    # The form's own prose and trigger, inherited by every item that matches it. A
+    # definition like "the Terms of Tender (Supplement) may require certification of
+    # the Goods and/or the Tenderer", or a trigger like "required only if the
+    # Tenderer is not itself the Manufacturer", is a fact about the FORM: it holds
+    # for every tender that uses it. Held only on the item, each tender would have to
+    # rediscover it, which is what the library exists to prevent. An item may
+    # override `condition`; it never loses the template's notes.
+    notes: list[ItemNote] = Field(default_factory=list)
+    condition: str | None = Field(default=None, description="the form applies only when this holds")
     rules: list[TemplateRule]
 
     @model_validator(mode="after")
@@ -298,15 +316,6 @@ class Template(BaseModel):
             if missing:
                 raise ValueError(f"rule {r.id} references slots {sorted(missing)} the template does not declare")
         return self
-
-
-class ItemNote(BaseModel):
-    """Prose attached to an item that is not a check: a definition, what triggers a
-    requirement, a consequence stated in the clause, or a cross-reference."""
-
-    kind: Literal["definition", "trigger", "consequence", "reference"]
-    text: str = Field(min_length=1)
-    citation: Citation | None = None
 
 
 class Gap(BaseModel):
