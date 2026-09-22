@@ -880,6 +880,57 @@
         "title": "EvaluateRequest",
         "type": "object"
       },
+      "Evaluation": {
+        "properties": {
+          "price": {
+            "$ref": "#/components/schemas/PriceSummary"
+          },
+          "recommendation": {
+            "title": "Recommendation",
+            "type": "string"
+          },
+          "recommended": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommended"
+          },
+          "ruleset_version": {
+            "title": "Ruleset Version",
+            "type": "integer"
+          },
+          "stage1_conclusion": {
+            "title": "Stage1 Conclusion",
+            "type": "string"
+          },
+          "stage2_conclusion": {
+            "title": "Stage2 Conclusion",
+            "type": "string"
+          },
+          "tenderers": {
+            "items": {
+              "$ref": "#/components/schemas/TendererEvaluation"
+            },
+            "title": "Tenderers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "ruleset_version",
+          "tenderers",
+          "stage1_conclusion",
+          "stage2_conclusion",
+          "recommendation",
+          "price"
+        ],
+        "title": "Evaluation",
+        "type": "object"
+      },
       "Event": {
         "properties": {
           "after": {
@@ -1809,6 +1860,181 @@
         "title": "PartSpec",
         "type": "object"
       },
+      "PriceRow": {
+        "properties": {
+          "arithmetic_ok": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Arithmetic Ok"
+          },
+          "conforming": {
+            "description": "Stage I and II both pass",
+            "title": "Conforming",
+            "type": "boolean"
+          },
+          "corrected": {
+            "description": "price fields a reviewer corrected",
+            "items": {
+              "type": "string"
+            },
+            "title": "Corrected",
+            "type": "array"
+          },
+          "cost_effectiveness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Effectiveness"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "dosage": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dosage"
+          },
+          "dosage_rounded": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "two significant figures, per the Terms of Tender",
+            "title": "Dosage Rounded"
+          },
+          "estimated_goods_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Goods Price"
+          },
+          "quoted_total": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Quoted Total"
+          },
+          "ranking": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ranking"
+          },
+          "remark": {
+            "default": "",
+            "title": "Remark",
+            "type": "string"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "stage1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage1"
+          },
+          "stage2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage2"
+          },
+          "tenderer": {
+            "title": "Tenderer",
+            "type": "string"
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price"
+          },
+          "unit_price_hkd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit Price Hkd"
+          }
+        },
+        "required": [
+          "tenderer",
+          "run_id",
+          "conforming",
+          "currency"
+        ],
+        "title": "PriceRow",
+        "type": "object"
+      },
       "PriceScheme": {
         "description": "How the tender says price must be assessed. Drives which Price Summary format is used.",
         "properties": {
@@ -1864,6 +2090,103 @@
           "quantity"
         ],
         "title": "PriceScheme",
+        "type": "object"
+      },
+      "PriceSchemeOut": {
+        "description": "The tender's price scheme as the confirmed rule set states it.",
+        "properties": {
+          "currency": {
+            "default": "HK$",
+            "title": "Currency",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the estimated quantity, from the price schedule item's slot",
+            "title": "Quantity"
+          },
+          "source": {
+            "default": "",
+            "description": "where the quantity came from",
+            "title": "Source",
+            "type": "string"
+          },
+          "type": {
+            "enum": [
+              "cost_effectiveness",
+              "unit_price_x_quantity"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "unit": {
+            "default": "kg",
+            "title": "Unit",
+            "type": "string"
+          },
+          "usd_hkd": {
+            "description": "what a US$ quotation is converted at (PRICING_USD_HKD)",
+            "title": "Usd Hkd",
+            "type": "number"
+          }
+        },
+        "required": [
+          "type",
+          "usd_hkd"
+        ],
+        "title": "PriceSchemeOut",
+        "type": "object"
+      },
+      "PriceSummary": {
+        "properties": {
+          "missing": {
+            "description": "tenderers whose result is at another rule-set version",
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          },
+          "recommended": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the best-ranked conforming offer",
+            "title": "Recommended"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/PriceRow"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "ruleset_version": {
+            "title": "Ruleset Version",
+            "type": "integer"
+          },
+          "scheme": {
+            "$ref": "#/components/schemas/PriceSchemeOut"
+          }
+        },
+        "required": [
+          "ruleset_version",
+          "scheme",
+          "rows"
+        ],
+        "title": "PriceSummary",
         "type": "object"
       },
       "Progress": {
@@ -2077,6 +2400,49 @@
           "reason"
         ],
         "title": "ReasonBody",
+        "type": "object"
+      },
+      "ReportInfo": {
+        "properties": {
+          "approver": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "who confirmed the reviews the report rests on",
+            "title": "Approver"
+          },
+          "generated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null until first downloaded",
+            "title": "Generated At"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "name",
+          "version"
+        ],
+        "title": "ReportInfo",
         "type": "object"
       },
       "ResumeRequest": {
@@ -2700,6 +3066,77 @@
           "field"
         ],
         "title": "TemplateRule",
+        "type": "object"
+      },
+      "TendererEvaluation": {
+        "properties": {
+          "conforming": {
+            "title": "Conforming",
+            "type": "boolean"
+          },
+          "corrections": {
+            "default": 0,
+            "title": "Corrections",
+            "type": "integer"
+          },
+          "items": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "object"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          },
+          "run_id": {
+            "title": "Run Id",
+            "type": "string"
+          },
+          "stage1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage1"
+          },
+          "stage2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stage2"
+          },
+          "tenderer": {
+            "title": "Tenderer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenderer",
+          "run_id",
+          "stage1",
+          "stage2",
+          "items",
+          "conforming"
+        ],
+        "title": "TendererEvaluation",
         "type": "object"
       },
       "Verdict": {
@@ -4261,7 +4698,7 @@
     },
     "/projects/{pid}/evaluation": {
       "get": {
-        "operationId": "get_evaluation_projects__pid__evaluation_get",
+        "operationId": "evaluation_projects__pid__evaluation_get",
         "parameters": [
           {
             "in": "path",
@@ -4270,6 +4707,22 @@
             "schema": {
               "title": "Pid",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
             }
           },
           {
@@ -4294,9 +4747,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Get Evaluation Projects  Pid  Evaluation Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/Evaluation"
                 }
               }
             },
@@ -4313,7 +4764,7 @@
             "description": "Validation Error"
           }
         },
-        "summary": "Get Evaluation"
+        "summary": "Evaluation"
       }
     },
     "/projects/{pid}/events": {
@@ -4837,9 +5288,66 @@
         "summary": "Run Evaluation"
       }
     },
-    "/projects/{pid}/reports": {
+    "/projects/{pid}/legacy/evaluation": {
       "get": {
-        "operationId": "list_reports_projects__pid__reports_get",
+        "operationId": "get_evaluation_projects__pid__legacy_evaluation_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Get Evaluation Projects  Pid  Legacy Evaluation Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Evaluation"
+      }
+    },
+    "/projects/{pid}/legacy/reports": {
+      "get": {
+        "operationId": "list_reports_projects__pid__legacy_reports_get",
         "parameters": [
           {
             "in": "path",
@@ -4875,6 +5383,214 @@
                   "items": {
                     "type": "string"
                   },
+                  "title": "Response List Reports Projects  Pid  Legacy Reports Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Reports"
+      }
+    },
+    "/projects/{pid}/legacy/reports/{name}": {
+      "get": {
+        "operationId": "download_report_projects__pid__legacy_reports__name__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download Report"
+      }
+    },
+    "/projects/{pid}/price-summary": {
+      "get": {
+        "operationId": "price_summary_projects__pid__price_summary_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceSummary"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Price Summary"
+      }
+    },
+    "/projects/{pid}/reports": {
+      "get": {
+        "operationId": "list_reports_projects__pid__reports_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "pid",
+            "required": true,
+            "schema": {
+              "title": "Pid",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReportInfo"
+                  },
                   "title": "Response List Reports Projects  Pid  Reports Get",
                   "type": "array"
                 }
@@ -4898,6 +5614,7 @@
     },
     "/projects/{pid}/reports/{name}": {
       "get": {
+        "description": "Rendered fresh from the stored results; `409 review_pending` while a checked\ntenderer's review is not confirmed, so no report goes out on an unreviewed verdict.",
         "operationId": "download_report_projects__pid__reports__name__get",
         "parameters": [
           {
@@ -4916,6 +5633,22 @@
             "schema": {
               "title": "Name",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "version",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Version"
             }
           },
           {

@@ -94,6 +94,7 @@ def build() -> RuleSet:
               "blank": Outcome(status="needs_review", note="{field} is missing; required only where the tenderer is not the "
                                                            "manufacturer, so a reviewer decides"),
               "filled": Outcome(status="pass"),
+              "not_applicable": Outcome(status="pass", note="{field} not required: the tenderer is the manufacturer"),
               "redacted": Outcome(status="needs_review", note="{field} is covered; ask for an unredacted copy")})],
         "j": [submitted("board_resolution", "B")],
         "k": [submitted("contact_details", "B"),

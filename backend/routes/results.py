@@ -43,7 +43,7 @@ def get_usage(pid: str) -> dict:
     return deps._read_json(path)
 
 
-@router.get("/projects/{pid}/evaluation")
+@router.get("/projects/{pid}/legacy/evaluation")   # the contract's /evaluation is the S4 route (routes/pricing.py)
 def get_evaluation(pid: str) -> dict:
     path = deps._project_dir(pid) / "work" / "evaluation.json"
     if not path.is_file():

@@ -1,0 +1,18 @@
+Tender: SYN-2026-001 Supply of Synthetic Coagulant Granules (Type S)
+Rule set version 1, confirmed by nasi on 2026-09-22 12:00 UTC
+Models: text deepseek-chat, vision qwen3-vl:8b-16k
+Reviews confirmed by: nasi
+Generated 2026-09-22 09:30 UTC
+Summary of Cost-effectiveness
+Notes:
+(1) The recommended offer is in bold type.
+(2) The estimated goods price means the one-time unit price multiplied by the estimated quantity specified in the Price Schedule (i.e. 875,000 kg).
+(3) A lower figure for the cost-effectiveness of a tender denotes a more cost-effective offer.
+(4) Tenderer_A: recommended (conforming offer).
+(5) Tenderer_C: not a conforming offer.
+(6) Tenderer_D: quoted in US$, converted at 7.8 HK$/US$.
+Name of Tenderer | Estimated Goods Price (HK$) (M) x 875,000 kg | Optimal Dosage ("D") | One-time Unit Price ("M") (HK$/kg) | Cost-effectiveness of Tender (D) x (M) | Ranking of Tender (in terms of cost-effectiveness)
+Tenderer_A | 3,850,000.00 | 4.3 | 4.40 | 18.92 | 1
+Tenderer_B | 4,252,500.00 | 4.3 | 4.86 | 20.90 | 3
+Tenderer_C | 5,153,750.00 | 3.3 | 5.89 | 19.44 | 2
+Tenderer_D | 49,276,500.00 | 3 | 56.32 | 168.95 | 4
