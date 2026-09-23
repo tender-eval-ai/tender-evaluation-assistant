@@ -71,6 +71,37 @@ written <scratch file>
 
 Reading: L0 to L2 are full marks on this tender; L3 drafted rules for six items and found nothing it could quote verbatim for four of the eight keyed checks, three of which it proposed but could not ground (the unverified notes on (i), (j), (o)), and one it did not propose ((n)). Item (m) matched the price schedule but its slots are not stated under Parts C and D, so it waits for a person, which is the intended outcome. The 40 gaps are the synthetic Terms' obligation sentences under the unmatched items' clauses; the synthetic generator writes one such sentence into nearly every clause.
 
-### The three real tenders
+### The three real tenders — L0 (2026-09-22)
+
+`locate` is deterministic: the parser's node table and a regex scan over the
+Completeness Check Schedule, with no model call, so this runs offline and costs
+nothing. The keys are the L0 half converted from the checklist keys by
+`tools/ruleset_key_from_checklist.py` (`part` and `page` per letter, and deliberately
+nothing else — a checklist key does not claim a template, a slot value or a check
+kind, and the evaluator counts each only where the key gives it). Built with
+`tools/build_l0_ruleset.py`, scored with `tools/eval_ruleset.py`.
+
+| Tender | items found | Part right | page right | extra items |
+|---|---|---|---|---|
+| Tender 1 | 15/15 | 15/15 | 15/15 | none |
+| Tender 2 | 13/13 | 13/13 | 13/13 | none |
+| Tender 3 | 21/21 | 21/21 | 21/21 | none |
+
+Every item of every schedule, on all three tenders, with the right Part and the right
+page, and nothing invented. The S2 target was "`locate.py` finding 15 items with Parts
+on all 3 tenders"; this is that, measured rather than asserted.
+
+### The three real tenders — L1 to L4
+
+Still not run, and blocked on one thing rather than several: the production templates
+are not split out of the 13 rule files, so L1 matches nothing and every item falls
+through to L3. The split is written and classified (126 rules, 99 checks, 27 not a
+rule, 0 unmapped) but stops at checklist **J2** — the 27 non-rules are facts about a
+FORM, and the schema currently holds notes and conditions only on an item. Once that
+is decided, what remains is: the templates and `params/Tender 1.json`, the
+template/slot/check half of each key added by hand, and a build per tender through the
+API with `RULESET_TEMPLATES_DIR` and `DATA_DIR` pointing at the private folders.
+
+Previously recorded here:
 
 Not yet run: the joint S3 check. They need (1) the production templates split out of the 13 rule files (Nasi's S1 leftover; without them every item goes to L3), (2) a key per tender in the format above, derivable from the checklist keys for Part and page, with templates and slots added by hand, kept outside git, (3) `RULESET_TEMPLATES_DIR` and `DATA_DIR` pointing at the private folders, a build per tender through the API, and `tools/eval_ruleset.py --api ... --project ... --key <private>/<tender>.ruleset_key.json --out <private>/<tender>.eval.json`. Numbers only come back here.
