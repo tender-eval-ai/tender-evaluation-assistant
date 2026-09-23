@@ -41,6 +41,12 @@ const draftEntry = () => {
 };
 const findVersion = (n) => state.versions.find((v) => v.spec.version === n)?.spec ?? null;
 
+// Only a confirmed version can be evaluated against - a draft has not been agreed,
+// which is the whole point of the confirm step.
+export const isConfirmed = (version) =>
+  state.versions.some(({ spec }) => spec.version === Number(version) && spec.status === "confirmed");
+
+
 export function getRuleset(version) {
   if (version == null) return ok(clone(latest()));
   const spec = findVersion(version);

@@ -48,6 +48,7 @@ Last updated: 2026-09-20 (Chenyu).
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | proposed | Nasi: which to take first |
+| J6 | Re-evaluate against a confirmed rule-set version | done | — |
 
 ## A. Corrections to the plan
 
@@ -353,6 +354,18 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      whole document's parenting being wrong is one containment bug, and it breaks
      "everything under this schedule" queries.
 - Nasi (2026-09-21): proposed. 1 first - bounded, measurable, and user-visible.
+
+### J6. Re-evaluating against a confirmed rule-set version (S4)
+- The plan's S4 row asks for "the engine switched to each tender's confirmed rubric".
+  `rubric` is the legacy word - deprecated since S2, removed at S5 - and the live
+  equivalent is a confirmed `RuleSet` version. `POST /projects/{pid}/evaluate` has
+  been finished on the API side since #53, and `JobProgress` already knew the
+  `evaluate` job kind, but nothing in the UI ever started one.
+- Now offered in the Rules window, on a CONFIRMED version only: a draft has not been
+  agreed, which is what the confirm step is for.
+- Offered rather than run automatically on confirm, because a result whose verdict
+  changes loses its review confirmation. A reviewer is told that before it happens
+  rather than discovering it afterwards, and chooses the moment.
 
 ## Verified facts (no action needed)
 

@@ -207,6 +207,22 @@ export const handlers = [
     return HttpResponse.json(fx.bidResult(t));
   }),
 
+  // Re-evaluate every checked tenderer against a confirmed version: a job of kind
+  // `evaluate` with no tenderer, exactly as the contract has it.
+  http.post("*/projects/:pid/evaluate", async ({ params, request }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    const body = await request.json().catch(() => ({}));
+    const version = body.version ?? fx.RULESET_VERSION;
+    if (!rs.isConfirmed(version)) {
+      return error(409, "unconfirmed_ruleset", `rule-set version ${version} is not confirmed`);
+    }
+    const jobId = `job-${state.nextJob++}`;
+    state.jobs.set(jobId, { job_id: jobId, kind: "evaluate", tenderer: null, polls: 0,
+                            ruleset_version: version });
+    return HttpResponse.json({ job_id: jobId }, { status: 202 });
+  }),
+
   http.get("*/projects/:pid/documents", ({ params }) => projectOr404(params.pid) ?? HttpResponse.json(fx.documents())),
 
   http.get("*/projects/:pid/documents/:docId/pages", ({ params }) => {
