@@ -6,16 +6,8 @@ type: software
 authors:
   - given-names: Nasi
     family-names: Purcell
-    roles:
-      - Document parser and locator (L0)
-      - Rule engine and templates
-      - React three-column review UI
   - given-names: Chenyu
     family-names: Fang
-    roles:
-      - Pipeline and worker
-      - LLM layers L1-L4 and V0-V5
-      - LLM gateway, pricing and reports
 abstract: >-
   An AI-assisted procurement review pipeline for public tender evaluation. A
   tender's documents are parsed into an addressable node tree, the Completeness

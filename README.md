@@ -30,7 +30,8 @@ length, and starting at its own marker rather than a same-page coincidence.
 | Tender 3 | 1582 | 95.2% | 95.2% | 95.2% | 92.9% |
 
 Tender 3 is 25 documents inside one 366-page PDF; the parser splits them with 100%
-recall and 100% precision. Two of the three tenders were never used to tune the parser.
+recall and 100% precision. Two of the three tenders were held out when the parser was ported;
+fixes since then were driven by failures found on them, so they are no longer unseen.
 
 **Rule set (L0 layer)** — the Completeness Check Schedule's items located with their Part
 and page, scored against a separate key:
@@ -539,8 +540,9 @@ free. `app/parsing/` depends on two Artifex packages (decision
 | `pymupdf-layout` | PolyForm Noncommercial 1.0.0, or an Artifex commercial licence |
 
 So: anyone using this **commercially** needs commercial licences for both, or must
-replace `app/parsing/`. Nothing outside `app/parsing/` imports either package, so that
-replacement stays a contained change. A hosted demo carries AGPL obligations — the
+replace `app/parsing/`. No application code outside `app/parsing/` imports either package
+(only the parser's own eval tool, `tools/eval_parser.py`), so that replacement stays a
+contained change. A hosted demo carries AGPL obligations — the
 running service must offer its source, which a public repository satisfies.
 
 Settling the licence is part of the public-release audit (checklist F4).
@@ -556,10 +558,12 @@ makes into that tree, and locating the Completeness Check Schedule's items. The 
 engine and its templates. The React three-column review UI: the Rules window with full
 editing, Stage I and II with corrections, Scoring and Report, and the browser review flow.
 
-**Chenyu Fang** — the pipeline and the worker: the LLM layers that read a tender into a
-draft rule set (L1 to L4) and a bid into checked fields (V0 to V5), the job queue and its
-recovery, the LLM gateway with its cache, budget and data-class allowlist, pricing, and
-the Word reports.
+**Chenyu Fang** — the original prototype this repository grew from (the Streamlit UI, the
+MCP server, and the Vertex AI / Cloud Run demo); the API backend and the API contract
+(`backend/`, `docs/api_contract.md`); the pipeline and the worker: the LLM layers that read
+a tender into a draft rule set (L1 to L4) and a bid into checked fields (V0 to V5), the job
+queue and its recovery, the LLM gateway with its cache, budget and data-class allowlist;
+pricing, the Word reports, and the synthetic evaluation cases.
 
 Decisions that shaped the build are recorded as they were taken, with the numbers behind
 them: [`docs/decisions/`](docs/decisions/), and the running record in

@@ -1,6 +1,6 @@
 # Parser (L0) evaluation
 
-How well `app/parsing` turns the tender PDFs into a node table, scored with `tools/eval_parser.py` against the answer keys for the two tenders the parser was never tuned on. The keys and PDFs are redacted sample documents and stay outside git; this file records numbers only.
+How well `app/parsing` turns the tender PDFs into a node table, scored with `tools/eval_parser.py` against the answer keys for the two tenders held out when the parser was ported (fixes since then were driven by failures found on them, so they are no longer unseen). The keys and PDFs are redacted sample documents and stay outside git; this file records numbers only.
 
 ## Answer keys
 
