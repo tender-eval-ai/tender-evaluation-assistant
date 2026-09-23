@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { getBidResult, getJob, getRuleset, listDocuments, startChecks } from "../api.js";
+import { confirmReview, correctField, getBidResult, getJob, getRuleset, listDocuments, startChecks } from "../api.js";
 import { offerPage, tenderPage } from "../citations.js";
 import DocumentViewer from "./DocumentViewer.jsx";
 import JobProgress from "./JobProgress.jsx";
@@ -34,6 +34,29 @@ export default function StageResultsWindow({ projectId, tenderer, stage, title, 
   const [activeLetter, setActiveLetter] = useState(null);
   const [viewer, setViewer] = useState({ file: null, label: null, pages: [], focus: null });
   const pollRef = useRef(null);
+
+  const [confirmError, setConfirmError] = useState(null);
+
+  // The API answers a correction and a confirmation with the whole re-decided
+  // BidResult, so the window takes the answer as its new state - no reload, and no
+  // chance of showing a verdict computed from a value the server has since changed.
+  const correct = useCallback(async (letter, field, body) => {
+    const updated = await correctField(projectId, tenderer, letter, field, body);
+    setResult(updated);
+    setConfirmError(null);
+  }, [projectId, tenderer]);
+
+  const confirm = useCallback(async () => {
+    setConfirmError(null);
+    try {
+      setResult(await confirmReview(projectId, tenderer));
+    } catch (err) {
+      // 409 conflict names the fields still needing review - that is the useful part.
+      setConfirmError(err.code === "conflict"
+        ? `Still needing review: ${(err.details?.fields ?? []).join(", ")}`
+        : err.message);
+    }
+  }, [projectId, tenderer]);
 
   const stopPolling = () => {
     if (pollRef.current) {
@@ -270,6 +293,21 @@ export default function StageResultsWindow({ projectId, tenderer, stage, title, 
                   Part {active.part} · item ({active.letter})
                 </span>
               </div>
+              {/* Reports wait for this, and a later correction withdraws it, so it
+                  belongs beside the checks rather than on a separate screen. */}
+              <div className="flex items-center gap-2 mb-2" data-testid="review-confirm">
+                {result?.review_confirmed_by ? (
+                  <span className="font-mono text-xs text-ink-4">
+                    review confirmed by {result.review_confirmed_by}
+                  </span>
+                ) : (
+                  <button type="button" onClick={confirm}
+                          className="font-mono text-xs text-accent hover:underline cursor-pointer">
+                    confirm this review
+                  </button>
+                )}
+                {confirmError && <span className="text-xs text-rectifiable" role="alert">{confirmError}</span>}
+              </div>
               <VendorItemDetail
                 item={active}
                 verdict={active.verdict}
@@ -277,6 +315,7 @@ export default function StageResultsWindow({ projectId, tenderer, stage, title, 
                 stageFilter={stage}
                 onViewCitation={(c) => showCitations([c], `(${active.letter}) — ${tenderer}'s offer, p.${c.page}`)}
                 onViewTender={viewTender}
+                onCorrect={correct}
               />
             </>
           )}
