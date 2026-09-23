@@ -48,6 +48,7 @@ Last updated: 2026-09-20 (Chenyu).
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | proposed | Nasi: which to take first |
+| J5 | S4 review flow in a browser (Playwright) | done | — |
 | J3 | S4 windows: Scoring and Report | done | — |
 | J4 | S4 review: corrections and confirmation in the UI | done | — |
 
@@ -386,6 +387,25 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   rather than saying it failed.
 - Left for S4: the engine switched to each tender's confirmed rubric, and the wider
   Playwright review flow (one spec today, `e2e/item-l.spec.js`).
+
+### J5. The Playwright review flow (S4)
+- `e2e/item-l.spec.js` had been a stub since S2, with a comment saying Playwright was
+  left uninstalled "to keep `npm ci` light". Its four selectors were all still valid,
+  so it had not rotted - it had simply never run, which is a test that proves nothing.
+- Playwright is now a dev dependency with a config, and `e2e/review-flow.spec.js`
+  walks the whole S4 sequence in a real browser on the MSW mock: run a check on a
+  tenderer that has none, find the field the model could not read, be refused a
+  confirmation and told which field, correct it with a reason, watch the verdict
+  change while the model's value stays visible, confirm, then Scoring and Report.
+- It runs as its OWN CI job, not inside `web`: it needs a dev server and a browser
+  download, which would slow the fast feedback loop on every PR. A failure uploads
+  the trace and screenshots.
+- The first real run caught one thing the unit tests could not: the spec asserted the
+  wire value `needs_review`, but the badge renders "Needs human review". A Vitest
+  test on the component would have used the same rendered text; only a browser walking
+  the flow compares what a reviewer actually sees.
+- 4 specs pass. Depends on J3 and J4, both merged into this branch so the flow is
+  runnable rather than aspirational.
 
 ## Verified facts (no action needed)
 

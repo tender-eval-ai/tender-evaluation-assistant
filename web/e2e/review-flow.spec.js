@@ -28,8 +28,9 @@ test("a reviewer corrects a field, the verdict changes, and the review confirms"
 
   // The model could not read the contact person on B's scan, so it needs review and
   // a confirmation is refused until someone settles it.
+  // The badge shows the label, not the wire value ("needs_review").
   const field = page.getByTestId("check-contact_details.contact_person");
-  await expect(field).toContainText("needs_review");
+  await expect(field).toContainText("Needs human review");
 
   await page.getByText("confirm this review").click();
   await expect(page.getByRole("alert")).toContainText("Still needing review");
@@ -43,7 +44,7 @@ test("a reviewer corrects a field, the verdict changes, and the review confirms"
   // The model's value stays beside the person's, with who and why.
   const corrected = page.getByTestId("corrected-contact_details.contact_person");
   await expect(corrected).toContainText("legible on the scan at 200%");
-  await expect(field).not.toContainText("needs_review");
+  await expect(field).not.toContainText("Needs human review");
 
   await page.getByText("confirm this review").click();
   await expect(page.getByTestId("review-confirm")).toContainText("review confirmed by");
