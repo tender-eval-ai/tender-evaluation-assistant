@@ -42,7 +42,9 @@ export const S3_ROUTES = [
 // (202 -> poll the job -> results) has something to do.
 let state;
 export function resetMockState() {
-  state = { checked: new Set(["Tenderer_A", "Tenderer_C", "Tenderer_D"]), jobs: new Map(), nextJob: 1 };
+  // corrections: tenderer -> {"<letter>.<field>": CorrectionRequest}; confirmed: tenderer -> user
+  state = { checked: new Set(["Tenderer_A", "Tenderer_C", "Tenderer_D"]), jobs: new Map(), nextJob: 1,
+            corrections: new Map(), confirmed: new Map() };
   rs.resetRulesetStore();
 }
 resetMockState();
@@ -204,7 +206,42 @@ export const handlers = [
     if (version && Number(version) !== fx.RULESET_VERSION) {
       return error(404, "not_found", `${t}'s result is at rule-set version ${fx.RULESET_VERSION}, not ${version}`);
     }
-    return HttpResponse.json(fx.bidResult(t));
+    return HttpResponse.json(fx.correctedResult(t, state.corrections.get(t), state.confirmed.get(t)));
+  }),
+
+  // A correction: the person's value beside the model's, the verdict re-decided by
+  // the engine at once (no model call), and any review confirmation withdrawn.
+  http.patch("*/projects/:pid/bids/:tenderer/fields/:letter/:field", async ({ params, request }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    const t = params.tenderer;
+    if (!fx.TENDERERS[t] || !state.checked.has(t)) return error(404, "not_found", `no finished check for ${t}`);
+    const body = await request.json().catch(() => ({}));
+    if (!body.reason) return error(400, "bad_request", "reason is required");
+    if (body.value === undefined && body.present === undefined && body.page === undefined) {
+      return error(400, "bad_request", "a correction must set value, present or page");
+    }
+    const key = `${params.letter}.${params.field}`;
+    if (!fx.hasField(t, params.letter, params.field)) {
+      return error(404, "not_found", `${t} has no field ${key}`);
+    }
+    const all = new Map(state.corrections.get(t) ?? []);
+    all.set(key, { ...body, by: actingUser(request), at: new Date().toISOString() });
+    state.corrections.set(t, all);
+    state.confirmed.delete(t);           // a correction withdraws a confirmation
+    return HttpResponse.json(fx.correctedResult(t, all, undefined));
+  }),
+
+  http.post("*/projects/:pid/bids/:tenderer/review/confirm", ({ params, request }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    const t = params.tenderer;
+    if (!fx.TENDERERS[t] || !state.checked.has(t)) return error(404, "not_found", `no finished check for ${t}`);
+    const result = fx.correctedResult(t, state.corrections.get(t), undefined);
+    const open = fx.needsReviewFields(result);
+    if (open.length) return error(409, "conflict", "fields still need review", { fields: open });
+    state.confirmed.set(t, actingUser(request));
+    return HttpResponse.json(fx.correctedResult(t, state.corrections.get(t), state.confirmed.get(t)));
   }),
 
   http.get("*/projects/:pid/documents", ({ params }) => projectOr404(params.pid) ?? HttpResponse.json(fx.documents())),
