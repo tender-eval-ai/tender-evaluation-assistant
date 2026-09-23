@@ -365,3 +365,32 @@ One number is out of line and is recorded as checklist J1: references
 `exact_location_correct` is **75.0%** (48/64) against 91.8% at node level. All 16
 failures are containers - 11 are `Table A`/`第 4 部分` headings whose scope is named
 "Part A"/"Part 4" whatever the document prints, and 5 are sub-documents with no bbox.
+
+## 2026-09-22: J1, a scope named for the word it prints
+
+A Part-ranked heading is not always written "Part": the Information Schedule names
+its scopes "Table A", the Chinese Tender Form writes "第 4 部分". The rank is the same,
+so they share a kind; the NAME is not, and the name is what a node records as its own
+marker and what a citation shows a reviewer. Naming every one of them "Part A" made
+the marker something the node's own text never starts with, and told a reviewer that
+Table A of the Information Schedule was Part A of it.
+
+The Particulars of Goods Schedule showed the same confusion one level down: it has a
+clause "1. Particulars of Offer" and then a field table whose rows are also numbered
+1., 2., 3. Read as clauses, all 21 rows became siblings of the clause they belong
+under. A row comes out of a `table` block and a clause never does, which is what tells
+them apart - and a row prints "1.", not "(1)", so that is its label while its id keeps
+the parenthesised form every other sub-item is addressed by.
+
+| Tender | recall | exact location | references exact location | POGS hierarchy |
+|---|---|---|---|---|
+| Tender 1 | 95.6% (=) | 92.3% -> **93.2%** | — | 0.0% -> **66.7%** |
+| Tender 2 | 97.8% (=) | 95.2% -> **96.4%** | 75.0% -> **82.5%** | — |
+| Tender 3 | 95.2% (=) | 91.8% -> **92.9%** | 75.0% -> **79.7%** | — |
+
+Worth recording how the second half was found. Making the rows sub-items fixed
+hierarchy and *broke* exact location on 14 of them, because a sub-item's label is
+"(1)" while the row's text starts "1." - 14 benchmark passes traded for 21 diagnostic
+ones, and Tender 1 fell to 90.1%. All 513 tests passed throughout: none of them
+exercises a real tender's Particulars of Goods Schedule. Only re-scoring against a
+recorded baseline caught it.

@@ -47,7 +47,7 @@ Last updated: 2026-09-20 (Chenyu).
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
-| J1 | Parser follow-ups after the S3 recall gate | proposed | Nasi: which to take first |
+| J1 | Parser follow-ups after the S3 recall gate | part done | 1 and 4 done; 2 and 3 open |
 
 ## A. Corrections to the plan
 
