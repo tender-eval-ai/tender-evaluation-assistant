@@ -161,7 +161,10 @@ def test_a_table_row_keyed_by_a_bare_number_carries_that_number(monkeypatch):
 def test_every_field_of_a_form_row_is_a_node(monkeypatch):
     """A form laid out as a grid of label-and-blank pairs is read one row at a
     time and each row is named by its first label; the later fields of the row
-    are its children, and the row keeps its whole text."""
+    are its children, and the row keeps its whole text.
+
+    The scope is `TG`, not `PG`: the document prints "Table G", and a Part-ranked
+    heading is named for the word it actually uses (see `_printed_scope`)."""
     from test.parsing.stub_layout import parse_blocks
 
     nodes = parse_blocks(monkeypatch, {1: [
@@ -171,7 +174,31 @@ def test_every_field_of_a_form_row_is_a_node(monkeypatch):
         (36, "table", "Sample Overall Length Overall Width", "Sample"),
     ]})
 
-    row = nodes["doc:PG:(Top Speed:)"]
+    row = nodes["doc:TG:(Top Speed:)"]
     assert row["text"] == "Top Speed: km/hr Load: kg Empty Weight : kg"
     assert [(n["parent_id"], n["text"]) for n in nodes.values() if ":field" in n["node_id"]] == [
-        ("doc:PG:(Top Speed:)", "Load: kg"), ("doc:PG:(Top Speed:)", "Empty Weight : kg")]
+        ("doc:TG:(Top Speed:)", "Load: kg"), ("doc:TG:(Top Speed:)", "Empty Weight : kg")]
+
+
+def test_a_part_ranked_heading_is_named_for_the_word_it_prints(monkeypatch):
+    """A "Table A" heading opens a Part-ranked scope, but its NAME is "Table A" - it
+    is what the node records as its own marker and what a citation shows a reviewer.
+    Naming it "Part A" made the marker something the node's own text never starts
+    with, and told a reviewer that Table A of the Information Schedule was Part A."""
+    from test.parsing.stub_layout import parse_blocks
+
+    nodes = parse_blocks(monkeypatch, {1: [
+        (36, "section-header", "Part A - Estimated Goods Price"),
+        (36, "list-item", "(a) the unit price"),
+        (36, "section-header", "Table B - Information required under Paragraph 10.1"),
+        (36, "list-item", "(b) the tenderer's name"),
+    ]})
+
+    part = nodes["doc:PA"]
+    table = nodes["doc:TB"]
+    assert (part["part"], table["part"]) == ("Part A", "Table B")
+    assert part["kind"] == table["kind"] == "part", "same rank, different name"
+    # Each node's own text starts with its own marker, which is what exact-location
+    # scoring asks and what the old naming could never satisfy for a Table.
+    assert table["text"].startswith(table["part"])
+    assert nodes["doc:TB:(b)"]["part"] == "Table B"

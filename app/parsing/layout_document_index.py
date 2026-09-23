@@ -1105,6 +1105,23 @@ def _layout_blocks(source_file: str, page_number: int) -> list[tuple[float, str,
     return _attach_item_flags(_attach_stray_colons(header_fields + blocks + footer_fields))
 
 
+# A Part-ranked heading is not always written "Part": the Information Schedule names
+# its scopes "Table A", and the Chinese Tender Form writes "第 4 部分". The RANK is the
+# same - each opens a scope that resets sub-item nesting - which is why they share a
+# kind. The NAME is not, and the name is what a node records as its own marker and
+# what a citation shows a reviewer. Naming every one of them "Part A" made the node's
+# marker something its own text never starts with, and told a reviewer that Table A of
+# the Information Schedule was Part A of it.
+def _printed_scope(text: str, number: str) -> tuple[str, str]:
+    """(scope name as the document prints it, the id's short slug)."""
+    if text.startswith("Table"):
+        return f"Table {number}", f"T{number}"
+    zh = _PART_LAYOUT.match(text)
+    if zh and zh.group("zh"):
+        return f"第 {zh.group('zh')} 部分", f"P{number}"
+    return f"Part {number}", f"P{number}"
+
+
 def _classify_marker(text: str):
     """Return (kind, number, title_or_none) for a block's own leading marker,
     or (None, None, None) if it isn't one. Checked in categorical-rank order:
@@ -1409,6 +1426,16 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                 emit_run_in_items()
                 run_in_pending = (text, page.page_number, bbox)
                 kind, number, title = _classify_marker(text)
+                # A numbered row of a TABLE is a row, not a clause of the document.
+                # The Particulars of Goods Schedule has a clause "1. Particulars of
+                # Offer" and then a field table whose rows are also numbered 1., 2.,
+                # 3. - read as clauses they became siblings of the clause they belong
+                # under, and every one of that document's 21 key nodes was parented
+                # wrong. The block's own class is what tells them apart: a row comes
+                # out of a `table` block, a clause never does.
+                row_of_table = kind == "clause" and class_name == "table" and clause_node is not None
+                if row_of_table:
+                    kind = "subitem"
                 if class_name == "annex-title":
                     first_line, _, rest = text.partition("\n")
                     kind, number, title = "annex", _ANNEX_TITLE_LINE.match(first_line).group(1), rest.strip()
@@ -1629,8 +1656,8 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                 container = (subdoc_by_page.get(page.page_number) or {}).get("node_id") or doc_id
 
                 if kind == "part":
-                    current_part = f"Part {number}"
-                    part_node = _unique(f"{container}:P{number}", seen_ids)
+                    current_part, slug = _printed_scope(text, number)
+                    part_node = _unique(f"{container}:{slug}", seen_ids)
                     current_scope = None
                     add(_WorkingNode(
                         part_node, container, "part", current_part, number, title, page.page_number, text, 0,
@@ -1707,9 +1734,13 @@ def parse_document(doc_id: str | None, pages) -> list[dict]:
                               else subclause_node or clause_node or parent_for_clause)
                     node_id = _unique(f"{parent}:({number})", seen_ids)
                     subitem_stack[depth] = (number, node_id)
+                # A table's numbered row prints "1.", not "(1)": the id keeps the
+                # parenthesised form every other sub-item is addressed by, but the
+                # LABEL is the marker the row's own text actually starts with.
+                printed = f"{number}." if row_of_table else f"({number})"
                 add(_WorkingNode(
                     node_id, parent, "subitem", current_part, None, None, page.page_number, text, 0,
-                    label=f"({number})", bbox=bbox, **_ident(doc_ident, page.page_number),
+                    label=printed, bbox=bbox, **_ident(doc_ident, page.page_number),
                 ))
 
     emit_run_in_items()

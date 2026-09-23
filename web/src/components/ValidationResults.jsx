@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Badge from "./Badge.jsx";
 import CollapsibleSection from "./CollapsibleSection.jsx";
+import FieldCorrection from "./FieldCorrection.jsx";
 import { fieldName, stageRollup, uniqueCitations } from "../verdicts.js";
 
 function formatValue(value) {
@@ -23,8 +24,13 @@ function FieldMicroLabel({ children }) {
   return <p className="font-mono text-[10px] font-semibold text-ink-3 uppercase tracking-wider mb-1">{children}</p>;
 }
 
-function FieldRow({ check, value, onViewCitation }) {
+function FieldRow({ check, value, onViewCitation, letter, onCorrect }) {
   const page = value?.page;
+  const [correcting, setCorrecting] = useState(false);
+  // The field's key inside BidResult.fields. `check.field` carries it when the rule
+  // and the field are named differently; otherwise it is the last segment of the id.
+  const fieldKey = check.field ?? check.field_id.split(".").pop();
+  const isDocument = fieldKey === "document";
   return (
     <div className="p-2.5 border border-border-soft rounded bg-faint" data-testid={`check-${check.field_id}`}>
       <div className="flex items-center justify-between gap-2 mb-2">
@@ -62,6 +68,17 @@ function FieldRow({ check, value, onViewCitation }) {
           </p>
         </div>
       )}
+      {value?.correction && (
+        <div className="mb-2 pl-2 border-l-2 border-accent" data-testid={`corrected-${check.field_id}`}>
+          <FieldMicroLabel>Corrected</FieldMicroLabel>
+          <p className="text-xs leading-5 text-ink-2">
+            {value.model_value !== undefined && value.model_value !== value.value && (
+              <>was <span className="font-mono">{formatValue(value.model_value)}</span> · </>
+            )}
+            {value.correction.by} · {value.correction.reason}
+          </p>
+        </div>
+      )}
       {page && (
         <button
           type="button"
@@ -71,17 +88,36 @@ function FieldRow({ check, value, onViewCitation }) {
           read on {page.file}, p.{page.page} →
         </button>
       )}
+      {onCorrect && !correcting && (
+        <button type="button" onClick={() => setCorrecting(true)}
+                className="font-mono text-xs text-accent hover:underline cursor-pointer">
+          correct this field
+        </button>
+      )}
+      {onCorrect && correcting && (
+        <FieldCorrection
+          fieldId={check.field_id}
+          isDocument={isDocument}
+          currentPage={page?.page}
+          onCancel={() => setCorrecting(false)}
+          onSubmit={async (body) => {
+            await onCorrect(letter, fieldKey, body);
+            setCorrecting(false);
+          }}
+        />
+      )}
     </div>
   );
 }
 
-function FieldGroup({ title, checks, values, onViewCitation }) {
+function FieldGroup({ title, checks, values, onViewCitation, letter, onCorrect }) {
   const [expanded, setExpanded] = useState(false);
   if (checks.length === 0) return null;
   const active = checks.filter((c) => c.status !== "dormant");
   const dormant = checks.filter((c) => c.status === "dormant");
   const row = (c) => (
-    <FieldRow key={c.field_id} check={c} value={values?.[fieldName(c.field_id)]} onViewCitation={onViewCitation} />
+    <FieldRow key={c.field_id} check={c} value={values?.[fieldName(c.field_id)]}
+              onViewCitation={onViewCitation} letter={letter} onCorrect={onCorrect} />
   );
   return (
     <div className="mb-3">
@@ -109,7 +145,7 @@ function FieldGroup({ title, checks, values, onViewCitation }) {
 // BidResult: EVIDENCE (the offer pages the checker read), RULES (every
 // checked field with the value read and its status), REFERENCES (the rule
 // set's schedule row and clauses in the tender).
-export default function VendorItemDetail({ item, verdict, values, stageFilter, onViewCitation, onViewTender }) {
+export default function VendorItemDetail({ item, verdict, values, stageFilter, onViewCitation, onViewTender, onCorrect }) {
   const checks = verdict?.checks ?? [];
   const rollup = verdict ? stageRollup(checks, stageFilter ?? "I") : null;
   const stageChecks = checks.filter((c) => (stageFilter === "II" ? c.stage === "II" : c.stage !== "II"));
@@ -161,6 +197,8 @@ export default function VendorItemDetail({ item, verdict, values, stageFilter, o
               checks={stageChecks}
               values={values}
               onViewCitation={onViewCitation}
+              letter={item?.letter}
+              onCorrect={onCorrect}
             />
             {verdict.rule_ids.length > 0 && (
               <p className="font-mono text-[10px] text-ink-4 break-all">rules: {verdict.rule_ids.join(", ")}</p>

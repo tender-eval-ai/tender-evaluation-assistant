@@ -421,3 +421,157 @@ export const events = [
     at: T0,
   },
 ];
+
+
+// --- Scoring and reports (S4) -------------------------------------------------
+// Four tenderers: A and B conform, C fails Stage I, D quotes in US$ so its unit
+// price is converted at the scheme's rate and the row says so. The ranking is over
+// every computable offer, by cost-effectiveness; `recommended` is the best-ranked
+// CONFORMING one. C failed Stage I but still ranks second, ahead of B and D, and the
+// Scoring window shows it in place.
+const USD_HKD = 7.8;
+
+export function priceSummary() {
+  return {
+    ruleset_version: RULESET_VERSION,
+    scheme: {
+      type: "cost_effectiveness", currency: "HK$", unit: "kg", usd_hkd: USD_HKD,
+      quantity: 1102000, source: "Price Schedule Note (2)",
+    },
+    recommended: "Tenderer_A",
+    missing: [],
+    rows: [
+      {
+        tenderer: "Tenderer_A", run_id: "run-a", conforming: true, currency: "HK$",
+        unit_price: 2.35, unit_price_hkd: 2.35, quoted_total: 2589700, estimated_goods_price: 2589700,
+        dosage: 12.4, dosage_rounded: 12, cost_effectiveness: 28.2, arithmetic_ok: true,
+        ranking: 1, stage1: "pass", stage2: "pass", reviewed_by: "nasi", corrected: [], remark: "",
+      },
+      {
+        tenderer: "Tenderer_C", run_id: "run-c", conforming: false, currency: "HK$",
+        unit_price: 2.21, unit_price_hkd: 2.21, quoted_total: 2435420, estimated_goods_price: 2435420,
+        dosage: 13.1, dosage_rounded: 13, cost_effectiveness: 28.73, arithmetic_ok: true,
+        ranking: 2, stage1: "disqualified", stage2: null, reviewed_by: "nasi", corrected: [],
+        remark: "Stage I not passed",
+      },
+      {
+        tenderer: "Tenderer_B", run_id: "run-b", conforming: true, currency: "HK$",
+        unit_price: 2.48, unit_price_hkd: 2.48, quoted_total: 2732960, estimated_goods_price: 2732960,
+        dosage: 11.8, dosage_rounded: 12, cost_effectiveness: 29.76, arithmetic_ok: true,
+        ranking: 3, stage1: "pass", stage2: "pass", reviewed_by: "nasi",
+        corrected: ["price_schedule.unit_price"], remark: "",
+      },
+      {
+        tenderer: "Tenderer_D", run_id: "run-d", conforming: true, currency: "US$",
+        unit_price: 0.32, unit_price_hkd: 2.496, quoted_total: 352640, estimated_goods_price: 2750592,
+        dosage: 12.0, dosage_rounded: 12, cost_effectiveness: 29.95, arithmetic_ok: true,
+        ranking: 4, stage1: "pass", stage2: "pass", reviewed_by: "nasi", corrected: [],
+        remark: `Quoted in US$, converted at ${USD_HKD}`,
+      },
+    ],
+  };
+}
+
+export function evaluation() {
+  const price = priceSummary();
+  const forTenderer = (t, stage1, stage2, conforming, corrections = 0) => ({
+    tenderer: t, run_id: `run-${t.slice(-1).toLowerCase()}`, stage1, stage2, conforming,
+    items: {a: "pass", b: "pass", k: stage1 === "pass" ? "pass" : "disqualified", l: "pass"},
+    reviewed_by: "nasi", corrections,
+  });
+  return {
+    ruleset_version: RULESET_VERSION,
+    tenderers: [
+      forTenderer("Tenderer_A", "pass", "pass", true),
+      forTenderer("Tenderer_B", "pass", "pass", true, 1),
+      forTenderer("Tenderer_C", "disqualified", null, false),
+      forTenderer("Tenderer_D", "pass", "pass", true),
+    ],
+    stage1_conclusion: "Three of the four Tenderers passed the Completeness Check. Tenderer C did not submit "
+      + "the Manufacturer's Letter of Intent required by item (k).",
+    stage2_conclusion: "The three conforming Tenderers met every Stage II requirement.",
+    recommendation: "Tenderer A is recommended: the lowest cost-effectiveness of the conforming offers.",
+    recommended: "Tenderer_A",
+    price,
+  };
+}
+
+export function reports() {
+  return [
+    {name: "price_summary.docx", version: RULESET_VERSION, generated_at: T0, approver: "nasi"},
+    {name: "summary_list.docx", version: RULESET_VERSION, generated_at: null, approver: "nasi"},
+    {name: "evaluation_record.docx", version: RULESET_VERSION, generated_at: null, approver: "nasi"},
+  ];
+}
+
+
+// --- Review corrections (S4) --------------------------------------------------
+// A correction is applied on top of `bidResult`, never into it: the model's value
+// stays beside the person's, which is what `FieldValue.model_value` is for and what
+// lets a reviewer see what was changed and why.
+//
+// The verdict is then re-decided in code - no model call - exactly as the API does:
+// a corrected field that now has a value stops being `needs_review`, and marking a
+// document absent disqualifies the item. This is the mock's approximation of the
+// engine, enough for the window to be exercised; the real engine is app/engine/.
+export function hasField(t, letter, field) {
+  const result = bidResult(t);
+  return Boolean(result?.fields?.[letter] && field in result.fields[letter]);
+}
+
+function applyCorrection(fieldValue, correction) {
+  const corrected = { ...fieldValue, model_value: fieldValue.model_value ?? fieldValue.value };
+  if (correction.value !== undefined) corrected.value = correction.value;
+  if (correction.present !== undefined) corrected.value = correction.present;
+  if (correction.page !== undefined && corrected.page) {
+    corrected.page = { ...corrected.page, page: correction.page };
+  }
+  corrected.redacted = false;                 // a corrected value is the person's, not a scan
+  corrected.confidence = 1;                   // a person's value is not a model's guess
+  corrected.correction = { by: correction.by, at: correction.at, reason: correction.reason };
+  return corrected;
+}
+
+// The engine's re-decision, as far as the mock needs it: a check on a corrected
+// field passes when the field now holds a value, and fails when a document was
+// marked absent. Everything else keeps the status the check already had.
+function redecide(check, fields, letter) {
+  const key = check.field_id.split(".").pop();
+  const value = fields[letter]?.[key];
+  if (!value?.correction) return check;
+  if (value.value === false) {
+    return { ...check, status: "disqualified", note: "marked absent by a reviewer" };
+  }
+  const filled = value.value !== null && value.value !== "" && value.value !== undefined;
+  return { ...check, status: filled ? "pass" : check.status, note: filled ? null : check.note };
+}
+
+export function correctedResult(t, corrections, confirmedBy) {
+  const result = bidResult(t);
+  if (!result) return null;
+  if (corrections?.size) {
+    for (const [key, correction] of corrections) {
+      const [letter, field] = [key.slice(0, key.indexOf(".")), key.slice(key.indexOf(".") + 1)];
+      const group = result.fields[letter];
+      if (group && field in group) group[field] = applyCorrection(group[field], correction);
+    }
+    for (const [letter, verdict] of Object.entries(result.verdicts)) {
+      verdict.checks = verdict.checks.map((c) => redecide(c, result.fields, letter));
+      const active = verdict.checks.filter((c) => c.status !== "dormant").map((c) => c.status);
+      verdict.outcome = worstOf(active.length ? active : ["pass"]);
+      verdict.worst = worstOf(verdict.checks.map((c) => c.status));
+    }
+    const items = Object.fromEntries(Object.entries(result.verdicts).map(([l, v]) => [l, v.outcome]));
+    result.stage1 = { outcome: worstOf(Object.values(items)), items };
+  }
+  result.review_confirmed_by = confirmedBy ?? null;
+  return result;
+}
+
+// The fields a confirm would refuse on: any check still needs_review.
+export function needsReviewFields(result) {
+  return Object.values(result.verdicts)
+    .flatMap((v) => v.checks)
+    .filter((c) => c.status === "needs_review")
+    .map((c) => c.field_id);
+}

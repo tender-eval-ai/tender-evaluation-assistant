@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   addRulesetItem,
   confirmRuleset,
+  reevaluate,
   deleteRulesetItem,
   getActingUser,
   getRuleset,
@@ -220,6 +221,18 @@ export default function RulesWindow({ projectId, tierFilter = "all", onCountsCha
 
   const saveDraft = (draft) => putRulesetDraft(projectId, draft).then(after("Draft saved."));
 
+  // Re-deciding every checked tenderer against a confirmed version. Offered rather
+  // than run automatically, because a result whose verdict changes loses its review
+  // confirmation - a reviewer should choose that moment.
+  function handleReevaluate() {
+    setNotice(null);
+    setConfirmError(null);
+    reevaluate(projectId, { version: shown.version })
+      .then(() => setNotice({ ok: `Re-evaluating every checked tenderer against v${shown.version}. `
+        + "A result whose verdict changes loses its review confirmation." }))
+      .catch((err) => setNotice({ error: err.message }));
+  }
+
   function handleConfirm() {
     setConfirming(true);
     setConfirmError(null);
@@ -287,6 +300,15 @@ export default function RulesWindow({ projectId, tierFilter = "all", onCountsCha
               {items.length} item{items.length === 1 ? "" : "s"}
               {shown.parent_version ? ` · from v${shown.parent_version}` : ""}
             </span>
+            {shown.status === "confirmed" && (
+              <button
+                type="button"
+                onClick={handleReevaluate}
+                className="font-mono text-xs text-accent hover:underline cursor-pointer"
+              >
+                re-evaluate every tenderer against v{shown.version}
+              </button>
+            )}
             {USE_MOCK && (
               <label
                 className="flex items-center gap-1.5 text-xs text-ink-4 ml-auto"
