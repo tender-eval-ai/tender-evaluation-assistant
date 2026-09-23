@@ -48,9 +48,10 @@ Last updated: 2026-09-20 (Chenyu).
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | part done | 1 and 4 done; 2 and 3 open |
-| J5 | S4 review flow in a browser (Playwright) | done | — |
+| J2 | Where a form's own notes and trigger live | decided | option 1 (#59); next: template ids = form ids, the field map |
 | J3 | S4 windows: Scoring and Report | done | — |
 | J4 | S4 review: corrections and confirmation in the UI | done | — |
+| J5 | S4 review flow in a browser (Playwright) | done | — |
 | J6 | Re-evaluate against a confirmed rule-set version | done | — |
 | J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | Nasi: field map and templates (J2 decided) |
 
@@ -358,6 +359,42 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      whole document's parenting being wrong is one containment bug, and it breaks
      "everything under this schedule" queries.
 - Nasi (2026-09-21): proposed. 1 first - bounded, measurable, and user-visible.
+
+### J2. Where a form's own notes and trigger live (blocks the rule-file split)
+- Found by: starting the S1 split of the 13 rule files (`tools/split_rule_files.py`).
+  The classifier reproduces `check_kind_mapping.md`'s own totals independently: 126
+  rules, 99 checks, 27 not a rule, 0 unmapped.
+- The problem: S0 gap 6 put `notes` and `condition` on `RuleSetItem`, and both are
+  implemented there. But the split produces **templates**, not items - items are built
+  per tender by L1. So the 27 non-rules have nowhere to go. They are facts about the
+  FORM, not the tender: when a form is needed at all (only if the tenderer does not
+  make the goods itself), that the tender's supplementary terms may ask for
+  certification, and that extra sheets may be attached when the space is too small.
+  Left on the item only, every tender has to rediscover them,
+  which is what a template library exists to prevent.
+- Options:
+  1. `Template.notes: list[ItemNote]` and `Template.condition: str | None`, inherited
+     when L1 matches an item to the template; the item may override `condition` and
+     never loses the form's notes. Prototyped on `feat/production-templates`.
+  2. Keep them item-only: the split drops all 27, and each tender's build re-derives
+     them through the model. Cheapest now, but the library carries less than the rule
+     files it replaced, and a trigger the model misses silently changes an item's
+     applicability.
+  3. Put them in the per-tender params file. Wrong shape: they do not vary by tender,
+     which is the test for what belongs in params.
+- Not decided here: `schema.py` is the shared contract, so this is a `contract` PR
+  with both approvals (the I1 convention).
+- Nasi (2026-09-22): proposes 1. `na_allowed` needs nothing - the engine already reads
+  "N/A" as `not_applicable` (`app/engine/state.py`). `overflow_allowed` becomes a note
+  under whichever option wins.
+- Chenyu (2026-09-23): decided, option 1. Before the 13 templates are written: (a) each
+  template's id is our form id (`app/checks/forms.py`); only 4 of the 13 rule-file names
+  are one today. (b) Every rule's `field` is a `<form>.<field>` key, through a field map
+  in `split_rule_files.py` that reports a field with no home rather than guessing;
+  Chenyu adds the fields a rule checks to `forms.py` in a `contract` PR (mostly the
+  Information Schedule, 30 names in the rules against 4 fields, and the Particulars of
+  Goods, 14 against 7). (c) The templates are written in our own words, never the rule
+  files' text. (d) `params/<tender>.json` stays outside git, beside the answer keys.
 
 ### J3. The Scoring and Report windows (S4)
 - The last two stages of the pipeline stepper, stubbed `built: false` since it was
