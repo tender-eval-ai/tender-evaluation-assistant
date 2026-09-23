@@ -22,6 +22,9 @@ export const ROUTES = [
   ["get", "/projects/{pid}/documents/{doc_id}/pages"],
   ["get", "/projects/{pid}/documents/{doc_id}/pages/{n}/image"],
   ["get", "/projects/{pid}/events"],
+  // The S4 review routes (#61).
+  ["patch", "/projects/{pid}/bids/{tenderer}/fields/{letter}/{field}"],
+  ["post", "/projects/{pid}/bids/{tenderer}/review/confirm"],
   // The S4 scoring and report routes (#60).
   ["get", "/projects/{pid}/price-summary"],
   ["get", "/projects/{pid}/evaluation"],

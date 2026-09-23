@@ -64,12 +64,17 @@ test("Scoring ranks every offer and names the recommended one", async ({ page })
   await expect(page.getByRole("row", { name: /Tenderer_D/ })).toContainText("converted at 7.8");
 });
 
-test("Report shows the conclusions and links the three reports", async ({ page }) => {
+test("Report shows the conclusions and downloads a report as a file", async ({ page }) => {
   await openProject(page);
   await stage(page, "REPORT").click();
 
   await expect(page.getByText(/Tenderer A is recommended/)).toBeVisible();
   for (const name of ["Price Summary", "Summary List", "Detailed Evaluation Record"]) {
-    await expect(page.getByRole("link", { name })).toHaveAttribute("download", "");
+    await expect(page.getByRole("button", { name })).toBeEnabled();
   }
+  // Fetched with the API key and saved from the Blob - a plain link cannot send the
+  // key - so the browser's own download is what proves it works.
+  const download = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Price Summary" }).click();
+  expect((await download).suggestedFilename()).toBe("price_summary.docx");
 });
