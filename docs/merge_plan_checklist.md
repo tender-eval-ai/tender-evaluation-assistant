@@ -54,6 +54,7 @@ Last updated: 2026-09-20 (Chenyu).
 | J5 | S4 review flow in a browser (Playwright) | done | — |
 | J6 | Re-evaluate against a confirmed rule-set version | done | — |
 | J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | Nasi: field map and templates (J2 decided) |
+| J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
 
 ## A. Corrections to the plan
 
@@ -456,6 +457,21 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Offered rather than run automatically on confirm, because a result whose verdict
   changes loses its review confirmation. A reviewer is told that before it happens
   rather than discovering it afterwards, and chooses the moment.
+
+### J8. The S5 README (H1 items 1 and 2)
+- Added, not restructured: a **Results** section a reader reaches in the first screen
+  (parser on three tenders, the rule set's L0 layer, the test counts), a **Who built
+  what** section naming both of us with our areas, an **Authors** section, and
+  `CITATION.cff`.
+- One thing this turned up: the repository has **no LICENSE file**, and the choice is
+  constrained rather than free. `pymupdf` is AGPL-3.0 and `pymupdf-layout` is PolyForm
+  Noncommercial (decision 0002), so commercial reuse needs Artifex licences or a
+  replacement for `app/parsing/`. Decision 0002 said the README would say so before the
+  repository is made public (F4); it now does. A first draft of `CITATION.cff` claimed
+  Apache-2.0, which would have been inventing a licence the project has not chosen.
+- Still open in H1: the architecture diagram, the 30-second GIF of the three-column
+  review (the Playwright review flow already walks exactly that sequence, so it can
+  record it), the two live demos (G1), and settling the licence itself.
 
 ## Verified facts (no action needed)
 

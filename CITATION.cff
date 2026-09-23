@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+title: Tender Evaluation Assistant
+message: >-
+  If you refer to this work, please cite it using the metadata below.
+type: software
+authors:
+  - given-names: Nasi
+    family-names: Purcell
+  - given-names: Chenyu
+    family-names: Fang
+abstract: >-
+  An AI-assisted procurement review pipeline for public tender evaluation. A
+  tender's documents are parsed into an addressable node tree, the Completeness
+  Check Schedule's items are located and turned into a rule set a person confirms,
+  and each bid is checked against that confirmed version by a deterministic engine.
+  Every value carries a citation to the page it came from, a reviewer can correct
+  any of them with a reason, and the verdict is re-decided without a model call.
+keywords:
+  - tender evaluation
+  - document understanding
+  - PDF parsing
+  - retrieval
+  - large language models
+  - human in the loop
+repository-code: https://github.com/chenyufang-data/tender-evaluation-assistant

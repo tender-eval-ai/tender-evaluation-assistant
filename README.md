@@ -13,6 +13,42 @@ detailed evaluation record sheet.
 > inference (Qwen3-VL / Qwen3.6 / DeepSeek on DGX Spark via vLLM) — the LLM client is
 > OpenAI-compatible, so production points the base URL at vLLM with no code change.
 
+## Results
+
+Measured on three real public tenders (redacted samples kept outside the repository;
+only numbers are recorded here). The answer keys were built by reading the PDFs, never by
+running the parser that is scored against them.
+
+**Parser (L0)** — the four metrics are AI_camp's, defined once in `tools/benchmark.py`:
+a node the parser found of its own (recall), on the right page, with a real character
+length, and starting at its own marker rather than a same-page coincidence.
+
+| Tender | Nodes | recall | page | char | exact location |
+|---|---|---|---|---|---|
+| Tender 1 | 454 | 95.6% | 95.6% | 95.6% | 93.2% |
+| Tender 2 | 756 | 97.8% | 97.8% | 97.8% | 96.4% |
+| Tender 3 | 1582 | 95.2% | 95.2% | 95.2% | 92.9% |
+
+Tender 3 is 25 documents inside one 366-page PDF; the parser splits them with 100%
+recall and 100% precision. Two of the three tenders were held out when the parser was ported;
+fixes since then were driven by failures found on them, so they are no longer unseen.
+
+**Rule set (L0 layer)** — the Completeness Check Schedule's items located with their Part
+and page, scored against a separate key:
+
+| Tender | items found | Part right | page right | invented |
+|---|---|---|---|---|
+| Tender 1 | 15/15 | 15/15 | 15/15 | none |
+| Tender 2 | 13/13 | 13/13 | 13/13 | none |
+| Tender 3 | 21/21 | 21/21 | 21/21 | none |
+
+**Tests** — 534 Python (517 unit, 17 against Postgres), 72 browser-component (Vitest), 4
+end-to-end (Playwright), run by
+CI on every push: lint, unit, Postgres integration, web, e2e and a security scan.
+
+Full method and per-document numbers: [`docs/evals/parser_l0.md`](docs/evals/parser_l0.md)
+and [`docs/evals/ruleset_l1_l4.md`](docs/evals/ruleset_l1_l4.md).
+
 ## Pipeline (mirrors the TAP workflow)
 
 ```mermaid
@@ -492,3 +528,51 @@ Known demo limitations: the first-pass OCR cap per document (`MAX_OCR_PAGES` /
 within `AGENT_OCR_PAGES`), local OCR speed (measured 48.7 s per page on `qwen3-vl:8b`
 on the laptop; 3.8 s on Gemini), and no Stage III–V yet (technical marking / combined score —
 phase 2).
+
+## Licence, before you reuse this
+
+The repository has **no LICENSE file yet**, and the choice is constrained rather than
+free. `app/parsing/` depends on two Artifex packages (decision
+[0002](docs/decisions/0002-pymupdf-licences.md)):
+
+| Package | Licence |
+|---|---|
+| `pymupdf` | GNU AGPL-3.0, or an Artifex commercial licence |
+| `pymupdf-layout` | PolyForm Noncommercial 1.0.0, or an Artifex commercial licence |
+
+So: anyone using this **commercially** needs commercial licences for both, or must
+replace `app/parsing/`. No application code outside `app/parsing/` imports either package
+(only the parser's own eval tool, `tools/eval_parser.py`), so that replacement stays a
+contained change. A hosted demo carries AGPL obligations — the
+running service must offer its source, which a public repository satisfies.
+
+Settling the licence is part of the public-release audit (checklist F4).
+
+## Who built what
+
+Two people, working to a written contract (`docs/api_contract.md`) with the schema agreed
+before the code, so both halves could be built in parallel.
+
+**Nasi Purcell** — the document parser and locator (L0): turning a tender's PDFs into an
+addressable node tree, splitting combined documents, resolving the citations a schedule
+makes into that tree, and locating the Completeness Check Schedule's items. The rule
+engine and its templates. The React three-column review UI: the Rules window with full
+editing, Stage I and II with corrections, Scoring and Report, and the browser review flow.
+
+**Chenyu Fang** — the original prototype this repository grew from (the Streamlit UI, the
+MCP server, and the Vertex AI / Cloud Run demo); the API backend and the API contract
+(`backend/`, `docs/api_contract.md`); the pipeline and the worker: the LLM layers that read
+a tender into a draft rule set (L1 to L4) and a bid into checked fields (V0 to V5), the job
+queue and its recovery, the LLM gateway with its cache, budget and data-class allowlist;
+pricing, the Word reports, and the synthetic evaluation cases.
+
+Decisions that shaped the build are recorded as they were taken, with the numbers behind
+them: [`docs/decisions/`](docs/decisions/), and the running record in
+[`docs/merge_plan_checklist.md`](docs/merge_plan_checklist.md).
+
+## Authors
+
+- Nasi Purcell
+- Chenyu Fang
+
+Cite this work with the metadata in [`CITATION.cff`](CITATION.cff).
