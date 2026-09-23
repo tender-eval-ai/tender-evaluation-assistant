@@ -421,3 +421,84 @@ export const events = [
     at: T0,
   },
 ];
+
+
+// --- Scoring and reports (S4) -------------------------------------------------
+// Four tenderers: A and B conform, C fails Stage I, D quotes in US$ so its unit
+// price is converted at the scheme's rate and the row says so. The ranking is over
+// every computable offer; `recommended` is the best-ranked CONFORMING one, which is
+// why B can rank behind a non-conforming offer and still be recommended.
+const USD_HKD = 7.8;
+
+export function priceSummary() {
+  return {
+    ruleset_version: RULESET_VERSION,
+    scheme: {
+      type: "cost_effectiveness", currency: "HK$", unit: "kg", usd_hkd: USD_HKD,
+      quantity: 1102000, source: "Price Schedule Note (2)",
+    },
+    recommended: "Tenderer_A",
+    missing: [],
+    rows: [
+      {
+        tenderer: "Tenderer_A", run_id: "run-a", conforming: true, currency: "HK$",
+        unit_price: 2.35, unit_price_hkd: 2.35, quoted_total: 2589700, estimated_goods_price: 2589700,
+        dosage: 12.4, dosage_rounded: 12, cost_effectiveness: 28.2, arithmetic_ok: true,
+        ranking: 1, stage1: "pass", stage2: "pass", reviewed_by: "nasi", corrected: [], remark: "",
+      },
+      {
+        tenderer: "Tenderer_B", run_id: "run-b", conforming: true, currency: "HK$",
+        unit_price: 2.48, unit_price_hkd: 2.48, quoted_total: 2732960, estimated_goods_price: 2732960,
+        dosage: 11.8, dosage_rounded: 12, cost_effectiveness: 29.76, arithmetic_ok: true,
+        ranking: 2, stage1: "pass", stage2: "pass", reviewed_by: "nasi",
+        corrected: ["price_schedule.unit_price"], remark: "",
+      },
+      {
+        tenderer: "Tenderer_C", run_id: "run-c", conforming: false, currency: "HK$",
+        unit_price: 2.21, unit_price_hkd: 2.21, quoted_total: 2435420, estimated_goods_price: 2435420,
+        dosage: 13.1, dosage_rounded: 13, cost_effectiveness: 28.73, arithmetic_ok: true,
+        ranking: 3, stage1: "disqualified", stage2: null, reviewed_by: "nasi", corrected: [],
+        remark: "Stage I not passed",
+      },
+      {
+        tenderer: "Tenderer_D", run_id: "run-d", conforming: true, currency: "US$",
+        unit_price: 0.32, unit_price_hkd: 2.496, quoted_total: 352640, estimated_goods_price: 2750592,
+        dosage: 12.0, dosage_rounded: 12, cost_effectiveness: 29.95, arithmetic_ok: true,
+        ranking: 4, stage1: "pass", stage2: "pass", reviewed_by: "nasi", corrected: [],
+        remark: `Quoted in US$, converted at ${USD_HKD}`,
+      },
+    ],
+  };
+}
+
+export function evaluation() {
+  const price = priceSummary();
+  const forTenderer = (t, stage1, stage2, conforming, corrections = 0) => ({
+    tenderer: t, run_id: `run-${t.slice(-1).toLowerCase()}`, stage1, stage2, conforming,
+    items: {a: "pass", b: "pass", k: stage1 === "pass" ? "pass" : "disqualified", l: "pass"},
+    reviewed_by: "nasi", corrections,
+  });
+  return {
+    ruleset_version: RULESET_VERSION,
+    tenderers: [
+      forTenderer("Tenderer_A", "pass", "pass", true),
+      forTenderer("Tenderer_B", "pass", "pass", true, 1),
+      forTenderer("Tenderer_C", "disqualified", null, false),
+      forTenderer("Tenderer_D", "pass", "pass", true),
+    ],
+    stage1_conclusion: "Three of the four Tenderers passed the Completeness Check. Tenderer C did not submit "
+      + "the Manufacturer's Letter of Intent required by item (k).",
+    stage2_conclusion: "The three conforming Tenderers met every Stage II requirement.",
+    recommendation: "Tenderer A is recommended: the lowest cost-effectiveness of the conforming offers.",
+    recommended: "Tenderer_A",
+    price,
+  };
+}
+
+export function reports() {
+  return [
+    {name: "price_summary.docx", version: RULESET_VERSION, generated_at: T0, approver: "nasi"},
+    {name: "summary_list.docx", version: RULESET_VERSION, generated_at: null, approver: "nasi"},
+    {name: "evaluation_record.docx", version: RULESET_VERSION, generated_at: null, approver: "nasi"},
+  ];
+}
