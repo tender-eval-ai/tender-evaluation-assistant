@@ -52,6 +52,7 @@ Last updated: 2026-09-20 (Chenyu).
 | J3 | S4 windows: Scoring and Report | done | — |
 | J4 | S4 review: corrections and confirmation in the UI | done | — |
 | J6 | Re-evaluate against a confirmed rule-set version | done | — |
+| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | Nasi: field map and templates (J2 decided) |
 
 ## A. Corrections to the plan
 
