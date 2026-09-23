@@ -48,6 +48,7 @@ Last updated: 2026-09-20 (Chenyu).
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | proposed | Nasi: which to take first |
+| J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
 
 ## A. Corrections to the plan
 
@@ -353,6 +354,21 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      whole document's parenting being wrong is one containment bug, and it breaks
      "everything under this schedule" queries.
 - Nasi (2026-09-21): proposed. 1 first - bounded, measurable, and user-visible.
+
+### J8. The S5 README (H1 items 1 and 2)
+- Added, not restructured: a **Results** section a reader reaches in the first screen
+  (parser on three tenders, the rule set's L0 layer, the test counts), a **Who built
+  what** section naming both of us with our areas, an **Authors** section, and
+  `CITATION.cff`.
+- One thing this turned up: the repository has **no LICENSE file**, and the choice is
+  constrained rather than free. `pymupdf` is AGPL-3.0 and `pymupdf-layout` is PolyForm
+  Noncommercial (decision 0002), so commercial reuse needs Artifex licences or a
+  replacement for `app/parsing/`. Decision 0002 said the README would say so before the
+  repository is made public (F4); it now does. A first draft of `CITATION.cff` claimed
+  Apache-2.0, which would have been inventing a licence the project has not chosen.
+- Still open in H1: the architecture diagram, the 30-second GIF of the three-column
+  review (the Playwright review flow already walks exactly that sequence, so it can
+  record it), the two live demos (G1), and settling the licence itself.
 
 ## Verified facts (no action needed)
 
