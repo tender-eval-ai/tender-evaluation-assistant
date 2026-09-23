@@ -103,6 +103,27 @@ export const listPages = (pid, docId) => request("GET", `${p(pid)}/documents/${e
 // Audit.
 export const listEvents = (pid, params = {}) => request("GET", `${p(pid)}/events${q(params)}`);
 
+// Scoring and reports (S4). Every one is pinned to a rule-set version: omit it for
+// the latest confirmed. `price-summary` and `evaluation` answer 409
+// `unconfirmed_ruleset` before a rule set is confirmed, and a report answers 409
+// `review_pending` with `details.tenderers` while any checked review is unconfirmed -
+// both are ApiError, so a window shows the reason rather than an empty table.
+export const getPriceSummary = (pid, { version } = {}) =>
+  request("GET", `${p(pid)}/price-summary${q({ version })}`);
+export const getEvaluation = (pid, { version } = {}) =>
+  request("GET", `${p(pid)}/evaluation${q({ version })}`);
+export const listReports = (pid, { version } = {}) =>
+  request("GET", `${p(pid)}/reports${q({ version })}`);
+
+// A report is a .docx, not JSON: the browser downloads it, so this builds the link
+// rather than fetching it. The key never goes in a query string, so a deployment
+// that needs one serves reports through the same signed-link mechanism as pages.
+export function reportUrl(pid, name, { version } = {}) {
+  const url = new URL(`${apiBase()}${p(pid)}/reports/${encodeURIComponent(name)}`, window.location.origin);
+  if (version != null) url.searchParams.set("version", String(version));
+  return url.toString();
+}
+
 // Page images: `image_url` in a PageCitation or Page is a signed link relative
 // to the API. The browser opens it as a plain <img>, so no key is attached.
 // A PageCitation's link is used as given: its highlight is inside the

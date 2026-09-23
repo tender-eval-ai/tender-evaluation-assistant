@@ -236,4 +236,14 @@ export const handlers = [
   http.get("*/projects/:pid/events", ({ params }) =>
     projectOr404(params.pid) ?? HttpResponse.json({ items: [...fx.events, ...rs.events()], next_cursor: null })
   ),
+
+  // Scoring and reports (S4). The two 409s are the ones the windows have to show
+  // rather than swallow: no confirmed rule set, and a report asked for while a
+  // review is still unconfirmed.
+  http.get("*/projects/:pid/price-summary", ({ params }) =>
+    projectOr404(params.pid) ?? HttpResponse.json(fx.priceSummary())),
+  http.get("*/projects/:pid/evaluation", ({ params }) =>
+    projectOr404(params.pid) ?? HttpResponse.json(fx.evaluation())),
+  http.get("*/projects/:pid/reports", ({ params }) =>
+    projectOr404(params.pid) ?? HttpResponse.json(fx.reports())),
 ];

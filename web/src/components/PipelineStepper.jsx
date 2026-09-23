@@ -12,9 +12,8 @@ const STAGES = [
   { id: "rules", label: "RULES", built: true, window: "rules", requiresConfirmation: false },
   { id: "stage1", label: "STAGE I COMPLETENESS", built: true, window: "stage1", requiresConfirmation: true },
   { id: "stage2", label: "STAGE II COMPLIANCE", built: true, window: "stage2", requiresConfirmation: true },
-  // Price summary, evaluation and reports are S4 routes.
-  { id: "stage3", label: "SCORING", built: false, window: null, requiresConfirmation: true },
-  { id: "report", label: "REPORT", built: false, window: null, requiresConfirmation: true },
+  { id: "stage3", label: "SCORING", built: true, window: "scoring", requiresConfirmation: true },
+  { id: "report", label: "REPORT", built: true, window: "report", requiresConfirmation: true },
 ];
 
 const FILTERS = [

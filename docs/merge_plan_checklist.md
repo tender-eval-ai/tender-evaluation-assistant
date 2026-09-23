@@ -48,6 +48,7 @@ Last updated: 2026-09-20 (Chenyu).
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | proposed | Nasi: which to take first |
+| J3 | S4 windows: Scoring and Report | done | — |
 
 ## A. Corrections to the plan
 
@@ -353,6 +354,21 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      whole document's parenting being wrong is one containment bug, and it breaks
      "everything under this schedule" queries.
 - Nasi (2026-09-21): proposed. 1 first - bounded, measurable, and user-visible.
+
+### J3. The Scoring and Report windows (S4)
+- The last two stages of the pipeline stepper, stubbed `built: false` since it was
+  written. Both read S4 routes already finished on the API side; neither recomputes
+  anything. Done: `web/src/windows/ScoringWindow.jsx`, `ReportWindow.jsx`, their
+  mock routes and fixtures, and 10 tests.
+- One design point worth keeping: the API refuses a report with 409 `review_pending`
+  while any checked review is unconfirmed, but that refusal cannot reach the window -
+  a report downloads through an `<a href>`, so the browser shows its own error page.
+  The evaluation already names who is unconfirmed (`reviewed_by` is null), so the
+  block is derived from it and shown before the click, which is the only moment a
+  reviewer can act on it.
+- Left for the rest of S4: Stage I/II corrections across all items, the engine
+  switched to each tender's confirmed rubric, and the wider Playwright review flow
+  (one spec today, `e2e/item-l.spec.js`).
 
 ## Verified facts (no action needed)
 
