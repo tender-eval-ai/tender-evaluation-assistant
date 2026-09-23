@@ -179,3 +179,25 @@ describe("RulesWindow", () => {
     expect(within(detail).getByTestId("rule-product_sample.submitted")).toHaveTextContent("blank → needs_review");
   });
 });
+
+describe("re-evaluating against a confirmed version", () => {
+  it("is offered on a confirmed version and not on a draft", async () => {
+    const user = await renderRules();
+    // v2 is the draft, and the window opens on it.
+    expect(screen.queryByText(/re-evaluate every tenderer/)).toBeNull();
+
+    await user.selectOptions(screen.getByLabelText("Rule set version"), "1");
+
+    expect(await screen.findByText(/re-evaluate every tenderer against v1/)).toBeInTheDocument();
+  });
+
+  it("says what re-evaluating costs a reviewer", async () => {
+    // A result whose verdict changes loses its review confirmation, so a reviewer
+    // is told before it happens rather than discovering it afterwards.
+    const user = await renderRules();
+    await user.selectOptions(screen.getByLabelText("Rule set version"), "1");
+    await user.click(screen.getByText(/re-evaluate every tenderer against v1/));
+
+    expect(await screen.findByText(/loses its review confirmation/)).toBeInTheDocument();
+  });
+});

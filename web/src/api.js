@@ -145,6 +145,13 @@ export const correctField = (pid, tenderer, letter, field, correction) =>
 export const confirmReview = (pid, tenderer) =>
   request("POST", `${p(pid)}/bids/${encodeURIComponent(tenderer)}/review/confirm`, {});
 
+// Re-evaluate every checked tenderer against a confirmed rule-set version (default:
+// the latest confirmed), as a job of kind `evaluate`. Engine only, no model call.
+// A result whose verdict changed loses its review confirmation, which is why this is
+// offered after confirming a version rather than run automatically.
+export const reevaluate = (pid, { version } = {}) =>
+  request("POST", `${p(pid)}/evaluate`, version == null ? {} : { version });
+
 // Page images: `image_url` in a PageCitation or Page is a signed link relative
 // to the API. The browser opens it as a plain <img>, so no key is attached.
 // A PageCitation's link is used as given: its highlight is inside the

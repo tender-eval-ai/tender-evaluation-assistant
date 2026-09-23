@@ -22,6 +22,8 @@ export const ROUTES = [
   ["get", "/projects/{pid}/documents/{doc_id}/pages"],
   ["get", "/projects/{pid}/documents/{doc_id}/pages/{n}/image"],
   ["get", "/projects/{pid}/events"],
+  // Re-evaluating against a confirmed rule-set version (#63).
+  ["post", "/projects/{pid}/evaluate"],
   // The S4 review routes (#61).
   ["patch", "/projects/{pid}/bids/{tenderer}/fields/{letter}/{field}"],
   ["post", "/projects/{pid}/bids/{tenderer}/review/confirm"],
@@ -252,6 +254,22 @@ export const handlers = [
     if (open.length) return error(409, "conflict", "fields still need review", { fields: open });
     state.confirmed.set(t, actingUser(request));
     return HttpResponse.json(fx.correctedResult(t, state.corrections.get(t), state.confirmed.get(t)));
+  }),
+
+  // Re-evaluate every checked tenderer against a confirmed version: a job of kind
+  // `evaluate` with no tenderer, exactly as the contract has it.
+  http.post("*/projects/:pid/evaluate", async ({ params, request }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    const body = await request.json().catch(() => ({}));
+    const version = body.version ?? fx.RULESET_VERSION;
+    if (!rs.isConfirmed(version)) {
+      return error(409, "unconfirmed_ruleset", `rule-set version ${version} is not confirmed`);
+    }
+    const jobId = `job-${state.nextJob++}`;
+    state.jobs.set(jobId, { job_id: jobId, kind: "evaluate", tenderer: null, polls: 0,
+                            ruleset_version: version });
+    return HttpResponse.json({ job_id: jobId }, { status: 202 });
   }),
 
   http.get("*/projects/:pid/documents", ({ params }) => projectOr404(params.pid) ?? HttpResponse.json(fx.documents())),
