@@ -426,8 +426,9 @@ export const events = [
 // --- Scoring and reports (S4) -------------------------------------------------
 // Four tenderers: A and B conform, C fails Stage I, D quotes in US$ so its unit
 // price is converted at the scheme's rate and the row says so. The ranking is over
-// every computable offer; `recommended` is the best-ranked CONFORMING one, which is
-// why B can rank behind a non-conforming offer and still be recommended.
+// every computable offer, by cost-effectiveness; `recommended` is the best-ranked
+// CONFORMING one. C failed Stage I but still ranks second, ahead of B and D, and the
+// Scoring window shows it in place.
 const USD_HKD = 7.8;
 
 export function priceSummary() {
@@ -447,18 +448,18 @@ export function priceSummary() {
         ranking: 1, stage1: "pass", stage2: "pass", reviewed_by: "nasi", corrected: [], remark: "",
       },
       {
-        tenderer: "Tenderer_B", run_id: "run-b", conforming: true, currency: "HK$",
-        unit_price: 2.48, unit_price_hkd: 2.48, quoted_total: 2732960, estimated_goods_price: 2732960,
-        dosage: 11.8, dosage_rounded: 12, cost_effectiveness: 29.76, arithmetic_ok: true,
-        ranking: 2, stage1: "pass", stage2: "pass", reviewed_by: "nasi",
-        corrected: ["price_schedule.unit_price"], remark: "",
-      },
-      {
         tenderer: "Tenderer_C", run_id: "run-c", conforming: false, currency: "HK$",
         unit_price: 2.21, unit_price_hkd: 2.21, quoted_total: 2435420, estimated_goods_price: 2435420,
         dosage: 13.1, dosage_rounded: 13, cost_effectiveness: 28.73, arithmetic_ok: true,
-        ranking: 3, stage1: "disqualified", stage2: null, reviewed_by: "nasi", corrected: [],
+        ranking: 2, stage1: "disqualified", stage2: null, reviewed_by: "nasi", corrected: [],
         remark: "Stage I not passed",
+      },
+      {
+        tenderer: "Tenderer_B", run_id: "run-b", conforming: true, currency: "HK$",
+        unit_price: 2.48, unit_price_hkd: 2.48, quoted_total: 2732960, estimated_goods_price: 2732960,
+        dosage: 11.8, dosage_rounded: 12, cost_effectiveness: 29.76, arithmetic_ok: true,
+        ranking: 3, stage1: "pass", stage2: "pass", reviewed_by: "nasi",
+        corrected: ["price_schedule.unit_price"], remark: "",
       },
       {
         tenderer: "Tenderer_D", run_id: "run-d", conforming: true, currency: "US$",

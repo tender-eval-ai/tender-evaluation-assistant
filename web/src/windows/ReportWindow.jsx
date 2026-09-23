@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getEvaluation, listReports, reportUrl } from "../api.js";
+import { downloadReport, getEvaluation, listReports } from "../api.js";
 
 const TITLES = {
   "price_summary.docx": "Price Summary",
@@ -9,22 +9,37 @@ const TITLES = {
 
 const when = (iso) => (iso ? new Date(iso).toLocaleString("en-HK", { dateStyle: "medium", timeStyle: "short" }) : null);
 
+// Hands a fetched file to the browser as a download. The object URL outlives the
+// click for a while, as FileSaver does, because revoking it at once can cancel the
+// download in some browsers.
+function save(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 40_000);
+}
+
 // The Report window: the evaluation across tenderers, and the three .docx reports.
 //
-// A report is rendered fresh from the stored results every time it is downloaded, so
-// this window links to it rather than fetching it - the browser downloads the file.
-// `generated_at` is null until a report has been downloaded once, which is what the
-// list shows; it is not a build step to wait for.
+// A report is rendered fresh from the stored results every time it is downloaded.
+// It is fetched like every other call, with the X-API-Key header a plain link cannot
+// send, and saved from the Blob. `generated_at` is null until a report has been
+// downloaded once, which is what the list shows; it is not a build step to wait for.
 //
 // The API refuses a report with 409 `review_pending` while any checked tenderer's
-// review is unconfirmed. That refusal never reaches this code: a report downloads
-// through an <a href>, so the browser would show its own error page. The evaluation
-// already says who has not been confirmed (`reviewed_by` is null), so the block is
-// derived here and shown BEFORE the click, which is the only useful moment.
+// review is unconfirmed. The evaluation already says who that is (`reviewed_by` is
+// null), so the buttons wait and say why BEFORE a click. If the evaluation is stale
+// and the server still refuses, its answer names who is open.
 export default function ReportWindow({ projectId, version }) {
   const [evaluation, setEvaluation] = useState(undefined);
   const [reports, setReports] = useState([]);
   const [error, setError] = useState(null);
+  const [downloading, setDownloading] = useState(null);
+  const [downloadError, setDownloadError] = useState(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -42,6 +57,22 @@ export default function ReportWindow({ projectId, version }) {
   }, [projectId, version]);
 
   useEffect(() => { load(); }, [load]);
+
+  async function download(name) {
+    setDownloadError(null);
+    setDownloading(name);
+    try {
+      const { blob, filename } = await downloadReport(projectId, name, { version });
+      save(blob, filename);
+      setReports(await listReports(projectId, { version })); // the download set generated_at
+    } catch (err) {
+      setDownloadError(err.code === "review_pending"
+        ? `Reports wait for every review to be confirmed. Still open: ${(err.details?.tenderers ?? []).join(", ")}.`
+        : err.message);
+    } finally {
+      setDownloading(null);
+    }
+  }
 
   if (evaluation === undefined) return <section className="window report"><p>Loading the evaluation…</p></section>;
 
@@ -104,7 +135,10 @@ export default function ReportWindow({ projectId, version }) {
       <ul className="reports">
         {reports.map((r) => (
           <li key={r.name}>
-            <a href={reportUrl(projectId, r.name, { version })} download>{TITLES[r.name] ?? r.name}</a>
+            <button type="button" onClick={() => download(r.name)}
+                    disabled={pending.length > 0 || downloading !== null}>
+              {TITLES[r.name] ?? r.name}
+            </button>
             <span className="meta">
               {" "}v{r.version}
               {r.approver && <> · reviews confirmed by {r.approver}</>}
@@ -113,6 +147,7 @@ export default function ReportWindow({ projectId, version }) {
           </li>
         ))}
       </ul>
+      {downloadError && <p className="error" role="alert">{downloadError}</p>}
       {reports.length === 0 && <p className="notice">No reports for this rule-set version.</p>}
     </section>
   );

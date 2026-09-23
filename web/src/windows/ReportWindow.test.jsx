@@ -1,7 +1,8 @@
 // The Report window on the mock's evaluation and reports (web/mock/fixtures.js).
 import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PID, evaluation } from "../../mock/fixtures.js";
 import { server } from "../../mock/node.js";
 import ReportWindow from "./ReportWindow.jsx";
@@ -28,17 +29,16 @@ describe("Report window", () => {
     expect(within(b).getByText("1")).toBeInTheDocument();
   });
 
-  it("links each report and says whether it has been downloaded", async () => {
+  it("offers each report and says whether it has been downloaded", async () => {
     await renderReport();
 
-    const priceSummary = screen.getByRole("link", { name: "Price Summary" });
-    expect(priceSummary).toHaveAttribute("href", expect.stringContaining("/reports/price_summary.docx"));
-    expect(priceSummary).toHaveAttribute("download");
+    const priceSummary = screen.getByRole("button", { name: "Price Summary" });
+    expect(priceSummary).toBeEnabled();
     // generated_at is null until a report is downloaded once - that is a fact about
     // the report, not a build step the reviewer is waiting on. The price summary in
     // the fixture has been downloaded; the other two have not.
     expect(screen.getAllByText(/not downloaded yet/)).toHaveLength(2);
-    const summaryList = screen.getByRole("link", { name: "Summary List" }).closest("li");
+    const summaryList = screen.getByRole("button", { name: "Summary List" }).closest("li");
     expect(summaryList).toHaveTextContent(/not downloaded yet/);
     expect(priceSummary.closest("li")).toHaveTextContent(/last downloaded/);
   });
@@ -55,10 +55,58 @@ describe("Report window", () => {
     await renderReport();
 
     expect(screen.getByRole("status")).toHaveTextContent(/Still open: Tenderer_C/);
+    expect(screen.getByRole("button", { name: "Price Summary" })).toBeDisabled();
   });
 
   it("says nothing about pending reviews when every one is confirmed", async () => {
     await renderReport();
     expect(screen.queryByRole("status")).toBeNull();
+  });
+});
+
+describe("downloading a report", () => {
+  // jsdom has no object URLs and no downloads: record what would be saved instead.
+  const saved = [];
+  function captureDownloads() {
+    saved.length = 0;
+    URL.createObjectURL = vi.fn(() => "blob:report");
+    URL.revokeObjectURL = vi.fn();
+    vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function () {
+      saved.push({ href: this.href, name: this.download });
+    });
+  }
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete URL.createObjectURL;
+    delete URL.revokeObjectURL;
+  });
+
+  it("fetches the file through the API and saves it under the name the API gives", async () => {
+    // A plain link cannot send X-API-Key, and the reports route requires it, so the
+    // file is fetched like every other call and saved from the Blob.
+    captureDownloads();
+    const user = userEvent.setup();
+    await renderReport();
+
+    await user.click(screen.getByRole("button", { name: "Summary List" }));
+
+    await waitFor(() => expect(saved).toEqual([{ href: "blob:report", name: "summary_list.docx" }]));
+    expect(URL.createObjectURL.mock.calls[0][0].size).toBeGreaterThan(0); // the file's bytes, not a link
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("says who is still open when the server refuses a report", async () => {
+    // The evaluation can be stale: the server's 409 review_pending is the last word.
+    captureDownloads();
+    server.use(http.get("*/projects/:pid/reports/:name", () => HttpResponse.json(
+      { error: { code: "review_pending", message: "the review of Tenderer_D is not confirmed",
+                 details: { tenderers: ["Tenderer_D"] } } }, { status: 409 })));
+    const user = userEvent.setup();
+    await renderReport();
+
+    await user.click(screen.getByRole("button", { name: "Price Summary" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Still open: Tenderer_D/);
+    expect(saved).toEqual([]);
   });
 });

@@ -43,7 +43,9 @@ function headers(extra = {}) {
   return h;
 }
 
-async function request(method, path, body) {
+// A call that answered 2xx, or an ApiError. `request` reads it as JSON; a report
+// download reads it as a file.
+async function call(method, path, body) {
   const response = await fetch(`${apiBase()}${path}`, {
     method,
     headers: headers(body === undefined ? {} : { "Content-Type": "application/json" }),
@@ -59,6 +61,11 @@ async function request(method, path, body) {
       err.details ?? {}
     );
   }
+  return response;
+}
+
+async function request(method, path, body) {
+  const response = await call(method, path, body);
   return response.status === 204 ? null : response.json();
 }
 
@@ -115,13 +122,16 @@ export const getEvaluation = (pid, { version } = {}) =>
 export const listReports = (pid, { version } = {}) =>
   request("GET", `${p(pid)}/reports${q({ version })}`);
 
-// A report is a .docx, not JSON: the browser downloads it, so this builds the link
-// rather than fetching it. The key never goes in a query string, so a deployment
-// that needs one serves reports through the same signed-link mechanism as pages.
-export function reportUrl(pid, name, { version } = {}) {
-  const url = new URL(`${apiBase()}${p(pid)}/reports/${encodeURIComponent(name)}`, window.location.origin);
-  if (version != null) url.searchParams.set("version", String(version));
-  return url.toString();
+// A report is a .docx, not JSON. It is fetched like every other call, because the
+// reports route requires the X-API-Key header and a plain link cannot send one, and
+// handed back as a Blob with the name the API gives it, for the window to save. A
+// refusal is an ApiError like any other: 409 `review_pending` names the tenderers
+// still open in `details.tenderers`.
+export async function downloadReport(pid, name, { version } = {}) {
+  const response = await call("GET", `${p(pid)}/reports/${encodeURIComponent(name)}${q({ version })}`);
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filename = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? name;
+  return { blob: await response.blob(), filename };
 }
 
 // Page images: `image_url` in a PageCitation or Page is a signed link relative

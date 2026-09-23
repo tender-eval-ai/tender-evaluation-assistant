@@ -360,12 +360,11 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   written. Both read S4 routes already finished on the API side; neither recomputes
   anything. Done: `web/src/windows/ScoringWindow.jsx`, `ReportWindow.jsx`, their
   mock routes and fixtures, and 10 tests.
-- One design point worth keeping: the API refuses a report with 409 `review_pending`
-  while any checked review is unconfirmed, but that refusal cannot reach the window -
-  a report downloads through an `<a href>`, so the browser shows its own error page.
-  The evaluation already names who is unconfirmed (`reviewed_by` is null), so the
-  block is derived from it and shown before the click, which is the only moment a
-  reviewer can act on it.
+- A report is fetched with the X-API-Key header and saved from the Blob, not linked:
+  the reports route requires the key and a plain `<a href>` cannot send it (review
+  of #60, Chenyu). The evaluation names who is unconfirmed (`reviewed_by` is null), so
+  the buttons wait and say why before a click; a 409 `review_pending` from a stale
+  evaluation is shown with the tenderers it names.
 - Left for the rest of S4: Stage I/II corrections across all items, the engine
   switched to each tender's confirmed rubric, and the wider Playwright review flow
   (one spec today, `e2e/item-l.spec.js`).
