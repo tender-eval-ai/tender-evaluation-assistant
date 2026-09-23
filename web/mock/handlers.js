@@ -22,6 +22,16 @@ export const ROUTES = [
   ["get", "/projects/{pid}/documents/{doc_id}/pages"],
   ["get", "/projects/{pid}/documents/{doc_id}/pages/{n}/image"],
   ["get", "/projects/{pid}/events"],
+  // Re-evaluating against a confirmed rule-set version (#63).
+  ["post", "/projects/{pid}/evaluate"],
+  // The S4 review routes (#61).
+  ["patch", "/projects/{pid}/bids/{tenderer}/fields/{letter}/{field}"],
+  ["post", "/projects/{pid}/bids/{tenderer}/review/confirm"],
+  // The S4 scoring and report routes (#60).
+  ["get", "/projects/{pid}/price-summary"],
+  ["get", "/projects/{pid}/evaluation"],
+  ["get", "/projects/{pid}/reports"],
+  ["get", "/projects/{pid}/reports/{name}"],
   // The S3 editing routes reached openapi.json with PR #48 (S3-1).
   ["get", "/projects/{pid}/ruleset/diff"],
   ["get", "/projects/{pid}/ruleset/gaps"],
@@ -42,7 +52,9 @@ export const S3_ROUTES = [
 // (202 -> poll the job -> results) has something to do.
 let state;
 export function resetMockState() {
-  state = { checked: new Set(["Tenderer_A", "Tenderer_C", "Tenderer_D"]), jobs: new Map(), nextJob: 1 };
+  // corrections: tenderer -> {"<letter>.<field>": CorrectionRequest}; confirmed: tenderer -> user
+  state = { checked: new Set(["Tenderer_A", "Tenderer_C", "Tenderer_D"]), jobs: new Map(), nextJob: 1,
+            corrections: new Map(), confirmed: new Map() };
   rs.resetRulesetStore();
 }
 resetMockState();
@@ -51,6 +63,8 @@ resetMockState();
 function error(status, code, message, details = {}) {
   return HttpResponse.json({ error: { code, message, details }, detail: message }, { status });
 }
+
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 // The acting user, as the API takes it until per-user sessions (B9).
 const actingUser = (request) => request.headers.get("X-User") || "anonymous";
@@ -204,7 +218,58 @@ export const handlers = [
     if (version && Number(version) !== fx.RULESET_VERSION) {
       return error(404, "not_found", `${t}'s result is at rule-set version ${fx.RULESET_VERSION}, not ${version}`);
     }
-    return HttpResponse.json(fx.bidResult(t));
+    return HttpResponse.json(fx.correctedResult(t, state.corrections.get(t), state.confirmed.get(t)));
+  }),
+
+  // A correction: the person's value beside the model's, the verdict re-decided by
+  // the engine at once (no model call), and any review confirmation withdrawn.
+  http.patch("*/projects/:pid/bids/:tenderer/fields/:letter/:field", async ({ params, request }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    const t = params.tenderer;
+    if (!fx.TENDERERS[t] || !state.checked.has(t)) return error(404, "not_found", `no finished check for ${t}`);
+    const body = await request.json().catch(() => ({}));
+    if (!body.reason) return error(400, "bad_request", "reason is required");
+    if (body.value === undefined && body.present === undefined && body.page === undefined) {
+      return error(400, "bad_request", "a correction must set value, present or page");
+    }
+    const key = `${params.letter}.${params.field}`;
+    if (!fx.hasField(t, params.letter, params.field)) {
+      return error(404, "not_found", `${t} has no field ${key}`);
+    }
+    const all = new Map(state.corrections.get(t) ?? []);
+    all.set(key, { ...body, by: actingUser(request), at: new Date().toISOString() });
+    state.corrections.set(t, all);
+    state.confirmed.delete(t);           // a correction withdraws a confirmation
+    return HttpResponse.json(fx.correctedResult(t, all, undefined));
+  }),
+
+  http.post("*/projects/:pid/bids/:tenderer/review/confirm", ({ params, request }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    const t = params.tenderer;
+    if (!fx.TENDERERS[t] || !state.checked.has(t)) return error(404, "not_found", `no finished check for ${t}`);
+    const result = fx.correctedResult(t, state.corrections.get(t), undefined);
+    const open = fx.needsReviewFields(result);
+    if (open.length) return error(409, "conflict", "fields still need review", { fields: open });
+    state.confirmed.set(t, actingUser(request));
+    return HttpResponse.json(fx.correctedResult(t, state.corrections.get(t), state.confirmed.get(t)));
+  }),
+
+  // Re-evaluate every checked tenderer against a confirmed version: a job of kind
+  // `evaluate` with no tenderer, exactly as the contract has it.
+  http.post("*/projects/:pid/evaluate", async ({ params, request }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    const body = await request.json().catch(() => ({}));
+    const version = body.version ?? fx.RULESET_VERSION;
+    if (!rs.isConfirmed(version)) {
+      return error(409, "unconfirmed_ruleset", `rule-set version ${version} is not confirmed`);
+    }
+    const jobId = `job-${state.nextJob++}`;
+    state.jobs.set(jobId, { job_id: jobId, kind: "evaluate", tenderer: null, polls: 0,
+                            ruleset_version: version });
+    return HttpResponse.json({ job_id: jobId }, { status: 202 });
   }),
 
   http.get("*/projects/:pid/documents", ({ params }) => projectOr404(params.pid) ?? HttpResponse.json(fx.documents())),
@@ -236,4 +301,24 @@ export const handlers = [
   http.get("*/projects/:pid/events", ({ params }) =>
     projectOr404(params.pid) ?? HttpResponse.json({ items: [...fx.events, ...rs.events()], next_cursor: null })
   ),
+
+  // Scoring and reports (S4). The two 409s are the ones the windows have to show
+  // rather than swallow: no confirmed rule set, and a report asked for while a
+  // review is still unconfirmed.
+  http.get("*/projects/:pid/price-summary", ({ params }) =>
+    projectOr404(params.pid) ?? HttpResponse.json(fx.priceSummary())),
+  http.get("*/projects/:pid/evaluation", ({ params }) =>
+    projectOr404(params.pid) ?? HttpResponse.json(fx.evaluation())),
+  http.get("*/projects/:pid/reports", ({ params }) =>
+    projectOr404(params.pid) ?? HttpResponse.json(fx.reports())),
+  // A report is a .docx: the mock answers a placeholder file under the report's own
+  // name, as the API's Content-Disposition does.
+  http.get("*/projects/:pid/reports/:name", ({ params }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    if (!fx.reports().some((r) => r.name === params.name)) return error(404, "not_found", `no report ${params.name}`);
+    return new HttpResponse(`mock ${params.name}`, {
+      headers: { "Content-Type": DOCX_MIME, "Content-Disposition": `attachment; filename="${params.name}"` },
+    });
+  }),
 ];

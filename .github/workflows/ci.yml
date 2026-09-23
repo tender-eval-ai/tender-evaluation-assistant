@@ -79,6 +79,31 @@ jobs:
       - run: npx vitest run
       - run: npm run build
 
+  e2e:
+    # The review flow in a real browser, on the MSW mock: no backend, no secrets,
+    # the same conditions as the Vitest suite. A separate job because it needs a dev
+    # server and a browser download, which would slow the fast `web` job on every PR.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: web/test-results/
+          retention-days: 7
+
   security:
     runs-on: ubuntu-latest
     steps:
