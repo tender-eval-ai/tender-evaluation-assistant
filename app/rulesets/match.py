@@ -52,8 +52,16 @@ def match_item(item: RuleSetItem, templates: dict[str, Template], index: NodeInd
         return item.model_copy(update={"template": None})
     template = templates[chosen]
     status = ItemStatus.VERIFIED if not template.slots else ItemStatus.NEEDS_INPUT
+    # The form's notes and trigger come with its rules: they are facts about the form,
+    # not about this tender. An item keeps a condition it already has (locate may have
+    # read a tender-specific one off the schedule row); otherwise it takes the form's.
+    # A note the item already carries is not added twice, so matching again is harmless.
     return item.model_copy(update={"template": chosen, "rules": [r.model_copy(deep=True) for r in template.rules],
-                                   "slots": {s.name: SlotValue() for s in template.slots}, "status": status})
+                                   "slots": {s.name: SlotValue() for s in template.slots},
+                                   "notes": list(item.notes) + [n.model_copy(deep=True) for n in template.notes
+                                                                if n not in item.notes],
+                                   "condition": item.condition or template.condition,
+                                   "status": status})
 
 
 def match_items(items: list[RuleSetItem], templates: dict[str, Template], index: NodeIndex, llm) -> list[RuleSetItem]:

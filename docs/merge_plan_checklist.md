@@ -47,7 +47,13 @@ Last updated: 2026-09-20 (Chenyu).
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
-| J1 | Parser follow-ups after the S3 recall gate | proposed | Nasi: which to take first |
+| J1 | Parser follow-ups after the S3 recall gate | part done | 1 and 4 done; 2 and 3 open |
+| J2 | Where a form's own notes and trigger live | decided | option 1 (#59); next: template ids = form ids, the field map |
+| J3 | S4 windows: Scoring and Report | done | — |
+| J4 | S4 review: corrections and confirmation in the UI | done | — |
+| J5 | S4 review flow in a browser (Playwright) | done | — |
+| J6 | Re-evaluate against a confirmed rule-set version | done | — |
+| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | Nasi: field map and templates (J2 decided) |
 | J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
 
 ## A. Corrections to the plan
@@ -354,6 +360,103 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      whole document's parenting being wrong is one containment bug, and it breaks
      "everything under this schedule" queries.
 - Nasi (2026-09-21): proposed. 1 first - bounded, measurable, and user-visible.
+
+### J2. Where a form's own notes and trigger live (blocks the rule-file split)
+- Found by: starting the S1 split of the 13 rule files (`tools/split_rule_files.py`).
+  The classifier reproduces `check_kind_mapping.md`'s own totals independently: 126
+  rules, 99 checks, 27 not a rule, 0 unmapped.
+- The problem: S0 gap 6 put `notes` and `condition` on `RuleSetItem`, and both are
+  implemented there. But the split produces **templates**, not items - items are built
+  per tender by L1. So the 27 non-rules have nowhere to go. They are facts about the
+  FORM, not the tender: when a form is needed at all (only if the tenderer does not
+  make the goods itself), that the tender's supplementary terms may ask for
+  certification, and that extra sheets may be attached when the space is too small.
+  Left on the item only, every tender has to rediscover them,
+  which is what a template library exists to prevent.
+- Options:
+  1. `Template.notes: list[ItemNote]` and `Template.condition: str | None`, inherited
+     when L1 matches an item to the template; the item may override `condition` and
+     never loses the form's notes. Prototyped on `feat/production-templates`.
+  2. Keep them item-only: the split drops all 27, and each tender's build re-derives
+     them through the model. Cheapest now, but the library carries less than the rule
+     files it replaced, and a trigger the model misses silently changes an item's
+     applicability.
+  3. Put them in the per-tender params file. Wrong shape: they do not vary by tender,
+     which is the test for what belongs in params.
+- Not decided here: `schema.py` is the shared contract, so this is a `contract` PR
+  with both approvals (the I1 convention).
+- Nasi (2026-09-22): proposes 1. `na_allowed` needs nothing - the engine already reads
+  "N/A" as `not_applicable` (`app/engine/state.py`). `overflow_allowed` becomes a note
+  under whichever option wins.
+- Chenyu (2026-09-23): decided, option 1. Before the 13 templates are written: (a) each
+  template's id is our form id (`app/checks/forms.py`); only 4 of the 13 rule-file names
+  are one today. (b) Every rule's `field` is a `<form>.<field>` key, through a field map
+  in `split_rule_files.py` that reports a field with no home rather than guessing;
+  Chenyu adds the fields a rule checks to `forms.py` in a `contract` PR (mostly the
+  Information Schedule, 30 names in the rules against 4 fields, and the Particulars of
+  Goods, 14 against 7). (c) The templates are written in our own words, never the rule
+  files' text. (d) `params/<tender>.json` stays outside git, beside the answer keys.
+
+### J3. The Scoring and Report windows (S4)
+- The last two stages of the pipeline stepper, stubbed `built: false` since it was
+  written. Both read S4 routes already finished on the API side; neither recomputes
+  anything. Done: `web/src/windows/ScoringWindow.jsx`, `ReportWindow.jsx`, their
+  mock routes and fixtures, and 10 tests.
+- A report is fetched with the X-API-Key header and saved from the Blob, not linked:
+  the reports route requires the key and a plain `<a href>` cannot send it (review
+  of #60, Chenyu). The evaluation names who is unconfirmed (`reviewed_by` is null), so
+  the buttons wait and say why before a click; a 409 `review_pending` from a stale
+  evaluation is shown with the tenderers it names.
+- Left for the rest of S4: Stage I/II corrections across all items, the engine
+  switched to each tender's confirmed rubric, and the wider Playwright review flow
+  (one spec today, `e2e/item-l.spec.js`).
+
+### J4. Corrections and review confirmation in the Stage windows (S4)
+- The review half of S4 on the UI side: a reviewer corrects a field (value, a document
+  marked present or absent, or a page) with a required reason, and confirms the review
+  once nothing needs one. Both routes were already finished on the API side.
+- The model's value is kept beside the person's and shown with who changed it and why,
+  which is what `FieldValue.model_value` and `Correction` are for: a reviewer looking
+  at a corrected field can see what it used to say.
+- A correction and a confirmation each answer with the whole re-decided `BidResult`,
+  so the window takes the answer as its new state rather than reloading - there is
+  then no window in which it shows a verdict computed from a value the server has
+  since changed.
+- Confirming answers 409 `conflict` with `details.fields`; the window names them
+  rather than saying it failed.
+- Left for S4: the engine switched to each tender's confirmed rubric, and the wider
+  Playwright review flow (one spec today, `e2e/item-l.spec.js`).
+
+### J5. The Playwright review flow (S4)
+- `e2e/item-l.spec.js` had been a stub since S2, with a comment saying Playwright was
+  left uninstalled "to keep `npm ci` light". Its four selectors were all still valid,
+  so it had not rotted - it had simply never run, which is a test that proves nothing.
+- Playwright is now a dev dependency with a config, and `e2e/review-flow.spec.js`
+  walks the whole S4 sequence in a real browser on the MSW mock: run a check on a
+  tenderer that has none, find the field the model could not read, be refused a
+  confirmation and told which field, correct it with a reason, watch the verdict
+  change while the model's value stays visible, confirm, then Scoring and Report.
+- It runs as its OWN CI job, not inside `web`: it needs a dev server and a browser
+  download, which would slow the fast feedback loop on every PR. A failure uploads
+  the trace and screenshots.
+- The first real run caught one thing the unit tests could not: the spec asserted the
+  wire value `needs_review`, but the badge renders "Needs human review". A Vitest
+  test on the component would have used the same rendered text; only a browser walking
+  the flow compares what a reviewer actually sees.
+- 4 specs pass. Depends on J3 and J4, both merged into this branch so the flow is
+  runnable rather than aspirational.
+
+### J6. Re-evaluating against a confirmed rule-set version (S4)
+- The plan's S4 row asks for "the engine switched to each tender's confirmed rubric".
+  `rubric` is the legacy word - deprecated since S2, removed at S5 - and the live
+  equivalent is a confirmed `RuleSet` version. `POST /projects/{pid}/evaluate` has
+  been finished on the API side since #53, and `JobProgress` already knew the
+  `evaluate` job kind, but nothing in the UI ever started one.
+- Now offered in the Rules window, on a CONFIRMED version only: a draft has not been
+  agreed, which is what the confirm step is for.
+- Offered rather than run automatically on confirm, because a result whose verdict
+  changes loses its review confirmation. A reviewer is told that before it happens
+  rather than discovering it afterwards, and chooses the moment.
 
 ### J8. The S5 README (H1 items 1 and 2)
 - Added, not restructured: a **Results** section a reader reaches in the first screen

@@ -42,7 +42,8 @@ and page, scored against a separate key:
 | Tender 2 | 13/13 | 13/13 | 13/13 | none |
 | Tender 3 | 21/21 | 21/21 | 21/21 | none |
 
-**Tests** — 512 Python, 49 browser-component (Vitest), 4 end-to-end (Playwright), run by
+**Tests** — 534 Python (517 unit, 17 against Postgres), 72 browser-component (Vitest), 4
+end-to-end (Playwright), run by
 CI on every push: lint, unit, Postgres integration, web, e2e and a security scan.
 
 Full method and per-document numbers: [`docs/evals/parser_l0.md`](docs/evals/parser_l0.md)
