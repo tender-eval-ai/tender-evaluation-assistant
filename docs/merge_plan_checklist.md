@@ -48,7 +48,7 @@ Last updated: 2026-09-20 (Chenyu).
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | proposed | Nasi: which to take first |
-| J2 | Where a form's own notes and trigger live | proposed | Chenyu: contract approval; blocks the rule-file split |
+| J2 | Where a form's own notes and trigger live | decided | option 1 (#59); next: template ids = form ids, the field map |
 
 ## A. Corrections to the plan
 
@@ -362,10 +362,10 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - The problem: S0 gap 6 put `notes` and `condition` on `RuleSetItem`, and both are
   implemented there. But the split produces **templates**, not items - items are built
   per tender by L1. So the 27 non-rules have nowhere to go. They are facts about the
-  FORM, not the tender: "required only if the Tenderer is not itself the Manufacturer
-  of the offered Item 1", "the Terms of Tender (Supplement) may require certification
-  of the Goods and/or the Tenderer", "separate sheets may be used if the space
-  provided is inadequate". Left on the item only, every tender has to rediscover them,
+  FORM, not the tender: when a form is needed at all (only if the tenderer does not
+  make the goods itself), that the tender's supplementary terms may ask for
+  certification, and that extra sheets may be attached when the space is too small.
+  Left on the item only, every tender has to rediscover them,
   which is what a template library exists to prevent.
 - Options:
   1. `Template.notes: list[ItemNote]` and `Template.condition: str | None`, inherited
@@ -382,6 +382,14 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Nasi (2026-09-22): proposes 1. `na_allowed` needs nothing - the engine already reads
   "N/A" as `not_applicable` (`app/engine/state.py`). `overflow_allowed` becomes a note
   under whichever option wins.
+- Chenyu (2026-09-23): decided, option 1. Before the 13 templates are written: (a) each
+  template's id is our form id (`app/checks/forms.py`); only 4 of the 13 rule-file names
+  are one today. (b) Every rule's `field` is a `<form>.<field>` key, through a field map
+  in `split_rule_files.py` that reports a field with no home rather than guessing;
+  Chenyu adds the fields a rule checks to `forms.py` in a `contract` PR (mostly the
+  Information Schedule, 30 names in the rules against 4 fields, and the Particulars of
+  Goods, 14 against 7). (c) The templates are written in our own words, never the rule
+  files' text. (d) `params/<tender>.json` stays outside git, beside the answer keys.
 
 ## Verified facts (no action needed)
 

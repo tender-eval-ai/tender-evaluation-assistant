@@ -293,9 +293,8 @@ class Template(BaseModel):
     slots: list[SlotSpec] = Field(default_factory=list)
     consequences: dict[Consequence, ConsequenceDefaults] = Field(default_factory=dict)
     # The form's own prose and trigger, inherited by every item that matches it. A
-    # definition like "the Terms of Tender (Supplement) may require certification of
-    # the Goods and/or the Tenderer", or a trigger like "required only if the
-    # Tenderer is not itself the Manufacturer", is a fact about the FORM: it holds
+    # definition of a term the form uses, or a trigger such as "needed only when the
+    # tenderer does not make the goods itself", is a fact about the FORM: it holds
     # for every tender that uses it. Held only on the item, each tender would have to
     # rediscover it, which is what the library exists to prevent. An item may
     # override `condition`; it never loses the template's notes.

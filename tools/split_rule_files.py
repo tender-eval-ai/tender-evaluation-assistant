@@ -1,13 +1,19 @@
 """Split AI_camp's 13 rule files into reusable templates plus one tender's params.
 
     python tools/split_rule_files.py --source <AI_camp>/agent/src/procurement_agent/validator/rules \
-        --templates app/rulesets/templates --params app/rulesets/params/Tender 1.json
+        --report <private>/classification.json
+
+Today it classifies every rule; the report carries rule values, so it goes outside
+git. Writing the templates and the params comes next, after the field map (checklist
+J2): each template named by our form id, every rule's `field` a key of that form
+(`app/checks/forms.py`), and the text in our own words, never the rule files'.
 
 The plan's S1 deliverable. Each source file mixes two things: what the FORM always
 requires (its rules, its consequence tiers, its notes) and what THIS tender put in the
 blanks (the estimated quantity, the deposit percentage, the schedule letter the form
-answers). The first becomes `app/rulesets/templates/<id>.json`, reused by every tender;
-the second becomes one params file per tender, and the rule references it as `{slot}`.
+answers). The first becomes `app/rulesets/templates/<form id>.json`, reused by every
+tender; the second becomes one params file per tender, kept outside git beside the
+answer keys, and the rule references it as `{slot}`.
 
 The check-name mapping is `docs/check_kind_mapping.md`, which is authoritative: 44
 AI_camp check names over 126 rules, 99 mapping to one of the twelve CheckTypes, one
@@ -82,8 +88,6 @@ PER_RULE = {
 }
 SPLITS = {"date_validity_and_presence": ("date", "human_only")}
 
-NOTE_KIND = {"note": "definition", "condition": "trigger", "presence": "definition",
-             "outcome_policy": "consequence", "gate": "definition", "normalise": "definition"}
 _TRIGGER = re.compile(r"_conditional_trigger$|_trigger$")
 
 
