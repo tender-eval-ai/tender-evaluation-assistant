@@ -22,6 +22,11 @@ export const ROUTES = [
   ["get", "/projects/{pid}/documents/{doc_id}/pages"],
   ["get", "/projects/{pid}/documents/{doc_id}/pages/{n}/image"],
   ["get", "/projects/{pid}/events"],
+  // The S4 scoring and report routes (#60).
+  ["get", "/projects/{pid}/price-summary"],
+  ["get", "/projects/{pid}/evaluation"],
+  ["get", "/projects/{pid}/reports"],
+  ["get", "/projects/{pid}/reports/{name}"],
   // The S3 editing routes reached openapi.json with PR #48 (S3-1).
   ["get", "/projects/{pid}/ruleset/diff"],
   ["get", "/projects/{pid}/ruleset/gaps"],
@@ -53,6 +58,8 @@ resetMockState();
 function error(status, code, message, details = {}) {
   return HttpResponse.json({ error: { code, message, details }, detail: message }, { status });
 }
+
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 // The acting user, as the API takes it until per-user sessions (B9).
 const actingUser = (request) => request.headers.get("X-User") || "anonymous";
@@ -283,4 +290,14 @@ export const handlers = [
     projectOr404(params.pid) ?? HttpResponse.json(fx.evaluation())),
   http.get("*/projects/:pid/reports", ({ params }) =>
     projectOr404(params.pid) ?? HttpResponse.json(fx.reports())),
+  // A report is a .docx: the mock answers a placeholder file under the report's own
+  // name, as the API's Content-Disposition does.
+  http.get("*/projects/:pid/reports/:name", ({ params }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    if (!fx.reports().some((r) => r.name === params.name)) return error(404, "not_found", `no report ${params.name}`);
+    return new HttpResponse(`mock ${params.name}`, {
+      headers: { "Content-Type": DOCX_MIME, "Content-Disposition": `attachment; filename="${params.name}"` },
+    });
+  }),
 ];

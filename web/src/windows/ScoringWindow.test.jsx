@@ -24,7 +24,7 @@ describe("Scoring window", () => {
   });
 
   it("shows a non-conforming offer that ranks above a conforming one", async () => {
-    // Tenderer C is cheaper than D and ranks ahead of it, but failed Stage I. Hiding
+    // Tenderer C ranks second, ahead of B and D, but failed Stage I. Hiding
     // it would leave a reviewer unable to see why the cheapest offer is not recommended.
     await renderScoring();
 
