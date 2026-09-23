@@ -100,8 +100,7 @@ rule, 0 unmapped) but stops at checklist **J2** — the 27 non-rules are facts a
 FORM, and the schema currently holds notes and conditions only on an item. Once that
 is decided, what remains is: the templates and `params/Tender 1.json`, the
 template/slot/check half of each key added by hand, and a build per tender through the
-API with `RULESET_TEMPLATES_DIR` and `DATA_DIR` pointing at the private folders.
-
-Previously recorded here:
-
-Not yet run: the joint S3 check. They need (1) the production templates split out of the 13 rule files (Nasi's S1 leftover; without them every item goes to L3), (2) a key per tender in the format above, derivable from the checklist keys for Part and page, with templates and slots added by hand, kept outside git, (3) `RULESET_TEMPLATES_DIR` and `DATA_DIR` pointing at the private folders, a build per tender through the API, and `tools/eval_ruleset.py --api ... --project ... --key <private>/<tender>.ruleset_key.json --out <private>/<tender>.eval.json`. Numbers only come back here.
+API with `RULESET_TEMPLATES_DIR` and `DATA_DIR` pointing at the private folders, scored
+with `tools/eval_ruleset.py --api ... --project ... --key <private>/<tender>.ruleset_key.json
+--out <private>/<tender>.eval.json`. The keys stay outside git; only numbers come back here.
+J2 was decided on 2026-09-23 (option 1, #59).

@@ -1,6 +1,6 @@
 """Build a rule set's L0 layer for one tender and write it as a RuleSet.
 
-    python tools/build_l0_ruleset.py --pdfs <tender folder> --out draft.json
+    python tools/build_l0_ruleset.py --pdfs <tender folder> --data-class redacted_sample --out draft.json
 
 L0 is `locate`: the Completeness Check Schedule's Parts and items, each with its
 citation and the clauses its row points at. It is deterministic - the parser and a
@@ -22,7 +22,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.parsing.loader import load_pdf  # noqa: E402
+from app.rulesets.build import merge_parts  # noqa: E402
 from app.rulesets.locate import locate, parse_tender  # noqa: E402
 from app.rulesets.schema import DataClass, PartSpec, RuleSet  # noqa: E402
 
@@ -31,7 +31,10 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--pdfs", type=Path, required=True, help="a folder of tender PDFs, or one combined PDF")
     ap.add_argument("--out", type=Path, required=True)
-    ap.add_argument("--data-class", default="synthetic", choices=[d.value for d in DataClass])
+    # Required, with no default: the LLM gateway trusts this label to decide which
+    # endpoints may see the text, so a real tender must never come out `synthetic`.
+    ap.add_argument("--data-class", required=True, choices=[d.value for d in DataClass],
+                    help="redacted_sample for the camp's tenders; synthetic only for generated fixtures")
     args = ap.parse_args()
 
     pdfs = sorted(args.pdfs.glob("*.pdf")) if args.pdfs.is_dir() else [args.pdfs]
@@ -50,8 +53,10 @@ def main() -> None:
         data_class=DataClass(args.data_class),
         created_by="tools/build_l0_ruleset.py",
         created_at=dt.datetime.now(dt.UTC),
-        parts=[PartSpec(part=p.part, title=f"Part {p.part.value}", citation=p.citation, clauses=p.clauses)
-               for p in schedule.parts],
+        # A Part the schedule states in more than one place is one Part, merged the way
+        # the ruleset_build job merges it; a RuleSet refuses a Part listed twice.
+        parts=merge_parts([PartSpec(part=p.part, title=f"Part {p.part.value}", citation=p.citation, clauses=p.clauses)
+                           for p in schedule.parts]),
         items=[i.as_rule_set_item() for i in schedule.items],
     )
     args.out.write_text(ruleset.model_dump_json(indent=1))
