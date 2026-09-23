@@ -103,6 +103,17 @@ export const listPages = (pid, docId) => request("GET", `${p(pid)}/documents/${e
 // Audit.
 export const listEvents = (pid, params = {}) => request("GET", `${p(pid)}/events${q(params)}`);
 
+// Review (S4). A correction keeps the model's value beside the person's and the
+// engine re-decides the verdict at once, with no model call; `reason` is required and
+// an empty request is a 400. Confirming answers 409 `conflict` with `details.fields`
+// while any checked field is still needs_review, so the caller can say which.
+export const correctField = (pid, tenderer, letter, field, correction) =>
+  request("PATCH", `${p(pid)}/bids/${encodeURIComponent(tenderer)}/fields/`
+    + `${encodeURIComponent(letter)}/${encodeURIComponent(field)}`, correction);
+
+export const confirmReview = (pid, tenderer) =>
+  request("POST", `${p(pid)}/bids/${encodeURIComponent(tenderer)}/review/confirm`, {});
+
 // Page images: `image_url` in a PageCitation or Page is a signed link relative
 // to the API. The browser opens it as a plain <img>, so no key is attached.
 // A PageCitation's link is used as given: its highlight is inside the

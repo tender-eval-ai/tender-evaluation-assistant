@@ -421,3 +421,75 @@ export const events = [
     at: T0,
   },
 ];
+
+
+// --- Review corrections (S4) --------------------------------------------------
+// A correction is applied on top of `bidResult`, never into it: the model's value
+// stays beside the person's, which is what `FieldValue.model_value` is for and what
+// lets a reviewer see what was changed and why.
+//
+// The verdict is then re-decided in code - no model call - exactly as the API does:
+// a corrected field that now has a value stops being `needs_review`, and marking a
+// document absent disqualifies the item. This is the mock's approximation of the
+// engine, enough for the window to be exercised; the real engine is app/engine/.
+export function hasField(t, letter, field) {
+  const result = bidResult(t);
+  return Boolean(result?.fields?.[letter] && field in result.fields[letter]);
+}
+
+function applyCorrection(fieldValue, correction) {
+  const corrected = { ...fieldValue, model_value: fieldValue.model_value ?? fieldValue.value };
+  if (correction.value !== undefined) corrected.value = correction.value;
+  if (correction.present !== undefined) corrected.value = correction.present;
+  if (correction.page !== undefined && corrected.page) {
+    corrected.page = { ...corrected.page, page: correction.page };
+  }
+  corrected.redacted = false;                 // a corrected value is the person's, not a scan
+  corrected.confidence = 1;                   // a person's value is not a model's guess
+  corrected.correction = { by: correction.by, at: correction.at, reason: correction.reason };
+  return corrected;
+}
+
+// The engine's re-decision, as far as the mock needs it: a check on a corrected
+// field passes when the field now holds a value, and fails when a document was
+// marked absent. Everything else keeps the status the check already had.
+function redecide(check, fields, letter) {
+  const key = check.field_id.split(".").pop();
+  const value = fields[letter]?.[key];
+  if (!value?.correction) return check;
+  if (value.value === false) {
+    return { ...check, status: "disqualified", note: "marked absent by a reviewer" };
+  }
+  const filled = value.value !== null && value.value !== "" && value.value !== undefined;
+  return { ...check, status: filled ? "pass" : check.status, note: filled ? null : check.note };
+}
+
+export function correctedResult(t, corrections, confirmedBy) {
+  const result = bidResult(t);
+  if (!result) return null;
+  if (corrections?.size) {
+    for (const [key, correction] of corrections) {
+      const [letter, field] = [key.slice(0, key.indexOf(".")), key.slice(key.indexOf(".") + 1)];
+      const group = result.fields[letter];
+      if (group && field in group) group[field] = applyCorrection(group[field], correction);
+    }
+    for (const [letter, verdict] of Object.entries(result.verdicts)) {
+      verdict.checks = verdict.checks.map((c) => redecide(c, result.fields, letter));
+      const active = verdict.checks.filter((c) => c.status !== "dormant").map((c) => c.status);
+      verdict.outcome = worstOf(active.length ? active : ["pass"]);
+      verdict.worst = worstOf(verdict.checks.map((c) => c.status));
+    }
+    const items = Object.fromEntries(Object.entries(result.verdicts).map(([l, v]) => [l, v.outcome]));
+    result.stage1 = { outcome: worstOf(Object.values(items)), items };
+  }
+  result.review_confirmed_by = confirmedBy ?? null;
+  return result;
+}
+
+// The fields a confirm would refuse on: any check still needs_review.
+export function needsReviewFields(result) {
+  return Object.values(result.verdicts)
+    .flatMap((v) => v.checks)
+    .filter((c) => c.status === "needs_review")
+    .map((c) => c.field_id);
+}

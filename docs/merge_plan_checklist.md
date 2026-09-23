@@ -48,6 +48,7 @@ Last updated: 2026-09-20 (Chenyu).
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | proposed | Nasi: which to take first |
+| J4 | S4 review: corrections and confirmation in the UI | done | — |
 
 ## A. Corrections to the plan
 
@@ -353,6 +354,22 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      whole document's parenting being wrong is one containment bug, and it breaks
      "everything under this schedule" queries.
 - Nasi (2026-09-21): proposed. 1 first - bounded, measurable, and user-visible.
+
+### J4. Corrections and review confirmation in the Stage windows (S4)
+- The review half of S4 on the UI side: a reviewer corrects a field (value, a document
+  marked present or absent, or a page) with a required reason, and confirms the review
+  once nothing needs one. Both routes were already finished on the API side.
+- The model's value is kept beside the person's and shown with who changed it and why,
+  which is what `FieldValue.model_value` and `Correction` are for: a reviewer looking
+  at a corrected field can see what it used to say.
+- A correction and a confirmation each answer with the whole re-decided `BidResult`,
+  so the window takes the answer as its new state rather than reloading - there is
+  then no window in which it shows a verdict computed from a value the server has
+  since changed.
+- Confirming answers 409 `conflict` with `details.fields`; the window names them
+  rather than saying it failed.
+- Left for S4: the engine switched to each tender's confirmed rubric, and the wider
+  Playwright review flow (one spec today, `e2e/item-l.spec.js`).
 
 ## Verified facts (no action needed)
 
