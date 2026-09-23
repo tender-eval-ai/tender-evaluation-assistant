@@ -3,7 +3,9 @@ import TopNav from "./components/TopNav.jsx";
 import PipelineStepper from "./components/PipelineStepper.jsx";
 import VendorCompletenessList from "./components/VendorCompletenessList.jsx";
 import ProjectPicker from "./screens/ProjectPicker.jsx";
+import ReportWindow from "./windows/ReportWindow.jsx";
 import RulesWindow from "./windows/RulesWindow.jsx";
+import ScoringWindow from "./windows/ScoringWindow.jsx";
 import StageIWindow from "./windows/StageIWindow.jsx";
 import StageIIWindow from "./windows/StageIIWindow.jsx";
 import { getProject, listProjects, listRulesetVersions, USE_MOCK } from "./api.js";
@@ -108,6 +110,9 @@ function AppShell({ projectId, project, onChangeProject }) {
         {activeWindow === "stage2" && effectiveTenderer && (
           <StageIIWindow projectId={projectId} tenderer={effectiveTenderer} />
         )}
+        {/* Scoring and Report are across every tenderer, so neither takes one. */}
+        {activeWindow === "scoring" && <ScoringWindow projectId={projectId} />}
+        {activeWindow === "report" && <ReportWindow projectId={projectId} />}
       </main>
     </div>
   );

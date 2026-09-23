@@ -43,7 +43,9 @@ function headers(extra = {}) {
   return h;
 }
 
-async function request(method, path, body) {
+// A call that answered 2xx, or an ApiError. `request` reads it as JSON; a report
+// download reads it as a file.
+async function call(method, path, body) {
   const response = await fetch(`${apiBase()}${path}`, {
     method,
     headers: headers(body === undefined ? {} : { "Content-Type": "application/json" }),
@@ -59,6 +61,11 @@ async function request(method, path, body) {
       err.details ?? {}
     );
   }
+  return response;
+}
+
+async function request(method, path, body) {
+  const response = await call(method, path, body);
   return response.status === 204 ? null : response.json();
 }
 
@@ -102,6 +109,41 @@ export const listPages = (pid, docId) => request("GET", `${p(pid)}/documents/${e
 
 // Audit.
 export const listEvents = (pid, params = {}) => request("GET", `${p(pid)}/events${q(params)}`);
+
+// Scoring and reports (S4). Every one is pinned to a rule-set version: omit it for
+// the latest confirmed. `price-summary` and `evaluation` answer 409
+// `unconfirmed_ruleset` before a rule set is confirmed, and a report answers 409
+// `review_pending` with `details.tenderers` while any checked review is unconfirmed -
+// both are ApiError, so a window shows the reason rather than an empty table.
+export const getPriceSummary = (pid, { version } = {}) =>
+  request("GET", `${p(pid)}/price-summary${q({ version })}`);
+export const getEvaluation = (pid, { version } = {}) =>
+  request("GET", `${p(pid)}/evaluation${q({ version })}`);
+export const listReports = (pid, { version } = {}) =>
+  request("GET", `${p(pid)}/reports${q({ version })}`);
+
+// A report is a .docx, not JSON. It is fetched like every other call, because the
+// reports route requires the X-API-Key header and a plain link cannot send one, and
+// handed back as a Blob with the name the API gives it, for the window to save. A
+// refusal is an ApiError like any other: 409 `review_pending` names the tenderers
+// still open in `details.tenderers`.
+export async function downloadReport(pid, name, { version } = {}) {
+  const response = await call("GET", `${p(pid)}/reports/${encodeURIComponent(name)}${q({ version })}`);
+  const disposition = response.headers.get("Content-Disposition") ?? "";
+  const filename = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? name;
+  return { blob: await response.blob(), filename };
+}
+
+// Review (S4). A correction keeps the model's value beside the person's and the
+// engine re-decides the verdict at once, with no model call; `reason` is required and
+// an empty request is a 400. Confirming answers 409 `conflict` with `details.fields`
+// while any checked field is still needs_review, so the caller can say which.
+export const correctField = (pid, tenderer, letter, field, correction) =>
+  request("PATCH", `${p(pid)}/bids/${encodeURIComponent(tenderer)}/fields/`
+    + `${encodeURIComponent(letter)}/${encodeURIComponent(field)}`, correction);
+
+export const confirmReview = (pid, tenderer) =>
+  request("POST", `${p(pid)}/bids/${encodeURIComponent(tenderer)}/review/confirm`, {});
 
 // Re-evaluate every checked tenderer against a confirmed rule-set version (default:
 // the latest confirmed), as a job of kind `evaluate`. Engine only, no model call.

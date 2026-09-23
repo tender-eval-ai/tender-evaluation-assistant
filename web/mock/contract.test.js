@@ -102,6 +102,9 @@ const REQUESTS = [
     .map((x) => ["get", "/projects/{pid}/bids/{tenderer}/results", `/projects/${fx.PID}/bids/${x}/results`]),
   ["get", "/projects/{pid}/jobs", `/projects/${fx.PID}/jobs`],
   ["get", "/projects/{pid}/events", `/projects/${fx.PID}/events`],
+  ["get", "/projects/{pid}/price-summary", `/projects/${fx.PID}/price-summary`],
+  ["get", "/projects/{pid}/evaluation", `/projects/${fx.PID}/evaluation`],
+  ["get", "/projects/{pid}/reports", `/projects/${fx.PID}/reports`],
 ];
 
 describe(`mock vs ${specPath.includes("docs/openapi.json") ? "docs/openapi.json" : "openapi.s2.json (PR #35)"}`, () => {
