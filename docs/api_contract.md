@@ -116,7 +116,7 @@ Items 1 and 2 landed in PR #35; 3 to 10, 14, 16 and 17 in #41 and #44. Items 8 (
 
 ## Forms and fields (S4-3)
 
-The closed menu of forms an offer is made of (`app/checks/forms.py`): one per page label that serves a Completeness Check Schedule item, each with a fixed field menu. A form's id is the prefix of its flat keys and of `BidResult.fields[letter]`; a template's rules and a drafted rule name these fields (`price_schedule.unit_price`), so production templates must use them. Every form has `document` (its heading as printed; null when the form is absent). A `number` is read as printed and coerced (the printed form stays beside it and is what V4 checks); a `signature` holds the printed name or title next to the signature, `signature present` when only a signature or chop is visible, null when unsigned; a `date` is kept as printed and parsed by the `date` check.
+The closed menu of forms an offer is made of (`app/checks/forms.py`): one per page label that serves a Completeness Check Schedule item, each with a fixed field menu. A form's id is the prefix of its flat keys and of `BidResult.fields[letter]`; a template's rules and a drafted rule name these fields (`price_schedule.unit_price`), so production templates must use them. Every form has `document` (its heading as printed; null when the form is absent). A `number` is read as printed and coerced (the printed form stays beside it and is what V4 checks); a `signature` holds the printed name or title next to the signature, `signature present` when only a signature or chop is visible, null when unsigned; a `date` is kept as printed and parsed by the `date` check. An item's form is its template's when the template id is a form id, else the form its schedule row names: the phrases in `forms.py` matched in the item's title, then its quote, the earliest in the row winning. Never its letter, which differs from tender to tender. An item whose row names no form has no fields and goes to a reviewer.
 
 | Form (key prefix) | Page label | Fields (kind) |
 |---|---|---|
@@ -133,6 +133,7 @@ The closed menu of forms an offer is made of (`app/checks/forms.py`): one per pa
 | `noncollusive_certificate` (Non-collusive Tendering Certificate) | `noncollusive_certificate` | `document` (text), `tenderer_name` (text), `signature` (signature), `date` (date) |
 | `compliance_schedule` (Compliance Schedule) | `compliance_schedule` | `document` (text), `delivery_days` (number), `non_compliances` (text) |
 | `method_of_production` (Method of Production Statement) | `method_of_production_statement` | `document` (text), `statement` (text) |
+| `contract_deposit` (Annex A to the Terms of Tender, Method of providing the Contract Deposit) | `contract_deposit_annex` | `document` (text), `method` (text), `refund_method` (text) |
 
 One model call reads one form (all its pages, one fixed reading); an absent form costs one resolve call and no read; a scanned form costs one more call for V4's second read.
 

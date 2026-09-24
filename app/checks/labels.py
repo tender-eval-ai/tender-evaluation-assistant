@@ -20,6 +20,7 @@ PAGE_LABELS: dict[str, tuple[str, ...]] = {
     "noncollusive_certificate": ("l",),
     "compliance_schedule": ("n",),
     "method_of_production_statement": ("o",),
+    "contract_deposit_annex": (),      # Tender 1's (o) and Tender 2's (m); no synthetic item
 }
 
 ITEM_TITLES = {

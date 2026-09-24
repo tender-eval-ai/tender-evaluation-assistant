@@ -46,6 +46,8 @@ TITLES = {
     "board_resolution": "Certified Extract of Board Resolution", "contact_details": "Appendix to the Terms of Tender - Contact Details",
     "noncollusive_certificate": "Non-collusive Tendering Certificate", "compliance_schedule": "Compliance Schedule",
     "method_of_production": "Annex A Part I - Method of Production Statement",
+    # No synthetic bid has this form; a real schedule's contract-deposit item does.
+    "contract_deposit": "Annex A Part I - Method of providing the Contract Deposit",
 }
 SIGNED_LETTERS = ("a", "i", "l")
 
