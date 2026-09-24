@@ -67,7 +67,7 @@ Compose stack, `deepseek-chat` for L1 to L3, the two test templates (certificate
 | rules_total / unverified_notes | 48 / 3 |
 | gaps (reasoned) | 40 (0) |
 
-written <scratch file>
+written <scratch>/live_eval.json
 
 Reading: L0 to L2 are full marks on this tender; L3 drafted rules for six items and found nothing it could quote verbatim for four of the eight keyed checks, three of which it proposed but could not ground (the unverified notes on (i), (j), (o)), and one it did not propose ((n)). Item (m) matched the price schedule but its slots are not stated under Parts C and D, so it waits for a person, which is the intended outcome. The 40 gaps are the synthetic Terms' obligation sentences under the unmatched items' clauses; the synthetic generator writes one such sentence into nearly every clause.
 

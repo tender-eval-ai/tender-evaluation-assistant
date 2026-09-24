@@ -78,7 +78,16 @@ def rollback(name: str, dsn: str | None = None, directory: Path = MIGRATIONS_DIR
 
 
 def reset_for_tests(dsn: str | None = None) -> None:
-    """Drop the app's tables and empty Procrastinate's, so a test starts from nothing."""
+    """Drop the app's tables and empty Procrastinate's, so a test starts from nothing.
+
+    Only on a database whose name says it is for tests (`harness`, as CI and the Postgres
+    tests use, or anything containing `test`): the README's local stack exports a
+    DATABASE_URL for `tender`, and a test run pointed at it would otherwise wipe it."""
+    from psycopg.conninfo import conninfo_to_dict
+
+    name = conninfo_to_dict(dsn or os.environ["DATABASE_URL"]).get("dbname") or ""
+    if "harness" not in name and "test" not in name:
+        raise RuntimeError(f"refusing to reset database {name!r}: only a test database (named harness or *test*) is reset")
     with _connect(dsn) as c:
         c.execute("drop table if exists results, job_steps, rulesets, runs, llm_cache, llm_rate_limit, llm_budget, "
                   "events, schema_migrations cascade")

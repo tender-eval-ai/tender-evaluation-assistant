@@ -10,9 +10,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from langgraph.checkpoint.sqlite import SqliteSaver
 from pydantic import BaseModel
 
+from app.gateway import EndpointPolicy, host_of
 from app.graph import (build_graph, graph_config, initial_state, pending_checkpoint,
                        pending_from_snapshot, resume as graph_resume)
 from backend import deps, jobs
+from backend.errors import ApiError
 
 router = APIRouter(dependencies=[Depends(deps.require_key)])
 
@@ -106,6 +108,24 @@ def _graph_job(pid: str, pdir: Path, start: bool, payload: dict | None = None) -
     jobs._start_job(pid, pdir, job, "starting the orchestrated run" if start else "continuing the run")
 
 
+def _check_endpoints(pdir: Path) -> None:
+    """The graph calls the model client directly, not through the LLM gateway, so the
+    gateway's endpoint policy is applied here, before anything runs. The gateway can drop
+    a chain entry a class may not reach; this path cannot, so any such entry refuses the
+    run with 403 data_class_forbidden (the contract's code for the gateway's refusal)."""
+    cfg = deps._make_cfg(pdir)
+    data_class = deps.data_class_of(pdir)
+    policy = EndpointPolicy.from_env()
+    chain = [cfg.text_model, *cfg.text_fallbacks, cfg.vision_model, *cfg.vision_fallbacks]
+    refused = sorted({host_of(e.partition("@")[2] or cfg.base_url) for e in chain
+                      if not policy.allowed(e.partition("@")[2] or cfg.base_url, data_class)})
+    if refused:
+        raise ApiError(403, "data_class_forbidden",
+                       f"a {data_class} project may not be sent to {', '.join(refused)}; "
+                       "point the models at a local endpoint, or clear the host for this class",
+                       {"data_class": data_class, "endpoints": refused})
+
+
 @router.post("/projects/{pid}/run")
 def run_project(pid: str) -> dict:
     pdir = deps._project_dir(pid)
@@ -113,6 +133,7 @@ def run_project(pid: str) -> dict:
         raise HTTPException(400, "upload tender documents first")
     if pending_from_snapshot(_graph_snapshot(pdir, pid)):
         raise HTTPException(409, "the run is paused at a human checkpoint — use /resume")
+    _check_endpoints(pdir)
     _graph_job(pid, pdir, start=True)
     return {"started": True}
 
@@ -129,6 +150,7 @@ def resume_project(pid: str, req: ResumeRequest | None = None) -> dict:
     if not pending:
         raise HTTPException(409, "nothing to resume — the run is not paused")
     payload = {k: v for k, v in (req.model_dump() if req else {}).items() if v is not None}
+    _check_endpoints(pdir)
     _graph_job(pid, pdir, start=False, payload=payload)
     return {"resumed": pending["checkpoint"]}
 
