@@ -163,7 +163,7 @@ def test_a_check_through_the_worker_yields_fields_with_citations_a_verdict_and_i
     # text ("tenderer name") does not, which is what this asserts against.
     assert all(c["field"] in res["fields"]["l"] for c in verdict["checks"]), verdict["checks"]
     assert res["stage1"] == {"outcome": "pass", "items": {"l": "pass"}} and res["stage2"] is None
-    assert res["cost"]["calls"] == 27 and res["cost"]["usd"] == 0, "3 triage, 2 resolve, 11 extracts, 11 second reads"
+    assert res["cost"]["calls"] == 28 and res["cost"]["usd"] == 0, "3 triage, 3 resolve, 11 extracts, 11 second reads"
     assert list(res["fields"]) == ["l"] and list(res["verdicts"]) == ["l"], "the rule set names item (l) alone"
     assert client.get(f"/projects/{pid}/bids/Tenderer_B/results", params={"version": 2}).status_code == 404
     doc = next(d for d in client.get(f"/projects/{pid}/documents").json() if d["tenderer"] == "Tenderer_B")
@@ -182,7 +182,7 @@ def test_the_driver_script_runs_the_case_end_to_end(api, worker, tmp_path, monke
     backend_api.deps.configure()
     rows = run(Api(client), case="synthetic_tender", tenderers=["Tenderer_B", "Tenderer_C"], timeout=120, log=lambda *_: None)
     by = {r["tenderer"]: r for r in rows}
-    assert by["Tenderer_B"]["outcome"] == "pass" and by["Tenderer_B"]["page"] == 13 and by["Tenderer_B"]["calls"] == 27
+    assert by["Tenderer_B"]["outcome"] == "pass" and by["Tenderer_B"]["page"] == 13 and by["Tenderer_B"]["calls"] == 28
     assert by["Tenderer_B"]["verified"] is True and by["Tenderer_B"]["confidence"] == 0.9
     assert by["Tenderer_C"]["outcome"] == "disqualified" and by["Tenderer_C"]["signature"] is None
     assert "Tenderer_B" in table(rows)

@@ -25,10 +25,13 @@ not being the manufacturer, and the engine has no condition support yet, so the 
 outcomes send a blank to a reviewer instead of disqualifying; (j) Tenderer_D has no board
 resolution, Part B; (l) Tenderer_C has no certificate, Part A.
 
-Call counts (`test/checks/test_vendor_check_pipeline.py`): a 16-page scanned offer with
-eleven forms costs 3 triage + 2 resolve (the two absent forms) + 11 extracts + 11 second
-reads = 27 calls; a 12-page digital one 2 + 2 + 11 + 0 = 15; a retried extract step reads
-only the forms not yet read.
+Call counts (`test/checks/test_vendor_check_pipeline.py`, as of 2026-09-23): a 16-page
+scanned offer with eleven forms costs 3 triage + 3 resolve (the two absent forms, and the
+contract-deposit form added then, which no synthetic bid has) + 11 extracts + 11 second
+reads = 28 calls; a 12-page digital one 2 + 3 + 11 + 0 = 16. When a Part A form is absent,
+the V5 agent adds its steps after the rule set is confirmed (one for a quick "not found").
+A retried extract step reads only the forms not yet read. The live-run counts below were
+measured before V5 and the contract-deposit form.
 
 ## Live run through the stack (compose, DeepSeek vision, `tools/check_synthetic_case.py --ruleset test/data/synthetic_tender/ruleset_all_items.json`)
 

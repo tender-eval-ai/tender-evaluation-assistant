@@ -1,8 +1,9 @@
 """The whole vendor check on the synthetic case, through the runner's executor with an
 in-memory context: rendering, triage, resolve, extract, verify (every form), the pause
 for the rule set, and the engine's verdict on every item. Call counts are exact: a
-16-page scanned offer with eleven forms costs 3 triage + 2 resolve (the two absent forms)
-+ 11 extract + 11 second reads = 27; a 12-page digital one 2 + 2 + 11 + 0 = 15."""
+16-page scanned offer with eleven forms costs 3 triage + 3 resolve (the two absent forms and
+the contract deposit, which no synthetic bid has) + 11 extract + 11 second reads = 28; a
+12-page digital one 2 + 3 + 11 + 0 = 16."""
 import pytest
 
 from app.checks import vendor_check
@@ -21,7 +22,7 @@ def run_for(tenderer: str, monkeypatch, **fake_kw):
     return llm, ctx
 
 
-def test_a_scanned_offer_is_checked_end_to_end_with_twenty_seven_calls(project, monkeypatch):
+def test_a_scanned_offer_is_checked_end_to_end_with_twenty_eight_calls(project, monkeypatch):
     llm, ctx = run_for("Tenderer_B", monkeypatch)
     out = run_pipeline(vendor_check.PIPELINE, ctx)
     assert out.state == "paused" and out.reason == "ruleset_confirmed"
@@ -29,13 +30,13 @@ def test_a_scanned_offer_is_checked_end_to_end_with_twenty_seven_calls(project, 
     assert len(ctx.data["pages"]) == 16 and ctx.data["next_batch"] == 16
     assert ctx.data["form_pages"]["noncollusive_certificate"]["pages"] == [13] and ctx.data["form_pages"]["price_schedule"]["pages"] == [3]
     assert ctx.data["form_pages"]["tender_sample_declaration"]["pages"] == [] and ctx.data["form_pages"]["manufacturer_letter"]["pages"] == []
-    assert llm.count(out_model=vendor_check.v1.PageLabels) == 3 and llm.count(out_model=vendor_check.resolve_form.__globals__["ItemPages"]) == 2
-    assert llm.count(match=r"extract form ") == 11 and llm.count(out_model=SecondRead) == 11 and llm.count() == 27
+    assert llm.count(out_model=vendor_check.v1.PageLabels) == 3 and llm.count(out_model=vendor_check.resolve_form.__globals__["ItemPages"]) == 3
+    assert llm.count(match=r"extract form ") == 11 and llm.count(out_model=SecondRead) == 11 and llm.count() == 28
     checkpoints = [e for e in ctx.events if e[0] == "checkpoint"]
-    assert len(checkpoints) == 3 + 13 + 13, "one per triage batch, one per form extracted, one per form verified"
+    assert len(checkpoints) == 3 + 2 * len(vendor_check.FORMS), "one per triage batch, one per form extracted, one per form verified"
     assert sorted(ctx.data["extracted"]) == sorted(vendor_check.FORMS) and sorted(ctx.data["verified"]) == sorted(vendor_check.FORMS)
     ctx.confirm(RULESET)
-    assert run_pipeline(vendor_check.PIPELINE, ctx).state == "done" and llm.count() == 27
+    assert run_pipeline(vendor_check.PIPELINE, ctx).state == "done" and llm.count() == 28
     verdict = vendor_check.PIPELINE.decide(ctx.data["fields"], RULESET)
     assert verdict["ruleset_version"] == 1 and list(verdict["items"]) == ["l"] and verdict["items"]["l"]["outcome"] == "pass"
     fields = ctx.data["fields"]
@@ -44,12 +45,13 @@ def test_a_scanned_offer_is_checked_end_to_end_with_twenty_seven_calls(project, 
     assert fields["price_schedule.unit_price"] == 4.86 and fields["price_schedule.unit_price_verification"]["verified"] is True
 
 
-def test_a_digital_offer_is_verified_on_its_text_layer_with_fifteen_calls(project, monkeypatch):
+def test_a_digital_offer_is_verified_on_its_text_layer_with_sixteen_calls(project, monkeypatch):
     llm, ctx = run_for("Tenderer_A", monkeypatch)
     ctx.confirm(RULESET_ALL)
     assert run_pipeline(vendor_check.PIPELINE, ctx).state == "done"
-    assert ctx.data["form_pages"]["noncollusive_certificate"]["pages"] == [10] and llm.count() == 15 + 1, \
-        "two triage calls for 12 pages, two resolve calls for the absent forms, eleven extracts, no second read; " \
+    assert ctx.data["form_pages"]["noncollusive_certificate"]["pages"] == [10] and llm.count() == 16 + 1, \
+        "two triage calls for 12 pages, three resolve calls (the two absent forms, the contract deposit), eleven " \
+        "extracts, no second read; " \
         "then one agent step for the absent Part A letter of intent, finished not found"
     assert [e["tool"] for e in ctx.data["agent_trace"]["manufacturer_letter"]] == ["finish"] and ctx.data["agent_done"] == ["manufacturer_letter"]
     fields = ctx.data["fields"]
@@ -71,12 +73,13 @@ def test_a_reading_the_text_layer_contradicts_pauses_for_a_person_not_the_engine
     assert verdict["outcome"] == "needs_review" and verdict["items"]["l"]["reasons"] == ["unverified: not on the text layer of page 10"]
 
 
-def test_an_offer_without_the_certificate_is_disqualified_after_three_resolve_calls(project, monkeypatch):
+def test_an_offer_without_the_certificate_is_disqualified_after_four_resolve_calls(project, monkeypatch):
     llm, ctx = run_for("Tenderer_C", monkeypatch)
     ctx.confirm(RULESET)
     assert run_pipeline(vendor_check.PIPELINE, ctx).state == "done"
     assert ctx.data["form_pages"]["noncollusive_certificate"]["pages"] == []
-    assert llm.count() == 2 + 3 + 10 + 1, "two triage calls for 12 pages, three resolve calls (certificate, sample, letter), ten " \
+    assert llm.count() == 2 + 4 + 10 + 1, "two triage calls for 12 pages, four resolve calls (certificate, sample, letter, contract " \
+        "deposit), ten " \
         "extracts; then the agent's one look for the absent Part A certificate, finished not found"
     verdict = vendor_check.PIPELINE.decide(ctx.data["fields"], RULESET)
     assert verdict["outcome"] == "disqualified" and verdict["items"]["l"]["fields"][0]["value"] is None

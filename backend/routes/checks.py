@@ -126,9 +126,10 @@ def _bid_result(pid: str, pdir, run: dict, result, steps: dict, spec: dict | Non
             form = form_for(item)
             if form is not None:
                 forms[item.letter] = form
-    for letter in items:
-        if letter not in forms and forms_for_letter(letter):
-            forms[letter] = forms_for_letter(letter)[0]
+    if spec is None:                  # a result from before verdicts carried a rule set (S2 to S4-2)
+        for letter in items:
+            if letter not in forms and forms_for_letter(letter):
+                forms[letter] = forms_for_letter(letter)[0]
     fields: dict[str, dict[str, FieldValue]] = {}
     for letter, form in forms.items():
         fields[letter] = {name: field_value(form.key(name)) for name in form.names if form.key(name) in result.fields}
