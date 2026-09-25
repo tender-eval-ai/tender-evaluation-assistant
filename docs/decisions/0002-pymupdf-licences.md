@@ -1,6 +1,6 @@
 # 0002. PDF libraries for the tender parser
 
-Status: **accepted by Nasi, 2026-09-16; Chenyu to confirm at S2** (the plan's open decision "PyMuPDF licence · D3"). Author: Nasi.
+Status: **accepted by both** (Nasi 2026-09-16, Chenyu 2026-09-18 in the review of PR #31) (the plan's open decision "PyMuPDF licence · D3"). Author: Nasi.
 
 ## Context
 
@@ -29,4 +29,4 @@ Option 1. The project is a non-commercial portfolio project, and the goal for th
 
 - Anyone who uses this repository commercially needs Artifex commercial licences for both packages, or must replace `app/parsing/`. The README says so before the repo is made public (checklist F4).
 - AGPL obligations apply to a hosted demo: the running service must offer its source, which a public repository satisfies.
-- Nothing outside `app/parsing/` imports either package, so option 2 or 3 stays a contained change if the project's use changes.
+- In the application, nothing outside `app/parsing/` imports either package, so option 2 or 3 stays a contained change if the project's use changes. Two development files also import them: `tools/eval_parser.py` (the parser eval) and `test/parsing/test_layout_parser_tables.py`.
