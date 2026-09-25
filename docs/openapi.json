@@ -1898,6 +1898,7 @@
             "title": "Cost Effectiveness"
           },
           "currency": {
+            "description": "the offer's currency as the summary prints it, or as the offer printed it when it is not recognised",
             "title": "Currency",
             "type": "string"
           },
@@ -2012,9 +2013,10 @@
                 "type": "null"
               }
             ],
+            "description": "as quoted, in the offer's currency",
             "title": "Unit Price"
           },
-          "unit_price_hkd": {
+          "unit_price_base": {
             "anyOf": [
               {
                 "type": "number"
@@ -2023,7 +2025,8 @@
                 "type": "null"
               }
             ],
-            "title": "Unit Price Hkd"
+            "description": "in the tender's currency; null when it cannot be converted, and the remark says why",
+            "title": "Unit Price Base"
           }
         },
         "required": [
@@ -2095,10 +2098,43 @@
       "PriceSchemeOut": {
         "description": "The tender's price scheme as the confirmed rule set states it.",
         "properties": {
+          "base_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the same currency as an ISO 4217 code",
+            "title": "Base Currency"
+          },
           "currency": {
-            "default": "HK$",
-            "title": "Currency",
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the tender's currency as the summary prints it (e.g. HK$, US$, €); null when it is not set and the offers are not all in one currency",
+            "title": "Currency"
+          },
+          "currency_source": {
+            "default": "",
+            "description": "where the tender's currency came from: a rule-set slot, PRICING_BASE_CURRENCY, or every offer being quoted in it",
+            "title": "Currency Source",
             "type": "string"
+          },
+          "exchange_rates": {
+            "additionalProperties": {
+              "type": "number"
+            },
+            "description": "ISO code -> the rate that converts a price in that currency into the tender's currency",
+            "title": "Exchange Rates",
+            "type": "object"
           },
           "quantity": {
             "anyOf": [
@@ -2130,16 +2166,10 @@
             "default": "kg",
             "title": "Unit",
             "type": "string"
-          },
-          "usd_hkd": {
-            "description": "what a US$ quotation is converted at (PRICING_USD_HKD)",
-            "title": "Usd Hkd",
-            "type": "number"
           }
         },
         "required": [
-          "type",
-          "usd_hkd"
+          "type"
         ],
         "title": "PriceSchemeOut",
         "type": "object"

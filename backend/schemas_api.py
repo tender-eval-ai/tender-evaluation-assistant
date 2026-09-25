@@ -325,8 +325,13 @@ class PriceSchemeOut(BaseModel):
     type: Literal["cost_effectiveness", "unit_price_x_quantity"]
     quantity: float | None = Field(default=None, description="the estimated quantity, from the price schedule item's slot")
     unit: str = "kg"
-    currency: str = "HK$"
-    usd_hkd: float = Field(description="what a US$ quotation is converted at (PRICING_USD_HKD)")
+    currency: str | None = Field(default=None, description="the tender's currency as the summary prints it (e.g. HK$, US$, €); "
+                                                           "null when it is not set and the offers are not all in one currency")
+    base_currency: str | None = Field(default=None, description="the same currency as an ISO 4217 code")
+    exchange_rates: dict[str, float] = Field(default_factory=dict, description="ISO code -> the rate that converts a price "
+                                                                               "in that currency into the tender's currency")
+    currency_source: str = Field(default="", description="where the tender's currency came from: a rule-set slot, "
+                                                         "PRICING_BASE_CURRENCY, or every offer being quoted in it")
     source: str = Field(default="", description="where the quantity came from")
 
 
@@ -334,9 +339,11 @@ class PriceRow(BaseModel):
     tenderer: str
     run_id: str
     conforming: bool = Field(description="Stage I and II both pass")
-    currency: str
-    unit_price: float | None = None
-    unit_price_hkd: float | None = None
+    currency: str = Field(description="the offer's currency as the summary prints it, or as the offer printed it when "
+                                      "it is not recognised")
+    unit_price: float | None = Field(default=None, description="as quoted, in the offer's currency")
+    unit_price_base: float | None = Field(default=None, description="in the tender's currency; null when it cannot be "
+                                                                    "converted, and the remark says why")
     dosage: float | None = None
     dosage_rounded: float | None = Field(default=None, description="two significant figures, per the Terms of Tender")
     estimated_goods_price: float | None = None
