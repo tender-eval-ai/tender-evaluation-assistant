@@ -1,4 +1,0 @@
-# Streamlit theme — blue accent (matches the upload cards' #1f6feb) instead of the
-# default red, so red stays reserved for destructive actions (see ui.py delete button).
-[theme]
-primaryColor = "#1f6feb"

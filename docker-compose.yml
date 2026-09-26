@@ -2,7 +2,7 @@
 #   cp .env.example .env        # models (local Ollama by default); set API_KEY on any shared machine
 #   docker compose up -d --build
 #   python tools/check_synthetic_case.py       # the synthetic case end to end through the API
-# UI: http://<host>:8501 (Streamlit, until S5). API: http://<host>:8000/docs.
+# UI: http://<host>:8080. API: http://<host>:8000/docs.
 # Restrict inbound access (host firewall) to your own IP.
 services:
   postgres:
@@ -61,18 +61,16 @@ services:
     stop_grace_period: 60s   # SIGTERM drains the running jobs before the process exits
     restart: unless-stopped
 
-  frontend:
+  web:
+    # The review UI (web/): the built React app behind nginx, which forwards the API's
+    # paths to the backend and adds API_KEY to them, so the key stays on the server.
     build:
-      context: .
-      dockerfile: frontend/Dockerfile
+      context: ./web
     environment:
       - BACKEND_URL=http://backend:8000
-      # What the user's browser can reach — change to http://<server-ip>:8000 when
-      # the UI is accessed from another machine.
-      - PUBLIC_BACKEND_URL=${PUBLIC_BACKEND_URL:-http://localhost:8000}
       - API_KEY=${API_KEY:-}
     ports:
-      - "8501:8501"
+      - "${UI_PORT:-8080}:8080"   # UI_PORT moves it when 8080 is taken
     depends_on:
       - backend
     restart: unless-stopped

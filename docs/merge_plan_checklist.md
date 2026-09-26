@@ -48,7 +48,7 @@ Last updated: 2026-09-20 (Chenyu).
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
-| J1 | Parser follow-ups after the S3 recall gate | part done | 1 and 4 done; 2 and 3 open |
+| J1 | Parser follow-ups after the S3 recall gate | done | 1 and 4 done; 2 and 3 closed without change: every tender clears the S3 gate (95.6 / 97.8 / 95.2) |
 | J2 | Where a form's own notes and trigger live | decided | option 1 (#59); next: template ids = form ids, the field map |
 | J3 | S4 windows: Scoring and Report | done | — |
 | J4 | S4 review: corrections and confirmation in the UI | done | — |
@@ -377,6 +377,9 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      whole document's parenting being wrong is one containment bug, and it breaks
      "everything under this schedule" queries.
 - Nasi (2026-09-21): proposed. 1 first - bounded, measurable, and user-visible.
+- Nasi (2026-09-26): done. 1 and 4 are fixed; 2 and 3 are closed without further parser
+  work, since every tender clears the S3 recall gate. Tender 3's margin is 4 nodes
+  (1506/1582), so its figure is quoted as measured, never rounded up.
 
 ### J2. Where a form's own notes and trigger live (blocks the rule-file split)
 - Found by: starting the S1 split of the 13 rule files (`tools/split_rule_files.py`).

@@ -205,7 +205,7 @@ app/                the pipeline library (shared by CLI and backend)
   rulesets/         the shared rule-set contract (schema.py), changed only by a `contract` PR
   engine/           Nasi's rule engine, ported unchanged from Bidding-AI-expert@7e8e273
 backend/            FastAPI service (projects, uploads, jobs, reports API) + Dockerfile
-frontend/           Streamlit review UI (HTTP client of the backend only) + Dockerfile
+web/                the review UI (React, Vite): Rules, Stage I/II, Scoring, Report; nginx image for compose
 mcp_server/         MCP server over the read-only tools + local-model MCP client
 docs/               plan (dated experiment log), detailed specification, interview prep, project report (audit)
 migrations/         SQL migrations applied by app.db.migrate (the worker runs it at start)
@@ -220,15 +220,16 @@ tools/              case generator (incl. --buried benchmark case, ground truth)
 
 ## Service mode — frontend + backend
 
-Requirements are split per service: `backend/requirements.txt` (FastAPI + pipeline) and
-`frontend/requirements.txt` (Streamlit + requests only). Root `requirements.txt` is the
-dev aggregate (both + pytest).
+The API's requirements are `backend/requirements.txt`; root `requirements.txt` is the dev
+aggregate (the API's plus pytest and the MCP client). The UI in `web/` is an npm project;
+its image serves the built app with nginx, forwards the API's paths to the backend and adds
+`API_KEY` there, so the key never reaches the browser.
 
 ```bash
 # Docker (recommended): Postgres, the API, the check worker and the UI.
 cp .env.example .env       # point the models at Ollama/DeepSeek/Vertex; set API_KEY on any shared machine
 docker compose up -d --build
-# UI:  http://localhost:8501     API: http://localhost:8000/docs     (workers: docker compose up -d --scale worker=3)
+# UI:  http://localhost:8080     API: http://localhost:8000/docs     (workers: docker compose up -d --scale worker=3)
 
 # The synthetic tender case end to end through the API: project, import, rule set drafted and
 # confirmed by a second person, one check per tenderer on the worker, the results per tenderer.
@@ -239,7 +240,7 @@ docker run -d --name tea-pg -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=tender -p 55
 export DATABASE_URL=postgresql://postgres:dev@localhost:55432/tender
 .venv/bin/uvicorn backend.api:app --reload --port 8000
 .venv/bin/python -m app.jobs.worker --pipelines app.checks.vendor_check
-BACKEND_URL=http://localhost:8000 .venv/bin/streamlit run frontend/ui.py
+cd web && VITE_API_BASE=http://localhost:8000 npm run dev   # the UI on :5173 (without VITE_API_BASE: the mock)
 ```
 
 **How a check runs (S2).** `POST /projects/{pid}/checks` queues one job per tenderer on Postgres; a worker renders every
@@ -511,7 +512,7 @@ leave the client's network. The same compose stack is the deliverable for the cl
 DGX Spark: stand up vLLM serving the local models, point `GITHUB_MODELS_BASE_URL` at
 it in `.env`, and build the images for ARM (`docker compose build` on the GB10, or
 `--platform linux/arm64`). Set a strong `API_KEY` whenever the services are reachable
-by anyone but you, and keep port 8000 (API) firewalled — the UI on 8501 is the only
+by anyone but you, and keep port 8000 (API) firewalled — the UI on 8080 is the only
 thing users need.
 
 ## Demo ⇄ production mapping
