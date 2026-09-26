@@ -46,6 +46,7 @@ Last updated: 2026-09-20 (Chenyu).
 | G1 | Two independent demos, same image | agreed | Nasi: domain, when chosen |
 | G2 | No cloud named in code; configuration only | agreed | — (update the plan) |
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
+| G4 | Chenyu's demo on Azure instead of GCP (amends G1 and G2) | proposed | Nasi: position |
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | done | 1 and 4 done; 2 and 3 closed without change: every tender clears the S3 gate (95.6 / 97.8 / 95.2) |
@@ -310,6 +311,24 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Chenyu (2026-09-17): agree; the LLM budget and the upload cap are gateway work at S2, the demo login is under B9.
 - Nasi (2026-09-16): agree.
 - Decision: agreed (2026-09-17). Plan to be updated.
+
+### G4. Chenyu's demo on Azure instead of GCP
+- Found by: after #78, `deploy/cloudrun/` can't build (it still builds the Streamlit `frontend/Dockerfile`), so the GCP demo needs a new deploy either way. Chenyu already has projects deployed on GCP and on AWS EC2, and many of the jobs he is applying for ask for Azure.
+- Proposal: amend G1 so that **Chenyu's demo runs on Azure**. Nasi's AWS demo is unchanged.
+  1. **Shape:** one Azure Container Apps app with three containers:
+     - `web`, the #78 nginx image, as ingress, adding the key from a secret;
+     - the API;
+     - the worker (same image).
+     
+     Postgres in Azure Database for PostgreSQL (Flexible Server, Burstable), the project files on an Azure Files share at `/data`, and secrets in Key Vault, read through a managed identity. The model for synthetic projects is Azure OpenAI through the gateway. Its policy is unchanged: a cloud endpoint, synthetic data only.
+  2. **Private until G3 and B9:** Container Apps' built-in Entra ID sign-in, limited to our accounts. nginx adds the API key, so whoever gets past the sign-in has full access. It stays private until a demo login or read-only mode exists.
+  3. **Built the way the jobs ask:** infrastructure as code in Bicep (`deploy/azure/`), GitHub Actions deploying through OIDC federated credentials with no stored cloud secret, and Application Insights for the J11 logging.
+  4. **Same image for both demos (G1):** CI pushes each tag's images to the GitHub Container Registry, and both clouds pull from it. That keeps the images the same without tying the registry to either cloud.
+  5. **GCP retired:** `deploy/cloudrun/` is removed in the Azure PR. The Cloud Run service and its data bucket are deleted, after a local copy of the bucket, which holds only synthetic data.
+- G2 is unaffected: nothing in the code names a cloud; `deploy/azure/` holds only configuration.
+- Chenyu (2026-09-26): proposed.
+- Nasi:
+- Decision:
 
 ## H. Portfolio finish
 
