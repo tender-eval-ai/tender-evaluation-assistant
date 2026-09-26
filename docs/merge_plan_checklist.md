@@ -37,7 +37,7 @@ Last updated: 2026-09-20 (Chenyu).
 | E3 | Neutral framing of the two variants in the plan | agreed | — (update the plan) |
 | E4 | One full day for the comparison, decision next morning | agreed | — (update the plan) |
 | E5 | Orchestrator decision record 0001 (S1) | decided | — |
-| F1 | Repo stays private until publishable, then org and public | decided | — |
+| F1 | Repo moves to a shared organisation now, still private; public later, after F4 and F6 | change proposed | Nasi: position; the organisation's name, chosen together |
 | F2 | Data classes and endpoints named per fixture and eval | agreed | — (update the plan) |
 | F3 | Files excluded from the port (commit `7e8e273`, see F5) | agreed | — (update the plan) |
 | F4 | Public-release audit at S5 | agreed | — (update the plan) |
@@ -251,6 +251,21 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 ### F1. Repository
 - Decision (Chenyu, 2026-09-15): stay in the current private repo `chenyufang-data/tender-evaluation-assistant` until the project is publishable, then transfer it to an organisation and make it public. A transfer does not carry collaborators, so Nasi is added to the organisation at that point. Status: decided.
 - Nasi (2026-09-16): acknowledged.
+- Change proposed (Chenyu, 2026-09-26): **move to an organisation now, still private. Make it public later**, as F4 and F6 already say.
+  1. **Why now rather than at release:**
+     - **Co-ownership.** A personal repository has one owner. In a free organisation we are both owners.
+     - **Actions minutes.** This repository's CI draws on Chenyu's personal allowance, which reached 90% (1,800 of 2,000 minutes) on 2026-09-26. This repo accounted for about 1,250 of those. A free organisation has its own allowance for private repositories. #85 cuts the usage either way.
+     - **Before the Azure setup (G4).** The OIDC trust (`repo:<owner>/<name>:environment:azure-demo`) and the image path (`ghcr.io/<owner>/…`) both contain the owner. Moving before `setup.sh` runs means doing that part once.
+  2. **How:**
+     - Chenyu creates a free organisation, with both of us as owners.
+     - Chenyu transfers the repository. Issues, pull requests and history move with it, and old URLs and git remotes redirect.
+     - A transfer doesn't carry collaborators, which is covered because Nasi is an owner.
+     - Branch protection on a private repository still needs a paid plan, so A2's convention stays.
+  3. **Then one PR updates the owner name** in `.github/CODEOWNERS`, `CITATION.cff`, `deploy/azure/` (`main.bicep`'s registry, the scripts' `REPO`), `docs/interview_prep.md` and this checklist.
+  4. **The name:** chosen together. It follows F6: no Hong Kong or public wording, and no tender number.
+  5. **Public release is unchanged:** F6's clean-up, the F4 audit and a LICENSE come first. Then the public repository is a copy with the history rewritten, made inside the organisation.
+- Nasi:
+- Decision:
 
 ### F2. Data classes and endpoints
 - Proposal: every fixture and every project carries a `data_class` (`synthetic`, `redacted_sample`, `confidential`). The gateway allowlist keys on it. Each live eval names the endpoint it ran against in its stored result.
