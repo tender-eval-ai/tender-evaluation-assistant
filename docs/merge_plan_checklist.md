@@ -56,6 +56,7 @@ Last updated: 2026-09-20 (Chenyu).
 | J6 | Re-evaluate against a confirmed rule-set version | done | — |
 | J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | Nasi: field map and templates (J2 decided) |
 | J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
+| J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | proposed | Nasi: position |
 
 ## A. Corrections to the plan
 
@@ -488,6 +489,23 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Still open in H1: the architecture diagram, the 30-second GIF of the three-column
   review (the Playwright review flow already walks exactly that sequence, so it can
   record it), the two live demos (G1), and settling the licence itself.
+
+### J10. The MCP server at S5: retire it with the legacy stack
+- Found by: planning what the S5 legacy removal takes with it (2026-09-25).
+- The plan's "Kept, ported, removed" table (kept by C1) marks `mcp_server/` as *keep*, and D9 guards it by data class. Nobody scheduled the port, so it still runs on the prototype: `app/tools.BidTools` (otherwise used only by the legacy `app/agent.py`), the legacy rubric, and the `synthetic` flag. Nothing in the new stack calls it. Removing the legacy agent and the rubric at S5 breaks it.
+- Proposal: **retire it at S5**, in the legacy-removal PR:
+  1. Remove `mcp_server/`, `test/test_mcp.py` and `docs/mcp_traces/`.
+  2. Keep what was measured: the two-driver experiment (2026-09-08, synthetic) and the confidentiality guard's design go into `docs/archive/mcp_2026-09.md`, dated and marked as describing the prototype.
+  3. C1's table entry changes from *keep* to *removed*, and the MCP part of D9 lapses.
+- Why not port it (about 3.5 days of work):
+  - On real bids, only a local client may connect, because the bids are confidential and the common MCP clients are cloud-driven. That makes it a second copy of the checker's own search agent.
+  - A chat client answering free-form questions sits outside the attributed review record, which is what the product is built around.
+  - It adds a third surface to keep in step with the contract, next to the UI and the REST API.
+  - The S4 real-bid result, the README and the demos matter more for the portfolio.
+- If S4 and S5 finish with time left, Chenyu has a port plan: read-only, stateless tools over the rule set, results and pages, with the gateway's data-class rule applied per client.
+- Chenyu (2026-09-26): proposed.
+- Nasi:
+- Decision:
 
 ## Verified facts (no action needed)
 
