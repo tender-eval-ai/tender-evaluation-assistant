@@ -42,7 +42,7 @@ Last updated: 2026-09-20 (Chenyu).
 | F3 | Files excluded from the port (commit `7e8e273`, see F5) | agreed | — (update the plan) |
 | F4 | Public-release audit at S5 | agreed | — (update the plan) |
 | F5 | Port source: pushed commit, no `aicamp-final` tag | agreed | — |
-| F6 | Public naming: an AI tender evaluation assistant, no tender numbers or Hong Kong wording | proposed | Nasi: position; then set the description |
+| F6 | Public naming: an AI tender evaluation assistant, no tender numbers or Hong Kong wording | agreed | — (description set 2026-09-26; clean-up PR at S5) |
 | G1 | Two independent demos, same image | agreed | Nasi: domain, when chosen |
 | G2 | No cloud named in code; configuration only | agreed | — (update the plan) |
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
@@ -287,8 +287,8 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      - `HK$` stays for now. It is the currency of the synthetic bids and of the pricing code (90 mentions in 30 files), and removing it means regenerating the synthetic data and its goldens. Revisit at release.
   4. **History, at release.** Earlier commits and commit messages carry the same names. The public repository is a copy whose history is rewritten with `git filter-repo`: the names are replaced, and both authors' commits are kept. This private repository stays as it is, so nobody force-pushes and no clone breaks. The F4 audit adds a search of the rewritten history for the three numbers and the Hong Kong wording.
 - Chenyu (2026-09-25): proposed. Chenyu's old personal repository, `tender-evaluation-assistant`, gets a new name before it is ever made public.
-- Nasi:
-- Decision:
+- Nasi (2026-09-26): agree to 1–4, including the proposed repository description, which is set once this merges.
+- Decision: agreed (2026-09-26).
 
 ## G. Deployment and demo
 
