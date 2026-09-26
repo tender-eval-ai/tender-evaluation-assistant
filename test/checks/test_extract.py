@@ -63,8 +63,8 @@ def test_the_reading_model_is_fixed_per_form_and_names_every_field():
     model = reading_model(FORMS["contact_details"])
     assert model is reading_model(FORMS["contact_details"]), "built once"
     props = model.model_json_schema()["properties"]
-    assert {"present", "document", "tenderer_name", "contact_person", "telephone", "email", "address", "redacted", "page",
-            "confidence"} == set(props)
+    assert {"present", "document", "tenderer_name", "contact_person", "telephone", "email", "address", "facsimile",
+            "process_agent", "redacted", "page", "confidence"} == set(props)
     assert "0 to 1" in props["confidence"]["description"] and props["email"]["description"] == "the e-mail address as printed"
 
 
