@@ -2,7 +2,7 @@
 
 Three-column review screens ported from Bidding-AI-expert@7e8e273 (`frontend/`),
 rewritten onto the routes of [`docs/api_contract.md`](../docs/api_contract.md).
-The Streamlit `frontend/` stays until S5.
+It is the project's only UI: `docker compose up` serves it on :8080 (`web/Dockerfile`).
 
 | Window | Routes | Ready |
 |---|---|---|

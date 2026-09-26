@@ -1,0 +1,23 @@
+# The app's own files are served here; every other path is the API's (the app calls
+# the API on this same origin, and page images are signed links on the API's paths).
+server {
+    listen 8080;
+    client_max_body_size 512m;          # folder uploads: many PDFs in one request
+    root /usr/share/nginx/html;
+
+    location = / { try_files /index.html =404; }
+    location = /index.html { add_header Cache-Control "no-cache"; }
+    location /assets/ { add_header Cache-Control "public, max-age=31536000, immutable"; }
+    location = /favicon.svg {}
+    location = /icons.svg {}
+
+    location / {
+        proxy_pass ${BACKEND_URL};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-API-Key "${API_KEY}";
+        proxy_request_buffering off;
+        proxy_read_timeout 900s;
+    }
+}

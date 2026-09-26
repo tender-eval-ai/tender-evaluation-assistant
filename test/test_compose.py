@@ -9,7 +9,7 @@ SERVICES = COMPOSE["services"]
 
 
 def test_the_four_services_and_the_database_volume():
-    assert set(SERVICES) == {"postgres", "backend", "worker", "frontend"} and "pgdata" in COMPOSE["volumes"]
+    assert set(SERVICES) == {"postgres", "backend", "worker", "web"} and "pgdata" in COMPOSE["volumes"]
     assert SERVICES["postgres"]["image"].startswith("postgres:16") and "healthcheck" in SERVICES["postgres"]
 
 
@@ -28,3 +28,16 @@ def test_api_and_worker_share_the_image_the_database_and_the_data_volume():
 def test_the_synthetic_case_is_importable_from_the_inbox():
     assert "./test/data/synthetic_tender:/inbox/synthetic_tender:ro" in SERVICES["backend"]["volumes"]
     assert (Path(__file__).resolve().parents[1] / "backend" / "Dockerfile").read_text().count("COPY migrations migrations") == 1
+
+
+def test_the_ui_adds_the_api_key_on_the_server():
+    """The React app is built against the real API on its own origin; nginx forwards the
+    API's paths and sets X-API-Key from the environment, so no key is in the bundle."""
+    web = SERVICES["web"]
+    env = dict(e.split("=", 1) for e in web["environment"])
+    assert web["build"] == {"context": "./web"} and env["BACKEND_URL"] == "http://backend:8000"
+    assert env["API_KEY"] == "${API_KEY:-}"
+    root = Path(__file__).resolve().parents[1] / "web"
+    assert "ENV VITE_API_MOCK=0" in (root / "Dockerfile").read_text()
+    conf = (root / "docker" / "default.conf.template").read_text()
+    assert 'proxy_set_header X-API-Key "${API_KEY}";' in conf and "proxy_pass ${BACKEND_URL};" in conf
