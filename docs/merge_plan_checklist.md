@@ -57,6 +57,7 @@ Last updated: 2026-09-20 (Chenyu).
 | J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | Nasi: field map and templates (J2 decided) |
 | J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
 | J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | agreed | — (removed in the S5 legacy-removal PR) |
+| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | proposed | Nasi: position on 9–13 |
 
 ## A. Corrections to the plan
 
@@ -506,6 +507,31 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Chenyu (2026-09-26): proposed.
 - Nasi (2026-09-26): agree: retire it at S5, results kept in `docs/archive/`.
 - Decision: agreed (2026-09-26).
+
+### J11. Engineering fixes before release
+- Found by: a review of the whole repository against what a reviewer or an interviewer checks first (Chenyu, 2026-09-23; rechecked on 2026-09-26 against the plan). None of the items below is in another checklist entry. B9 stays as agreed, and #78 already covers Streamlit and the React UI in compose.
+- **Chenyu** (small PRs, each on its own, before or during S5):
+  1. **Templates in the image.** `app/rulesets/templates/` doesn't exist yet, and `.dockerignore` excludes `test/`. Inside compose, the template library is empty, so every item falls to novel rules. `/health` gets the template count. This is needed before the S4 run in compose.
+  2. **Operational logging.** Standard `logging` with the project, run and job ids in `app/jobs/` and `backend/`. A catch-all handler returns the error envelope, so a malformed `cursor` gives a 400 instead of a 500. The sweeper logs its errors instead of swallowing them.
+  3. **Images.** Built from `requirements.lock` with `--require-hashes`, run as a non-root user, with health checks for the API and the worker in compose.
+  4. **Configuration.** Every variable the code reads is in `.env.example` (10 are missing today), and `AGENT_MAX_STEPS` has one default instead of two.
+  5. **Uploads.** `_safe_name` rejects `.` and `..`. B9's size cap and magic-byte check go in the same PR.
+  6. **CI.** A workflow-level `permissions: contents: read`; actions pinned by commit SHA, with Dependabot keeping them current; the gitleaks download checked against its published checksum.
+  7. **Inside the S5 legacy-removal PR:**
+     - delete the stale files and the empty tests: `app/checks/extract_item_l.py`, `app/rulesets/builder.py`, the `S3_ROUTES` contract test, `web/mock/openapi.s2.json`, and the CODEOWNERS entries for paths that don't exist;
+     - fix where `docs/api_contract.md` no longer matches the code: events on create, delete and upload; the `?key=` note; the two lines on when the legacy routes go;
+     - move the four documents dated 2026-09-10 to `docs/archive/`.
+  8. **During the S4 development-bid run:** record the pages, model calls and seconds per stage. That gives A5 its first measured number.
+- **Nasi** (her areas):
+  9. **README results.** Quote the parser's recall and exact location only. `page_correct` and `char_correct` equal recall by construction, and `tools/benchmark.py`'s docstring should say so.
+  10. **Parser keys.** A person spot-checks the agent-built parser keys before the parser numbers are quoted publicly, or they're labelled as agent-built.
+  11. **`web/README.md`:** Scoring and Report are built, and Playwright is a dependency, where #78 doesn't already say so.
+- **Both decide:**
+  12. **B9 after S4:** per-user login with a role, the security item interviewers ask about most. Chenyu: yes, after the S4 run.
+  13. **Stated as limitations in the README, not fixed:** OIDC, an atomic budget with backoff, type checking, metrics and alerts, Stages III–V, replacing PyMuPDF, and conditions evaluated in the engine.
+- Chenyu (2026-09-26): proposed. Items 1–8 are mine; item 1 comes first.
+- Nasi:
+- Decision:
 
 ## Verified facts (no action needed)
 
