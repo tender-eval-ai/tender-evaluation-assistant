@@ -313,7 +313,7 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Decision: agreed (2026-09-17). Plan to be updated.
 
 ### G4. Chenyu's demo on Azure instead of GCP
-- Found by: after #78, `deploy/cloudrun/` can't build (it still builds the Streamlit `frontend/Dockerfile`), so the GCP demo needs a new deploy either way. Chenyu already has projects deployed on GCP and on AWS EC2, and many of the jobs he is applying for ask for Azure.
+- Found by: after #78, `deploy/cloudrun/` can't build (it still builds the Streamlit `frontend/Dockerfile`), so the GCP demo needs a new deploy either way. Chenyu already has projects deployed on GCP and on AWS EC2, and many of the jobs Chenyu is applying for ask for Azure.
 - Proposal: amend G1 so that **Chenyu's demo runs on Azure**. Nasi's AWS demo is unchanged.
   1. **Shape:** one Azure Container Apps app with three containers:
      - `web`, the #78 nginx image, as ingress, adding the key from a secret;
