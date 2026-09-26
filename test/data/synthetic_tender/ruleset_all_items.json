@@ -189,12 +189,30 @@
      "edit": null
     },
     "currency": {
-     "value": null,
+     "value": "HK$",
      "citation": null,
      "verified": false,
-     "origin": "extracted",
+     "origin": "manual",
      "model_value": null,
-     "edit": null
+     "edit": {
+      "by": "chenyu",
+      "at": "2026-09-22T12:00:00Z",
+      "reason": "set by the evaluation panel: every price is compared in HK$"
+     }
+    },
+    "exchange_rates": {
+     "value": {
+      "USD": 7.8
+     },
+     "citation": null,
+     "verified": false,
+     "origin": "manual",
+     "model_value": null,
+     "edit": {
+      "by": "chenyu",
+      "at": "2026-09-22T12:00:00Z",
+      "reason": "set by the evaluation panel: the rate a US$ quotation is converted at"
+     }
     }
    },
    "rules": [

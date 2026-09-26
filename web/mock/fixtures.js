@@ -425,17 +425,18 @@ export const events = [
 
 // --- Scoring and reports (S4) -------------------------------------------------
 // Four tenderers: A and B conform, C fails Stage I, D quotes in US$ so its unit
-// price is converted at the scheme's rate and the row says so. The ranking is over
+// price is converted at the rule set's rate into the tender's currency and the row says so. The ranking is over
 // every computable offer, by cost-effectiveness; `recommended` is the best-ranked
 // CONFORMING one. C failed Stage I but still ranks second, ahead of B and D, and the
 // Scoring window shows it in place.
-const USD_HKD = 7.8;
+const USD_RATE = 7.8;
 
 export function priceSummary() {
   return {
     ruleset_version: RULESET_VERSION,
     scheme: {
-      type: "cost_effectiveness", currency: "HK$", unit: "kg", usd_hkd: USD_HKD,
+      type: "cost_effectiveness", currency: "HK$", base_currency: "HKD", exchange_rates: { USD: USD_RATE },
+      currency_source: "item (b), slot currency", unit: "kg",
       quantity: 1102000, source: "Price Schedule Note (2)",
     },
     recommended: "Tenderer_A",
@@ -443,30 +444,30 @@ export function priceSummary() {
     rows: [
       {
         tenderer: "Tenderer_A", run_id: "run-a", conforming: true, currency: "HK$",
-        unit_price: 2.35, unit_price_hkd: 2.35, quoted_total: 2589700, estimated_goods_price: 2589700,
+        unit_price: 2.35, unit_price_base: 2.35, quoted_total: 2589700, estimated_goods_price: 2589700,
         dosage: 12.4, dosage_rounded: 12, cost_effectiveness: 28.2, arithmetic_ok: true,
         ranking: 1, stage1: "pass", stage2: "pass", reviewed_by: "nasi", corrected: [], remark: "",
       },
       {
         tenderer: "Tenderer_C", run_id: "run-c", conforming: false, currency: "HK$",
-        unit_price: 2.21, unit_price_hkd: 2.21, quoted_total: 2435420, estimated_goods_price: 2435420,
+        unit_price: 2.21, unit_price_base: 2.21, quoted_total: 2435420, estimated_goods_price: 2435420,
         dosage: 13.1, dosage_rounded: 13, cost_effectiveness: 28.73, arithmetic_ok: true,
         ranking: 2, stage1: "disqualified", stage2: null, reviewed_by: "nasi", corrected: [],
         remark: "Stage I not passed",
       },
       {
         tenderer: "Tenderer_B", run_id: "run-b", conforming: true, currency: "HK$",
-        unit_price: 2.48, unit_price_hkd: 2.48, quoted_total: 2732960, estimated_goods_price: 2732960,
+        unit_price: 2.48, unit_price_base: 2.48, quoted_total: 2732960, estimated_goods_price: 2732960,
         dosage: 11.8, dosage_rounded: 12, cost_effectiveness: 29.76, arithmetic_ok: true,
         ranking: 3, stage1: "pass", stage2: "pass", reviewed_by: "nasi",
         corrected: ["price_schedule.unit_price"], remark: "",
       },
       {
         tenderer: "Tenderer_D", run_id: "run-d", conforming: true, currency: "US$",
-        unit_price: 0.32, unit_price_hkd: 2.496, quoted_total: 352640, estimated_goods_price: 2750592,
+        unit_price: 0.32, unit_price_base: 2.496, quoted_total: 352640, estimated_goods_price: 2750592,
         dosage: 12.0, dosage_rounded: 12, cost_effectiveness: 29.95, arithmetic_ok: true,
         ranking: 4, stage1: "pass", stage2: "pass", reviewed_by: "nasi", corrected: [],
-        remark: `Quoted in US$, converted at ${USD_HKD}`,
+        remark: `quoted in US$, converted at ${USD_RATE} HK$/US$`,
       },
     ],
   };

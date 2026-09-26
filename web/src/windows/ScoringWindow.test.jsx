@@ -3,7 +3,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { http, HttpResponse } from "msw";
 import { describe, expect, it } from "vitest";
-import { PID } from "../../mock/fixtures.js";
+import { PID, priceSummary } from "../../mock/fixtures.js";
 import { server } from "../../mock/node.js";
 import ScoringWindow from "./ScoringWindow.jsx";
 
@@ -39,6 +39,27 @@ describe("Scoring window", () => {
     const d = row("Tenderer_D");
     expect(within(d).getByText(/0\.32 US\$/)).toBeInTheDocument();
     expect(within(d).getByText(/converted at 7\.8/)).toBeInTheDocument();
+  });
+
+  it("states the currency prices are compared in, and the rates", async () => {
+    await renderScoring();
+    expect(screen.getByText(/compared in HK\$/)).toBeInTheDocument();
+    expect(screen.getByText(/USD at 7\.8/)).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "HK$ equivalent" })).toBeInTheDocument();
+  });
+
+  it("leaves an offer it cannot convert unranked, and shows why", async () => {
+    const summary = priceSummary();
+    const d = summary.rows.find((r) => r.tenderer === "Tenderer_D");
+    Object.assign(d, { currency: "C$", unit_price_base: null, estimated_goods_price: null, cost_effectiveness: null, ranking: null,
+                       remark: "quoted in C$; no exchange rate from C$ to HK$ is set, so it is not ranked" });
+    server.use(http.get("*/projects/:pid/price-summary", () => HttpResponse.json(summary)));
+
+    await renderScoring();
+
+    const row = screen.getByRole("row", { name: /Tenderer_D/ });
+    expect(within(row).getByText(/no exchange rate from C\$ to HK\$/)).toBeInTheDocument();
+    expect(within(row).getAllByText("—").length).toBeGreaterThanOrEqual(3);
   });
 
   it("marks a row a reviewer corrected", async () => {

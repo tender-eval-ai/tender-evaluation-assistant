@@ -94,22 +94,24 @@ def price_summary_docx(b: Bundle) -> bytes:
     _header(doc, b, "Summary of Cost-effectiveness" if ce else "Price Summary")
     quantity = scheme["quantity"]
     qty = f"{quantity:,.0f} {scheme['unit']}" if quantity is not None else "the estimated quantity"
+    cur = scheme.get("currency") or ""
+    in_cur = f" ({cur})" if cur else ""
     if ce:
         table = doc.add_table(rows=1, cols=6, style="Table Grid")
-        _header_row(table, ["Name of Tenderer", f"Estimated Goods Price (HK$)\n(M) x {qty}", "Optimal Dosage (\"D\")",
-                            f"One-time Unit Price (\"M\")\n(HK$/{scheme['unit']})", "Cost-effectiveness of Tender\n(D) x (M)",
+        _header_row(table, ["Name of Tenderer", f"Estimated Goods Price{in_cur}\n(M) x {qty}", "Optimal Dosage (\"D\")",
+                            f"One-time Unit Price (\"M\")\n({cur + '/' if cur else 'per '}{scheme['unit']})", "Cost-effectiveness of Tender\n(D) x (M)",
                             "Ranking of Tender\n(in terms of cost-effectiveness)"])
         for r in rows:
             _fill_row(table, [r["tenderer"], _money(r["estimated_goods_price"]),
-                              _num(r["dosage_rounded"] if r["dosage_rounded"] is not None else r["dosage"]), _money(r["unit_price_hkd"]),
+                              _num(r["dosage_rounded"] if r["dosage_rounded"] is not None else r["dosage"]), _money(r["unit_price_base"]),
                               _money(r["cost_effectiveness"]) if r["cost_effectiveness"] is not None else "cannot be calculated",
                               str(r["ranking"]) if r["ranking"] is not None else "not applicable"], bold=r["tenderer"] == recommended)
     else:
         table = doc.add_table(rows=1, cols=3, style="Table Grid")
-        _header_row(table, ["Name of Tenderers", f"Unit Price per {scheme['unit']} (HK$)", "Estimated Goods Price (HK$)"])
+        _header_row(table, ["Name of Tenderers", f"Unit Price per {scheme['unit']}{in_cur}", f"Estimated Goods Price{in_cur}"])
         for r in rows:
             price = _money(r["estimated_goods_price"]) + (f"  [{r['ranking']}]" if r["ranking"] is not None else "")
-            _fill_row(table, [r["tenderer"], _unit_price(r["unit_price_hkd"]), price], bold=r["tenderer"] == recommended)
+            _fill_row(table, [r["tenderer"], _unit_price(r["unit_price_base"]), price], bold=r["tenderer"] == recommended)
     doc.add_paragraph()
     doc.add_paragraph("Notes:").runs[0].bold = True
     notes = ["The recommended offer is in bold type.",
@@ -137,8 +139,11 @@ def summary_list_docx(b: Bundle) -> bytes:
     recommended = b.evaluation["recommended"]
     if recommended:
         row = next(r for r in b.summary["rows"] if r["tenderer"] == recommended)
-        metric = (f"a cost-effectiveness of HK${_money(row['cost_effectiveness'])}" if row["cost_effectiveness"] is not None
-                  else f"a total estimated amount of HK${_money(row['estimated_goods_price'])}")
+        cur = b.summary["scheme"].get("currency") or ""
+        amount = (_money(row["cost_effectiveness"]) if row["cost_effectiveness"] is not None else _money(row["estimated_goods_price"]))
+        amount = f"{cur}{amount}" if cur.endswith("$") or cur in ("€", "£") else f"{cur} {amount}".strip()
+        metric = (f"a cost-effectiveness of {amount}" if row["cost_effectiveness"] is not None
+                  else f"a total estimated amount of {amount}")
         doc.add_paragraph(f"Based on the above evaluation results, the TAP found that {recommended}'s offer complied with all the "
                           f"procedural and essential requirements as checked, and recommended acceptance of {recommended}'s offer with {metric}.")
     else:

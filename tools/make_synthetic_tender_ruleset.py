@@ -17,7 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from app.checks.forms import FORMS  # noqa: E402
 from app.rulesets.library import load_templates  # noqa: E402
 from app.rulesets.novel import outcomes_for  # noqa: E402
-from app.rulesets.schema import (Citation, ItemNote, ItemStatus, Outcome, Part, RuleSet, RuleSetItem, SlotValue,  # noqa: E402
+from app.rulesets.schema import (Citation, Edit, ItemNote, ItemStatus, Outcome, Part, RuleSet, RuleSetItem, SlotValue,  # noqa: E402
                                  TemplateRule)
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -117,7 +117,12 @@ def build() -> RuleSet:
             slots = {"estimated_quantity": SlotValue(value=quantity, origin="extracted", verified=True,
                                                      citation=Citation(file="tender/09 Schedules.pdf", page=1,
                                                                        quote=f"is {quantity:,} kg", data_class="synthetic")),
-                     "currency": SlotValue(value=None, origin="extracted", verified=False)}
+                     # The synthetic tender lets a price be quoted in HK$ or US$ but states no rate, as a
+                     # real one may leave it to the panel: both are set by hand, with the reason.
+                     "currency": SlotValue(value="HK$", origin="manual", edit=Edit(
+                         by="chenyu", at=WHEN, reason="set by the evaluation panel: every price is compared in HK$")),
+                     "exchange_rates": SlotValue(value={"USD": 7.8}, origin="manual", edit=Edit(
+                         by="chenyu", at=WHEN, reason="set by the evaluation panel: the rate a US$ quotation is converted at"))}
         items.append(RuleSetItem(
             letter=letter, title=TITLES[letter], part=Part(part), template=template,
             citation=Citation(file="tender/09 Schedules.pdf", page=row["schedule_page"], node_id=f"Sched:CCS:({letter})",

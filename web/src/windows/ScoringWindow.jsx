@@ -12,7 +12,8 @@ const plain = (n) => (n == null ? "—" : String(n));
 // the table shows both so a reviewer can see why.
 //
 // Nothing here recomputes a price. The API returns the rows already ranked, with the
-// reviewer's corrections applied and a US$ quotation converted at the scheme's rate;
+// reviewer's corrections applied and an offer in another currency converted at the
+// scheme's rate (one it cannot convert is left unranked, and its remark says why);
 // this window only says what it was told, and where it came from.
 export default function ScoringWindow({ projectId, version }) {
   const [summary, setSummary] = useState(undefined); // undefined while loading
@@ -56,7 +57,8 @@ export default function ScoringWindow({ projectId, version }) {
         Rule set v{rulesetVersion} · {effectiveness ? "ranked on cost-effectiveness" : "ranked on unit price × quantity"}
         {scheme.quantity != null && <> · quantity {scheme.quantity.toLocaleString("en-HK")} {scheme.unit}</>}
         {scheme.source && <> (<cite>{scheme.source}</cite>)</>}
-        {" · "}US$ at {scheme.usd_hkd}
+        {" · "}{scheme.currency ? <>compared in {scheme.currency}</> : "no single currency to compare in"}
+        {Object.entries(scheme.exchange_rates ?? {}).map(([code, rate]) => <span key={code}>{", "}{code} at {rate}</span>)}
       </p>
 
       {missing.length > 0 && (
@@ -72,7 +74,7 @@ export default function ScoringWindow({ projectId, version }) {
             <th scope="col">Rank</th>
             <th scope="col">Tenderer</th>
             <th scope="col">Unit price</th>
-            <th scope="col">{scheme.currency} equivalent</th>
+            <th scope="col">{scheme.currency ? `${scheme.currency} equivalent` : "Converted"}</th>
             <th scope="col">Estimated goods price</th>
             {effectiveness && <th scope="col">Dosage</th>}
             {effectiveness && <th scope="col">Cost-effectiveness</th>}
@@ -97,7 +99,7 @@ export default function ScoringWindow({ projectId, version }) {
                 )}
               </th>
               <td>{money(row.unit_price)} {row.currency}</td>
-              <td>{money(row.unit_price_hkd)}</td>
+              <td>{money(row.unit_price_base)}</td>
               <td>{money(row.estimated_goods_price)}</td>
               {effectiveness && <td>{plain(row.dosage_rounded ?? row.dosage)}</td>}
               {effectiveness && <td>{money(row.cost_effectiveness)}</td>}

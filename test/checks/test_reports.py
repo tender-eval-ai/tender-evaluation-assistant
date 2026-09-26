@@ -23,7 +23,8 @@ WHEN = datetime(2026, 9, 22, 9, 30, tzinfo=timezone.utc)
 @pytest.fixture(autouse=True)
 def env(monkeypatch):
     monkeypatch.setenv("RULESET_TEMPLATES_DIR", str(TEMPLATES))
-    monkeypatch.delenv("PRICING_USD_HKD", raising=False)
+    monkeypatch.delenv("PRICING_BASE_CURRENCY", raising=False)
+    monkeypatch.delenv("PRICING_FX_RATES", raising=False)
 
 
 def bundle() -> reports.Bundle:

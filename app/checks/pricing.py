@@ -1,33 +1,31 @@
 """The price summary and the evaluation across tenderers (S4-4), from the confirmed rule
 set and the checked results. No model call, no number from a model: the arithmetic is the
 legacy price engine's (`app.pricing`, kept unchanged), cost-effectiveness = the optimal
-dosage rounded to two significant figures times the unit price in HK$ (lower is better),
-or unit price times the estimated quantity (lowest first). What is new is where the
-inputs come from: the rule set (the estimated quantity from the price schedule item's
-slot; the scheme from whether any rule reads the optimal dosage) and each tenderer's
+dosage rounded to two significant figures times the unit price in the tender's currency
+(lower is better), or unit price times the estimated quantity (lowest first). What is new
+is where the inputs come from: the rule set (the estimated quantity, the tender's currency
+and the exchange rates from the price schedule item's slots; the scheme from whether any
+rule reads the optimal dosage), the currency each offer printed (`app.checks.currency`:
+converted before the legacy engine sees it, never at 1:1) and each tenderer's
 result (its fields with the reviewer's corrections applied, its Stage I and II outcomes,
 who confirmed its review). An offer conforms when both stages pass; the recommended
 offer is the best-ranked conforming one, as on the client's Price Summary."""
 from __future__ import annotations
 
+import json
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
+from app.checks import currency
 from app.checks.corrections import item_verdicts
-from app.checks.verify import normalise
-from app.pricing import compute_price_rows
+from app.pricing import ARITHMETIC_TOLERANCE, compute_price_rows
 from app.rulesets.schema import RuleSet
 from app.schemas import BidExtraction, BidPrice
 from app.schemas import PriceScheme as LegacyScheme
 
 PRICE_FORM = "price_schedule"
-USD_HKD_DEFAULT = 7.8     # PRICING_USD_HKD: what a US$ quotation is converted at; the HK$ peg's mid-rate unless set
 STAGE_ORDER = ("disqualified", "needs_review", "dormant", "pass")
-
-
-def usd_hkd() -> float:
-    return float(os.environ.get("PRICING_USD_HKD") or USD_HKD_DEFAULT)
 
 
 @dataclass(frozen=True)
@@ -35,18 +33,64 @@ class PriceScheme:
     type: str                        # cost_effectiveness | unit_price_x_quantity
     quantity: float | None           # the estimated quantity, from the rule set
     unit: str = "kg"
-    currency: str = "HK$"
-    usd_hkd: float = USD_HKD_DEFAULT
+    base_currency: str | None = None  # the tender's currency (ISO 4217): what every price is compared in
+    exchange_rates: dict = field(default_factory=dict)   # ISO code -> rate into base_currency
+    currency_source: str = ""        # where the tender's currency came from
     source: str = ""                 # where the quantity came from
 
     def as_dict(self) -> dict:
-        return {"type": self.type, "quantity": self.quantity, "unit": self.unit, "currency": self.currency,
-                "usd_hkd": self.usd_hkd, "source": self.source}
+        return {"type": self.type, "quantity": self.quantity, "unit": self.unit,
+                "currency": currency.label(self.base_currency) or None, "base_currency": self.base_currency,
+                "exchange_rates": dict(self.exchange_rates), "currency_source": self.currency_source, "source": self.source}
+
+
+def _slot(ruleset: RuleSet, name: str) -> tuple[Any, str]:
+    """The first filled slot of that name, and where it is."""
+    for item in ruleset.items:
+        slot = item.slots.get(name)
+        if slot is not None and slot.value not in (None, "", {}):
+            return slot.value, f"item ({item.letter}), slot {name}"
+    return None, ""
+
+
+def _rates(value: Any, where: str) -> dict[str, float]:
+    if not isinstance(value, dict):
+        raise ValueError(f"{where} must map a currency to its rate, e.g. {{\"USD\": 7.8}}")
+    rates = {}
+    for name, rate in value.items():
+        code = currency.code_of(name)
+        if code is None or not isinstance(rate, (int, float)) or isinstance(rate, bool) or rate <= 0:
+            raise ValueError(f"{where}: {name!r}: {rate!r} is not a currency and a positive rate")
+        rates[code] = float(rate)
+    return rates
+
+
+def currency_settings(ruleset: RuleSet) -> tuple[str | None, dict[str, float], str]:
+    """The tender's currency, the exchange rates into it, and where the currency came from.
+    The rule set's slots (`currency`, `exchange_rates` on the price schedule item) come
+    first; PRICING_BASE_CURRENCY and PRICING_FX_RATES are the deployment's fallback."""
+    value, where = _slot(ruleset, "currency")
+    base = currency.code_of(value) if value is not None else None
+    if base is None and os.environ.get("PRICING_BASE_CURRENCY"):
+        base, where = currency.code_of(os.environ["PRICING_BASE_CURRENCY"]), "PRICING_BASE_CURRENCY"
+    rates: dict[str, float] = {}
+    if os.environ.get("PRICING_FX_RATES"):
+        try:
+            env = json.loads(os.environ["PRICING_FX_RATES"])
+        except json.JSONDecodeError as err:
+            raise ValueError(f"PRICING_FX_RATES is not JSON: {err}") from None
+        rates.update(_rates(env, "PRICING_FX_RATES"))
+    value, slot_where = _slot(ruleset, "exchange_rates")
+    if value is not None:
+        rates.update(_rates(value, slot_where))
+    rates.pop(base, None)
+    return base, rates, where if base else ""
 
 
 def scheme_of(ruleset: RuleSet) -> PriceScheme:
     """The tender's price scheme as the rule set states it: the quantity from the first
-    filled `estimated_quantity` slot, cost-effectiveness when a rule reads the dosage."""
+    filled `estimated_quantity` slot, cost-effectiveness when a rule reads the dosage,
+    and the currency settings (`currency_settings`)."""
     quantity, source = None, ""
     for item in ruleset.items:
         slot = item.slots.get("estimated_quantity")
@@ -58,20 +102,19 @@ def scheme_of(ruleset: RuleSet) -> PriceScheme:
             source = f"item ({item.letter}), slot estimated_quantity"
             break
     reads_dosage = any(r.field == f"{PRICE_FORM}.optimal_dosage" for item in ruleset.items for r in item.rules)
+    base, rates, where = currency_settings(ruleset)
     return PriceScheme(type="cost_effectiveness" if reads_dosage else "unit_price_x_quantity", quantity=quantity,
-                       source=source, usd_hkd=usd_hkd())
+                       source=source, base_currency=base, exchange_rates=rates, currency_source=where)
 
 
-def currency_code(text: Any) -> str:
-    """HKD, USD or the text itself, from however the offer wrote it (HK$, US$, USD, ...)."""
-    words = normalise(text).split()
-    if not words:
-        return "HKD"
-    if "us" in words or "usd" in words:
-        return "USD"
-    if "hk" in words or "hkd" in words:
-        return "HKD"
-    return str(text).strip().upper()
+@dataclass(frozen=True)
+class Quote:
+    """One offer's price fields, as printed and corrected, with the currency they are in."""
+
+    reading: currency.Reading
+    unit_price: float | None
+    optimal_dosage: float | None
+    quoted_total: float | None
 
 
 @dataclass
@@ -102,12 +145,12 @@ class Offer:
         """The corrected price fields, by short name."""
         return sorted(k.rsplit(".", 1)[-1] for k in self.corrections if k.startswith(f"{PRICE_FORM}.") and not k.endswith("_page"))
 
-    def price(self, scheme: PriceScheme) -> BidPrice:
-        currency = currency_code(self.fields.get(f"{PRICE_FORM}.currency") or self.fields.get(f"{PRICE_FORM}.unit_price_printed"))
-        return BidPrice(currency=currency, unit_price=_number(self.fields.get(f"{PRICE_FORM}.unit_price")),
-                        optimal_dosage=_number(self.fields.get(f"{PRICE_FORM}.optimal_dosage")),
-                        quoted_total=_number(self.fields.get(f"{PRICE_FORM}.total")),
-                        fx_to_hkd=scheme.usd_hkd if currency == "USD" else None)
+    def quote(self, scheme: PriceScheme) -> Quote:
+        printed = self.fields.get(f"{PRICE_FORM}.currency") or self.fields.get(f"{PRICE_FORM}.unit_price_printed")
+        return Quote(reading=currency.read(printed, tuple(scheme.exchange_rates)),
+                     unit_price=_number(self.fields.get(f"{PRICE_FORM}.unit_price")),
+                     optimal_dosage=_number(self.fields.get(f"{PRICE_FORM}.optimal_dosage")),
+                     quoted_total=_number(self.fields.get(f"{PRICE_FORM}.total")))
 
 
 def _number(value: Any) -> float | None:
@@ -119,33 +162,71 @@ def _number(value: Any) -> float | None:
         return None
 
 
+def settle_currency(scheme: PriceScheme, offers: list[Offer]) -> PriceScheme:
+    """Without a stated currency, offers that all quote the same one are compared in it."""
+    if scheme.base_currency or not offers:
+        return scheme
+    codes = {o.quote(scheme).reading.code for o in offers}
+    if len(codes) == 1 and None not in codes:
+        code = codes.pop()
+        return replace(scheme, base_currency=code, currency_source=f"every offer is quoted in {currency.label(code)}")
+    return scheme
+
+
 def price_rows(scheme: PriceScheme, offers: list[Offer]) -> tuple[list[dict], str | None]:
     """One row per offer, ranked; the recommended tenderer. Without an estimated quantity
-    nothing can be computed and every row says so."""
+    nothing can be computed and every row says so. An offer the currency rules cannot
+    convert gets no price in the tender's currency, so it is not ranked."""
+    quotes = {o.tenderer: o.quote(scheme) for o in offers}
+    rates = {o.tenderer: currency.convert(quotes[o.tenderer].reading, scheme.base_currency, scheme.exchange_rates)
+             for o in offers}
     if scheme.quantity is None:
         rows = []
         for o in offers:
-            p = o.price(scheme)
-            rows.append({"tenderer": o.tenderer, "conforming": o.conforming, "currency": p.currency, "unit_price": p.unit_price,
-                         "unit_price_hkd": None, "dosage": p.optimal_dosage, "dosage_rounded": None, "estimated_goods_price": None,
-                         "quoted_total": p.quoted_total, "arithmetic_ok": None, "cost_effectiveness": None, "ranking": None,
+            q = quotes[o.tenderer]
+            rows.append({"tenderer": o.tenderer, "conforming": o.conforming, "unit_price": q.unit_price,
+                         "unit_price_base": None, "dosage": q.optimal_dosage, "dosage_rounded": None, "estimated_goods_price": None,
+                         "quoted_total": q.quoted_total, "arithmetic_ok": None, "cost_effectiveness": None, "ranking": None,
                          "remark": "cannot be calculated: the rule set states no estimated quantity"})
-        return _decorate(rows, offers, scheme), None
-    legacy = LegacyScheme(type=scheme.type, quantity=scheme.quantity, unit=scheme.unit, currency="HKD")
-    bids = [BidExtraction(tenderer=o.tenderer, documents=[], compliance=[], price=o.price(scheme)) for o in offers]
+        return _decorate(rows, offers, quotes, rates), None
+
+    def in_base(o: Offer) -> float | None:
+        q, c = quotes[o.tenderer], rates[o.tenderer]
+        return round(q.unit_price * c.rate, 4) if q.unit_price is not None and c.rate is not None else None
+
+    # The legacy engine is given prices already in the tender's currency, so its own
+    # conversion never runs; the arithmetic check is done here, in the quoted currency.
+    legacy = LegacyScheme(type=scheme.type, quantity=scheme.quantity, unit=scheme.unit, currency=scheme.base_currency or "")
+    bids = [BidExtraction(tenderer=o.tenderer, documents=[], compliance=[],
+                          price=BidPrice(currency=scheme.base_currency or "", unit_price=in_base(o),
+                                         optimal_dosage=quotes[o.tenderer].optimal_dosage))
+            for o in offers]
     rows, recommended = compute_price_rows(legacy, bids, {o.tenderer for o in offers if o.conforming})
-    return _decorate([r.model_dump() for r in rows], offers, scheme), recommended
+    out = []
+    for row, o in zip(rows, offers):
+        q, c = quotes[o.tenderer], rates[o.tenderer]
+        d = row.model_dump()
+        d["unit_price_base"] = d.pop("unit_price_hkd")
+        d["unit_price"] = q.unit_price
+        tally = None
+        if scheme.type == "unit_price_x_quantity" and q.quoted_total is not None and q.unit_price is not None:
+            calculated = round(q.unit_price * scheme.quantity, 2)
+            d["quoted_total"], d["arithmetic_ok"] = q.quoted_total, abs(q.quoted_total - calculated) <= ARITHMETIC_TOLERANCE
+            if not d["arithmetic_ok"]:
+                other = f" ({currency.label(c.code)})" if c.code and c.code != scheme.base_currency else ""
+                tally = f"arithmetical error: quoted total {q.quoted_total:,.2f} does not tally with calculated {calculated:,.2f}{other}"
+        d["remark"] = "; ".join(x for x in (tally, d["remark"]) if x)
+        out.append(d)
+    return _decorate(out, offers, quotes, rates), recommended
 
 
-def _decorate(rows: list[dict], offers: list[Offer], scheme: PriceScheme) -> list[dict]:
+def _decorate(rows: list[dict], offers: list[Offer], quotes: dict[str, Quote], rates: dict[str, currency.Converted]) -> list[dict]:
     by = {o.tenderer: o for o in offers}
     for row in rows:
-        o = by[row["tenderer"]]
-        row.update(stage1=o.stage("stage1"), stage2=o.stage("stage2"), reviewed_by=o.reviewed_by, corrected=o.corrected,
-                   run_id=o.run_id)
-        notes = []
-        if row["currency"] == "USD" and row.get("unit_price") is not None:
-            notes.append(f"quoted in US$, converted at {scheme.usd_hkd:g} HK$/US$")
+        o, q, c = by[row["tenderer"]], quotes[row["tenderer"]], rates[row["tenderer"]]
+        row.update(currency=currency.label(c.code) if c.code else q.reading.printed, stage1=o.stage("stage1"),
+                   stage2=o.stage("stage2"), reviewed_by=o.reviewed_by, corrected=o.corrected, run_id=o.run_id)
+        notes = [c.note] if c.note and q.unit_price is not None else []
         if not o.conforming:
             notes.append({"disqualified": "not a conforming offer", "needs_review": "pending review", "dormant": "items outstanding"}
                          .get(o.stage("stage1") if o.stage("stage1") != "pass" else o.stage("stage2"), "not a conforming offer"))
@@ -156,7 +237,7 @@ def _decorate(rows: list[dict], offers: list[Offer], scheme: PriceScheme) -> lis
 
 
 def price_summary(ruleset: RuleSet, offers: list[Offer], missing: list[str] | None = None) -> dict:
-    scheme = scheme_of(ruleset)
+    scheme = settle_currency(scheme_of(ruleset), offers)
     rows, recommended = price_rows(scheme, offers)
     return {"ruleset_version": ruleset.version, "scheme": scheme.as_dict(), "rows": rows, "recommended": recommended,
             "missing": sorted(missing or [])}
