@@ -105,7 +105,7 @@ def form_values(tenderer: str, form_id: str, *, signed: bool = True, dated: bool
                       optimal_dosage=f"{v['optimal_dosage_mg_per_l']} mg/L", quantity=f"{TRUTH['estimated_quantity_kg']:,} kg",
                       total=f"{v['currency']} {v['total']:,.2f}", signature="signature present")
     elif form_id == "price_schedule_parts_c_d":
-        values.update(part_c="nil", part_d="not applicable")
+        values.update(discount_7day="nil", discount_8to14day="nil", part_d="not applicable")
     elif form_id == "particulars_of_goods":
         v = items["d"]["values"]
         values.update(product_name="Synthetic Coagulant Granules Type S", manufacturer=v["manufacturer"],
