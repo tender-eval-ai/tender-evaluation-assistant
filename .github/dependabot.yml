@@ -4,7 +4,11 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    # One pull request a month for all of them: each one runs CI, and CI minutes are billed.
+    groups:
+      actions:
+        patterns: ["*"]
 
 # Python is deliberately not listed. Installs come from requirements.lock (uv pip compile,
 # hashed), which Dependabot does not read; its pip updates only raised the >= floors in
