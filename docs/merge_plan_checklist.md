@@ -42,6 +42,7 @@ Last updated: 2026-09-20 (Chenyu).
 | F3 | Files excluded from the port (commit `7e8e273`, see F5) | agreed | — (update the plan) |
 | F4 | Public-release audit at S5 | agreed | — (update the plan) |
 | F5 | Port source: pushed commit, no `aicamp-final` tag | agreed | — |
+| F6 | Public naming: an AI tender evaluation assistant, no tender numbers or Hong Kong wording | agreed | — (description set 2026-09-26; clean-up PR at S5) |
 | G1 | Two independent demos, same image | agreed | Nasi: domain, when chosen |
 | G2 | No cloud named in code; configuration only | agreed | — (update the plan) |
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
@@ -273,6 +274,21 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Chenyu (2026-09-17): acknowledged: port from `7e8e273`, no tag. One request: keep the local patch in a private branch of your own repo as well, not only on the laptop.
 - Nasi (2026-09-16): port from the pushed commit; no push of the local work and no `aicamp-final` tag.
 - Decision: agreed (2026-09-17).
+
+### F6. Public naming
+- Found by: getting the project's public face ready (CV text, README, repository description) on 2026-09-25.
+- Proposal: everything public presents the project as an **AI tender evaluation assistant**, with no tender reference numbers and no Hong Kong public wording ("Hong Kong", "Hong Kong", "Authority" or "the Authority"). Private working material, such as this checklist and the eval docs while the repository is private, may keep them where accuracy needs them.
+  1. **The repository description, now.** It reads "…Stage I and Stage II review of Hong Kong public tenders…". Proposed: "AI tender evaluation assistant: builds a page-cited rule set from the tender documents, checks every bid against it with verified evidence, ranks prices deterministically and exports editable Word reports. Joint project by Chenyu Fang and Nasi." The description is a repository setting, not a file, so this PR can only propose it; once agreed, either of us sets it (`gh repo edit --description`).
+  2. **New documents, from now on,** call the real tenders Tender 1, 2 and 3, in the order of the README's results table. The table matching each name to its reference number stays outside git, next to the answer keys, and each of us keeps a copy.
+  3. **One clean-up PR at S5,** as counted on `main` on 2026-09-25:
+     - tender numbers become the three names: 144 mentions in 18 files, mostly `docs/evals/parser_l0.md` and comments in `app/parsing/`;
+     - Hong Kong and Authority wording becomes neutral: about 37 mentions in 17 files;
+     - `sample` in file names becomes `sample`: `test/data/synthetic_tender*`, `tools/make_synthetic_tender.py`, `tools/make_synthetic_tender_ruleset.py`, `test/test_synthetic_tender.py`;
+     - `HK$` stays for now. It is the currency of the synthetic bids and of the pricing code (90 mentions in 30 files), and removing it means regenerating the synthetic data and its goldens. Revisit at release.
+  4. **History, at release.** Earlier commits and commit messages carry the same names. The public repository is a copy whose history is rewritten with `git filter-repo`: the names are replaced, and both authors' commits are kept. This private repository stays as it is, so nobody force-pushes and no clone breaks. The F4 audit adds a search of the rewritten history for the three numbers and the Hong Kong wording.
+- Chenyu (2026-09-25): proposed. Chenyu's old personal repository, `tender-evaluation-assistant`, gets a new name before it is ever made public.
+- Nasi (2026-09-26): agree to 1–4, including the proposed repository description, which is set once this merges.
+- Decision: agreed (2026-09-26).
 
 ## G. Deployment and demo
 
