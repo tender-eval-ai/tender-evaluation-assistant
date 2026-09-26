@@ -56,7 +56,7 @@ Last updated: 2026-09-20 (Chenyu).
 | J6 | Re-evaluate against a confirmed rule-set version | done | — |
 | J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | Nasi: field map and templates (J2 decided) |
 | J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
-| J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | proposed | Nasi: position |
+| J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | agreed | — (removed in the S5 legacy-removal PR) |
 
 ## A. Corrections to the plan
 
@@ -488,9 +488,7 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   Apache-2.0, which would have been inventing a licence the project has not chosen.
 - Still open in H1: the architecture diagram, the 30-second GIF of the three-column
   review (the Playwright review flow already walks exactly that sequence, so it can
-  record it), the two live demos (G1), and settling the licence itself.
-
-### J10. The MCP server at S5: retire it with the legacy stack
+  record it), the two live demos (G1), and settlin### J10. The MCP server at S5: retire it with the legacy stack
 - Found by: planning what the S5 legacy removal takes with it (2026-09-25).
 - The plan's "Kept, ported, removed" table (kept by C1) marks `mcp_server/` as *keep*, and D9 guards it by data class. Nobody scheduled the port, so it still runs on the prototype: `app/tools.BidTools` (otherwise used only by the legacy `app/agent.py`), the legacy rubric, and the `synthetic` flag. Nothing in the new stack calls it. Removing the legacy agent and the rubric at S5 breaks it.
 - Proposal: **retire it at S5**, in the legacy-removal PR:
@@ -504,6 +502,10 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   - The S4 real-bid result, the README and the demos matter more for the portfolio.
 - If S4 and S5 finish with time left, Chenyu has a port plan: read-only, stateless tools over the rule set, results and pages, with the gateway's data-class rule applied per client.
 - Chenyu (2026-09-26): proposed.
+- Nasi (2026-09-26): agree: retire it at S5, results kept in `docs/archive/`.
+- Decision: agreed (2026-09-26).
+
+.
 - Nasi:
 - Decision:
 
