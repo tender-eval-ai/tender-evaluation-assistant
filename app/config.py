@@ -111,7 +111,9 @@ class Config:
         never a real credential."""
         if "aiplatform.googleapis.com" in base_url:
             return None
-        for marker, env_var in (("deepseek", "DEEPSEEK_API_KEY"),
+        for marker, env_var in (("openai.azure.com", "AZURE_OPENAI_API_KEY"),
+                                ("cognitiveservices.azure.com", "AZURE_OPENAI_API_KEY"),
+                                ("deepseek", "DEEPSEEK_API_KEY"),
                                 ("googleapis", "GEMINI_API_KEY"),
                                 ("dashscope", "DASHSCOPE_API_KEY"),
                                 ("bigmodel", "ZHIPU_API_KEY")):

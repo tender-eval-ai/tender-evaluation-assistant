@@ -184,6 +184,9 @@ def test_unknown_hosts_only_ever_get_a_placeholder_key(monkeypatch):
     assert cfg.key_for("http://localhost:11434/v1") == "local"
     assert cfg.key_for("http://dgx.internal:8000/v1") == "local"
     assert cfg.key_for("https://models.github.ai/inference") == "local"
+    monkeypatch.setenv("AZURE_OPENAI_API_KEY", "az-secret")
+    assert cfg.key_for("https://tender-oai-abc123.openai.azure.com/openai/v1") == "az-secret"
+    assert cfg.key_for("https://tender-oai-abc123.cognitiveservices.azure.com/openai/v1") == "az-secret"
 
 
 def test_prompt_budgets_are_configurable(monkeypatch):
