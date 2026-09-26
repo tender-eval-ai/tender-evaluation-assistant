@@ -54,7 +54,7 @@ Last updated: 2026-09-20 (Chenyu).
 | J4 | S4 review: corrections and confirmation in the UI | done | — |
 | J5 | S4 review flow in a browser (Playwright) | done | — |
 | J6 | Re-evaluate against a confirmed rule-set version | done | — |
-| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | Nasi: field map and templates (J2 decided) |
+| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); Chenyu: the fields with no home into `forms.py`; then Nasi: templates |
 | J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
 
 ## A. Corrections to the plan

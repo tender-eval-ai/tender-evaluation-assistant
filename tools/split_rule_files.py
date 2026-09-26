@@ -3,10 +3,12 @@
     python tools/split_rule_files.py --source <AI_camp>/agent/src/procurement_agent/validator/rules \
         --report <private>/classification.json
 
-Today it classifies every rule; the report carries rule values, so it goes outside
-git. Writing the templates and the params comes next, after the field map (checklist
-J2): each template named by our form id, every rule's `field` a key of that form
-(`app/checks/forms.py`), and the text in our own words, never the rule files'.
+Today it classifies every rule and places its field; the report carries rule values,
+so it goes outside git. The field map (checklist J2) names each file's template by our
+form id and each rule's `field_id` by a key of that form (`app/checks/forms.py`). A
+field the form does not have is reported as having no home, never guessed: that list
+is what the forms need before the templates can be written. Writing the templates and
+the params comes next, in our own words, never the rule files'.
 
 The plan's S1 deliverable. Each source file mixes two things: what the FORM always
 requires (its rules, its consequence tiers, its notes) and what THIS tender put in the
@@ -26,7 +28,15 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
+from collections import defaultdict
 from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from app.checks.forms import FORMS  # noqa: E402
 
 # docs/check_kind_mapping.md, "By check name". A name mapping to a single kind is here;
 # the four that split per rule are resolved by `PER_RULE` below.
@@ -90,9 +100,72 @@ SPLITS = {"date_validity_and_presence": ("date", "human_only")}
 
 _TRIGGER = re.compile(r"_conditional_trigger$|_trigger$")
 
+# J2 (a): a template's id is our form id. The rule file's name, without `_rules` and
+# the stage suffix, to the form it describes. The Information Schedule's Stage II rules
+# join its Stage I rules in one template; each rule keeps its stage.
+TEMPLATE_OF_FILE = {
+    "appendix_contact_details": "contact_details",
+    "board_resolution_authorisation": "board_resolution",
+    "certification_track_record": "documentary_evidence",
+    "compliance_schedule": "compliance_schedule",
+    "contract_deposit_method": "contract_deposit",
+    "information_schedule": "information_schedule",
+    "manufacturer_letter_of_intent": "manufacturer_letter",
+    "noncollusive_tendering_certificate": "noncollusive_certificate",
+    "particulars_of_goods_schedule": "particulars_of_goods",
+    "price_schedule_parts_c_d": "price_schedule_parts_c_d",
+    "price_schedule": "price_schedule",
+    "tender_sample_plant_trial": "tender_sample_declaration",
+}
+
+# J2 (b): a rule's `field_id` to the field of its form that holds the same thing.
+# Only where the form has that field; a field_id missing here has no home yet and is
+# reported. Two are close rather than word for word, and say why.
+FIELD_OF = {
+    "contact_details": {},
+    "compliance_schedule": {"compliance_part_b_earlier_delivery_days": "delivery_days"},
+    "contract_deposit": {"contract_deposit_method": "method"},
+    "manufacturer_letter": {"manufacturer_letter_of_intent": "document"},  # the letter itself is present
+    "noncollusive_certificate": {},
+    "particulars_of_goods": {
+        "place_of_origin": "country_of_origin",
+        "name_of_manufacturer": "manufacturer",
+        "brand_product_name": "product_name",
+        "packing_plant_net_weight_kg": "packaging",           # the Packing row, net weight in kg
+        "percentage_activity": "active_ingredient_pct",       # a polyelectrolyte's activity is its active content
+        "bulk_density": "bulk_density",
+    },
+    "price_schedule_parts_c_d": {"banking_details": "part_d"},
+    "price_schedule": {"estimated_quantity": "quantity", "one_time_unit_price": "unit_price",
+                       "estimated_goods_price": "total", "optimal_dosage": "optimal_dosage"},
+}
+
+# One field_id that different rules read different parts of: the rule decides.
+FIELD_OF_RULE = {
+    "appendix_tenderer_address_not_postal_box": "address",
+    "noncollusive_certificate_filled": "document",
+    "noncollusive_certificate_tenderer_identified": "tenderer_name",
+    "noncollusive_certificate_signed": "signature",
+}
+
+# Kinds a person decides from the document as a whole: they read no field.
+NO_FIELD_KINDS = {"human_only"}
+
 
 def template_id(filename: str) -> str:
-    return re.sub(r"_rules(_stage2)?$", lambda m: "_stage2" if m.group(1) else "", Path(filename).stem)
+    """Our form id for a rule file; the file's own stem when the map has none (reported)."""
+    stem = re.sub(r"_rules(_stage2)?$", "", Path(filename).stem)
+    return TEMPLATE_OF_FILE.get(stem, stem)
+
+
+def field_of(template: str, rule: dict, kind: str | None) -> tuple[str | None, str]:
+    """(`<form>.<field>` key, status): status is `mapped`, `not_needed` or `no_home`."""
+    if kind is None or kind in NO_FIELD_KINDS:
+        return None, "not_needed"
+    name = FIELD_OF_RULE.get(rule["id"]) or FIELD_OF.get(template, {}).get(rule.get("field_id"))
+    if name is None:
+        return None, "no_home"
+    return f"{template}.{name}", "mapped"
 
 
 def kind_of(rule: dict) -> tuple[str | None, str | None]:
@@ -116,11 +189,20 @@ def main() -> None:
     ap.add_argument("--report", type=Path, help="write the per-rule classification as JSON")
     args = ap.parse_args()
 
+    wrong = [f"{t}.{n}" for t, fields in FIELD_OF.items() for n in fields.values() if n not in FORMS[t].names]
+    if wrong:
+        sys.exit(f"the field map names fields its forms do not have: {', '.join(wrong)}")
+
     report, counts = [], {"check": 0, "not_a_rule": 0, "unmapped": 0, "split": 0}
+    homeless: dict[str, set[str]] = defaultdict(set)
     for path in sorted(args.source.glob("*.json")):
         doc = json.loads(path.read_text())
+        template = template_id(path.name)
         for rule in doc.get("rules", []):
             kind, why = kind_of(rule)
+            field, placed = field_of(template, rule, kind)
+            if placed == "no_home":
+                homeless[template].add(rule.get("field_id") or f"(no field_id: {rule['id']})")
             if why == "unmapped":
                 counts["unmapped"] += 1
             elif why:
@@ -129,8 +211,8 @@ def main() -> None:
                 counts["check"] += 1
                 if rule.get("check") in SPLITS:
                     counts["split"] += 1
-            report.append({"file": path.name, "id": rule["id"], "check": rule.get("check"),
-                           "kind": kind, "not_a_rule": why,
+            report.append({"file": path.name, "template": template, "id": rule["id"], "check": rule.get("check"),
+                           "kind": kind, "not_a_rule": why, "field": field, "field_status": placed,
                            "tier": rule.get("consequence_tier"),
                            "has_own_outcomes": bool(rule.get("outcomes")),
                            "transform": rule.get("transform", {}).get("operation") if rule.get("transform") else None,
@@ -143,6 +225,11 @@ def main() -> None:
     print(f"{len(report)} rules: {counts['check']} checks "
           f"({counts['split']} of them the split name), {counts['not_a_rule']} not a rule, "
           f"{counts['unmapped']} UNMAPPED")
+    placed = [r["field_status"] for r in report]
+    print(f"fields: {placed.count('mapped')} mapped, {placed.count('not_needed')} not needed, "
+          f"{placed.count('no_home')} with no home in their form yet")
+    for template in sorted(homeless):
+        print(f"  {template}: {', '.join(sorted(homeless[template]))}")
     if args.report:
         args.report.write_text(json.dumps(report, indent=1, ensure_ascii=False))
         print(f"classification written to {args.report}")
