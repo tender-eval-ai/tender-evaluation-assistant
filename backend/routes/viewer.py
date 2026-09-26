@@ -12,6 +12,8 @@ from backend import deps, signing
 from backend.errors import ApiError
 from backend.schemas_api import Node, Document, Page
 
+# `router` holds only the page image, which checks its own signed URL (or the key); every
+# other route is on `keyed`.
 router = APIRouter()
 keyed = APIRouter(dependencies=[Depends(deps.require_key)])
 
@@ -70,7 +72,7 @@ def page_image(pid: str, doc_id: str, n: int, exp: int | None = None, sig: str |
     return Response(content=open(refs[n - 1].path, "rb").read(), media_type="image/png")
 
 
-@router.get("/projects/{pid}/documents/{doc_id}/nodes")
+@keyed.get("/projects/{pid}/documents/{doc_id}/nodes")
 def list_nodes(pid: str, doc_id: str) -> list[Node]:
     """The clause tree L0 parsed from one document, from the build job's cached parse."""
     import json

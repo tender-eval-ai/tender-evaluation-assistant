@@ -14,6 +14,14 @@ def make_client(tmp_path, monkeypatch, api_key: str | None = None):
     monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
     monkeypatch.setenv("INBOX_DIR", str(tmp_path / "inbox"))
     monkeypatch.setenv("GITHUB_MODELS_BASE_URL", "http://localhost:11434/v1")  # keyless client
+    # A developer's .env may point the models at a cloud host; the API's tests run on the
+    # local defaults, as CI does, so the data-class checks see the same endpoints. Set, not
+    # deleted: reloading the API re-reads .env, which only fills variables that are unset.
+    from app.config import DEFAULT_TEXT_MODEL, DEFAULT_VISION_MODEL
+    monkeypatch.setenv("TEXT_MODEL", DEFAULT_TEXT_MODEL)
+    monkeypatch.setenv("VISION_MODEL", DEFAULT_VISION_MODEL)
+    monkeypatch.setenv("TEXT_MODEL_FALLBACKS", "")
+    monkeypatch.setenv("VISION_MODEL_FALLBACKS", "")
     if api_key:
         monkeypatch.setenv("API_KEY", api_key)
     else:
@@ -349,3 +357,45 @@ def test_jobs_interrupted_by_a_restart_are_not_left_running(tmp_path, monkeypatc
     client = make_client(tmp_path, monkeypatch)          # process restarted (module reload)
     status = client.get(f"/projects/{pid}/status").json()
     assert status["state"] == "error" and "restarted" in status["detail"]
+
+
+def test_node_table_needs_the_key(tmp_path, monkeypatch):
+    """The parsed clause tree is document content: behind X-API-Key like every other
+    document route (it sat on the unkeyed router with the page image until ST-5)."""
+    client = make_client(tmp_path, monkeypatch, api_key="sesame")
+    h = {"X-API-Key": "sesame"}
+    pid = client.post("/projects", json={"name": "n"}, headers=h).json()["id"]
+    from tools.pdfgen import make_text_pdf
+    pdf = tmp_path / "t.pdf"
+    make_text_pdf(pdf, "Terms of Tender apply here.")
+    client.post(f"/projects/{pid}/tender", headers=h, files=[("files", ("t.pdf", pdf.read_bytes(), "application/pdf"))])
+    doc = client.get(f"/projects/{pid}/documents", headers=h).json()[0]["doc_id"]
+    assert client.get(f"/projects/{pid}/documents/{doc}/nodes").status_code == 401
+    assert client.get(f"/projects/{pid}/documents/{doc}/nodes", headers=h).status_code == 409, "keyed: not parsed yet"
+
+
+def test_legacy_run_refuses_a_cloud_model_for_a_confidential_project(tmp_path, monkeypatch):
+    """The graph calls the model client directly, so /run applies the gateway's policy
+    first: a confidential project never starts against a cloud endpoint."""
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("TEXT_MODEL_FALLBACKS", "deepseek-chat@https://api.deepseek.com/v1")
+    pid = client.post("/projects", json={"name": "c"}).json()["id"]
+    from tools.pdfgen import make_text_pdf
+    pdf = tmp_path / "t.pdf"
+    make_text_pdf(pdf, "Terms of Tender apply here.")
+    client.post(f"/projects/{pid}/tender", files=[("files", ("t.pdf", pdf.read_bytes(), "application/pdf"))])
+
+    r = client.post(f"/projects/{pid}/run")
+    assert r.status_code == 403
+    assert r.json()["error"]["code"] == "data_class_forbidden"
+    assert r.json()["error"]["details"] == {"data_class": "confidential", "endpoints": ["api.deepseek.com"]}
+    assert client.get(f"/projects/{pid}/status").json()["state"] == "idle", "nothing started"
+
+
+def test_legacy_run_lets_a_synthetic_project_reach_any_endpoint(tmp_path, monkeypatch):
+    from backend.routes.runs import _check_endpoints
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("TEXT_MODEL_FALLBACKS", "deepseek-chat@https://api.deepseek.com/v1")
+    pid = client.post("/projects", json={"name": "s", "synthetic": True}).json()["id"]
+    from backend import deps
+    _check_endpoints(deps._project_dir(pid))    # no exception: synthetic text may go anywhere
