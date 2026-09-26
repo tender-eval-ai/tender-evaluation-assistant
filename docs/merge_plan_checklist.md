@@ -46,7 +46,7 @@ Last updated: 2026-09-20 (Chenyu).
 | G1 | Two independent demos, same image | agreed | Nasi: domain, when chosen |
 | G2 | No cloud named in code; configuration only | agreed | — (update the plan) |
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
-| G4 | Chenyu's demo on Azure instead of GCP (amends G1 and G2) | proposed | Nasi: position |
+| G4 | One shared demo, on Azure (amends G1 and G2; takes in #83's one-demo proposal) | proposed | Nasi: position |
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | done | 1 and 4 done; 2 and 3 closed without change: every tender clears the S3 gate (95.6 / 97.8 / 95.2) |
@@ -312,21 +312,36 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Nasi (2026-09-16): agree.
 - Decision: agreed (2026-09-17). Plan to be updated.
 
-### G4. Chenyu's demo on Azure instead of GCP
-- Found by: after #78, `deploy/cloudrun/` can't build (it still builds the Streamlit `frontend/Dockerfile`), so the GCP demo needs a new deploy either way. Chenyu already has projects deployed on GCP and on AWS EC2, and many of the jobs Chenyu is applying for ask for Azure.
-- Proposal: amend G1 so that **Chenyu's demo runs on Azure**. Nasi's AWS demo is unchanged.
+### G4. One shared demo, on Azure
+- Found by: after #78, `deploy/cloudrun/` can't build, because it still builds the Streamlit `frontend/Dockerfile`. Nasi's pricing of the AWS side in #83 adds that App Runner closed to new customers on 2026-04-30, an always-on EC2 host costs about $30 a month, and Fargate with RDS about $100.
+- Proposal: **one shared demo instead of two, on Azure.**
+  - **The AWS demo lapses**, and with it the AWS parts of G2; `infra/` keeps only the synthetic-data bucket. This part is Nasi's #83.
+  - **The GCP project is retired.**
+  - **Why Azure rather than the existing Cloud Run project, #83's choice:**
+    - Chenyu already has projects deployed on GCP and on AWS EC2, and many of the jobs Chenyu is applying for ask for Azure.
+    - The Cloud Run deploy needs rewriting either way.
+    - The running cost has the same shape. Container Apps scales to zero and wakes on the first request, within a monthly free grant of 180,000 vCPU-seconds. The free account covers the smallest Postgres server (Burstable B1MS, 750 hours and 32 GB a month) for 12 months.
   1. **Shape:** one Azure Container Apps app with three containers:
      - `web`, the #78 nginx image, as ingress, adding the key from a secret;
      - the API;
-     - the worker (same image).
+     - the worker, from the same image. Checks run while the app is awake, and migrations apply at start.
      
-     Postgres in Azure Database for PostgreSQL (Flexible Server, Burstable), the project files on an Azure Files share at `/data`, and secrets in Key Vault, read through a managed identity. The model for synthetic projects is Azure OpenAI through the gateway. Its policy is unchanged: a cloud endpoint, synthetic data only.
-  2. **Private until G3 and B9:** Container Apps' built-in Entra ID sign-in, limited to our accounts. nginx adds the API key, so whoever gets past the sign-in has full access. It stays private until a demo login or read-only mode exists.
-  3. **Built the way the jobs ask:** infrastructure as code in Bicep (`deploy/azure/`), GitHub Actions deploying through OIDC federated credentials with no stored cloud secret, and Application Insights for the J11 logging.
-  4. **Same image for both demos (G1):** CI pushes each tag's images to the GitHub Container Registry, and both clouds pull from it. That keeps the images the same without tying the registry to either cloud.
-  5. **GCP retired:** `deploy/cloudrun/` is removed in the Azure PR. The Cloud Run service and its data bucket are deleted, after a local copy of the bucket, which holds only synthetic data.
-- G2 is unaffected: nothing in the code names a cloud; `deploy/azure/` holds only configuration.
-- Chenyu (2026-09-26): proposed.
+     The rest:
+     - **Postgres:** Flexible Server B1MS; the job queue's LISTEN/NOTIFY works there. After the free year, Neon's free tier is the fallback.
+     - **Files:** an Azure Files share at `/data`, for files only; Postgres never goes on the share.
+     - **Secrets:** Key Vault, read through a managed identity.
+     - **Model:** Azure OpenAI for synthetic projects, through the gateway. The policy is unchanged: a cloud endpoint, synthetic data only.
+  2. **Private until G3 and B9:** Container Apps' built-in Entra ID sign-in, limited to our two accounts. nginx adds the API key, so whoever gets past the sign-in has full access. The app opens to everyone once G3's demo login or read-only mode exists.
+  3. **Built the way the jobs ask:** Bicep in `deploy/azure/`; GitHub Actions deploying through OIDC federated credentials, with no stored cloud secret; Application Insights for J11's logging item. CI pushes each tag's images to the GitHub Container Registry.
+  4. **Checked before calling it done:** `tools/check_synthetic_case.py` end to end against the deployed app (#83).
+  5. **Who does what:**
+     - **Chenyu:** the Azure resources, identity, CI and the Bicep.
+     - **Nasi, if she wants:** the container-level changes #83 lists (`web` as ingress, the worker as a container, the new settings reaching both). They're the same on any cloud and can be tested in compose first. Also the end-to-end check.
+     
+     Nasi gets Contributor on the demo's resource group.
+  6. **GCP retired:** `deploy/cloudrun/` is removed in the Azure PR. The Cloud Run service and its data bucket are deleted, after a local copy of the bucket, which holds only synthetic data.
+- G2's rule still holds: nothing in the code names a cloud, and `deploy/azure/` holds only configuration.
+- Chenyu (2026-09-26): proposed. This takes in #83: one shared demo, run on Azure.
 - Nasi:
 - Decision:
 
