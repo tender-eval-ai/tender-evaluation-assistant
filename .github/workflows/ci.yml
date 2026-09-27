@@ -10,18 +10,93 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
+  # Private-repo Actions minutes are billed per job, each rounded up to a whole minute, so
+  # the quick checks share one job, and the heavy jobs run only for what a change touches:
+  #   - a docs-only change runs this job alone;
+  #   - Python, the tests and the API contract run `test` and `integration`;
+  #   - web/ and the OpenAPI snapshot run `web` and `e2e`;
+  #   - a change to a workflow runs everything.
+  # A push to main (a merge) reruns only this job and `test`: the pull request already ran
+  # the rest, and `test` still catches two green pull requests that break each other.
+  checks:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      python: ${{ steps.changes.outputs.python }}
+      web: ${{ steps.changes.outputs.web }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - name: what the change touches
+        id: changes
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+        run: |
+          files=$(git diff --name-only "$BASE"...HEAD 2>/dev/null) || files=$(git ls-files)
+          python=false; web=false
+          while read -r f; do
+            case "$f" in
+              "") ;;
+              .github/workflows/*|docs/openapi.json) python=true; web=true ;;
+              web/*) web=true ;;
+              docs/api_contract.md) python=true ;;   # test_forms reads its forms table
+              docs/*|*.md|CITATION.cff) ;;
+              *) python=true ;;
+            esac
+          done <<< "$files"
+          echo "python=$python web=$web"
+          echo "python=$python" >> "$GITHUB_OUTPUT"
+          echo "web=$web" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
       - run: pip install pre-commit
       # ruff, gitleaks (staged), large files, merge markers, private keys, PDF placement.
       - run: pre-commit run --all-files --show-diff-on-failure
+      - name: gitleaks over the full history
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar -xz gitleaks
+          ./gitleaks git --redact --no-banner --exit-code 1 .
+      - name: pip-audit over the lockfile (on main, and when the lock changes)
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || git diff --name-only "origin/${{ github.base_ref }}...HEAD" | grep -q '^requirements'; then
+            pip install pip-audit
+            pip-audit -r requirements.lock --require-hashes
+          else
+            echo "the lockfile is unchanged: pip-audit runs on the merge to main"
+          fi
+      # Branch protection is not available on this private repo. This step cannot stop a
+      # direct push to main, but it makes one visible: it fails when the pushed commit is
+      # not associated with a merged pull request.
+      - name: main guard, fail unless this commit came through a merged pull request
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # GitHub links a merge commit to its pull request a few seconds after the merge;
+          # a query 6 s after merging #2 saw nothing. Ask up to six times, 10 s apart.
+          for attempt in 1 2 3 4 5 6; do
+            n=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
+                  --jq '[.[] | select(.merged_at != null)] | length')
+            if [ "$n" != "0" ]; then
+              echo "commit ${{ github.sha }} came through a merged pull request (attempt $attempt)"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::commit ${{ github.sha }} reached main without a merged pull request"
+          exit 1
 
   test:
+    needs: checks
+    if: needs.checks.outputs.python == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -36,6 +111,8 @@ jobs:
   integration:
     # The Postgres-backed tests: the check API, the worker, migrations. The harness
     # scenarios (-m orchestrator) stay a local, opt-in run.
+    needs: checks
+    if: github.event_name == 'pull_request' && needs.checks.outputs.python == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -62,6 +139,8 @@ jobs:
       - run: python -m pytest -m postgres -q
 
   web:
+    needs: checks
+    if: github.event_name == 'pull_request' && needs.checks.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -83,6 +162,8 @@ jobs:
     # The review flow in a real browser, on the MSW mock: no backend, no secrets,
     # the same conditions as the Vitest suite. A separate job because it needs a dev
     # server and a browser download, which would slow the fast `web` job on every PR.
+    needs: checks
+    if: github.event_name == 'pull_request' && needs.checks.outputs.web == 'true'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -104,48 +185,3 @@ jobs:
           path: web/test-results/
           retention-days: 7
 
-  security:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-      - name: gitleaks over the full history
-        run: |
-          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz | tar -xz gitleaks
-          ./gitleaks git --redact --no-banner --exit-code 1 .
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.12"
-      - name: pip-audit over the lockfile
-        run: |
-          pip install pip-audit
-          pip-audit -r requirements.lock --require-hashes
-
-  main-guard:
-    # Branch protection is not available on this private repo. This job cannot stop a
-    # direct push to main, but it makes one visible: it fails when the pushed commit is
-    # not associated with a merged pull request.
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    steps:
-      - name: fail unless this commit came through a merged pull request
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # GitHub links a merge commit to its pull request a few seconds after the merge;
-          # a query 6 s after merging #2 saw nothing. Ask up to six times, 10 s apart.
-          for attempt in 1 2 3 4 5 6; do
-            n=$(gh api "repos/${{ github.repository }}/commits/${{ github.sha }}/pulls" \
-                  --jq '[.[] | select(.merged_at != null)] | length')
-            if [ "$n" != "0" ]; then
-              echo "commit ${{ github.sha }} came through a merged pull request (attempt $attempt)"
-              exit 0
-            fi
-            sleep 10
-          done
-          echo "::error::commit ${{ github.sha }} reached main without a merged pull request"
-          exit 1
