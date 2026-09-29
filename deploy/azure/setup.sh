@@ -19,11 +19,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 
-REPO=${REPO:-chenyufang-data/tender-evaluation-assistant}
+REPO=${REPO:-tender-eval-ai/tender-evaluation-assistant}
 RG=${RG:-tender-demo}
 LOCATION=${LOCATION:-eastus2}
 PREFIX=${PREFIX:-tender}
-GHCR_USER=${GHCR_USER:-chenyufang-data}
+GHCR_USER=${GHCR_USER:-chenyufang-data}   # the account GHCR_TOKEN belongs to
 : "${GHCR_TOKEN:?export GHCR_TOKEN: a classic GitHub token with the read:packages scope only}"
 
 SUBSCRIPTION=$(az account show --query id -o tsv)

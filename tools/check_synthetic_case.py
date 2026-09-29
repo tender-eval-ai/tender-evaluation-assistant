@@ -51,6 +51,12 @@ def run(api: Api, case: str = "synthetic_tender", ruleset_path: Path = DEFAULT_R
     log(f"project {pid}: {imported['tender_pdfs']} tender documents, offers from {', '.join(sorted(imported['bidders']))}")
 
     ruleset = json.loads(Path(ruleset_path).read_text())
+    named = sorted({i["template"] for i in ruleset["items"] if i.get("template")})
+    health = api.call("GET", "/health")
+    log(f"templates in the API's library: {health.get('templates')}")
+    if named and not health.get("templates"):
+        log(f"WARNING: the rule set names templates ({', '.join(named)}) but the library is empty, so their items "
+            f"come out needs_review; set RULESET_TEMPLATES_DIR for the API and the worker")
     draft = {k: v for k, v in ruleset.items() if k not in ("status", "confirmed_by", "confirmed_at", "version", "project_id")}
     api.call("PUT", f"/projects/{pid}/ruleset/draft", user="chenyu", json=draft)
     confirmed = api.call("POST", f"/projects/{pid}/ruleset/confirm", user="nasi")

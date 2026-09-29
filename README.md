@@ -221,7 +221,12 @@ tools/              case generator (incl. --buried benchmark case, ground truth)
 ## Service mode — frontend + backend
 
 The API's requirements are `backend/requirements.txt`; root `requirements.txt` is the dev
-aggregate (the API's plus pytest and the MCP client). The UI in `web/` is an npm project;
+aggregate (the API's plus pytest and the MCP client). The image installs
+`backend/requirements.lock`, hashed, at the same versions as the root lock CI tests, and
+runs as the unprivileged user `app` (uid 1000). **On a Linux host,** `./data` must be
+writable by uid 1000; a folder an older root-run stack wrote needs
+`sudo chown -R 1000:1000 data` once. `docker compose ps` shows the API and the worker as
+healthy once `/health` answers and the worker's sweeper has reached Postgres. The UI in `web/` is an npm project;
 its image serves the built app with nginx, forwards the API's paths to the backend and adds
 `API_KEY` there, so the key never reaches the browser.
 

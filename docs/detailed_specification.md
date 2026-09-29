@@ -485,7 +485,7 @@ stay visible — an early bug hid it behind an immediate rerun).
 | `TEXT_MODEL_FALLBACKS`, `VISION_MODEL_FALLBACKS` | Comma-separated fallback entries |
 | `DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `DASHSCOPE_API_KEY`, `ZHIPU_API_KEY` | Per-provider keys, matched to endpoints by hostname; any other host gets a placeholder |
 | `VERIFY_FINDINGS` | `0` disables the adversarial pass |
-| `AGENT_SEARCH`, `AGENT_MAX_STEPS`, `AGENT_OCR_PAGES` | Evidence-search agent on/off (default on), step budget per finding (8, shared with the MCP local client's per-question budget), on-demand OCR pages per bid (6) |
+| `AGENT_SEARCH`, `AGENT_MAX_STEPS`, `AGENT_OCR_PAGES` | Evidence-search agent on/off (default on), step budget per finding (6, shared with V5's form search and the MCP local client's per-question budget), on-demand OCR pages per bid (6) |
 | `MAX_OCR_PAGES` | OCR cap per document (demo 8) |
 | `MAX_PARALLEL_BIDS` | Concurrent bid extractions in the graph fan-out (default 4) |
 | `API_KEY` | Enables auth; required on any shared machine |

@@ -19,7 +19,7 @@ from app.checks.vendor_check import _cost, data_class_of, make_llm, project_dir
 from app.jobs import registry
 from app.jobs.models import TENDER, Context, Pipeline, Step
 from app.rulesets import additions as l3b, build as merge, coverage as l4, match as l1, novel as l3, slots as l2
-from app.rulesets.library import load_templates
+from app.rulesets.library import EMPTY, load_templates
 from app.rulesets.locate import locate, parse_tender
 from app.rulesets.nodes import NodeIndex
 from app.rulesets.schema import DataClass, Gap, PartSpec, RuleSetItem
@@ -105,11 +105,12 @@ def locate_step(ctx: Context):
 def match_step(ctx: Context):
     items = _items(ctx)
     ctx.progress("match", 0, len(items), "calls")
+    templates = load_templates()
     llm = _llm(ctx)
     before = dict(getattr(llm, "stats", {}))
     with llm.scope(TENDER):
-        matched = l1.match_items(items, load_templates(), NodeIndex(_nodes(ctx)), llm)
-    return {"items": _dump(matched), "cost": _cost(ctx, llm, before)}
+        matched = l1.match_items(items, templates, NodeIndex(_nodes(ctx)), llm)
+    return {"items": _dump(matched), "cost": _cost(ctx, llm, before), "templates": len(templates)}
 
 
 def slots_step(ctx: Context):
@@ -188,8 +189,10 @@ def save(ctx: Context):
                              prompt_version=PROMPT_VERSION)
     version, created = store.save_draft(pid, spec, merge.BUILDER)
     after = store.get_version(pid, version)
-    store.event("ruleset.built", pid, f"v{version}", existing[1] if existing else None, after, merge.BUILDER,
-                "new draft" if created else "draft rebuilt")
+    reason = "new draft" if created else "draft rebuilt"
+    if ctx.data.get("templates") == 0:
+        reason += f"; {EMPTY}"                      # the audit log shows why every item is novel
+    store.event("ruleset.built", pid, f"v{version}", existing[1] if existing else None, after, merge.BUILDER, reason)
     return {"ruleset_version": version}
 
 

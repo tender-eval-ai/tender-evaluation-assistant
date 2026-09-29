@@ -208,6 +208,21 @@ def test_api_key_enforced(tmp_path, monkeypatch):
     assert client.get("/projects", headers={"X-API-Key": "sesame"}).status_code == 200
 
 
+def test_health_reports_the_template_library_without_naming_a_path(tmp_path, monkeypatch):
+    client = make_client(tmp_path, monkeypatch, api_key="sesame")
+    monkeypatch.setenv("RULESET_TEMPLATES_DIR", str(FIXTURES.parent / "templates"))
+    body = client.get("/health").json()
+    assert body["templates"] == 2 and body["templates_valid"] is True
+    library = tmp_path / "templates"
+    library.mkdir()
+    monkeypatch.setenv("RULESET_TEMPLATES_DIR", str(library))
+    assert client.get("/health").json()["templates"] == 0, "an empty library, reported rather than hidden"
+    (library / "broken.json").write_text("{")
+    r = client.get("/health")
+    assert r.status_code == 200 and r.json()["templates"] == 0 and r.json()["templates_valid"] is False
+    assert str(tmp_path) not in r.text and "broken.json" not in r.text, "an open route names no path and no file"
+
+
 def stub_pipeline(monkeypatch) -> dict:
     """Replace the LLM-backed graph nodes with fixtures: the orchestrated run then
     exercises checkpoints, pauses and edits without any model. Returns the bids."""
