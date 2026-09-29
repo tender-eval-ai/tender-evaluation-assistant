@@ -19,9 +19,9 @@ from app.checks.forms import form_for
 from app.rulesets.nodes import NodeIndex
 from app.rulesets.schema import (Citation, CheckType, DataClass, FollowUp, ItemNote, ItemStatus, Outcome, ParamValue, Part,
                                  RuleSetItem, TemplateRule)
-from app.rulesets.slots import _file_of, context_of
+from app.rulesets.slots import _file_of, clause_context, cut_notes, roots_of
 
-PROMPT_VERSION = "novel-v1"
+PROMPT_VERSION = "novel-v2"
 
 SYSTEM = (
     "You draft the checks a tender's Completeness Check Schedule item implies, for one item that matches no "
@@ -86,10 +86,11 @@ def draft_item(item: RuleSetItem, index: NodeIndex, llm, data_class: DataClass) 
     if not item.clauses:
         return item.model_copy(update={"status": ItemStatus.GAP}), {}
     kinds = ", ".join(k.value for k in CheckType)
+    context = clause_context(item, index)
     user = (f"Item ({item.letter}), Part {item.part.value}: {item.citation.quote}\n\nCheck kinds: {kinds}{field_menu(item)}\n\n"
-            f"Clauses:\n{context_of(item, index)}")
+            f"Clauses:\n{context.text}")
     reply: Requirements = llm.chat_json(SYSTEM, user, Requirements)
-    roots = [c.node_id for c in item.clauses if c.node_id]
+    roots = roots_of(item)
     prefix = prefix_of(item)
     rules: list[TemplateRule] = []
     notes: list[ItemNote] = []
@@ -113,6 +114,7 @@ def draft_item(item: RuleSetItem, index: NodeIndex, llm, data_class: DataClass) 
                                                 quote=req.quote.strip(), data_class=data_class)))
         sources[rule_id] = node["node_id"]
     status = ItemStatus.NOVEL if rules else ItemStatus.GAP
+    notes += cut_notes(item, context.cut)
     return item.model_copy(update={"rules": rules, "notes": [*item.notes, *notes], "status": status}), sources
 
 
