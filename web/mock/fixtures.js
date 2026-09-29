@@ -489,7 +489,7 @@ export function evaluation() {
       forTenderer("Tenderer_D", "pass", "pass", true),
     ],
     stage1_conclusion: "Three of the four Tenderers passed the Completeness Check. Tenderer C did not submit "
-      + "the Manufacturer's Letter of Intent required by item (k).",
+      + "the signed Non-collusive Tendering Certificate required by item (l).",
     stage2_conclusion: "The three conforming Tenderers met every Stage II requirement.",
     recommendation: "Tenderer A is recommended: the lowest cost-effectiveness of the conforming offers.",
     recommended: "Tenderer_A",
