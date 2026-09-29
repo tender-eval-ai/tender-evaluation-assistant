@@ -292,9 +292,18 @@ class Node(BaseModel):
     parent_id: str | None = None
     kind: str
     number: str | None = Field(default=None, description="the marker as printed: a clause number or a label like (a)")
+    label: str | None = Field(default=None, description="a subitem's marker as the parser labels it, e.g. (a)")
+    part: str | None = Field(default=None, description="the printed scope the node sits in, e.g. Part 4 or Table 2")
     title: str | None = None
     page: int | None = None
     box: list[float] | None = Field(default=None, min_length=4, max_length=4, description="[x0, y0, x1, y1] of the marker, PDF points")
+    text: str = Field(default="", description="the node's own text as parsed")
+    char_start: int | None = Field(default=None, description="offset of the text; the layout parser always gives 0")
+    char_end: int | None = Field(default=None, description="end offset of the text; the layout parser gives the text's length")
+    is_coarse: bool = Field(default=False, description="a clause or subclause, not a finer item")
+    doc_name: str | None = Field(default=None, description="the document name from the page footer")
+    ref_no: str | None = Field(default=None, description="the tender reference number from the page footer")
+    rule_version: str | None = Field(default=None, description="the dated edition of the rules named in the footer")
 
 
 class EvaluateRequest(BaseModel):
