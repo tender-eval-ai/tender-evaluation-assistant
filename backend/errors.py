@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from backend.schemas_api import ErrorBody
 
 CODES = {400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 409: "conflict",
-         422: "validation_failed", 503: "unavailable"}
+         413: "too_large", 422: "validation_failed", 503: "unavailable"}
 
 
 class ApiError(HTTPException):

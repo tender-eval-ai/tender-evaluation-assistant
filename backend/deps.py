@@ -183,22 +183,62 @@ def _make_cfg(pdir: Path) -> Config:
 
 
 def _safe_name(name: str) -> str:
+    """One path segment made of safe characters. "." and ".." are refused: as a tenderer or
+    file name they would point at the folder itself or its parent."""
     cleaned = re.sub(r"[^A-Za-z0-9._ -]+", "_", Path(name).name).strip()
-    if not cleaned:
+    if not cleaned.strip(". "):
         raise HTTPException(400, f"unusable filename: {name!r}")
     return cleaned
 
 
+PDF_MAGIC = b"%PDF-"
+MAGIC_WITHIN = 1024          # the PDF header may follow up to 1 KB of junk (ISO 32000, 7.5.2)
+CHUNK = 1 << 20
+
+
+def max_upload_bytes() -> int:
+    """MAX_UPLOAD_MB per file, default 200: the largest real tender or offer file seen is
+    about 50 MB. nginx's own cap (512 MB) is per request, for a folder of files."""
+    return int(float(os.environ.get("MAX_UPLOAD_MB", "200")) * 1024 * 1024)
+
+
 async def _save_pdfs(files: list[UploadFile], dest: Path) -> list[str]:
-    dest.mkdir(parents=True, exist_ok=True)
-    saved = []
-    for f in files:
-        name = _safe_name(f.filename or "")
+    """All or nothing. Every name is checked before anything is written; each file is then
+    streamed in chunks to a `.part` file, so one over the cap is refused (413) without being
+    held in memory, and one that does not start as a PDF (its bytes, not its name) is
+    refused (400). Only when every file passed are the `.part` files renamed into place; a
+    refusal removes them all."""
+    names = [_safe_name(f.filename or "") for f in files]
+    for name in names:
         if not name.lower().endswith(".pdf"):
             raise HTTPException(400, f"only PDF uploads are accepted, got: {name}")
-        (dest / name).write_bytes(await f.read())
-        saved.append(name)
-    return saved
+    limit = max_upload_bytes()
+    dest.mkdir(parents=True, exist_ok=True)
+    staged: list[Path] = []
+    try:
+        for f, name in zip(files, names):
+            partial = dest / f"{name}.part"
+            staged.append(partial)
+            size, head = 0, b""
+            with partial.open("wb") as out:
+                while chunk := await f.read(CHUNK):
+                    size += len(chunk)
+                    if size > limit:
+                        raise HTTPException(413, f"{name} is larger than the {limit // (1024 * 1024)} MB upload limit")
+                    if len(head) < MAGIC_WITHIN:
+                        head += chunk[: MAGIC_WITHIN - len(head)]
+                        if len(head) >= MAGIC_WITHIN and PDF_MAGIC not in head:
+                            break
+                    out.write(chunk)
+            if PDF_MAGIC not in head:
+                raise HTTPException(400, f"{name} is not a PDF: it does not start with {PDF_MAGIC.decode()}")
+    except BaseException:
+        for partial in staged:
+            partial.unlink(missing_ok=True)
+        raise
+    for partial, name in zip(staged, names):
+        partial.replace(dest / name)
+    return names
 
 
 def _bidder_names(pdir: Path) -> set[str]:
