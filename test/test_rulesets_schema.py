@@ -63,7 +63,7 @@ def test_a_rule_is_a_gate_or_it_is_not_a_rule():
 
 
 def test_follow_ups_belong_to_dormant_outcomes_only():
-    follow = FollowUp(trigger="Tendering Authority requests it", deadline="5 working days", if_deadline_missed="disqualified")
+    follow = FollowUp(trigger="Authority requests it", deadline="5 working days", if_deadline_missed="disqualified")
     assert Outcome(status="dormant", follow_up=follow).follow_up is follow
     with pytest.raises(ValidationError, match="dormant"):
         Outcome(status="pass", follow_up=follow)

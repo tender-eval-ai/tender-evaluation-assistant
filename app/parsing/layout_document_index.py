@@ -364,7 +364,7 @@ def _split_notes_heading(text: str) -> list[str]:
 
 # A run-in list: sub-items written inside one sentence rather than set out as
 # their own paragraphs - "(c) in the event of (i) a claim ...; (ii) the
-# Tendering Authority having grounds ...; or (iii) an agreement ...", "Contact details
+# Authority having grounds ...; or (iii) an agreement ...", "Contact details
 # (i) telephone number (ii) facsimile number (iii) email address". The layout
 # model has no gap to split on, so the whole list arrives inside its parent's
 # block and only the parent was ever a node. The answer keys address each such

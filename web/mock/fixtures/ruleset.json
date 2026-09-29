@@ -125,7 +125,7 @@
       "notes": [
         {
           "kind": "reference",
-          "text": "Part B: the Tendering Authority may ask for a missing item before disqualifying",
+          "text": "Part B: the Authority may ask for a missing item before disqualifying",
           "citation": null
         }
       ],
@@ -140,7 +140,7 @@
           "outcomes": {
             "blank": {
               "status": "needs_review",
-              "note": "{field} is missing; the Tendering Authority may request it (Part B)",
+              "note": "{field} is missing; the Authority may request it (Part B)",
               "follow_up": null
             },
             "filled": {

@@ -262,7 +262,7 @@ def stage_conclusion(offers: list[Offer], which: str, ruleset: RuleSet) -> str:
     parts = []
     if groups.get("pass"):
         parts.append(f"{_names(groups['pass'])} passed {label}")
-    for status, verb in (("needs_review", "await a reviewer's decision on"), ("dormant", "have items the Tendering Authority may request:"),
+    for status, verb in (("needs_review", "await a reviewer's decision on"), ("dormant", "have items the Authority may request:"),
                          ("disqualified", "are not considered further:")):
         for tenderer in groups.get(status, []):
             o = next(x for x in offers if x.tenderer == tenderer)

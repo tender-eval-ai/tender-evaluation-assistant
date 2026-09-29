@@ -64,7 +64,7 @@ class Part(StrEnum):
     """The Completeness Check Schedule's Parts: what a missing item means for the tender."""
 
     A = "A"  # missing: the tender is not considered further
-    B = "B"  # missing: the Tendering Authority may request it before disqualifying
+    B = "B"  # missing: the Authority may request it before disqualifying
     C = "C"  # discretionary: may be requested later or evaluated as submitted
 
 
@@ -78,7 +78,7 @@ class Consequence(StrEnum):
     ON_REQUEST_ONLY = "on_request_only"            # not requested: dormant; requested and missed: disqualified
     DEEMED_COMPLIANCE = "deemed_compliance"        # blank: pass; expressly non-compliant: disqualified
     DEEMED_DEFAULT = "deemed_default"              # blank: pass, read as the stated default (e.g. cash)
-    DISCRETIONARY = "discretionary"                # blank: pass; the Tendering Authority may ask later
+    DISCRETIONARY = "discretionary"                # blank: pass; the Authority may ask later
     NO_GATE = "no_gate"                            # recorded, never changes the verdict
 
 

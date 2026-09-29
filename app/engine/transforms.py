@@ -34,7 +34,7 @@ def _input_value(item: dict, rule: dict, transform: dict, index: int = 0):
 
 def _base_date(item: dict, rule: dict) -> str | None:
     # transform.params.base_date in the rules JSON is prose ("date of the
-    # Tendering Authority's written request"), not a machine-readable item key - there is
+    # Authority's written request"), not a machine-readable item key - there is
     # no live wiring to parse there. Convention instead: a rule-specific override
     # first, then the common default every base_date description in practice
     # resolves to (a Paragraph 16.1-style authority request date).
@@ -198,7 +198,7 @@ def op_percentage_threshold(item: dict, rule: dict, params: dict) -> TransformRe
     if abs(deviation) <= params["max_deviation_pct"]:
         return TransformResult(bucket="neutral", value=deviation)
     # Exceeding the threshold only establishes that an explanation is required -
-    # whether the Tendering Authority accepted it is a judgment call this operation can't
+    # whether the Authority accepted it is a judgment call this operation can't
     # make; the caller supplies an explicit {rule_id}__outcome for that case
     # (handled upstream in core.py, ahead of any transform).
     return TransformResult(bucket=None, value=deviation)

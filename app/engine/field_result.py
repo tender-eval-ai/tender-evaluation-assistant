@@ -68,7 +68,7 @@ STATUS_LABELS = {
     "pass": "Compliant",
     "disqualified": "Disqualifying — Tender not considered further",
     "needs_review": "Needs human review",
-    "dormant": "Not yet required — may be requested by the Tendering Authority later",
+    "dormant": "Not yet required — may be requested by the Authority later",
 }
 
 # Rank for picking the worst outcome when more than one issue applies to the same
