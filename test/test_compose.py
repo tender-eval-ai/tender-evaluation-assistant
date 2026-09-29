@@ -1,5 +1,6 @@
 """docker-compose.yml runs the whole stack: Postgres, the API, the worker on the same
 image, the UI; the synthetic case is mounted in the inbox; the worker drains on stop."""
+from fnmatch import fnmatch
 from pathlib import Path
 
 import yaml
@@ -41,3 +42,18 @@ def test_the_ui_adds_the_api_key_on_the_server():
     assert "ENV VITE_API_MOCK=0" in (root / "Dockerfile").read_text()
     conf = (root / "docker" / "default.conf.template").read_text()
     assert 'proxy_set_header X-API-Key "${API_KEY}";' in conf and "proxy_pass ${BACKEND_URL};" in conf
+
+
+def test_the_template_library_is_built_into_the_image():
+    """app/rulesets/templates/ reaches the image: the Dockerfile copies app/, and no
+    .dockerignore pattern matches the folder, its files or a parent. (J11-1: before, the
+    compose stack had no library, so every item was drafted as novel.)"""
+    root = Path(__file__).resolve().parents[1]
+    assert "COPY app app" in (root / "backend" / "Dockerfile").read_text()
+    patterns = [p.strip().rstrip("/") for p in (root / ".dockerignore").read_text().splitlines()
+                if p.strip() and not p.startswith("#")]
+    path = "app/rulesets/templates/price_schedule.json"
+    prefixes = ["/".join(path.split("/")[:n]) for n in range(1, path.count("/") + 2)]
+    excluded = [(p, pre) for p in patterns for pre in prefixes if fnmatch(pre, p) or fnmatch(pre, f"**/{p}")]
+    assert not excluded, f".dockerignore keeps templates out of the image: {excluded}"
+    assert (root / "app" / "rulesets" / "templates").is_dir()
