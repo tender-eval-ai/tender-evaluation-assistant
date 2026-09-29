@@ -49,7 +49,71 @@ CI on every push: lint, unit, Postgres integration, web, e2e and a security scan
 Full method and per-document numbers: [`docs/evals/parser_l0.md`](docs/evals/parser_l0.md)
 and [`docs/evals/ruleset_l1_l4.md`](docs/evals/ruleset_l1_l4.md).
 
+## Architecture
+
+```mermaid
+flowchart LR
+    T["📄 Tender PDFs"]
+    B["📠 Bid PDFs<br/>(often scans)"]
+
+    subgraph RB["ruleset_build job · per tender"]
+        direction TB
+        L0["<b>L0 · parse + locate</b><br/>layout parser: clause tree,<br/>schedule items and Parts"]
+        L1["<b>L1 · match</b><br/>item → form template"]
+        L2["<b>L2 · slots</b><br/>the template's blanks,<br/>quotes verified"]
+        L3["<b>L3 · novel + additions</b><br/>rules no template has"]
+        L4["<b>L4 · coverage</b><br/>obligations no rule covers"]
+        L0 --> L1 --> L2 --> L3 --> L4
+    end
+
+    HC1["✋ rule set edited,<br/>confirmed by a<br/>second person"]
+
+    subgraph VC["vendor_check job · per tenderer"]
+        direction TB
+        V0["<b>render + triage</b><br/>label every page<br/>by form"]
+        V2["<b>resolve + extract</b><br/>each form's fields,<br/>page-cited"]
+        V4["<b>verify</b><br/>values checked against<br/>the text, or a second<br/>read of a scan"]
+        AG["<b>search agent</b><br/>bounded, forms<br/>still not found"]
+        V0 --> V2 --> V4 --> AG
+    end
+
+    ENG["<b>rules engine</b><br/>Stage I / II verdict<br/>per item"]
+    HC2["✋ reviewer corrects<br/>fields, confirms<br/>the review"]
+    OUT["<b>pricing + reports</b><br/>Price Summary, ranking,<br/>Word × 3"]
+
+    T --> L0
+    L4 --> HC1
+    HC1 --> ENG
+    B --> V0
+    AG --> ENG --> HC2 --> OUT
+    HC1 -. "new version:<br/>evaluate job re-decides" .-> ENG
+
+    classDef llm fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef code fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef human fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef docs fill:#f3f4f6,stroke:#9ca3af,color:#374151
+    class T,B docs
+    class L1,L2,L3,V0,V2,V4,AG llm
+    class L0,L4,ENG,OUT code
+    class HC1,HC2 human
+```
+
+🔵 a model reads &nbsp;·&nbsp; 🟢 code decides &nbsp;·&nbsp; 🟡 a person decides. The parser, the
+rules engine, pricing and the reports make no model call. Every model call goes through
+one gateway (`app/gateway.py`), which applies the project's data class (confidential
+text never leaves the local network), a cache, a daily budget and a rate limit.
+
+| Runs as | What it is |
+|---|---|
+| `web` | the React review UI (Rules, Stage I, Stage II, Scoring, Report), on :8080 |
+| `backend` | FastAPI (`backend/`), the routes of [`docs/api_contract.md`](docs/api_contract.md), on :8000 |
+| `worker` | Procrastinate workers running the three jobs: `ruleset_build`, `vendor_check`, `evaluate`. Checkpointed after every step, so a killed job resumes; `--scale worker=N` adds more |
+| `postgres` | projects, versioned rule sets, results, the audit events, the job queue, and the gateway's cache and budget |
+
 ## Pipeline (mirrors the TAP workflow)
+
+This is the prototype's flow, still served by the legacy routes until the S5 legacy removal
+(checklist J11-7). The current system is the one under Architecture above.
 
 ```mermaid
 flowchart LR
