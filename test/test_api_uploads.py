@@ -1,6 +1,7 @@
 """Uploads (J11-5, B9): a file or tenderer name of "." or ".." is refused; a file is a PDF
-by its bytes, not its name; a file over MAX_UPLOAD_MB is refused with 413; and a refused
-request leaves none of its files behind."""
+by its bytes, not its name; a request over MAX_UPLOAD_MB, or without a length, is refused
+before its body is read; and a refused request leaves none of its files, and no folder it
+created, behind."""
 from test.test_api import make_client
 
 PDF = b"%PDF-1.4\n" + b"0" * 2000
@@ -47,11 +48,31 @@ def test_a_pdf_is_known_by_its_bytes_and_a_refusal_leaves_nothing(tmp_path, monk
     assert _files(tmp_path, pid, "tender") == ["terms.pdf"], "the header may follow up to 1 KB of junk"
 
 
-def test_a_file_over_the_cap_is_refused_with_413(tmp_path, monkeypatch):
+def test_a_refused_upload_for_a_new_tenderer_leaves_no_folder_to_count_as_a_bidder(tmp_path, monkeypatch):
     client = make_client(tmp_path, monkeypatch)
-    monkeypatch.setenv("MAX_UPLOAD_MB", "0.001")                       # 1,048 bytes
+    pid = client.post("/projects", json={"name": "u"}).json()["id"]
+    assert _post(client, f"/projects/{pid}/bids/Gamma", ("offer.pdf", b"not a pdf at all")).status_code == 400
+    assert not (tmp_path / "data" / "projects" / pid / "bids" / "Gamma").exists()
+    assert client.get(f"/projects/{pid}").json()["bidders"] == []
+
+
+def test_a_request_over_the_cap_is_refused_before_its_body_is_read(tmp_path, monkeypatch):
+    client = make_client(tmp_path, monkeypatch)
+    monkeypatch.setenv("MAX_UPLOAD_MB", "0.001")                       # 1,049 bytes, the whole request
     pid = client.post("/projects", json={"name": "u"}).json()["id"]
     r = _post(client, f"/projects/{pid}/bids/Alpha", ("offer.pdf", PDF))
-    assert r.status_code == 413 and r.json()["error"]["code"] == "too_large" and "upload limit" in r.text
-    assert _files(tmp_path, pid, "bids", "Alpha") == []
-    assert _post(client, f"/projects/{pid}/bids/Alpha", ("offer.pdf", PDF[:1000])).status_code == 200
+    assert r.status_code == 413 and r.json()["error"]["code"] == "too_large" and "the 0.001 MB limit" in r.text
+    assert not (tmp_path / "data" / "projects" / pid / "bids" / "Alpha").exists(), "the route never ran"
+    assert _post(client, f"/projects/{pid}/bids/Alpha", ("offer.pdf", PDF[:600])).status_code == 200
+    assert client.post(f"/projects/{pid}/bids/Alpha/extraction").status_code != 413, "only the two upload routes"
+
+
+def test_an_upload_without_a_length_is_refused(tmp_path, monkeypatch):
+    client = make_client(tmp_path, monkeypatch)
+    pid = client.post("/projects", json={"name": "u"}).json()["id"]
+
+    def chunks():                                    # a generator body goes out chunked, with no Content-Length
+        yield b"--x\r\nContent-Disposition: form-data; name=\"files\"; filename=\"t.pdf\"\r\n\r\n"
+        yield PDF + b"\r\n--x--\r\n"
+    r = client.post(f"/projects/{pid}/tender", content=chunks(), headers={"content-type": "multipart/form-data; boundary=x"})
+    assert r.status_code == 411 and r.json()["error"]["code"] == "length_required"

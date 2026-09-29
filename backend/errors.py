@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from backend.schemas_api import ErrorBody
 
 CODES = {400: "bad_request", 401: "unauthorized", 403: "forbidden", 404: "not_found", 409: "conflict",
-         413: "too_large", 422: "validation_failed", 503: "unavailable"}
+         411: "length_required", 413: "too_large", 422: "validation_failed", 503: "unavailable"}
 
 
 class ApiError(HTTPException):
@@ -25,6 +25,11 @@ class ApiError(HTTPException):
 def _body(status: int, code: str, message: str, details=None) -> JSONResponse:
     return JSONResponse({"error": {"code": code, "message": message, "details": jsonable_encoder(details or {})},
                          "detail": message}, status_code=status)
+
+
+def error_response(status: int, code: str, message: str, details=None) -> JSONResponse:
+    """The envelope, for a middleware that answers before any route or handler runs."""
+    return _body(status, code, message, details)
 
 
 def install(app: FastAPI) -> None:
