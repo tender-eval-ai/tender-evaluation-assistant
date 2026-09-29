@@ -16,10 +16,11 @@ DEFAULT_BASE_URL = "http://localhost:11434/v1"
 DEFAULT_TEXT_MODEL = "qwen3:8b"
 DEFAULT_VISION_MODEL = "qwen3-vl:8b"
 DEFAULT_FALLBACKS = ""
-# One step budget for every tool-using loop: the pipeline's evidence-search agent (per
-# unresolved finding) and the MCP local client (per reviewer question). AGENT_MAX_STEPS
-# overrides both.
-DEFAULT_AGENT_STEPS = 8
+# One step budget for every tool-using loop: the check's form search (V5, per missing Part A
+# form; docs/api_contract.md), the legacy pipeline's evidence search (per unresolved finding)
+# and the MCP local client (per reviewer question). AGENT_MAX_STEPS overrides all three.
+# (Until 2026-09 V5 defaulted to 6 and the other two to 8; V5 is the one that stays.)
+DEFAULT_AGENT_STEPS = 6
 
 
 def _model_list(env_var: str, default: str) -> list[str]:

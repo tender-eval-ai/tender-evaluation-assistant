@@ -387,7 +387,7 @@ def test_local_client_step_budget_is_the_pipeline_agents(monkeypatch):
     from app.config import DEFAULT_AGENT_STEPS
     from mcp_server.local_client import build_parser
     monkeypatch.delenv("AGENT_MAX_STEPS", raising=False)
-    assert build_parser().parse_args(["q"]).max_steps == DEFAULT_AGENT_STEPS == 8
+    assert build_parser().parse_args(["q"]).max_steps == DEFAULT_AGENT_STEPS == 6
     monkeypatch.setenv("AGENT_MAX_STEPS", "5")
     assert build_parser().parse_args(["q"]).max_steps == 5
     assert build_parser().parse_args(["q", "--max-steps", "3"]).max_steps == 3
