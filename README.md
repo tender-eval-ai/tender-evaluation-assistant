@@ -21,18 +21,16 @@ running the parser that is scored against them.
 
 **Parser (L0) and citations** — two separate scores (`tools/eval_parser.py`):
 
-- *Parser recall*: of the answer key's nodes, how many the parser produced. A node with a
-  printed marker (`3.3(a)(i)`, `Part A`) must be in the same document, on the same page, at
-  the same marker path; a node with none (a heading, a note, a form field) must open with
-  the key's first words inside the node matched to its nearest marked ancestor.
+- *Parser recall*: of the answer key's nodes, how many the parser produced in the same
+  document, on the same page, at the same place in the clause tree.
 - *Citation resolution*: of the citations in the tender's own text ("Paragraph 20.2 of the
   Terms of Tender"), how many the resolver takes to exactly one node of the parser's table.
 
-| Tender | Key nodes | Parser recall | marked | unmarked | Citations resolved to one node |
-|---|---|---|---|---|---|
-| Tender 1 | 454 | 97.8% | 100% | 87.0% | 90.2% of 520 |
-| Tender 2 | 756 | 95.0% | 96.6% | 87.2% | 93.8% of 566 |
-| Tender 3 | 1582 | 91.1% | 96.1% | 71.0% | 87.0% of 801 |
+| Tender | Parser recall | Citation resolution |
+|---|---|---|
+| Tender 1 | 97.8% of 454 key nodes | 90.2% of 520 citations |
+| Tender 2 | 95.0% of 756 key nodes | 93.8% of 566 citations |
+| Tender 3 | 91.1% of 1582 key nodes | 87.0% of 801 citations |
 
 Tender 3 is 25 documents inside one 366-page PDF. Two of the three tenders were held out
 when the parser was ported; fixes since then were driven by failures found on them, so they
