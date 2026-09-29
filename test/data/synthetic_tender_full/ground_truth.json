@@ -273,8 +273,8 @@
               "paragraph": "15",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
-              "page": 6,
-              "combined_page": 159
+              "page": 7,
+              "combined_page": 160
             }
           ]
         },
@@ -289,8 +289,8 @@
               "paragraph": "16",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
-              "page": 7,
-              "combined_page": 160
+              "page": 8,
+              "combined_page": 161
             }
           ]
         },
@@ -321,8 +321,8 @@
               "paragraph": "9.4",
               "document": "Terms of Tender",
               "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
-              "page": 7,
-              "combined_page": 15
+              "page": 8,
+              "combined_page": 16
             },
             {
               "paragraph": "10.1",
@@ -335,22 +335,22 @@
               "paragraph": "12",
               "document": "Terms of Tender",
               "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
-              "page": 9,
-              "combined_page": 17
+              "page": 10,
+              "combined_page": 18
             },
             {
               "paragraph": "20.2",
               "document": "Terms of Tender",
               "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
-              "page": 12,
-              "combined_page": 20
+              "page": 13,
+              "combined_page": 21
             },
             {
               "paragraph": "13",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
-              "page": 5,
-              "combined_page": 158
+              "page": 6,
+              "combined_page": 159
             }
           ]
         },
@@ -365,8 +365,8 @@
               "paragraph": "20",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
-              "page": 9,
-              "combined_page": 162
+              "page": 10,
+              "combined_page": 163
             }
           ]
         },
@@ -381,8 +381,8 @@
               "paragraph": "7",
               "document": "Terms of Tender",
               "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
-              "page": 6,
-              "combined_page": 14
+              "page": 7,
+              "combined_page": 15
             }
           ]
         },
@@ -397,8 +397,8 @@
               "paragraph": "21",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
-              "page": 9,
-              "combined_page": 162
+              "page": 10,
+              "combined_page": 163
             }
           ]
         }
@@ -423,27 +423,27 @@
           "present": true,
           "page": 3,
           "values": {
-            "unit_price": 7.34,
+            "unit_price": 5.88,
             "currency": "HK$",
-            "optimal_dosage_mg_per_l": 2.8,
-            "total": 6422500.0
+            "optimal_dosage_mg_per_l": 3.4,
+            "total": 5145000.0
           }
         },
         "c": {
           "present": true,
           "page": 3,
           "values": {
-            "unit_price": 7.34,
+            "unit_price": 5.88,
             "currency": "HK$",
-            "optimal_dosage_mg_per_l": 2.8,
-            "total": 6422500.0
+            "optimal_dosage_mg_per_l": 3.4,
+            "total": 5145000.0
           }
         },
         "d": {
           "present": true,
           "page": 5,
           "values": {
-            "shelf_life_months": 24,
+            "shelf_life_months": 18,
             "manufacturer": "Tenderer A Chemicals Ltd"
           }
         },
@@ -451,7 +451,7 @@
           "present": true,
           "page": 5,
           "values": {
-            "shelf_life_months": 24,
+            "shelf_life_months": 18,
             "manufacturer": "Tenderer A Chemicals Ltd"
           }
         },
@@ -503,7 +503,7 @@
           "present": true,
           "page": 6,
           "values": {
-            "delivery_days": 14
+            "delivery_days": 21
           }
         },
         "o": {
@@ -531,27 +531,27 @@
           "present": true,
           "page": 3,
           "values": {
-            "unit_price": 6.03,
+            "unit_price": 4.03,
             "currency": "HK$",
-            "optimal_dosage_mg_per_l": 3.0,
-            "total": 5276250.0
+            "optimal_dosage_mg_per_l": 4.4,
+            "total": 3526250.0
           }
         },
         "c": {
           "present": true,
           "page": 3,
           "values": {
-            "unit_price": 6.03,
+            "unit_price": 4.03,
             "currency": "HK$",
-            "optimal_dosage_mg_per_l": 3.0,
-            "total": 5276250.0
+            "optimal_dosage_mg_per_l": 4.4,
+            "total": 3526250.0
           }
         },
         "d": {
           "present": true,
           "page": 5,
           "values": {
-            "shelf_life_months": 24,
+            "shelf_life_months": 12,
             "manufacturer": "Tenderer B Chemicals Ltd"
           }
         },
@@ -559,7 +559,7 @@
           "present": true,
           "page": 5,
           "values": {
-            "shelf_life_months": 24,
+            "shelf_life_months": 12,
             "manufacturer": "Tenderer B Chemicals Ltd"
           }
         },
@@ -611,7 +611,7 @@
           "present": true,
           "page": 6,
           "values": {
-            "delivery_days": 28
+            "delivery_days": 21
           }
         },
         "o": {
@@ -639,27 +639,27 @@
           "present": true,
           "page": 3,
           "values": {
-            "unit_price": 7.27,
+            "unit_price": 4.3,
             "currency": "HK$",
-            "optimal_dosage_mg_per_l": 2.9,
-            "total": 6361250.0
+            "optimal_dosage_mg_per_l": 1.6,
+            "total": 3762500.0
           }
         },
         "c": {
           "present": true,
           "page": 3,
           "values": {
-            "unit_price": 7.27,
+            "unit_price": 4.3,
             "currency": "HK$",
-            "optimal_dosage_mg_per_l": 2.9,
-            "total": 6361250.0
+            "optimal_dosage_mg_per_l": 1.6,
+            "total": 3762500.0
           }
         },
         "d": {
           "present": true,
           "page": 5,
           "values": {
-            "shelf_life_months": 18,
+            "shelf_life_months": 12,
             "manufacturer": "Tenderer C Chemicals Ltd"
           }
         },
@@ -667,7 +667,7 @@
           "present": true,
           "page": 5,
           "values": {
-            "shelf_life_months": 18,
+            "shelf_life_months": 12,
             "manufacturer": "Tenderer C Chemicals Ltd"
           }
         },
@@ -745,27 +745,27 @@
           "present": true,
           "page": 3,
           "values": {
-            "unit_price": 4.42,
+            "unit_price": 6.38,
             "currency": "US$",
-            "optimal_dosage_mg_per_l": 4.0,
-            "total": 3867500.0
+            "optimal_dosage_mg_per_l": 3.6,
+            "total": 5582500.0
           }
         },
         "c": {
           "present": true,
           "page": 3,
           "values": {
-            "unit_price": 4.42,
+            "unit_price": 6.38,
             "currency": "US$",
-            "optimal_dosage_mg_per_l": 4.0,
-            "total": 3867500.0
+            "optimal_dosage_mg_per_l": 3.6,
+            "total": 5582500.0
           }
         },
         "d": {
           "present": true,
           "page": 5,
           "values": {
-            "shelf_life_months": 24,
+            "shelf_life_months": 18,
             "manufacturer": "Northfield Polymers D Inc"
           }
         },
@@ -773,7 +773,7 @@
           "present": true,
           "page": 5,
           "values": {
-            "shelf_life_months": 24,
+            "shelf_life_months": 18,
             "manufacturer": "Northfield Polymers D Inc"
           }
         },

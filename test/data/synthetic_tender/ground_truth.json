@@ -22,97 +22,97 @@
       {
         "file": "tender/02 Interpretation, Terms of Tender and General Conditions of Contract.pdf",
         "title": "Interpretation, Terms of Tender and General Conditions of Contract",
-        "pages": 16,
+        "pages": 15,
         "combined_first_page": 7
       },
       {
         "file": "tender/03 Interpretation (Supplement).pdf",
         "title": "Interpretation (Supplement)",
         "pages": 2,
-        "combined_first_page": 23
+        "combined_first_page": 22
       },
       {
         "file": "tender/04 Terms of Tender (Supplement).pdf",
         "title": "Terms of Tender (Supplement)",
         "pages": 10,
-        "combined_first_page": 25
+        "combined_first_page": 24
       },
       {
         "file": "tender/05 Annex A (Reply Slip) to the Terms of Tender (Supplement).pdf",
         "title": "Annex A (Reply Slip) to the Terms of Tender (Supplement)",
         "pages": 1,
-        "combined_first_page": 35
+        "combined_first_page": 34
       },
       {
         "file": "tender/06 Annex B (Procedures and Conditions of Plant Trial) to the Terms of Tender (Supplement).pdf",
         "title": "Annex B (Procedures and Conditions of Plant Trial) to the Terms of Tender (Supplement)",
         "pages": 1,
-        "combined_first_page": 36
+        "combined_first_page": 35
       },
       {
         "file": "tender/07 Special Conditions of Contract.pdf",
         "title": "Special Conditions of Contract",
         "pages": 4,
-        "combined_first_page": 37
+        "combined_first_page": 36
       },
       {
         "file": "tender/08 Technical Specifications.pdf",
         "title": "Technical Specifications",
         "pages": 2,
-        "combined_first_page": 41
+        "combined_first_page": 40
       },
       {
         "file": "tender/08A Attachment A to the Technical Specifications.pdf",
         "title": "Attachment A to the Technical Specifications",
         "pages": 2,
-        "combined_first_page": 43
+        "combined_first_page": 42
       },
       {
         "file": "tender/08B Attachment B to the Technical Specifications.pdf",
         "title": "Attachment B to the Technical Specifications",
         "pages": 2,
-        "combined_first_page": 45
+        "combined_first_page": 44
       },
       {
         "file": "tender/08C Attachment C to the Technical Specifications.pdf",
         "title": "Attachment C to the Technical Specifications",
         "pages": 1,
-        "combined_first_page": 47
+        "combined_first_page": 46
       },
       {
         "file": "tender/08D Attachment D to the Technical Specifications.pdf",
         "title": "Attachment D to the Technical Specifications",
         "pages": 1,
-        "combined_first_page": 48
+        "combined_first_page": 47
       },
       {
         "file": "tender/09 Schedules.pdf",
         "title": "Schedules",
         "pages": 8,
-        "combined_first_page": 49
+        "combined_first_page": 48
       },
       {
         "file": "tender/10 Non-collusive Tendering Certificate.pdf",
         "title": "Non-collusive Tendering Certificate",
         "pages": 2,
-        "combined_first_page": 57
+        "combined_first_page": 56
       },
       {
         "file": "tender/11 Appendix to the Terms of Tender - Contact Details.pdf",
         "title": "Appendix to the Terms of Tender - Contact Details",
         "pages": 1,
-        "combined_first_page": 59
+        "combined_first_page": 58
       },
       {
         "file": "tender/12 Annex A to the Terms of Tender Part I - Method of Production Statement.pdf",
         "title": "Annex A to the Terms of Tender Part I - Method of Production Statement",
         "pages": 1,
-        "combined_first_page": 60
+        "combined_first_page": 59
       }
     ],
     "combined": {
       "file": "tender_combined/SYN-2026-001 Tender Documents (combined).pdf",
-      "pages": 60
+      "pages": 59
     },
     "completeness_check_schedule": {
       "file": "tender/09 Schedules.pdf",
@@ -122,9 +122,9 @@
         7
       ],
       "combined_pages": [
+        52,
         53,
-        54,
-        55
+        54
       ],
       "items": [
         {
@@ -132,7 +132,7 @@
           "part": "A",
           "description": "An Offer to be Bound in Part 4 of the Tender Form, duly signed by the Tenderer",
           "schedule_page": 5,
-          "schedule_combined_page": 53,
+          "schedule_combined_page": 52,
           "references": [
             {
               "paragraph": "3.3",
@@ -146,7 +146,7 @@
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 4,
-              "combined_page": 28
+              "combined_page": 27
             }
           ]
         },
@@ -155,14 +155,14 @@
           "part": "A",
           "description": "The one-time unit price quotation for Item 1 as specified in Part A of the Price Schedule",
           "schedule_page": 5,
-          "schedule_combined_page": 53,
+          "schedule_combined_page": 52,
           "references": [
             {
               "paragraph": "5",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 2,
-              "combined_page": 26
+              "combined_page": 25
             }
           ]
         },
@@ -171,14 +171,14 @@
           "part": "A",
           "description": "The optimal dosage for Item 1 as specified in Part A of the Price Schedule",
           "schedule_page": 5,
-          "schedule_combined_page": 53,
+          "schedule_combined_page": 52,
           "references": [
             {
               "paragraph": "6",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 2,
-              "combined_page": 26
+              "combined_page": 25
             }
           ]
         },
@@ -187,14 +187,14 @@
           "part": "A",
           "description": "The essential information required in the Particulars of Goods Schedule",
           "schedule_page": 5,
-          "schedule_combined_page": 53,
+          "schedule_combined_page": 52,
           "references": [
             {
               "paragraph": "8",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 3,
-              "combined_page": 27
+              "combined_page": 26
             }
           ]
         },
@@ -203,14 +203,14 @@
           "part": "B",
           "description": "Other information required in the Particulars of Goods Schedule",
           "schedule_page": 5,
-          "schedule_combined_page": 53,
+          "schedule_combined_page": 52,
           "references": [
             {
               "paragraph": "8.4",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 3,
-              "combined_page": 27
+              "combined_page": 26
             }
           ]
         },
@@ -219,14 +219,14 @@
           "part": "B",
           "description": "Information and documents required in Tables A, B and C of the Information Schedule",
           "schedule_page": 6,
-          "schedule_combined_page": 54,
+          "schedule_combined_page": 53,
           "references": [
             {
               "paragraph": "10",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 4,
-              "combined_page": 28
+              "combined_page": 27
             }
           ]
         },
@@ -235,14 +235,14 @@
           "part": "B",
           "description": "Samples of the Goods, if requested by the Authority at any time after the Tender Closing Date",
           "schedule_page": 6,
-          "schedule_combined_page": 54,
+          "schedule_combined_page": 53,
           "references": [
             {
               "paragraph": "11",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 5,
-              "combined_page": 29
+              "combined_page": 28
             }
           ]
         },
@@ -251,14 +251,14 @@
           "part": "B",
           "description": "Documentary evidence proving compliance with the Technical Specifications",
           "schedule_page": 6,
-          "schedule_combined_page": 54,
+          "schedule_combined_page": 53,
           "references": [
             {
               "paragraph": "12",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 5,
-              "combined_page": 29
+              "combined_page": 28
             }
           ]
         },
@@ -267,14 +267,14 @@
           "part": "A",
           "description": "Where the Tenderer is not the manufacturer of the Goods, the letter of intent from the manufacturer",
           "schedule_page": 6,
-          "schedule_combined_page": 54,
+          "schedule_combined_page": 53,
           "references": [
             {
               "paragraph": "15",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 7,
-              "combined_page": 31
+              "combined_page": 30
             }
           ]
         },
@@ -283,14 +283,14 @@
           "part": "B",
           "description": "A certified extract of the board resolution authorising the signatory of the Tender",
           "schedule_page": 6,
-          "schedule_combined_page": 54,
+          "schedule_combined_page": 53,
           "references": [
             {
               "paragraph": "16",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 7,
-              "combined_page": 31
+              "combined_page": 30
             }
           ]
         },
@@ -299,14 +299,14 @@
           "part": "B",
           "description": "The contact details of the Tenderer in the Appendix to the Terms of Tender",
           "schedule_page": 7,
-          "schedule_combined_page": 55,
+          "schedule_combined_page": 54,
           "references": [
             {
               "paragraph": "17",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 8,
-              "combined_page": 32
+              "combined_page": 31
             }
           ]
         },
@@ -315,7 +315,7 @@
           "part": "A",
           "description": "The signed Non-collusive Tendering Certificate",
           "schedule_page": 7,
-          "schedule_combined_page": 55,
+          "schedule_combined_page": 54,
           "references": [
             {
               "paragraph": "9.4",
@@ -350,7 +350,7 @@
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 5,
-              "combined_page": 29
+              "combined_page": 28
             }
           ]
         },
@@ -359,14 +359,14 @@
           "part": "C",
           "description": "Parts C and D of the Price Schedule",
           "schedule_page": 7,
-          "schedule_combined_page": 55,
+          "schedule_combined_page": 54,
           "references": [
             {
               "paragraph": "20",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 9,
-              "combined_page": 33
+              "combined_page": 32
             }
           ]
         },
@@ -375,7 +375,7 @@
           "part": "A",
           "description": "The Compliance Schedule",
           "schedule_page": 7,
-          "schedule_combined_page": 55,
+          "schedule_combined_page": 54,
           "references": [
             {
               "paragraph": "7",
@@ -391,14 +391,14 @@
           "part": "B",
           "description": "Annex A to the Terms of Tender - Part I - Method of Production Statement",
           "schedule_page": 7,
-          "schedule_combined_page": 55,
+          "schedule_combined_page": 54,
           "references": [
             {
               "paragraph": "21",
               "document": "Terms of Tender (Supplement)",
               "file": "tender/04 Terms of Tender (Supplement).pdf",
               "page": 9,
-              "combined_page": 33
+              "combined_page": 32
             }
           ]
         }
