@@ -22,6 +22,7 @@ from app.rulesets.schema import (Citation, CheckType, DataClass, FollowUp, ItemN
 from app.rulesets.slots import _file_of, clause_context, cut_notes, roots_of
 
 PROMPT_VERSION = "novel-v2"
+ADDITION = " (added for this tender: not in the template)"
 
 SYSTEM = (
     "You draft the checks a tender's Completeness Check Schedule item implies, for one item that matches no "
@@ -81,6 +82,41 @@ def field_menu(item: RuleSetItem) -> str:
             f"is about; a short snake_case name otherwise.")
 
 
+def rules_from(requirements: list[Requirement], item: RuleSetItem, index: NodeIndex, data_class: DataClass,
+               addition: bool = False) -> tuple[list[TemplateRule], list[ItemNote], dict[str, str]]:
+    """The code check on drafted requirements: one whose quote is found under the item's
+    roots becomes a rule with the Part's outcomes and a reference note citing the node; one
+    whose quote is not stays an unverified note. With `addition`, the requirement is one the
+    tender adds to the item's template: its rule and notes say so, and its id never takes
+    one of the template's."""
+    roots = roots_of(item)
+    prefix = prefix_of(item)
+    tag = ADDITION if addition else ""
+    rules: list[TemplateRule] = []
+    notes: list[ItemNote] = []
+    sources: dict[str, str] = {}
+    taken: set[str] = {r.id for r in item.rules} if addition else set()
+    for req in requirements:
+        node = index.find_quote(req.quote, roots, prefer=req.node_id)
+        if node is None:
+            notes.append(ItemNote(kind="reference", text=f"unverified draft {req.name} ({req.check.value}){tag}: \"{req.quote.strip()}\""))
+            continue
+        rule_id = f"{prefix}.{req.name}"
+        n = 2
+        while rule_id in taken:
+            rule_id = f"{prefix}.{req.name}_{n}"
+            n += 1
+        taken.add(rule_id)
+        note = "; ".join(x for x in (ADDITION.strip(" ()") if addition else None, req.note) if x) or None
+        rules.append(TemplateRule(id=rule_id, check=req.check, field=f"{prefix}.{req.field}", params=req.params,
+                                  outcomes=outcomes_for(item.part), stage=req.stage, condition=req.condition, note=note))
+        notes.append(ItemNote(kind="reference", text=f"{rule_id}{tag}: \"{req.quote.strip()}\"",
+                              citation=Citation(file=_file_of(node, item), page=node["page"], node_id=node["node_id"],
+                                                quote=req.quote.strip(), data_class=data_class)))
+        sources[rule_id] = node["node_id"]
+    return rules, notes, sources
+
+
 def draft_item(item: RuleSetItem, index: NodeIndex, llm, data_class: DataClass) -> tuple[RuleSetItem, dict[str, str]]:
     """The item with its drafted rules and source notes, and {rule id: node id} for L4."""
     if not item.clauses:
@@ -90,29 +126,7 @@ def draft_item(item: RuleSetItem, index: NodeIndex, llm, data_class: DataClass) 
     user = (f"Item ({item.letter}), Part {item.part.value}: {item.citation.quote}\n\nCheck kinds: {kinds}{field_menu(item)}\n\n"
             f"Clauses:\n{context.text}")
     reply: Requirements = llm.chat_json(SYSTEM, user, Requirements)
-    roots = roots_of(item)
-    prefix = prefix_of(item)
-    rules: list[TemplateRule] = []
-    notes: list[ItemNote] = []
-    sources: dict[str, str] = {}
-    taken: set[str] = set()
-    for req in reply.requirements:
-        node = index.find_quote(req.quote, roots, prefer=req.node_id)
-        if node is None:
-            notes.append(ItemNote(kind="reference", text=f"unverified draft {req.name} ({req.check.value}): \"{req.quote.strip()}\""))
-            continue
-        rule_id = f"{prefix}.{req.name}"
-        n = 2
-        while rule_id in taken:
-            rule_id = f"{prefix}.{req.name}_{n}"
-            n += 1
-        taken.add(rule_id)
-        rules.append(TemplateRule(id=rule_id, check=req.check, field=f"{prefix}.{req.field}", params=req.params,
-                                  outcomes=outcomes_for(item.part), stage=req.stage, condition=req.condition, note=req.note))
-        notes.append(ItemNote(kind="reference", text=f"{rule_id}: \"{req.quote.strip()}\"",
-                              citation=Citation(file=_file_of(node, item), page=node["page"], node_id=node["node_id"],
-                                                quote=req.quote.strip(), data_class=data_class)))
-        sources[rule_id] = node["node_id"]
+    rules, notes, sources = rules_from(reply.requirements, item, index, data_class)
     status = ItemStatus.NOVEL if rules else ItemStatus.GAP
     notes += cut_notes(item, context.cut)
     return item.model_copy(update={"rules": rules, "notes": [*item.notes, *notes], "status": status}), sources
