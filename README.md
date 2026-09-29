@@ -19,19 +19,24 @@ Measured on three real public tenders (redacted samples kept outside the reposit
 only numbers are recorded here). The answer keys were built by reading the PDFs, never by
 running the parser that is scored against them.
 
-**Parser (L0)** — the four metrics are AI_camp's, defined once in `tools/benchmark.py`:
-a node the parser found of its own (recall), on the right page, with a real character
-length, and starting at its own marker rather than a same-page coincidence.
+**Parser (L0) and citations** — two separate scores (`tools/eval_parser.py`):
 
-| Tender | Nodes | recall | page | char | exact location |
+- *Parser recall*: of the answer key's nodes, how many the parser produced. A node with a
+  printed marker (`3.3(a)(i)`, `Part A`) must be in the same document, on the same page, at
+  the same marker path; a node with none (a heading, a note, a form field) must open with
+  the key's first words inside the node matched to its nearest marked ancestor.
+- *Citation resolution*: of the citations in the tender's own text ("Paragraph 20.2 of the
+  Terms of Tender"), how many the resolver takes to exactly one node of the parser's table.
+
+| Tender | Key nodes | Parser recall | marked | unmarked | Citations resolved to one node |
 |---|---|---|---|---|---|
-| Tender 1 | 454 | 95.6% | 95.6% | 95.6% | 93.2% |
-| Tender 2 | 756 | 97.8% | 97.8% | 97.8% | 96.4% |
-| Tender 3 | 1582 | 95.2% | 95.2% | 95.2% | 92.9% |
+| Tender 1 | 454 | 97.8% | 100% | 87.0% | 90.2% of 520 |
+| Tender 2 | 756 | 95.0% | 96.6% | 87.2% | 93.8% of 566 |
+| Tender 3 | 1582 | 91.1% | 96.1% | 71.0% | 87.0% of 801 |
 
-Tender 3 is 25 documents inside one 366-page PDF; the parser splits them with 100%
-recall and 100% precision. Two of the three tenders were held out when the parser was ported;
-fixes since then were driven by failures found on them, so they are no longer unseen.
+Tender 3 is 25 documents inside one 366-page PDF. Two of the three tenders were held out
+when the parser was ported; fixes since then were driven by failures found on them, so they
+are no longer unseen. The answer keys were built by agents and are not yet verified by a person.
 
 **Rule set (L0 layer)** — the Completeness Check Schedule's items located with their Part
 and page, scored against a separate key:
@@ -508,7 +513,7 @@ free. `app/parsing/` depends on two Artifex packages (decision
 
 So: anyone using this **commercially** needs commercial licences for both, or must
 replace `app/parsing/`. No application code outside `app/parsing/` imports either package
-(only the parser's own eval tool, `tools/eval_parser.py`), so that replacement stays a
+(only one parser test, `test/parsing/test_layout_parser_tables.py`), so that replacement stays a
 contained change. A hosted demo carries AGPL obligations — the
 running service must offer its source, which a public repository satisfies.
 
