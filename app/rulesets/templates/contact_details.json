@@ -19,6 +19,10 @@
         "redacted": {
           "status": "needs_review",
           "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
         }
       },
       "follow_up_deadline": {
@@ -30,7 +34,7 @@
   "notes": [
     {
       "kind": "consequence",
-      "text": "The correspondence address must be a street address; a post office box is not accepted. A reviewer reads the address for this; no rule can check it yet."
+      "text": "The correspondence address must be a street address; a post office box is not accepted, before or after the contract is awarded."
     },
     {
       "kind": "reference",
@@ -74,6 +78,31 @@
       "field": "contact_details.process_agent",
       "consequence": "mandatory_on_request",
       "condition": "the tenderer is established outside the jurisdiction and has no place of business in it"
+    },
+    {
+      "id": "contact_details.address_not_a_post_office_box",
+      "check": "contains",
+      "field": "contact_details.address",
+      "depends_on": [
+        "contact_details.address_given"
+      ],
+      "params": {
+        "phrases": [
+          "P.O. Box",
+          "PO Box",
+          "Post Office Box",
+          "GPO Box"
+        ],
+        "absent": true
+      },
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
     }
   ]
 }

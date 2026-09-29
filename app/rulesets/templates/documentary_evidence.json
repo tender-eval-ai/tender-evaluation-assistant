@@ -1,0 +1,476 @@
+{
+  "id": "documentary_evidence",
+  "form_name": "Documentary Evidence of Compliance",
+  "slots": [
+    {
+      "name": "certified_activity",
+      "kind": "list",
+      "required": false,
+      "description": "the activity the quality certificate's scope must cover, as the tender words it"
+    },
+    {
+      "name": "tender_closing_date",
+      "kind": "date",
+      "required": false,
+      "description": "the tender closing date, at which the quality certificate must still be valid"
+    },
+    {
+      "name": "safety_data_sheet_sections",
+      "kind": "list",
+      "required": false,
+      "description": "the section headings the tender requires in the safety data sheet"
+    },
+    {
+      "name": "earliest_specifications_date",
+      "kind": "date",
+      "required": false,
+      "description": "the earliest issue date the tender accepts for the product specifications"
+    },
+    {
+      "name": "evaluation_report_contents",
+      "kind": "list",
+      "required": false,
+      "description": "the parts the tender requires in the tenderer's evaluation report"
+    }
+  ],
+  "consequences": {
+    "critical": {
+      "outcomes": {
+        "blank": {
+          "status": "disqualified",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "needs_review",
+          "note": "{field} is marked not applicable; a reviewer confirms it does not apply"
+        }
+      }
+    },
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
+      }
+    },
+    "on_request_only": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is needed only if the Authority asks for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it",
+            "deadline": "the period the request gives",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "definition",
+      "text": "What evidence a tender asks for (certification of the goods, the manufacturer or the tenderer, and the laboratory's accreditation) is set in the tender's own terms. The person confirming the rule set removes the document rules the tender does not ask for."
+    },
+    {
+      "kind": "definition",
+      "text": "A tender may also set requirements on the tenderer's or manufacturer's track record; they are drafted from the tender's clauses."
+    },
+    {
+      "kind": "trigger",
+      "text": "A plain copy may be submitted with the tender; the Authority may then ask for a certified copy after the tender closes."
+    },
+    {
+      "kind": "trigger",
+      "text": "A conformance test happens only if the Authority asks for one after the tender closes; a reviewer records the laboratory, the test report and the declaration as they arrive."
+    },
+    {
+      "kind": "consequence",
+      "text": "Failing a certification or track record requirement the tender sets excludes the tender."
+    }
+  ],
+  "rules": [
+    {
+      "id": "documentary_evidence.quality_certificate_attached",
+      "check": "filled",
+      "field": "documentary_evidence.quality_certificate",
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} is missing; it is required only when the condition holds, which a reviewer confirms"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "condition": "the tender asks for a quality management system certificate"
+    },
+    {
+      "id": "documentary_evidence.accreditation_schedule_attached",
+      "check": "filled",
+      "field": "documentary_evidence.accreditation_schedule",
+      "consequence": "mandatory_on_request",
+      "depends_on": [
+        "documentary_evidence.quality_certificate_attached"
+      ]
+    },
+    {
+      "id": "documentary_evidence.quality_certificate_original_or_certified",
+      "check": "human_only",
+      "field": "documentary_evidence.quality_certificate",
+      "depends_on": [
+        "documentary_evidence.quality_certificate_attached"
+      ],
+      "outcomes": {
+        "unstated": {
+          "status": "needs_review"
+        }
+      },
+      "note": "an original, or a copy certified by the issuer or a qualified lawyer; a plain copy may come first and the certified one on request"
+    },
+    {
+      "id": "documentary_evidence.quality_certificate_covers_the_activity",
+      "check": "contains",
+      "field": "documentary_evidence.quality_certificate_scope",
+      "stage": "II",
+      "params": {
+        "phrases": "{certified_activity}"
+      },
+      "depends_on": [
+        "documentary_evidence.quality_certificate_attached"
+      ],
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    },
+    {
+      "id": "documentary_evidence.quality_certificate_covers_the_plant",
+      "check": "cross_document_match",
+      "field": "documentary_evidence.quality_certificate_site",
+      "stage": "II",
+      "params": {
+        "other": "particulars_of_goods.manufacturing_plant_address"
+      },
+      "depends_on": [
+        "documentary_evidence.quality_certificate_attached"
+      ],
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    },
+    {
+      "id": "documentary_evidence.quality_certificate_valid_at_closing",
+      "check": "date",
+      "field": "documentary_evidence.quality_certificate_expiry",
+      "stage": "II",
+      "params": {
+        "after": "{tender_closing_date}"
+      },
+      "depends_on": [
+        "documentary_evidence.quality_certificate_attached"
+      ],
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    },
+    {
+      "id": "documentary_evidence.quality_certificate_issuer_accredited",
+      "check": "human_only",
+      "field": "documentary_evidence.quality_certificate",
+      "stage": "II",
+      "depends_on": [
+        "documentary_evidence.quality_certificate_attached"
+      ],
+      "outcomes": {
+        "unstated": {
+          "status": "needs_review"
+        }
+      },
+      "note": "issued by a body accredited to certify quality management systems, or one a mutual recognition arrangement covers; the certificate bears the body's accreditation mark"
+    },
+    {
+      "id": "documentary_evidence.safety_data_sheet_attached",
+      "check": "filled",
+      "field": "documentary_evidence.safety_data_sheet",
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} is missing; it is required only when the condition holds, which a reviewer confirms"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "condition": "the tender asks for a safety data sheet"
+    },
+    {
+      "id": "documentary_evidence.safety_data_sheet_languages_and_version",
+      "check": "human_only",
+      "field": "documentary_evidence.safety_data_sheet",
+      "stage": "II",
+      "depends_on": [
+        "documentary_evidence.safety_data_sheet_attached"
+      ],
+      "outcomes": {
+        "unstated": {
+          "status": "needs_review"
+        }
+      },
+      "note": "in every language the tender names, and the latest version at the closing date"
+    },
+    {
+      "id": "documentary_evidence.safety_data_sheet_complete",
+      "check": "contains",
+      "field": "documentary_evidence.safety_data_sheet_sections",
+      "stage": "II",
+      "params": {
+        "phrases": "{safety_data_sheet_sections}"
+      },
+      "depends_on": [
+        "documentary_evidence.safety_data_sheet_attached"
+      ],
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    },
+    {
+      "id": "documentary_evidence.specifications_attached",
+      "check": "filled",
+      "field": "documentary_evidence.product_specifications",
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} is missing; it is required only when the condition holds, which a reviewer confirms"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "condition": "the tender asks for the manufacturer's product specifications"
+    },
+    {
+      "id": "documentary_evidence.specifications_recent",
+      "check": "date",
+      "field": "documentary_evidence.product_specifications_date",
+      "stage": "II",
+      "params": {
+        "after": "{earliest_specifications_date}"
+      },
+      "depends_on": [
+        "documentary_evidence.specifications_attached"
+      ],
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    },
+    {
+      "id": "documentary_evidence.specifications_deviation_explained",
+      "check": "human_only",
+      "field": "documentary_evidence.product_specifications",
+      "stage": "II",
+      "depends_on": [
+        "documentary_evidence.specifications_attached"
+      ],
+      "outcomes": {
+        "unstated": {
+          "status": "needs_review"
+        }
+      },
+      "note": "where a stated maximum or minimum strays from its nominal value by more than the tender allows, the tenderer explains why and the Authority accepts it"
+    },
+    {
+      "id": "documentary_evidence.specifications_meet_the_limits",
+      "check": "human_only",
+      "field": "documentary_evidence.product_specifications",
+      "stage": "II",
+      "depends_on": [
+        "documentary_evidence.specifications_attached"
+      ],
+      "outcomes": {
+        "unstated": {
+          "status": "needs_review"
+        }
+      },
+      "note": "the specifications show the goods within every limit the technical specifications set"
+    },
+    {
+      "id": "documentary_evidence.evaluation_report_attached",
+      "check": "filled",
+      "field": "documentary_evidence.evaluation_report",
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} is missing; it is required only when the condition holds, which a reviewer confirms"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "condition": "the tender asks for the tenderer's own evaluation report"
+    },
+    {
+      "id": "documentary_evidence.evaluation_report_complete",
+      "check": "contains",
+      "field": "documentary_evidence.evaluation_report_contents",
+      "stage": "II",
+      "params": {
+        "phrases": "{evaluation_report_contents}"
+      },
+      "depends_on": [
+        "documentary_evidence.evaluation_report_attached"
+      ],
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    },
+    {
+      "id": "documentary_evidence.laboratory_appointed",
+      "check": "filled",
+      "field": "documentary_evidence.laboratory_appointed_date",
+      "consequence": "on_request_only"
+    },
+    {
+      "id": "documentary_evidence.test_report_received",
+      "check": "filled",
+      "field": "documentary_evidence.test_report_received_date",
+      "consequence": "on_request_only"
+    },
+    {
+      "id": "documentary_evidence.test_report_original_or_certified",
+      "check": "human_only",
+      "field": "documentary_evidence.test_report",
+      "depends_on": [
+        "documentary_evidence.test_report_received"
+      ],
+      "outcomes": {
+        "unstated": {
+          "status": "needs_review"
+        }
+      },
+      "note": "an original, or a copy certified by the issuer or a qualified lawyer"
+    },
+    {
+      "id": "documentary_evidence.test_report_confirms_the_specifications",
+      "check": "human_only",
+      "field": "documentary_evidence.test_report",
+      "stage": "II",
+      "depends_on": [
+        "documentary_evidence.test_report_received"
+      ],
+      "outcomes": {
+        "unstated": {
+          "status": "needs_review"
+        }
+      },
+      "note": "the results show the goods match the product specifications submitted"
+    },
+    {
+      "id": "documentary_evidence.independence_declared_with_the_report",
+      "check": "filled",
+      "field": "documentary_evidence.laboratory_independence_declaration",
+      "consequence": "on_request_only",
+      "depends_on": [
+        "documentary_evidence.test_report_received"
+      ]
+    },
+    {
+      "id": "documentary_evidence.laboratory_is_independent",
+      "check": "human_only",
+      "field": "documentary_evidence.laboratory_independence_declaration",
+      "depends_on": [
+        "documentary_evidence.test_report_received"
+      ],
+      "outcomes": {
+        "unstated": {
+          "status": "needs_review"
+        }
+      },
+      "note": "the laboratory is neither the manufacturer nor the tenderer, nor associated with either"
+    }
+  ]
+}

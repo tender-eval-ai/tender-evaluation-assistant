@@ -13,6 +13,12 @@
       "kind": "list",
       "required": false,
       "description": "the currencies the Price Schedule allows prices to be quoted in, e.g. two currency symbols"
+    },
+    {
+      "name": "dosage_unit",
+      "kind": "text",
+      "required": false,
+      "description": "the unit the Price Schedule prints for the optimal dosage, when it asks for one"
     }
   ],
   "consequences": {
@@ -28,6 +34,10 @@
         "redacted": {
           "status": "needs_review",
           "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "needs_review",
+          "note": "{field} is marked not applicable; a reviewer confirms it does not apply"
         }
       }
     }
@@ -36,6 +46,10 @@
     {
       "kind": "definition",
       "text": "The estimated quantity is printed on the schedule by the Authority; the tenderer does not fill it in. The estimated total is that quantity times the tenderer's unit price."
+    },
+    {
+      "kind": "definition",
+      "text": "Where the schedule asks for an optimal dosage, it is one figure in the printed unit: a range is read as its lower end, and the figure is rounded to two significant figures."
     }
   ],
   "rules": [
@@ -126,6 +140,56 @@
       "depends_on": [
         "price_schedule.total_quoted"
       ]
+    },
+    {
+      "id": "price_schedule.dosage_given",
+      "check": "filled",
+      "field": "price_schedule.optimal_dosage",
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} is missing; it is required only when the condition holds, which a reviewer confirms"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "condition": "the Price Schedule asks for an optimal dosage",
+      "normalise": [
+        {
+          "op": "resolve_range_to_lower_bound"
+        },
+        {
+          "op": "round_significant_figures",
+          "params": {
+            "max_sig_figs": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "price_schedule.dosage_unit_unchanged",
+      "check": "unit",
+      "field": "price_schedule.optimal_dosage",
+      "params": {
+        "expected": "{dosage_unit}"
+      },
+      "condition": "the Price Schedule asks for an optimal dosage",
+      "depends_on": [
+        "price_schedule.dosage_given"
+      ],
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
     }
   ]
 }

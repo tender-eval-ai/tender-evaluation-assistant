@@ -1,6 +1,6 @@
 {
-  "id": "board_resolution",
-  "form_name": "Certified Extract of Board Resolution",
+  "id": "method_of_production",
+  "form_name": "Method of Production Statement",
   "consequences": {
     "mandatory_on_request": {
       "outcomes": {
@@ -34,20 +34,24 @@
   "notes": [
     {
       "kind": "definition",
-      "text": "A certified extract of a resolution of the tenderer's board, or other evidence the Authority accepts, showing that whoever signs or submits the tender is authorised to do so."
-    },
-    {
-      "kind": "trigger",
-      "text": "Always needed from a company. A sole proprietorship or partnership needs it only when the person who signs or submits the tender is not the proprietor or a partner."
+      "text": "The tenderer's statement of how the goods are made. Not from the rule files: written for the joint project (J12)."
     }
   ],
-  "condition": "the tenderer is a company, or the person who signs or submits the tender is not the sole proprietor or a partner",
   "rules": [
     {
-      "id": "board_resolution.submitted",
+      "id": "method_of_production.submitted",
       "check": "document_present",
-      "field": "board_resolution.document",
+      "field": "method_of_production.document",
       "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "method_of_production.statement_given",
+      "check": "filled",
+      "field": "method_of_production.statement",
+      "consequence": "mandatory_on_request",
+      "depends_on": [
+        "method_of_production.submitted"
+      ]
     }
   ]
 }

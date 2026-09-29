@@ -19,6 +19,10 @@
         "redacted": {
           "status": "needs_review",
           "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
         }
       },
       "follow_up_deadline": {
@@ -43,6 +47,10 @@
         "redacted": {
           "status": "needs_review",
           "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
         }
       }
     },
@@ -192,6 +200,40 @@
       "id": "information_schedule.events_box_ticked",
       "check": "tick_box",
       "field": "information_schedule.event_disclosure_box",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.events_described",
+      "check": "human_only",
+      "field": "information_schedule.event_disclosure_box",
+      "stage": "II",
+      "depends_on": [
+        "information_schedule.events_box_ticked"
+      ],
+      "condition": "the tenderer ticks that a listed event has occurred",
+      "outcomes": {
+        "unstated": {
+          "status": "needs_review"
+        }
+      },
+      "note": "each event ticked is described in full"
+    },
+    {
+      "id": "information_schedule.telephone_given",
+      "check": "filled",
+      "field": "information_schedule.telephone",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.facsimile_given",
+      "check": "filled",
+      "field": "information_schedule.facsimile",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.email_given",
+      "check": "filled",
+      "field": "information_schedule.email",
       "consequence": "mandatory_on_request"
     }
   ]

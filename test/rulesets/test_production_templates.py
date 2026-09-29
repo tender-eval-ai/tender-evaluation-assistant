@@ -7,7 +7,7 @@ import re
 
 import pytest
 
-from app.checks.engine_bridge import evaluate
+from app.checks.engine_bridge import evaluate, stage_summary
 from app.checks.forms import FORMS
 from app.rulesets.library import DEFAULT_DIR, load_templates
 from app.rulesets.schema import Citation, ItemStatus, Part, RuleSetItem, SlotValue
@@ -15,12 +15,8 @@ from app.rulesets.schema import Citation, ItemStatus, Part, RuleSetItem, SlotVal
 TEMPLATES = load_templates(DEFAULT_DIR)
 
 
-def test_the_library_holds_one_template_per_form_the_rule_files_cover():
-    assert set(TEMPLATES) == {
-        "board_resolution", "compliance_schedule", "contact_details", "contract_deposit", "information_schedule",
-        "manufacturer_letter", "noncollusive_certificate", "particulars_of_goods", "price_schedule",
-        "price_schedule_parts_c_d"}
-    assert set(TEMPLATES) <= set(FORMS), "a template's id is our form id (J2 a)"
+def test_the_library_holds_one_template_per_form():
+    assert set(TEMPLATES) == set(FORMS), "every form has a template, and a template's id is our form id (J2 a)"
 
 
 @pytest.mark.parametrize("tid", sorted(TEMPLATES))
@@ -81,11 +77,21 @@ def statuses(result) -> dict[str, str]:
     return {f["field_id"].rpartition(".")[2]: f["status"] for f in result["fields"]}
 
 
+def stage_i(result) -> str:
+    """The item's Stage I outcome: what the completeness check decides (Stage II checks, some of
+    them always a reviewer's, roll up separately)."""
+    return stage_summary({"x": result}, "I")["outcome"]
+
+
 def test_a_complete_price_schedule_passes_and_a_missing_unit_price_disqualifies():
-    slots = {"estimated_quantity": 875000, "allowed_currencies": ["HK$", "US$"]}
+    slots = {"estimated_quantity": 875000, "allowed_currencies": ["HK$", "US$"], "dosage_unit": "kg per tonne"}
     good = bid("price_schedule", document="Price Schedule", unit_price="HK$ 12.50", currency="HK$",
-               quantity="875,000 kg", total="HK$ 10,937,500")
+               quantity="875,000 kg", total="HK$ 10,937,500", optimal_dosage="4.3 kg per tonne")
     assert verdict("price_schedule", good, **slots)["outcome"] == "pass"
+    no_dosage = {**good, "price_schedule.optimal_dosage": None}
+    dosage = [f["status"] for f in verdict("price_schedule", no_dosage, **slots)["fields"]
+              if f["field_id"] == "price_schedule.optimal_dosage"]
+    assert dosage == ["needs_review"], "required only where the schedule asks for one: a reviewer confirms"
 
     wrong = bid("price_schedule", document="Price Schedule", unit_price="HK$ 12.50", currency="HK$",
                 quantity="1,000,000 kg", total="HK$ 1")
@@ -113,7 +119,9 @@ def test_a_blank_that_only_a_condition_makes_required_goes_to_a_reviewer():
 
 def test_the_compliance_schedule_passes_blank_parts_and_excludes_an_express_non_compliance():
     blank = bid("compliance_schedule", document="Compliance Schedule")
-    assert verdict("compliance_schedule", blank, default_delivery_days=60)["outcome"] == "pass"
+    result = verdict("compliance_schedule", blank, default_delivery_days=60)
+    assert stage_i(result) == "pass" and stage_summary({"x": result}, "II")["outcome"] == "needs_review", \
+        "the Authority's own satisfaction is a reviewer's call at Stage II"
     refused = bid("compliance_schedule", document="Compliance Schedule", part_b="not comply",
                   non_compliances="Part B: not comply")
     assert verdict("compliance_schedule", refused, default_delivery_days=60)["outcome"] == "disqualified"
@@ -124,3 +132,65 @@ def test_the_compliance_schedule_passes_blank_parts_and_excludes_an_express_non_
 def test_blank_discounts_and_deposit_method_take_the_forms_defaults():
     assert verdict("price_schedule_parts_c_d", bid("price_schedule_parts_c_d"))["outcome"] == "pass"
     assert verdict("contract_deposit", bid("contract_deposit"))["outcome"] == "pass"
+    precise = bid("price_schedule_parts_c_d", discount_7day="2.505%", discount_8to14day="1.5%")
+    s = statuses(verdict("price_schedule_parts_c_d", precise))
+    assert (s["discount_7day"], s["discount_8to14day"]) == ("needs_review", "pass"), "at most two decimals, as printed"
+
+
+def test_a_post_office_box_address_goes_to_a_reviewer():
+    filled = dict(document="Contact Details", contact_person="A. Lee", telephone="1234", facsimile="5678",
+                  email="a@b.example", process_agent="n/a")
+    assert verdict("contact_details", bid("contact_details", address="12 Harbour Road", **filled))["outcome"] == "pass"
+    boxed = verdict("contact_details", bid("contact_details", address="P.O. Box 88, Central", **filled))
+    assert boxed["outcome"] == "needs_review" and "should not contain 'P.O. Box'" in boxed["reasons"][0]
+
+
+def test_documents_asked_for_as_evidence_are_checked_where_they_are_read():
+    slots = {"certified_activity": ["manufacture of flocculants"], "tender_closing_date": "2026-06-30",
+             "safety_data_sheet_sections": ["identification", "first aid"],
+             "earliest_specifications_date": "2025-06-30", "evaluation_report_contents": ["method", "conclusions"]}
+    complete = bid("documentary_evidence", document="Documentary evidence",
+                   quality_certificate="QMS-1 by Cert Body", quality_certificate_scope="Manufacture of flocculants",
+                   quality_certificate_site="1 Plant Road", quality_certificate_expiry="1 January 2028",
+                   accreditation_schedule="Schedule of accreditation", safety_data_sheet="SDS for Floc-9",
+                   safety_data_sheet_sections="Identification; Hazards; First aid", product_specifications="Floc-9 specs",
+                   product_specifications_date="1 March 2026", evaluation_report="Evaluation report",
+                   evaluation_report_contents="Method; Results; Conclusions")
+    fields = {**complete, "particulars_of_goods.manufacturing_plant_address": "1 Plant Road"}
+    s = statuses(verdict("documentary_evidence", fields, **slots))
+    assert {k: s[k] for k in ("quality_certificate_scope", "quality_certificate_site", "quality_certificate_expiry",
+                              "safety_data_sheet_sections", "product_specifications_date",
+                              "evaluation_report_contents")} == dict.fromkeys(
+        ("quality_certificate_scope", "quality_certificate_site", "quality_certificate_expiry",
+         "safety_data_sheet_sections", "product_specifications_date", "evaluation_report_contents"), "pass")
+    assert s["quality_certificate"] == "needs_review", "a reviewer judges the copy and the issuer"
+    assert s["laboratory_appointed_date"] == "dormant", "a conformance test waits until the Authority asks"
+
+    missing = statuses(verdict("documentary_evidence", bid("documentary_evidence"), **slots))
+    assert missing["quality_certificate"] == "needs_review", "required only when the tender asks for it"
+    assert "quality_certificate_scope" not in missing, "the checks on a missing certificate wait for it"
+
+
+def test_a_tender_sample_is_dormant_until_a_reviewer_records_it():
+    slots = {"sample_min_kg": 600, "sample_pack_min_kg": 500, "sample_pack_max_kg": 950,
+             "sample_label_particulars": ["tender reference", "tenderer"]}
+    assert statuses(verdict("tender_sample_declaration", bid("tender_sample_declaration"), **slots)) == \
+        {"sample_received_date": "dormant"}
+    recorded = bid("tender_sample_declaration", sample_received_date="3 July 2026", sample_net_weight_kg="400",
+                   sample_pack_net_weight_kg="700", sample_label="Tender reference T-1; Tenderer: Bidder A",
+                   sample_condition="original packing, sealed")
+    s = verdict("tender_sample_declaration", recorded, **slots)
+    assert statuses(s)["sample_net_weight_kg"] == "needs_review" and "at least 600" in " ".join(s["reasons"])
+    assert statuses(s)["sample_label"] == "pass" and statuses(s)["sample_charges"] == "pass"
+
+
+def test_the_particulars_report_rows_left_empty_and_a_self_made_product():
+    base = dict(document="Particulars of Goods Schedule", country_of_origin="Freedonia", manufacturer="Bidder A Ltd",
+                product_name="Floc-9", manufacturing_plant_address="1 Plant Road", product_code="F9",
+                active_ingredient_pct="95", bulk_density="0.7", packaging="bags", net_weight_kg="750")
+    fields = {**bid("particulars_of_goods", **base), "offer_to_be_bound.tenderer_name": "Bidder A Ltd",
+              "contact_details.address": "1 Plant Road"}
+    slots = {"net_weight_min_kg": 500, "net_weight_max_kg": 950}
+    assert verdict("particulars_of_goods", fields, **slots)["outcome"] == "pass"
+    gaps = {**fields, **bid("particulars_of_goods", **base, rows_left_blank="Particle size; pH")}
+    assert statuses(verdict("particulars_of_goods", gaps, **slots))["rows_left_blank"] == "dormant"

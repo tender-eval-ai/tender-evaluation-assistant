@@ -1,6 +1,22 @@
 {
   "id": "particulars_of_goods",
   "form_name": "Particulars of Goods Schedule",
+  "slots": [
+    {
+      "name": "net_weight_min_kg",
+      "kind": "number",
+      "unit": "kg",
+      "required": false,
+      "description": "the smallest net weight per pack the tender allows, when it sets a packing requirement"
+    },
+    {
+      "name": "net_weight_max_kg",
+      "kind": "number",
+      "unit": "kg",
+      "required": false,
+      "description": "the largest net weight per pack the tender allows, when it sets a packing requirement"
+    }
+  ],
   "consequences": {
     "critical": {
       "outcomes": {
@@ -19,6 +35,34 @@
           "status": "needs_review",
           "note": "{field} is marked not applicable; excused only if the Authority, after asking the tenderer, agrees it does not apply"
         }
+      }
+    },
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
       }
     }
   },
@@ -41,7 +85,11 @@
     },
     {
       "kind": "reference",
-      "text": "The rows that describe the product itself differ from tender to tender, so the rule set drafts them from each tender's own schedule."
+      "text": "The rows that describe the product itself differ from tender to tender; any left empty are reported together. The person confirming the rule set removes a row rule the tender's schedule does not have."
+    },
+    {
+      "kind": "reference",
+      "text": "Packing requirements for the goods are set in the tender's conditions of contract."
     }
   ],
   "rules": [
@@ -62,6 +110,124 @@
       "check": "filled",
       "field": "particulars_of_goods.product_name",
       "consequence": "critical"
+    },
+    {
+      "id": "particulars_of_goods.manufacturer_is_tenderer",
+      "check": "cross_document_match",
+      "field": "particulars_of_goods.manufacturer",
+      "condition": "the tenderer is itself the manufacturer",
+      "params": {
+        "other": "offer_to_be_bound.tenderer_name"
+      },
+      "depends_on": [
+        "particulars_of_goods.manufacturer_given"
+      ],
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    },
+    {
+      "id": "particulars_of_goods.plant_address_given",
+      "check": "filled",
+      "field": "particulars_of_goods.manufacturing_plant_address",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "particulars_of_goods.plant_address_is_tenderers",
+      "check": "cross_document_match",
+      "field": "particulars_of_goods.manufacturing_plant_address",
+      "condition": "the tenderer is itself the manufacturer",
+      "params": {
+        "other": "contact_details.address"
+      },
+      "depends_on": [
+        "particulars_of_goods.plant_address_given"
+      ],
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    },
+    {
+      "id": "particulars_of_goods.product_code_given",
+      "check": "filled",
+      "field": "particulars_of_goods.product_code",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "particulars_of_goods.no_row_left_blank",
+      "check": "filled",
+      "field": "particulars_of_goods.rows_left_blank",
+      "outcomes": {
+        "blank": {
+          "status": "pass"
+        },
+        "filled": {
+          "status": "dormant",
+          "note": "rows left empty: {field}; the Authority may ask for them",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "particulars_of_goods.active_content_given",
+      "check": "filled",
+      "field": "particulars_of_goods.active_ingredient_pct",
+      "consequence": "mandatory_on_request",
+      "condition": "the schedule has a row for the active content"
+    },
+    {
+      "id": "particulars_of_goods.bulk_density_given",
+      "check": "filled",
+      "field": "particulars_of_goods.bulk_density",
+      "consequence": "mandatory_on_request",
+      "condition": "the schedule has a row for the bulk density"
+    },
+    {
+      "id": "particulars_of_goods.packing_given",
+      "check": "filled",
+      "field": "particulars_of_goods.packaging",
+      "consequence": "mandatory_on_request",
+      "condition": "the tender sets a packing requirement for the goods offered"
+    },
+    {
+      "id": "particulars_of_goods.pack_net_weight_in_range",
+      "check": "range",
+      "field": "particulars_of_goods.net_weight_kg",
+      "stage": "II",
+      "params": {
+        "min": "{net_weight_min_kg}",
+        "max": "{net_weight_max_kg}"
+      },
+      "condition": "the tender sets a packing requirement for the goods offered",
+      "outcomes": {
+        "blank": {
+          "status": "pass"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
     }
   ]
 }

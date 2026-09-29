@@ -14,6 +14,10 @@
         "redacted": {
           "status": "needs_review",
           "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
         }
       }
     },
@@ -29,6 +33,10 @@
         "redacted": {
           "status": "needs_review",
           "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
         }
       }
     }
@@ -43,8 +51,8 @@
       "text": "A discount period runs from the later of the day the invoice is received and the day payment falls due."
     },
     {
-      "kind": "reference",
-      "text": "A discount may have at most two decimal places. A reviewer reads it for this; no rule can check a number's precision yet."
+      "kind": "definition",
+      "text": "A discount is written with at most two decimal places."
     },
     {
       "kind": "definition",
@@ -70,6 +78,50 @@
       "field": "price_schedule_parts_c_d.part_d",
       "consequence": "discretionary",
       "condition": "the tenderer is based outside the jurisdiction and will be paid by telegraphic transfer"
+    },
+    {
+      "id": "price_schedule_parts_c_d.discount_7day_two_decimals",
+      "check": "range",
+      "field": "price_schedule_parts_c_d.discount_7day",
+      "params": {
+        "max_decimals": 2
+      },
+      "depends_on": [
+        "price_schedule_parts_c_d.discount_7day_given"
+      ],
+      "outcomes": {
+        "blank": {
+          "status": "pass"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    },
+    {
+      "id": "price_schedule_parts_c_d.discount_8to14day_two_decimals",
+      "check": "range",
+      "field": "price_schedule_parts_c_d.discount_8to14day",
+      "params": {
+        "max_decimals": 2
+      },
+      "depends_on": [
+        "price_schedule_parts_c_d.discount_8to14day_given"
+      ],
+      "outcomes": {
+        "blank": {
+          "status": "pass"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
     }
   ]
 }

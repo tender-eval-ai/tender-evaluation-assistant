@@ -59,7 +59,7 @@ Last updated: 2026-09-20 (Chenyu).
 | J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
 | J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | agreed | — (removed in the S5 legacy-removal PR) |
 | J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | proposed | Nasi: position on 9–13 |
-| J12 | The production templates: ten forms, what was left out, two questions (tier by Part, conditions) | proposed | Chenyu: review, and a position on questions 1 and 2 |
+| J12 | The production templates: one per form, every rule-file rule placed; two questions (tier by Part, conditions) | proposed | Chenyu: review #100 (contract) then #99, and a position on questions 1 and 2 |
 
 ## A. Corrections to the plan
 
@@ -595,27 +595,29 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 
 ### J12. The production templates (the last step before J7's L1-L4 eval)
 - Found by: writing the templates from the 13 rule files (Nasi, 2026-09-29).
-- Proposed in the PR:
-  - Ten templates in `app/rulesets/templates/`, one per form the rule files cover: board resolution, compliance schedule, contact details, contract deposit, information schedule, manufacturer's letter, non-collusive certificate, particulars of goods, price schedule, Parts C and D. 49 rules, all on fields of `app/checks/forms.py`, written in our own words (J2 c) and neutral wording (F6).
-  - What one tender sets is a slot: the estimated quantity, the currencies allowed, and the default delivery period.
-  - `tools/split_rule_files.py` maps the fields e2b3189 added. `--templates` lists every rule-file check that no template carries. `--params` writes the rule files' tender values under the slot names, outside git (J2 d).
-  - A test runs every template through the engine: loading, field names, neutral wording, and verdicts.
-- Coverage: of the rule files' 52 checks whose field has a home, 43 have a template rule. Left out on purpose:
-  1. **Rows that describe one tender's goods:** in the Particulars of Goods, active content, bulk density, and the packing row with its net-weight range; in the Price Schedule, the dosage and its unit. They fail J2's test, because they vary by tender. The additions step drafts them from each tender's clauses.
-  2. **Two checks the twelve kinds cannot state:** that the address is not a post office box (a negated `contains`), and that a discount has at most two decimals. Both are kept as template notes a reviewer reads.
-  3. **The manufacturer's self-entry match:** it applies only when the tenderer makes the goods itself (see question 2), and is kept as a note.
-- Not placed (37 checks with no home):
-  - the documents another item asks for (#76 point 2);
-  - the Particulars of Goods product rows (#76 point 3);
-  - the shelf-life months;
-  - the tender-sample rules, since a sample is delivered on request and is not part of the offer.
-
-  There's no template for documentary evidence, whose requirements are the tender's own (L3 drafts them), or for the tender sample declaration.
-- One position taken: the board resolution extract is checked under the board resolution item, its own form, and the Information Schedule no longer asks for it. This is #76 point 2's proposal, for the one document whose form we have.
+- Proposed in two PRs:
+  - **#100 (`contract`):** a home for every field the rule files check.
+    - `documentary_evidence` reads the documents a tender asks for as evidence (#76 point 2's one home).
+    - `particulars_of_goods.rows_left_blank` reports any product row left empty, in place of a per-tender row list (an alternative to point 3 that needs no extraction change).
+    - New: a field a reviewer enters (`FieldDef.by`), for tender samples and for test reports asked for after closing.
+    - The bridge gains `contains` with `phrases` and `absent`, and `range` with `max_decimals`.
+    - A fix: a rule's `normalise` steps now reach the engine; before, they were dropped.
+  - **#99:** fourteen templates in `app/rulesets/templates/`, **one per form**. 106 rules, 16 slots and 42 notes, in our own words (J2 c) and neutral wording (F6).
+    - What one tender sets is a slot: quantities, currencies, default periods, pack weights, and the section lists a document must have.
+    - A rule that only some tenders need carries a `condition`. The person confirming a rule set removes the ones the tender does not ask for.
+    - The Offer to be Bound and the Method of Production Statement have no rule file, so their templates are new and say so.
+  - `tools/split_rule_files.py --templates` checks the library against the rule files. `--params` writes the rule files' tender values under the slot names, outside git (J2 d). The two long lists it writes (safety data sheet sections, evaluation report contents) need trimming to short headings before a `contains` can match them.
+  - Tests run every template through the engine.
+- **Coverage: all 126 rule-file rules have a place.**
+  - The 27 that are not checks are notes, conditions and rounding steps.
+  - Of the 99 checks, 96 are template rules. That includes the 10 a reviewer judges, which are `human_only` rules on the field they judge, behind the rule that the document is there.
+  - The other 3 are deadlines counted from the day the Authority asks (a laboratory appointed, a test report, a sample delivered). The on-request tier's follow-up carries them in words, with a missed deadline disqualifying. The engine can compute one deadline per tier, but these three differ.
+- One position taken, #76 point 2: each document is checked where the tender asks for it. The certificates, data sheet, specifications and reports are checked under documentary evidence, and the board resolution extract under its own item; the Information Schedule no longer asks for any of them.
+- What a reviewer will see: the Stage II checks only a person can make (the Authority's own satisfaction with the goods, a certificate's issuer, a plant trial) are always `needs_review` at Stage II. Stage I is unaffected, since the stage summaries roll up by rule stage.
 - **Question 1, the tier of a presence rule.** A template fixes each rule's tier, but whether a missing form disqualifies depends on the Part the tender puts it in. The certificate is Part B (mandatory on request) in the rule files' tender, and Part A in the synthetic one. Options:
   1. When L1 copies a template's rules, it sets a presence rule's tier from the item's Part: A critical, B mandatory on request, C discretionary. This is what L3 already does with `outcomes_for`. A rule with its own outcomes, or a deemed tier, keeps them. The change is in `match.py`, with no contract change.
   2. Keep the fixed tiers, and a person corrects them before confirming.
-- **Question 2, conditions.** `condition` is recorded on rules and items, but nothing acts on it; J11 item 13 lists it as a limitation. So a conditional rule fires on every bid. The templates guard against the worst case: a conditional rule never disqualifies on a blank, and a reviewer confirms instead. Options:
+- **Question 2, conditions.** `condition` is recorded on rules and items, but nothing acts on it; J11 item 13 lists it as a limitation. So a conditional rule fires on every bid. The templates guard against the worst case: a conditional rule never disqualifies on a blank, and a reviewer confirms instead. The cost is visible in two self-entry matches: a tenderer that is not the manufacturer always sends its manufacturer's name and plant address to review. Options:
   1. Keep it as a stated limitation.
   2. A reviewer answers each condition once per bid in the Stage window, and the bridge drops the rules whose condition does not hold. The engine's `exclude_rules` already does the dropping.
 - Also: with these templates in compose, the synthetic case builds against them instead of the two test templates, so its L1-L4 numbers are rerun at the J7 eval.

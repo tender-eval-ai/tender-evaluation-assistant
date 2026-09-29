@@ -124,16 +124,18 @@ TEMPLATE_OF_FILE = {
     "tender_sample_plant_trial": "tender_sample_declaration",
 }
 
-# J2 (b): a rule's `field_id` to the field of its form that holds the same thing.
-# Only where the form has that field; a field_id missing here has no home yet and is
-# reported. Two are close rather than word for word, and say why.
+# J2 (b): a rule's `field_id` to the field of its form that holds the same thing: a name
+# in the rule file's own form, or a whole `<form>.<field>` key when the thing lives in
+# another form (J12: a document has one home, #76 point 2). A field_id missing here has
+# no home and is reported. The close rather than word-for-word ones say why.
 FIELD_OF = {
     # The tenderer's contact block is five fields of the form (#76 review, point 4); the
     # rule's own `field_id` names the block, and the address stands for it here.
     "contact_details": {"tenderer_contact_details": "address", "process_agent_contact_details": "process_agent"},
     "compliance_schedule": {"compliance_part_b_earlier_delivery_days": "delivery_days",
                             "compliance_part_a": "part_a", "compliance_part_b": "part_b",
-                            "compliance_part_c": "part_c", "compliance_part_d": "part_d"},
+                            "compliance_part_c": "part_c", "compliance_part_d": "part_d",
+                            "compliance_part_d_longer_shelf_life_months": "shelf_life_months"},
     "contract_deposit": {"contract_deposit_method": "method"},
     "manufacturer_letter": {"manufacturer_letter_of_intent": "document"},  # the letter itself is present
     "noncollusive_certificate": {},
@@ -144,44 +146,105 @@ FIELD_OF = {
         "packing_plant_net_weight_kg": "packaging",           # the Packing row, net weight in kg
         "percentage_activity": "active_ingredient_pct",       # a polyelectrolyte's activity is its active content
         "bulk_density": "bulk_density",
+        "address_of_manufacturing_plant": "manufacturing_plant_address",
+        "product_code_number": "product_code",
+        # The rows that describe one tender's product: one field says which are empty (J12).
+        **{row: "rows_left_blank" for row in (
+            "physical_form", "particle_size", "cationicity_by_colloid_titration", "molecular_weight_distribution",
+            "effective_ph_range", "ph_of_half_percent_solution")},
     },
-    # Tables B to D (e2b3189). The documents other items ask for wait for #76 point 2, and
-    # the contact details belong to the contact details form (point 4).
-    "information_schedule": {name: name for name in (
-        "tenderer_name", "principal_place_of_business", "business_entity_type", "shareholders_ownership",
-        "business_experience_length", "directors_partners_names", "incorporation_place_date",
-        "business_profile_info", "business_registration_certificate", "memorandum_articles_of_association",
-        "latest_annual_return", "employees_compensation_insurance", "subcontractor_name",
-        "subcontractor_place_of_business", "subcontractor_obligations", "subcontractor_undertaking",
-        "subcontractor_overseas_legal_opinion", "subcontractor_service_centre_location", "event_disclosure_box")},
+    # Tables B to D (e2b3189); the documents the rows point to are read where the tender asks for them.
+    "information_schedule": {
+        **{name: name for name in (
+            "tenderer_name", "principal_place_of_business", "business_entity_type", "shareholders_ownership",
+            "business_experience_length", "directors_partners_names", "incorporation_place_date",
+            "business_profile_info", "business_registration_certificate", "memorandum_articles_of_association",
+            "latest_annual_return", "employees_compensation_insurance", "subcontractor_name",
+            "subcontractor_place_of_business", "subcontractor_obligations", "subcontractor_undertaking",
+            "subcontractor_overseas_legal_opinion", "subcontractor_service_centre_location", "event_disclosure_box")},
+        "tenderer_contact_details": "telephone",             # with fax and e-mail, each its own rule
+        "iso_certificate": "documentary_evidence.quality_certificate",
+        "safety_data_sheet": "documentary_evidence.safety_data_sheet",
+        "product_specifications": "documentary_evidence.product_specifications",
+        "evaluation_report": "documentary_evidence.evaluation_report",
+        "test_report_lab_appointment": "documentary_evidence.laboratory_appointed_date",
+        "test_report_submission": "documentary_evidence.test_report_received_date",
+        "test_report_document_form": "documentary_evidence.test_report",
+        "tenderers_declaration_independence": "documentary_evidence.laboratory_independence_declaration",
+        "tenderers_declaration_bundling": "documentary_evidence.laboratory_independence_declaration",
+        "board_resolution_extract": "board_resolution.document",
+    },
     "price_schedule_parts_c_d": {"banking_details": "part_d", "discount_7day": "discount_7day",
                                  "discount_8to14day": "discount_8to14day"},
     "price_schedule": {"estimated_quantity": "quantity", "one_time_unit_price": "unit_price",
                        "estimated_goods_price": "total", "optimal_dosage": "optimal_dosage"},
+    # A sample is delivered on request, after closing: a reviewer records it (FieldDef.by).
+    "tender_sample_declaration": {"tender_sample": "sample_received_date",
+                                  "additional_tender_sample": "additional_sample_received_date",
+                                  "plant_trial": "plant_trial_result"},
 }
 
-# One field_id that different rules read different parts of: the rule decides.
+# One field_id that different rules read different parts of: the rule decides. Also the
+# field a reviewer's (`human_only`) check is about, so it is placed like any other.
 FIELD_OF_RULE = {
-    "appendix_tenderer_address_not_postal_box": "address",
-    "noncollusive_certificate_filled": "document",
-    "noncollusive_certificate_tenderer_identified": "tenderer_name",
-    "noncollusive_certificate_signed": "signature",
-    "packing_plant_net_weight_range": "net_weight_kg",     # the number, not the printed packing row
-    "event_disclosure_tick_formatting": "event_disclosure_box",
-    "unit_price_unit": "currency",                         # the form reads the currency as its own field
+    "appendix_tenderer_address_not_postal_box": "contact_details.address",
+    "noncollusive_certificate_filled": "noncollusive_certificate.document",
+    "noncollusive_certificate_tenderer_identified": "noncollusive_certificate.tenderer_name",
+    "noncollusive_certificate_signed": "noncollusive_certificate.signature",
+    "packing_plant_net_weight_range": "particulars_of_goods.net_weight_kg",   # the number, not the printed row
+    "event_disclosure_tick_formatting": "information_schedule.event_disclosure_box",
+    "unit_price_unit": "price_schedule.currency",          # the form reads the currency as its own field
+    "iso_certificate_accompanied_by_schedules": "documentary_evidence.accreditation_schedule",
+    "iso_certificate_scope_check": "documentary_evidence.quality_certificate_scope",
+    "iso_certificate_address_match": "documentary_evidence.quality_certificate_site",
+    "iso_certificate_validity_and_logo": "documentary_evidence.quality_certificate_expiry",
+    "sds_content_complete": "documentary_evidence.safety_data_sheet_sections",
+    "product_specs_issue_date": "documentary_evidence.product_specifications_date",
+    "evaluation_report_content_complete": "documentary_evidence.evaluation_report_contents",
+    "test_report_compliance_with_product_specs": "documentary_evidence.test_report",
+    "tender_sample_quantity": "tender_sample_declaration.sample_net_weight_kg",
+    "tender_sample_pack_size": "tender_sample_declaration.sample_pack_net_weight_kg",
+    "tender_sample_label_complete": "tender_sample_declaration.sample_label",
+    # human_only: what a reviewer looks at
+    "iso_certificate_original_or_certified_copy": "documentary_evidence.quality_certificate",
+    "iso_certificate_issuer_accreditation": "documentary_evidence.quality_certificate",
+    "test_report_original_or_certified_copy": "documentary_evidence.test_report",
+    "sds_bilingual_latest_version": "documentary_evidence.safety_data_sheet",
+    "event_disclosure_details_complete": "information_schedule.event_disclosure_box",
+    "compliance_government_dissatisfaction_gate": "compliance_schedule.document",
+    "tender_sample_original_packing": "tender_sample_declaration.sample_condition",
+    "tender_sample_sealed": "tender_sample_declaration.sample_condition",
+    "tender_sample_extra_charges": "tender_sample_declaration.sample_charges",
+    "plant_trial_effectiveness": "tender_sample_declaration.plant_trial_result",
 }
 
-# Kinds a person decides from the document as a whole: they read no field.
+# Kinds a person decides from the document as a whole: placed only through FIELD_OF_RULE.
 NO_FIELD_KINDS = {"human_only"}
 
-# The rule files' tender-specific values, by the template slot that now holds them: the
-# rule's id to (template, slot, how to read the value from the rule's `value`).
+# The rule files' tender-specific values, by the template slots that now hold them: the
+# rule's id to [(template, slot, how to read the value from the rule's `value`)].
 SLOT_OF_RULE = {
-    "estimated_quantity_value": ("price_schedule", "estimated_quantity", lambda v: v),
-    "unit_price_unit": ("price_schedule", "allowed_currencies", lambda v: v),
-    "compliance_part_b_earlier_delivery_proposal": ("compliance_schedule", "default_delivery_days",
-                                                    lambda v: v["default_days"]),
+    "estimated_quantity_value": [("price_schedule", "estimated_quantity", lambda v: v)],
+    "unit_price_unit": [("price_schedule", "allowed_currencies", lambda v: v)],
+    "dosage_unit": [("price_schedule", "dosage_unit", lambda v: v)],
+    "compliance_part_b_earlier_delivery_proposal": [("compliance_schedule", "default_delivery_days",
+                                                     lambda v: v["default_days"])],
+    "compliance_part_d_longer_shelf_life_proposal": [("compliance_schedule", "default_shelf_life_months",
+                                                      lambda v: v["default_months"])],
+    "packing_plant_net_weight_range": [("particulars_of_goods", "net_weight_min_kg", lambda v: v["min"]),
+                                       ("particulars_of_goods", "net_weight_max_kg", lambda v: v["max"])],
+    "sds_content_complete": [("documentary_evidence", "safety_data_sheet_sections", lambda v: v)],
+    "evaluation_report_content_complete": [("documentary_evidence", "evaluation_report_contents", lambda v: v)],
+    "tender_sample_quantity": [("tender_sample_declaration", "sample_min_kg", lambda v: v["min_kg"])],
+    "tender_sample_pack_size": [("tender_sample_declaration", "sample_pack_min_kg", lambda v: v["min_kg"]),
+                                ("tender_sample_declaration", "sample_pack_max_kg", lambda v: v["max_kg"])],
+    "tender_sample_label_complete": [("tender_sample_declaration", "sample_label_particulars", lambda v: v)],
 }
+
+
+def resolve(template: str, name: str) -> str:
+    """A map entry as a `<form>.<field>` key: a bare name belongs to the rule file's own form."""
+    return name if "." in name else f"{template}.{name}"
 
 
 def template_id(filename: str) -> str:
@@ -192,12 +255,12 @@ def template_id(filename: str) -> str:
 
 def field_of(template: str, rule: dict, kind: str | None) -> tuple[str | None, str]:
     """(`<form>.<field>` key, status): status is `mapped`, `not_needed` or `no_home`."""
-    if kind is None or kind in NO_FIELD_KINDS:
+    if kind is None or (kind in NO_FIELD_KINDS and rule["id"] not in FIELD_OF_RULE):
         return None, "not_needed"
     name = FIELD_OF_RULE.get(rule["id"]) or FIELD_OF.get(template, {}).get(rule.get("field_id"))
     if name is None:
         return None, "no_home"
-    return f"{template}.{name}", "mapped"
+    return resolve(template, name), "mapped"
 
 
 def kind_of(rule: dict) -> tuple[str | None, str | None]:
@@ -225,11 +288,17 @@ def left_out(report: list[dict], templates: dict) -> dict[str, list[str]]:
     """{template: [rule-file rule ids]}: the checks with a home that no template rule of the
     same kind on the same field carries. A template the library lacks leaves all of its."""
     group = lambda kind: "presence" if kind in PRESENCE_KINDS else kind  # noqa: E731
-    have = {(r.field, group(r.check.value)) for t in templates.values() for r in t.rules}
+    rules = [r for t in templates.values() for r in t.rules]
+    have = {(r.field, group(r.check.value)) for r in rules}
+    judged = {r.field for r in rules if r.check.value == "human_only"}   # a reviewer judges what the kinds can't
+    checked = {r.field for r in rules}
     out: dict[str, list[str]] = defaultdict(list)
     for r in report:
-        if r["field_status"] == "mapped" and (r["field"], group(r["kind"])) not in have:
-            out[r["template"]].append(r["id"])
+        if r["field_status"] != "mapped" or (r["field"], group(r["kind"])) in have or r["field"] in judged:
+            continue
+        if r["kind"] == "human_only" and r["field"] in checked:
+            continue
+        out[r["template"]].append(r["id"])
     return dict(out)
 
 
@@ -238,8 +307,7 @@ def params_of(source: Path) -> dict[str, dict]:
     out: dict[str, dict] = defaultdict(dict)
     for path in sorted(source.glob("*.json")):
         for rule in json.loads(path.read_text()).get("rules", []):
-            if rule["id"] in SLOT_OF_RULE:
-                template, slot, read = SLOT_OF_RULE[rule["id"]]
+            for template, slot, read in SLOT_OF_RULE.get(rule["id"], []):
                 out[template][slot] = read(rule["value"])
     return dict(out)
 
@@ -252,7 +320,8 @@ def main() -> None:
     ap.add_argument("--params", type=Path, help="write the rule files' tender values by template slot, as JSON")
     args = ap.parse_args()
 
-    wrong = [f"{t}.{n}" for t, fields in FIELD_OF.items() for n in fields.values() if n not in FORMS[t].names]
+    keys = [resolve(t, n) for t, fields in FIELD_OF.items() for n in fields.values()] + list(FIELD_OF_RULE.values())
+    wrong = [k for k in keys if k.partition(".")[0] not in FORMS or k.partition(".")[2] not in FORMS[k.partition(".")[0]].names]
     if wrong:
         sys.exit(f"the field map names fields its forms do not have: {', '.join(wrong)}")
 

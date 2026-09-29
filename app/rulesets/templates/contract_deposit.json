@@ -14,6 +14,10 @@
         "redacted": {
           "status": "needs_review",
           "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
         }
       }
     }
