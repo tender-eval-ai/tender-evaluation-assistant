@@ -19,11 +19,12 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 from app.checks.pages import read_png
+from app.config import DEFAULT_AGENT_STEPS
 from app.checks.verify import TextOf
 from app.grounding import quote_on_page
 
 PROMPT_VERSION = "agent-v5"
-MAX_STEPS = max(1, int(os.environ.get("AGENT_MAX_STEPS", "6")))
+MAX_STEPS = max(1, int(os.environ.get("AGENT_MAX_STEPS", str(DEFAULT_AGENT_STEPS))))
 MAX_READS = max(0, int(os.environ.get("AGENT_MAX_READS", "3")))
 TRANSCRIPT_CHARS = 3000
 TRACE_CHARS = 300
