@@ -7,7 +7,7 @@
 # the secrets stay readable by the app's identity only.
 set -euo pipefail
 EMAIL=${1:?usage: add_user.sh <email> [--contributor]}
-REPO=${REPO:-chenyufang-data/tender-evaluation-assistant}
+REPO=${REPO:-tender-eval-ai/tender-evaluation-assistant}
 RG=$(gh variable get AZURE_RESOURCE_GROUP -R "$REPO")
 PREFIX=$(gh variable get AZURE_PREFIX -R "$REPO")
 SIGNIN_ID=$(gh variable get AZURE_SIGNIN_CLIENT_ID -R "$REPO")

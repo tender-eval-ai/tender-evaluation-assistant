@@ -7,6 +7,7 @@ from __future__ import annotations
 import asyncio
 import threading
 
+from app.jobs.health import mark_alive
 from app.jobs.queue import QUEUE, Settings, make_app
 from app.jobs.runner import resume_candidates
 from app.jobs.store import Store
@@ -35,6 +36,7 @@ class Sweeper(threading.Thread):
                     for job in await app.job_manager.get_stalled_jobs(seconds_since_heartbeat=self.settings.stalled_after):
                         await app.job_manager.retry_job(job)
                         self.retried.append(job.id)
+                    mark_alive()       # the container's health check: alive, and the database answered
                 except Exception:      # noqa: BLE001 - a sweep that fails is retried next tick
                     pass
                 try:

@@ -13,6 +13,20 @@ import sys
 
 from app.jobs import registry
 from app.jobs.queue import QUEUE, Settings
+from app.rulesets.library import EMPTY, library_status, templates_dir
+
+
+def template_warnings(kinds) -> list[str]:
+    """What the start-up output says about the template library, for a worker that builds
+    rule sets: the count, and a WARNING when it is empty or does not load."""
+    if "ruleset_build" not in kinds:
+        return []
+    status = library_status()
+    if not status["valid"]:
+        return [f"WARNING: the template library at {templates_dir()} does not load: {status['error']}"]
+    if status["count"] == 0:
+        return [f"WARNING: {EMPTY} ({templates_dir()})"]
+    return [f"templates: {status['count']} from {templates_dir()}"]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -36,6 +50,8 @@ def main(argv: list[str] | None = None) -> int:
     if not args.no_sweep:
         Sweeper(settings).start()
     print(f"[worker] {args.name}: pipelines {registry.kinds()}, queue {QUEUE}", file=sys.stderr)
+    for line in template_warnings(registry.kinds()):
+        print(f"[worker] {args.name}: {line}", file=sys.stderr)
     tasks.app.run_worker(queues=[QUEUE], name=args.name, concurrency=args.concurrency or settings.concurrency,
                          wait=True, fetch_job_polling_interval=settings.poll,
                          update_heartbeat_interval=settings.heartbeat, stalled_worker_timeout=settings.stalled_after,

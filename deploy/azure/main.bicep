@@ -24,7 +24,7 @@ param suffix string
 param imageTag string
 
 @description('Where the images are: CI pushes backend and web here.')
-param registry string = 'ghcr.io/chenyufang-data/tender-evaluation-assistant'
+param registry string = 'ghcr.io/tender-eval-ai/tender-evaluation-assistant'
 
 @description('GitHub user whose read:packages token (key vault secret ghcr-token) pulls the images.')
 param ghcrUser string
@@ -288,7 +288,8 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
         ]
       }
       volumes: [
-        { name: 'data', storageType: 'AzureFile', storageName: environmentShare.name }
+        // The image runs as uid 1000 (backend/Dockerfile): the share is mounted as that user.
+        { name: 'data', storageType: 'AzureFile', storageName: environmentShare.name, mountOptions: 'uid=1000,gid=1000' }
       ]
     }
   }

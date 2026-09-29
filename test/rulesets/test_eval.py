@@ -4,22 +4,18 @@ from __future__ import annotations
 
 import json
 
-from app.rulesets import match as l1, novel as l3, slots as l2
 from app.rulesets.builder import build_items
 from app.rulesets.evaluate import score, table
 from app.rulesets.schema import DataClass, RuleSet
-from test.fakes import FakeLLM, Rule
+from test.fakes import FakeLLM
 from test.rulesets.conftest import NODES_DIR
-from test.rulesets.fake_factory import novel_reply
-from test.rulesets.test_match import by_item
-from test.rulesets.test_slots import answer
+from test.rulesets.fake_factory import rules
 
 KEY = json.loads((NODES_DIR / "ruleset_key.json").read_text())
 
 
 def fake_build(located, templates, index) -> RuleSet:
-    llm = FakeLLM(rules=[Rule(reply=by_item, out_model=l1.Match), Rule(reply=answer(), out_model=l2.SlotFill),
-                         Rule(reply=novel_reply, out_model=l3.Requirements)])
+    llm = FakeLLM(rules=rules())
     out = build_items(located, templates, index, llm, DataClass.SYNTHETIC)
     return RuleSet(project_id="SYN-2026-001", version=1, data_class=DataClass.SYNTHETIC, items=out.items, gaps=out.gaps,
                    created_by="rule_builder", created_at="2026-09-20T00:00:00Z", model="fake", prompt_version="fake")
@@ -33,13 +29,13 @@ def test_the_scorer_counts_what_the_key_names(located, templates, index):
     assert t["template_right"] == [13, 15] and p["template_right"] == 86.7
     assert t["slots_right"] == [1, 2], "(b)'s quantity verified; (c) was not matched, so its slot is not filled"
     assert t["checks_recall"] == [1, 8], "the fake drafts one rule, (a)'s signature"
-    assert t["statuses"] == {"gap": 12, "novel": 1, "verified": 2} and t["rules_total"] == 4 + 2 + 1
+    assert t["statuses"] == {"gap": 12, "novel": 1, "verified": 2} and t["rules_total"] == 4 + (2 + 1) + 1, "(b): one addition"
     assert t["unverified_notes"] == 0 and t["gaps"] > 0 and t["gaps_reasoned"] == 0 and t["extra_items"] == []
     rows = result["rows"]
     assert rows["b"]["slots"]["estimated_quantity"] == {"value_ok": True, "verified": True, "node": "09-Schedules:00-Price-Schedule:PA:(2)"}
     assert rows["a"]["checks_found"] == ["signature"] and rows["n"]["checks_missing"] == ["document_present"]
     text = table(result)
-    assert "| (b) | verified | yes | yes | yes | estimated_quantity: ok | - | 2 | 0 |" in text
+    assert "| (b) | verified | yes | yes | yes | estimated_quantity: ok | - | 3 | 0 |" in text
     assert "| template_right | 13/15 (86.7%) |" in text
 
 

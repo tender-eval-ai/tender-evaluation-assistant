@@ -67,13 +67,15 @@ def test_the_build_job_drafts_the_rule_set_from_the_tender(api, build_worker):
 
     rs = client.get(f"/projects/{pid}/ruleset").json()
     assert rs["version"] == 1 and rs["status"] == "draft" and rs["created_by"] == "rule_builder"
-    assert rs["prompt_version"] == "match-v1+slots-v1+novel-v1" and rs["updated_by"] == "rule_builder"
+    assert rs["prompt_version"] == "match-v1+slots-v2+novel-v2+additions-v1" and rs["updated_by"] == "rule_builder"
     by = {i["letter"]: i for i in rs["items"]}
     assert sorted(by) == list("abcdefghijklmno") and [p["part"] for p in rs["parts"]] == ["A", "B", "C"]
     assert by["l"]["template"] == "noncollusive_certificate" and by["l"]["status"] == "verified" and len(by["l"]["rules"]) == 4
     quantity = by["b"]["slots"]["estimated_quantity"]
     assert by["b"]["status"] == "verified" and quantity["value"] == 875000 and quantity["verified"]
     assert quantity["citation"]["node_id"] == "09-Schedules:00-Price-Schedule:PA:(2)" and quantity["citation"]["file"] == "tender/09 Schedules.pdf"
+    assert [r["id"] for r in by["b"]["rules"]][-1] == "price_schedule.certificate_of_analysis", "the additions step ran"
+    assert "04-Terms-of-Tender-Supplement:5.1" in [g["node_id"] for g in rs["gaps"]], "a templated item's clauses are walked by L4"
     assert by["a"]["status"] == "novel" and [r["id"] for r in by["a"]["rules"]] == ["offer_to_be_bound.offer_signed"]
     assert by["a"]["notes"][-1]["citation"]["node_id"] == "01-Tender-Form:P4:3"
     assert sum(i["status"] == "gap" for i in rs["items"]) == 12 and rs["gaps"] and all(g["reason"] is None for g in rs["gaps"])

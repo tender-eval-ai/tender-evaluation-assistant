@@ -1,6 +1,7 @@
 version: 2
 updates:
-  # GitHub Actions used by ci.yml: a bump here is a real change; merge when CI is green.
+  # GitHub Actions used by the workflows: a bump here is a real change; merge when CI is green.
+  # The actions are pinned by commit with the version in a comment, and Dependabot updates both.
   - package-ecosystem: github-actions
     directory: /
     schedule:

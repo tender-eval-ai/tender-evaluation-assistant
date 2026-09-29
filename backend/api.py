@@ -48,6 +48,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import Config, load_dotenv
+from app.rulesets.library import library_status
 from backend import deps, jobs
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
@@ -83,11 +84,14 @@ errors.document(app)
 jobs._reset_interrupted_jobs()
 
 
+# Open without the key, so it names no path and no error text: the template count, and
+# whether the library loads at all (the worker's start-up line says why not).
 @app.get("/health")
 def health() -> dict:
     cfg = Config()
+    templates = library_status()
     return {"ok": True, "text_model": cfg.text_model, "vision_model": cfg.vision_model,
-            "auth_required": bool(deps.API_KEY)}
+            "auth_required": bool(deps.API_KEY), "templates": templates["count"], "templates_valid": templates["valid"]}
 
 
 for router in (projects.router, rubric.router, documents.router, runs.router, results.router, reports.router,

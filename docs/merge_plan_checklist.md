@@ -37,7 +37,7 @@ Last updated: 2026-09-20 (Chenyu).
 | E3 | Neutral framing of the two variants in the plan | agreed | — (update the plan) |
 | E4 | One full day for the comparison, decision next morning | agreed | — (update the plan) |
 | E5 | Orchestrator decision record 0001 (S1) | decided | — |
-| F1 | Repo moves to a shared organisation now, still private; public later, after F4 and F6 | change proposed | Nasi: position; the organisation's name, chosen together |
+| F1 | Repo moves to a shared organisation now, still private; public later, after F4 and F6 | moved (2026-09-29) | Nasi: accept the Owner invitation; position on F1 and its two rules |
 | F2 | Data classes and endpoints named per fixture and eval | agreed | — (update the plan) |
 | F3 | Files excluded from the port (commit `7e8e273`, see F5) | agreed | — (update the plan) |
 | F4 | Public-release audit at S5 | agreed | — (update the plan) |
@@ -62,7 +62,7 @@ Last updated: 2026-09-20 (Chenyu).
 
 ## A. Corrections to the plan
 
-These are facts, checked against both repositories on 2026-09-15. They need a confirmation, not a debate. (The base repo name and the day-1 git commands were settled on 2026-09-15 and are no longer listed: the joint repo is `chenyufang-data/tender-evaluation-assistant`, the tag `v0-hk-baseline` is pushed, and both of us have push access.)
+These are facts, checked against both repositories on 2026-09-15. They need a confirmation, not a debate. (The base repo name and the day-1 git commands were settled on 2026-09-15 and are no longer listed: the joint repo is `tender-eval-ai/tender-evaluation-assistant`, `chenyufang-data/tender-evaluation-assistant` until 2026-09-29 (F1), the tag `v0-hk-baseline` is pushed, and both of us have push access.)
 
 ### A2. Branch protection on a private repo
 - Plan: "Settings → Branches → protect main: PR, 1 approval, tests check, no force push".
@@ -259,11 +259,18 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   2. **How:**
      - Chenyu creates a free organisation, with both of us as owners.
      - Chenyu transfers the repository. Issues, pull requests and history move with it, and old URLs and git remotes redirect.
-     - A transfer doesn't carry collaborators, which is covered because Nasi is an owner.
+     - A transfer keeps the repository's collaborators, so Nasi keeps her access until she joins as an owner. (Corrected 2026-09-29: this said a transfer drops them.)
      - Branch protection on a private repository still needs a paid plan, so A2's convention stays.
   3. **Then one PR updates the owner name** in `.github/CODEOWNERS`, `CITATION.cff`, `deploy/azure/` (`main.bicep`'s registry, the scripts' `REPO`), `docs/interview_prep.md` and this checklist.
   4. **The name:** chosen together. It follows F6: no Hong Kong or public wording, and no tender number.
   5. **Public release is unchanged:** F6's clean-up, the F4 audit and a LICENSE come first. Then the public repository is a copy with the history rewritten, made inside the organisation.
+  6. **Two rules in writing** (proposed on #86). As owners we have identical rights, and GitHub can't make an action need both of us, so:
+     - **Neither of us, alone,** removes the other owner, deletes or transfers a repository, or deletes the organisation. Each of those needs both of us to agree.
+     - **Two-factor authentication:** both accounts have it, and the organisation requires it.
+- Chenyu (2026-09-29): done. The organisation is `tender-eval-ai` (free plan), and the repository was transferred on 2026-09-29. Nasi is invited as an Owner, and until she accepts she has her old write access as an outside collaborator. The settings:
+  - base permission: none; members can't change a repository's visibility, delete or transfer one, or fork a private one;
+  - Actions: GitHub's own and verified creators' actions only; the workflow token is read-only unless a workflow asks for more;
+  - two-factor authentication is required once Nasi has joined, since requiring it removes anyone without it, outside collaborators included.
 - Nasi:
 - Decision:
 

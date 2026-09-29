@@ -1,10 +1,13 @@
 """L4: what no rule covers. Code only, no model.
 
-For every item without a template (a template stands for its whole form), the clauses the
-item cites are walked to `DEPTH` levels below the cited node; a node whose text carries an
-obligation ("shall", "must") and that no drafted rule quotes becomes a Gap. Gaps block
-confirmation until a person gives a reason, so the list is kept to the cited clause and
-its direct sub-clauses rather than every leaf of a long chapter."""
+For every item, the clauses it cites are walked to `DEPTH` levels below the cited node; a
+node whose text carries an obligation ("shall", "must") becomes a Gap unless something
+handles it: a drafted rule (L3) or an addition to a template (additions) quotes it, the
+additions step verified that one of the template's own rules checks it, or a verified slot
+value was read from it. Templated items are walked too: a template no longer stands for
+everything its clauses say, since a tender can add to a form. Gaps block confirmation until
+a person gives a reason, so the list is kept to the cited clause and its direct
+sub-clauses rather than every leaf of a long chapter."""
 from __future__ import annotations
 
 import re
@@ -41,13 +44,15 @@ def nodes_near(index: NodeIndex, root: str, depth: int = DEPTH) -> list[dict]:
     return out
 
 
-def gaps_for(items: list[RuleSetItem], index: NodeIndex, sources: dict[str, str]) -> list[Gap]:
-    covered = set(sources.values())
+def gaps_for(items: list[RuleSetItem], index: NodeIndex, sources: dict[str, str], covered: list[str] = ()) -> list[Gap]:
+    """`sources`: {drafted or added rule id: the node it quotes}; `covered`: nodes a
+    template's own rule was verified to check."""
+    covered = set(sources.values()) | set(covered) | {
+        slot.citation.node_id for item in items for slot in item.slots.values()
+        if slot.verified and slot.citation is not None and slot.citation.node_id}
     gaps: list[Gap] = []
     seen: set[str] = set()
     for item in items:
-        if item.template is not None:
-            continue
         for clause in item.clauses:
             if not clause.node_id:
                 continue
