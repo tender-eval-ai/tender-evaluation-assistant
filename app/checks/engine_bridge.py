@@ -11,7 +11,11 @@ closed CheckType menu (value, range, unit, date, math, cross-document match, con
 computed here in code and handed to the engine as explicit outcomes; `{slot}` references
 in a rule's params are rendered from the item's slots; a rule on a field no form reads is a
 reviewer's call, never a blank; V4's unverified values are `needs_review`; and the Stage I
-and II summaries roll up from the rules' stages."""
+and II summaries roll up from the rules' stages.
+
+Since J12: `contains` takes `phrases` (all must be there) and `absent` (none may be),
+`range` takes `max_decimals` (as printed), and a rule's first `normalise` step reaches the
+engine as its transform, reported under `adjustments`. None changes the schema."""
 from __future__ import annotations
 
 import datetime as dt
@@ -104,6 +108,15 @@ def compare(rule: TemplateRule, params: dict, fields: dict) -> tuple[str, str] |
         number, lo, hi = _number(value), _number(params.get("min")), _number(params.get("max"))
         if number is None:
             return "mismatch", f"{shown!r} is not a number"
+        places = _number(params.get("max_decimals"))
+        if places is not None:
+            # As printed: "2.50%" has two decimal places even though it is the number 2.5.
+            m = re.search(r"\d[\d,]*(?:\.(\d+))?", str(shown))
+            written = len(m.group(1) or "") if m else 0
+            if written > places:
+                return "mismatch", f"read {shown!r}, {written} decimal places, at most {places:g}"
+            if lo is None and hi is None:
+                return "match", f"read {shown!r}, at most {places:g} decimal places"
         if lo is None and hi is None:
             return "unstated", "no bounds to compare with"
         ok = (lo is None or number >= lo) and (hi is None or number <= hi)
@@ -117,10 +130,21 @@ def compare(rule: TemplateRule, params: dict, fields: dict) -> tuple[str, str] |
         ok = any(_contains(shown, u) for u in allowed)
         return ("match" if ok else "mismatch", f"read {shown!r}, allowed {', '.join(str(u) for u in allowed)}")
     if kind == CheckType.CONTAINS:
+        # `phrases`: every one must be there; with `absent`, none may be (an address is not a P.O. Box).
         phrase = params.get("phrase") or params.get("text") or params.get("expected")
-        if not phrase:
+        phrases = params.get("phrases") or ([phrase] if phrase else [])
+        if isinstance(phrases, str):
+            phrases = [phrases]
+        if not phrases:
             return "unstated", "no phrase to look for"
-        return ("match" if _contains(shown, phrase) else "mismatch", f"read {shown!r}, looked for {phrase!r}")
+        found = [p for p in phrases if _contains(shown, p)]
+        if params.get("absent"):
+            return ("mismatch", f"read {shown!r}, which should not contain {found[0]!r}") if found else \
+                ("match", f"read {shown!r}, none of {', '.join(map(repr, phrases))}")
+        missing = [p for p in phrases if p not in found]
+        if missing:
+            return "mismatch", f"read {shown!r}, missing {', '.join(map(repr, missing))}"
+        return "match", f"read {shown!r}, looked for {', '.join(map(repr, phrases))}"
     if kind == CheckType.DATE:
         date = parse_date(shown)
         if date is None:
@@ -172,6 +196,10 @@ def engine_rule(rule: TemplateRule, outcomes: dict | None = None) -> dict:
         out["outcomes"] = outcomes
     elif rule.outcomes is not None:
         out["outcomes"] = {k: v.model_dump(exclude_none=True) for k, v in rule.outcomes.items()}
+    if rule.normalise:
+        # The engine runs one transform per rule: the first step, reported as an adjustment.
+        step = rule.normalise[0]
+        out["transform"] = {"operation": step.op, "params": dict(step.params), "surfaced_as": "auto_adjustment"}
     if rule.depends_on:
         out["depends_on"] = rule.depends_on[0]      # the engine reads one parent until the rule files are split
     if rule.note:
@@ -279,6 +307,7 @@ def evaluate(item: RuleSetItem, fields: dict, template: Template | None = None) 
         "rule_ids": [r.id for r in item.rules],
         "fields": checked,
         "reasons": [f["note"] for f in checked if f["status"] != "pass" and f["note"]],
+        "adjustments": result.auto_adjustments,    # a rule's `normalise` step, e.g. a dosage rounded
     }
 
 

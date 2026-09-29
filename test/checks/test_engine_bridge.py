@@ -141,6 +141,36 @@ def test_the_comparison_kinds_are_decided_in_code():
     assert check("filled", "price_schedule.total") is None and check("signature", "price_schedule.total") is None
 
 
+def test_contains_can_ask_for_every_phrase_or_for_none_and_range_can_count_decimals():
+    fields = {**PRICE, "contact_details.address": "P.O. Box 123, Central", "price_schedule_parts_c_d.discount_7day": "2.505%",
+              "documentary_evidence.safety_data_sheet_sections": "Identification; Hazards; First aid"}
+    def on(kind, field, **params):
+        r = rule(kind, field, **params)
+        return compare(r, r.params, fields)
+    sections = "documentary_evidence.safety_data_sheet_sections"
+    assert on("contains", sections, phrases=["identification", "first aid"])[0] == "match"
+    assert on("contains", sections, phrases=["identification", "disposal"]) == \
+        ("mismatch", "read 'Identification; Hazards; First aid', missing 'disposal'")
+    assert on("contains", "contact_details.address", phrases=["P.O. Box", "PO Box"], absent=True)[0] == "mismatch"
+    assert on("contains", "price_schedule.unit_price", phrases=["P.O. Box"], absent=True)[0] == "match"
+    assert on("range", "price_schedule_parts_c_d.discount_7day", max_decimals=2) == \
+        ("mismatch", "read '2.505%', 3 decimal places, at most 2")
+    assert on("range", "price_schedule.unit_price", max_decimals=2)[0] == "match", "'HK$ 4.40' has two, as printed"
+    assert on("range", "price_schedule.unit_price", max_decimals=2, max=4)[0] == "mismatch", "the bounds still apply"
+
+
+def test_a_rules_normalise_step_reaches_the_engine_and_is_reported():
+    from app.rulesets.schema import Normalise
+
+    r = TemplateRule(id="price_schedule.dosage_given", check="filled", field="price_schedule.optimal_dosage", outcomes=OWN,
+                     normalise=[Normalise(op="round_significant_figures", params={"max_sig_figs": 2})])
+    item = RuleSetItem(letter="c", title="dosage", part="A", citation=ITEM.citation, rules=[r], status="novel")
+    v = evaluate(item, {"price_schedule.optimal_dosage": 4.36})
+    assert v["outcome"] == "pass" and v["adjustments"] == [
+        {"rule_id": "price_schedule.dosage_given", "field_id": "price_schedule.optimal_dosage",
+         "operation": "round_significant_figures", "value": 4.4}]
+
+
 def test_dates_parse_in_the_forms_offers_print_them():
     assert [parse_date(d).isoformat() for d in ("14 August 2026", "14 Aug 2026", "2026-08-14", "14/08/2026", "August 14, 2026", "14th August 2026")] \
         == ["2026-08-14"] * 6

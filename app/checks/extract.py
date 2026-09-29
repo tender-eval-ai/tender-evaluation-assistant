@@ -32,10 +32,11 @@ _MODELS: dict[str, type[BaseModel]] = {}
 
 
 def reading_model(form: Form) -> type[BaseModel]:
-    """The fixed output shape for one form, built once from its field menu."""
+    """The fixed output shape for one form, built once from the fields of its menu that are on
+    the page (a field a reviewer enters is never asked for)."""
     if form.id not in _MODELS:
         fields: dict[str, Any] = {"present": (bool, Field(description="whether the pages hold this form"))}
-        for f in form.all_fields:
+        for f in form.read_fields:
             fields[f.name] = (str | None, Field(default=None, description=f.hint))
         fields["redacted"] = (list[str], Field(default_factory=list, description="fields covered by a black bar"))
         fields["page"] = (int | None, Field(default=None, description="sequence number of the page the values were read from"))
@@ -61,7 +62,7 @@ def extract_form(form: Form, pages: list[dict], form_pages: list[int], vendor: s
 def fields_from(form: Form, reading: BaseModel | None, refs: list[dict]) -> dict:
     """The flat keys: value, `_redacted`, `_confidence`, `_page` for every field of the menu,
     plus `_printed` beside a number. An absent form (no reading, or present=false) reports
-    every field blank with no citation."""
+    every field blank with no citation, as is a field a reviewer enters, which no reading has."""
     present = reading is not None and bool(getattr(reading, "present", False))
     page = getattr(reading, "page", None) if present else None
     cited = next((r for r in refs if r["seq"] == page), refs[0] if refs else None) if present else None
