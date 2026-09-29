@@ -25,6 +25,10 @@ class FieldDef:
     name: str
     kind: Kind
     hint: str
+    # "reviewer": not on any page of the offer (a tender sample's weight, the date a test
+    # report arrived on request). V3 never asks for it and V4 never checks it; it stays
+    # blank until a person enters it as a correction, so its rule waits, dormant, till then.
+    by: Literal["reading", "reviewer"] = "reading"
 
 
 @dataclass(frozen=True)
@@ -46,6 +50,11 @@ class Form:
         return (DOCUMENT,) + self.fields
 
     @property
+    def read_fields(self) -> tuple[FieldDef, ...]:
+        """The fields V3 reads off the offer's pages: all but those a reviewer enters."""
+        return tuple(f for f in self.all_fields if f.by == "reading")
+
+    @property
     def names(self) -> tuple[str, ...]:
         return tuple(f.name for f in self.all_fields)
 
@@ -53,13 +62,18 @@ class Form:
         return f"{self.id}.{name}"
 
     def specs(self) -> tuple[FieldSpec, ...]:
-        """What V4 checks: every field; a signature agrees on presence, not wording."""
-        return tuple(FieldSpec(self.key(f.name), f.hint, presence=f.kind == "signature") for f in self.all_fields)
+        """What V4 checks: every field read off the pages; a signature agrees on presence, not wording."""
+        return tuple(FieldSpec(self.key(f.name), f.hint, presence=f.kind == "signature") for f in self.read_fields)
 
 
 DOCUMENT = FieldDef("document", "text", "the form's heading as printed")
 SIGNATURE_HINT = ("the printed name or title next to the signature; 'signature present' when only a signature "
                   "or chop is visible; null when it is not signed")
+
+
+def reviewer(name: str, kind: Kind, hint: str) -> FieldDef:
+    """A field a person enters after the tender closes; never read off the offer."""
+    return FieldDef(name, kind, hint, by="reviewer")
 
 _FORMS = (
     Form("offer_to_be_bound", "tender_form_offer_to_be_bound", "Tender Form, Offer to be Bound", (
@@ -92,6 +106,13 @@ _FORMS = (
         FieldDef("net_weight_kg", "number", "the net weight of one package, as printed, with its unit"),
         FieldDef("active_ingredient_pct", "number", "the active ingredient content as printed"),
         FieldDef("bulk_density", "number", "the bulk density as printed, with its unit"),
+        FieldDef("manufacturing_plant_address", "text", "the address of the plant where the goods are made, as printed"),
+        FieldDef("product_code", "text", "the manufacturer's product code or number, as printed"),
+        # The rows that describe the product differ from tender to tender (#76 review, point 3), so
+        # rather than one field per row, one field says which rows the tenderer left empty.
+        FieldDef("rows_left_blank", "text", "the names of the schedule's rows left empty, as printed, separated by "
+                                            "semicolons; a row marked 'N/A' is not empty; null when every row is "
+                                            "filled in"),
     ), phrases=("Particulars of Goods",)),
     Form("information_schedule", "information_schedule", "Information Schedule", (
         FieldDef("track_record", "text", "the track record of supply the schedule lists, as printed"),
@@ -99,6 +120,9 @@ _FORMS = (
         FieldDef("production_capacity", "text", "the production capacity the schedule states, as printed"),
         # Table B, the tenderer's particulars: each as entered, or what is marked as attached
         FieldDef("tenderer_name", "text", "Table B: the tenderer's name as entered"),
+        FieldDef("telephone", "text", "Table B: the tenderer's telephone number as entered"),
+        FieldDef("facsimile", "text", "Table B: the tenderer's fax number as entered"),
+        FieldDef("email", "text", "Table B: the tenderer's e-mail address as entered"),
         FieldDef("principal_place_of_business", "text", "Table B: the principal place of business as entered"),
         FieldDef("business_entity_type", "text", "Table B: the type of business entity ticked or entered"),
         FieldDef("shareholders_ownership", "text", "Table B: the shareholders or owners and their shares, as entered"),
@@ -133,9 +157,47 @@ _FORMS = (
     ), phrases=("Information Schedule",)),
     Form("tender_sample_declaration", "tender_sample_declaration", "Tender Sample Declaration", (
         FieldDef("declaration", "text", "the declaration as printed"),
+        # A sample is delivered when the Authority asks, after the tender closes: a reviewer records it.
+        reviewer("sample_received_date", "date", "the date the tender sample was delivered, from the Authority's receipt"),
+        reviewer("sample_net_weight_kg", "number", "the total net weight of the tender sample delivered, in kg"),
+        reviewer("sample_pack_net_weight_kg", "number", "the net weight of one pack of the sample, in kg"),
+        reviewer("sample_label", "text", "the particulars on the sample's label, as written"),
+        reviewer("sample_condition", "text", "how the sample arrived: its packing and seal, as the reviewer found them"),
+        reviewer("sample_charges", "text", "any charge the tenderer asks for the sample; null when none"),
+        reviewer("additional_sample_received_date", "date", "the date an additional quantity asked for during a "
+                                                            "plant trial was delivered"),
+        reviewer("plant_trial_result", "text", "the outcome of the plant trial, as the Authority recorded it"),
     ), phrases=("tender sample", "samples of the goods")),
     Form("documentary_evidence", "documentary_evidence_of_compliance", "Documentary Evidence of Compliance", (
         FieldDef("evidence", "text", "the evidence listed or attached, as printed (report numbers, certificates)"),
+        # One home for each document (#76 review, point 2): the documents a tender asks for as evidence
+        # are read here, not from the Information Schedule rows that point to them.
+        FieldDef("quality_certificate", "text", "the quality management system certificate attached: its number and "
+                                                "the body that issued it, as printed; null when none"),
+        FieldDef("quality_certificate_scope", "text", "the scope of certification the quality certificate states, "
+                                                      "as printed"),
+        FieldDef("quality_certificate_site", "text", "the site address the quality certificate covers, as printed"),
+        FieldDef("quality_certificate_expiry", "date", "the date the quality certificate expires, as printed"),
+        FieldDef("accreditation_schedule", "text", "the schedule of accreditation attached with the quality "
+                                                   "certificate: its title as printed; null when none"),
+        FieldDef("safety_data_sheet", "text", "the safety data sheet attached: the product it covers and who issued "
+                                              "it, as printed; null when none"),
+        FieldDef("safety_data_sheet_sections", "text", "the section headings of the safety data sheet that have text "
+                                                       "beneath them, as printed, separated by semicolons"),
+        FieldDef("product_specifications", "text", "the product specifications attached: their title and who issued "
+                                                   "them, as printed; null when none"),
+        FieldDef("product_specifications_date", "date", "the issue date of the product specifications, as printed"),
+        FieldDef("evaluation_report", "text", "the tenderer's own evaluation report attached: its title, as printed; "
+                                              "null when none"),
+        FieldDef("evaluation_report_contents", "text", "the headings or parts the evaluation report contains, as "
+                                                       "printed, separated by semicolons"),
+        # A conformance test happens only when the Authority asks for one: a reviewer records it.
+        reviewer("laboratory_appointed_date", "date", "the date the tenderer appointed a laboratory for a "
+                                                      "conformance test the Authority asked for"),
+        reviewer("test_report_received_date", "date", "the date the laboratory's test report was received"),
+        reviewer("test_report", "text", "the test report received: its number and the laboratory, as written"),
+        reviewer("laboratory_independence_declaration", "text", "the tenderer's declaration that the laboratory is "
+                                                                "independent of it and of the manufacturer, as received"),
     ), phrases=("documentary evidence",)),
     Form("manufacturer_letter", "manufacturer_letter_of_intent", "Manufacturer's Letter of Intent", (
         FieldDef("manufacturer", "text", "the manufacturer's name as printed"),
@@ -173,6 +235,8 @@ _FORMS = (
         FieldDef("part_d", "text", "Part D: the mark or entry against it, as printed; null when blank"),
         FieldDef("part_e", "text", "Part E, where the schedule has one: the mark or entry against it, as printed; null "
                                    "when blank or absent"),
+        FieldDef("shelf_life_months", "number", "the shelf life the tenderer proposes, as printed with its unit, where "
+                                                "the schedule lets it propose a longer one; null when none"),
     ), phrases=("Compliance Schedule",)),
     Form("method_of_production", "method_of_production_statement", "Method of Production Statement", (
         FieldDef("statement", "text", "the statement as printed, its first sentence"),
