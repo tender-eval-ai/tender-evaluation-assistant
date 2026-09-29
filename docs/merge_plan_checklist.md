@@ -50,16 +50,16 @@ Last updated: 2026-09-20 (Chenyu).
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | done | 1 and 4 done; 2 and 3 closed without change: every tender clears the S3 gate (95.6 / 97.8 / 95.2) |
-| J2 | Where a form's own notes and trigger live | decided | option 1 (#59); next: template ids = form ids, the field map |
+| J2 | Where a form's own notes and trigger live | done | option 1 (#59); field map (#76); template ids = form ids and notes on templates (J12, #99) |
 | J3 | S4 windows: Scoring and Report | done | — |
 | J4 | S4 review: corrections and confirmation in the UI | done | — |
 | J5 | S4 review flow in a browser (Playwright) | done | — |
 | J6 | Re-evaluate against a confirmed rule-set version | done | — |
-| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); fields into `forms.py` (e2b3189); templates proposed (J12); then both: the L1-L4 eval |
+| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); fields into `forms.py` (e2b3189); templates in review (J12: #100, #99); then both: the L1-L4 eval on the synthetic case and the three tenders |
 | J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
 | J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | agreed | — (removed in the S5 legacy-removal PR) |
 | J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | proposed | Nasi: position on 9–13 |
-| J12 | The production templates: one per form, every rule-file rule placed; two questions (tier by Part, conditions) | proposed | Chenyu: review #100 (contract) then #99, and a position on questions 1 and 2 |
+| J12 | The production templates: one per form, every rule-file rule placed; #76 points 2 and 3; two questions (tier by Part, conditions) | proposed | Chenyu: review #100 (contract, merge first) then #99; a position on points 2 and 3 and questions 1 and 2 |
 
 ## A. Corrections to the plan
 
@@ -621,7 +621,8 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   1. Keep it as a stated limitation.
   2. A reviewer answers each condition once per bid in the Stage window, and the bridge drops the rules whose condition does not hold. The engine's `exclude_rules` already does the dropping.
 - Also: with these templates in compose, the synthetic case builds against them instead of the two test templates, so its L1-L4 numbers are rerun at the J7 eval.
-- Nasi (2026-09-29): proposed. Question 1: option 1. Question 2: option 1 for S5; option 2 after, if there is time.
+- Status (2026-09-29): both PRs open and green in CI (#99's integration job still running), with no review yet. The Tender 1 params file is written outside git and is to be moved beside the answer keys.
+- Nasi (2026-09-29): proposed. #76 point 2: each document is checked where the tender asks for it. #76 point 3: `rows_left_blank` in place of a per-tender row list, since the list would need the rule set before extraction runs; if you prefer the list, the field goes. Question 1: option 1. Question 2: option 1 for S5; option 2 after, if there is time.
 - Chenyu:
 - Decision:
 
