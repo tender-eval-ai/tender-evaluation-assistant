@@ -19,6 +19,10 @@ and a person's correction keeps the model's value beside it, with who and why.*
 
 ![A field corrected by a reviewer](docs/images/correction.png)
 
+| Scoring: every offer ranked, the recommended one marked | Report: the conclusions, each tenderer's review, the Word reports |
+|---|---|
+| ![Scoring window](docs/images/scoring.png) | ![Report window](docs/images/report.png) |
+
 </details>
 
 > **CONFIDENTIALITY WARNING**
