@@ -37,7 +37,7 @@ Last updated: 2026-09-20 (Chenyu).
 | E3 | Neutral framing of the two variants in the plan | agreed | — (update the plan) |
 | E4 | One full day for the comparison, decision next morning | agreed | — (update the plan) |
 | E5 | Orchestrator decision record 0001 (S1) | decided | — |
-| F1 | Repo moves to a shared organisation now, still private; public later, after F4 and F6 | moved (2026-09-29) | Nasi: accept the Owner invitation; position on F1 and its two rules |
+| F1 | Repo moves to a shared organisation now, still private; public later, after F4 and F6 | agreed; moved (2026-09-29) | Chenyu: the two-factor requirement |
 | F2 | Data classes and endpoints named per fixture and eval | agreed | — (update the plan) |
 | F3 | Files excluded from the port (commit `7e8e273`, see F5) | agreed | — (update the plan) |
 | F4 | Public-release audit at S5 | agreed | — (update the plan) |
@@ -58,7 +58,7 @@ Last updated: 2026-09-20 (Chenyu).
 | J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); Chenyu: the fields with no home into `forms.py`; then Nasi: templates |
 | J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
 | J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | agreed | — (removed in the S5 legacy-removal PR) |
-| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | proposed | Nasi: position on 9–13 |
+| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1–6 done (#90, #93, #94, #96; #95 open); 7, 8 Chenyu; 9–11 Nasi |
 
 ## A. Corrections to the plan
 
@@ -271,8 +271,8 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   - base permission: none; members can't change a repository's visibility, delete or transfer one, or fork a private one;
   - Actions: GitHub's own and verified creators' actions only; the workflow token is read-only unless a workflow asks for more;
   - two-factor authentication is required once Nasi has joined, since requiring it removes anyone without it, outside collaborators included.
-- Nasi:
-- Decision:
+- Nasi (2026-09-29): agree: the organisation, the move, and both rules (neither of us alone removes the other owner, deletes or transfers a repository, or deletes the organisation; two-factor authentication required). Owner invitation accepted.
+- Decision: agreed (2026-09-29).
 
 ### F2. Data classes and endpoints
 - Proposal: every fixture and every project carries a `data_class` (`synthetic`, `redacted_sample`, `confidential`). The gateway allowlist keys on it. Each live eval names the endpoint it ran against in its stored result.
@@ -593,8 +593,8 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   12. **B9 after S4:** per-user login with a role, the security item interviewers ask about most. Chenyu: yes, after the S4 run.
   13. **Stated as limitations in the README, not fixed:** OIDC, an atomic budget with backoff, type checking, metrics and alerts, Stages III–V, replacing PyMuPDF, and conditions evaluated in the engine.
 - Chenyu (2026-09-26): proposed. Items 1–8 are mine; item 1 comes first.
-- Nasi:
-- Decision:
+- Nasi (2026-09-29): agree. 9–11 are mine; 9 now quotes the parser eval as it is being redone (recall and citation resolution only, the benchmark retired). 12: yes, per-user login with a role, after the S4 run. 13: agree with the list, stated in the README as limitations.
+- Decision: agreed (2026-09-29).
 
 ## Verified facts (no action needed)
 
