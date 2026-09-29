@@ -1,5 +1,5 @@
 """The parser's node table (app/parsing, L0) indexed for the rule builder: nodes by id,
-their children, a subtree's text, and where a quote sits."""
+their children, a subtree's lines, and where a quote sits."""
 from __future__ import annotations
 
 import re
@@ -41,21 +41,14 @@ class NodeIndex:
             stack.extend(reversed(self.children.get(current, [])))
         return out
 
-    def subtree_text(self, node_id: str, limit: int = 4000) -> str:
-        """Every node of the subtree as "[node_id] text" lines, cut at `limit` characters."""
+    def subtree_lines(self, node_id: str) -> list[str]:
+        """Every node of the subtree that has text, as a "[node_id] text" line."""
         lines = []
-        size = 0
         for node in self.subtree(node_id):
             text = _WS.sub(" ", node.get("text") or "").strip()
-            if not text:
-                continue
-            line = f"[{node['node_id']}] {text}"
-            if size + len(line) > limit:
-                lines.append("[...]")
-                break
-            lines.append(line)
-            size += len(line) + 1
-        return "\n".join(lines)
+            if text:
+                lines.append(f"[{node['node_id']}] {text}")
+        return lines
 
     def find_quote(self, quote: str, roots: list[str], prefer: str | None = None) -> dict | None:
         """The node whose text holds `quote` verbatim (whitespace and case aside), looking at
