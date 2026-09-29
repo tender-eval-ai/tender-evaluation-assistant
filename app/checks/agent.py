@@ -23,7 +23,7 @@ from app.config import DEFAULT_AGENT_STEPS
 from app.checks.verify import TextOf
 from app.grounding import quote_on_page
 
-PROMPT_VERSION = "agent-v5"
+PROMPT_VERSION = "agent-v6"
 MAX_STEPS = max(1, int(os.environ.get("AGENT_MAX_STEPS", str(DEFAULT_AGENT_STEPS))))
 MAX_READS = max(0, int(os.environ.get("AGENT_MAX_READS", "3")))
 TRANSCRIPT_CHARS = 3000

@@ -308,7 +308,7 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   3. **One clean-up PR at S5,** as counted on `main` on 2026-09-25:
      - tender numbers become the three names: 144 mentions in 18 files, mostly `docs/evals/parser_l0.md` and comments in `app/parsing/`;
      - Hong Kong and Authority wording becomes neutral: about 37 mentions in 17 files;
-     - `sample` in file names becomes `sample`: `test/data/synthetic_tender*`, `tools/make_synthetic_tender.py`, `tools/make_synthetic_tender_ruleset.py`, `test/test_synthetic_tender.py`;
+     - `sample` in file names becomes `synthetic_tender` (done in #97; `sample` was the first proposal, and `synthetic_case` was taken): `test/data/synthetic_tender*`, `tools/make_synthetic_tender.py`, `tools/make_synthetic_tender_ruleset.py`, `test/test_synthetic_tender.py`;
      - `HK$` stays for now. It is the currency of the synthetic bids and of the pricing code (90 mentions in 30 files), and removing it means regenerating the synthetic data and its goldens. Revisit at release.
   4. **History, at release.** Earlier commits and commit messages carry the same names. The public repository is a copy whose history is rewritten with `git filter-repo`: the names are replaced, and both authors' commits are kept. This private repository stays as it is, so nobody force-pushes and no clone breaks. The F4 audit adds a search of the rewritten history for the three numbers and the Hong Kong wording.
 - Chenyu (2026-09-25): proposed. Chenyu's old personal repository, `tender-evaluation-assistant`, gets a new name before it is ever made public.
