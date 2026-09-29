@@ -22,4 +22,5 @@ keywords:
   - retrieval
   - large language models
   - human in the loop
+license: AGPL-3.0-only
 repository-code: https://github.com/tender-eval-ai/tender-evaluation-assistant

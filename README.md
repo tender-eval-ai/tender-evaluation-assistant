@@ -497,8 +497,8 @@ phase 2).
 
 ## Licence, before you reuse this
 
-The repository has **no LICENSE file yet**, and the choice is constrained rather than
-free. `app/parsing/` depends on two Artifex packages (decision
+The repository is licensed under the **GNU AGPL-3.0** ([LICENSE](LICENSE)). The choice
+was constrained rather than free: `app/parsing/` depends on two Artifex packages (decision
 [0002](docs/decisions/0002-pymupdf-licences.md)):
 
 | Package | Licence |
@@ -512,7 +512,8 @@ replace `app/parsing/`. No application code outside `app/parsing/` imports eithe
 contained change. A hosted demo carries AGPL obligations — the
 running service must offer its source, which a public repository satisfies.
 
-Settling the licence is part of the public-release audit (checklist F4).
+The AGPL covers our own code. It does not change `pymupdf-layout`'s terms: its
+noncommercial licence still applies to anyone who runs the parser.
 
 ## Who built what
 
