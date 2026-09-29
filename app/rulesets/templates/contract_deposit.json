@@ -1,0 +1,39 @@
+{
+  "id": "contract_deposit",
+  "form_name": "Method of Providing the Contract Deposit",
+  "consequences": {
+    "deemed_default": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank, so the form's default applies"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "definition",
+      "text": "The tenderer strikes out the method it does not choose: cash, or a banker's guarantee."
+    },
+    {
+      "kind": "consequence",
+      "text": "Left blank, the deposit is taken to be paid in cash."
+    }
+  ],
+  "rules": [
+    {
+      "id": "contract_deposit.method_chosen",
+      "check": "tick_box",
+      "field": "contract_deposit.method",
+      "consequence": "deemed_default"
+    }
+  ]
+}

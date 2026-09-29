@@ -1,0 +1,79 @@
+{
+  "id": "noncollusive_certificate",
+  "form_name": "Non-collusive Tendering Certificate",
+  "consequences": {
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "definition",
+      "text": "The declarations printed on this certificate (that the tender was prepared independently, without collusion) are not filled in by the tenderer; they bind it once it signs. So only the certificate's presence, the tenderer's name, the signature and the date are checked."
+    },
+    {
+      "kind": "reference",
+      "text": "Subcontracting the certificate mentions is disclosed in the Information Schedule, not here."
+    },
+    {
+      "kind": "consequence",
+      "text": "What follows a breach of the declarations is set out in the tender's terms; it is not assessed at the completeness check."
+    }
+  ],
+  "rules": [
+    {
+      "id": "noncollusive_certificate.submitted",
+      "check": "document_present",
+      "field": "noncollusive_certificate.document",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "noncollusive_certificate.tenderer_named",
+      "check": "filled",
+      "field": "noncollusive_certificate.tenderer_name",
+      "consequence": "mandatory_on_request",
+      "depends_on": [
+        "noncollusive_certificate.submitted"
+      ]
+    },
+    {
+      "id": "noncollusive_certificate.signed",
+      "check": "signature",
+      "field": "noncollusive_certificate.signature",
+      "consequence": "mandatory_on_request",
+      "depends_on": [
+        "noncollusive_certificate.submitted"
+      ]
+    },
+    {
+      "id": "noncollusive_certificate.dated",
+      "check": "filled",
+      "field": "noncollusive_certificate.date",
+      "consequence": "mandatory_on_request",
+      "depends_on": [
+        "noncollusive_certificate.submitted"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,75 @@
+{
+  "id": "price_schedule_parts_c_d",
+  "form_name": "Price Schedule, Parts C and D",
+  "consequences": {
+    "deemed_default": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank, so the form's default applies"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    "discretionary": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank; the Authority may ask for it later"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "consequence",
+      "text": "A discount left blank is read as no discount (Nil)."
+    },
+    {
+      "kind": "definition",
+      "text": "A discount period runs from the later of the day the invoice is received and the day payment falls due."
+    },
+    {
+      "kind": "reference",
+      "text": "A discount may have at most two decimal places. A reviewer reads it for this; no rule can check a number's precision yet."
+    },
+    {
+      "kind": "definition",
+      "text": "Part D asks for the bank account payments go to: the bank's name and address, the account name and number, and the sorting code."
+    }
+  ],
+  "rules": [
+    {
+      "id": "price_schedule_parts_c_d.discount_7day_given",
+      "check": "filled",
+      "field": "price_schedule_parts_c_d.discount_7day",
+      "consequence": "deemed_default"
+    },
+    {
+      "id": "price_schedule_parts_c_d.discount_8to14day_given",
+      "check": "filled",
+      "field": "price_schedule_parts_c_d.discount_8to14day",
+      "consequence": "deemed_default"
+    },
+    {
+      "id": "price_schedule_parts_c_d.bank_details_given",
+      "check": "filled",
+      "field": "price_schedule_parts_c_d.part_d",
+      "consequence": "discretionary",
+      "condition": "the tenderer is based outside the jurisdiction and will be paid by telegraphic transfer"
+    }
+  ]
+}

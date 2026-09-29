@@ -1,0 +1,198 @@
+{
+  "id": "information_schedule",
+  "form_name": "Information Schedule",
+  "consequences": {
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
+      }
+    },
+    "on_request_only": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is needed only if the Authority asks for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it",
+            "deadline": "the period the request gives",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    "no_gate": {
+      "outcomes": {}
+    }
+  },
+  "notes": [
+    {
+      "kind": "definition",
+      "text": "The part on subcontracting is answered even when nothing is subcontracted: the tenderer writes 'Nil' or 'Not applicable'."
+    },
+    {
+      "kind": "definition",
+      "text": "The manufacturer named in the Particulars of Goods Schedule is never a subcontractor for this schedule, whatever its part in supplying the goods."
+    },
+    {
+      "kind": "trigger",
+      "text": "The Authority may at any time ask the tenderer to withdraw a proposed subcontracting arrangement."
+    },
+    {
+      "kind": "consequence",
+      "text": "If the tenderer ticks that a listed event has occurred, each event must be described in full; a reviewer reads the description at Stage II."
+    },
+    {
+      "kind": "reference",
+      "text": "Documents that another schedule item asks for (quality certificates, test reports, product data, the board resolution) are checked under that item, not here."
+    }
+  ],
+  "rules": [
+    {
+      "id": "information_schedule.tenderer_name_given",
+      "check": "filled",
+      "field": "information_schedule.tenderer_name",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.principal_place_of_business_given",
+      "check": "filled",
+      "field": "information_schedule.principal_place_of_business",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.business_entity_type_given",
+      "check": "filled",
+      "field": "information_schedule.business_entity_type",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.ownership_given",
+      "check": "filled",
+      "field": "information_schedule.shareholders_ownership",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.business_experience_given",
+      "check": "filled",
+      "field": "information_schedule.business_experience_length",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.directors_or_partners_given",
+      "check": "filled",
+      "field": "information_schedule.directors_partners_names",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.incorporation_given",
+      "check": "filled",
+      "field": "information_schedule.incorporation_place_date",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.business_profile_given",
+      "check": "filled",
+      "field": "information_schedule.business_profile_info",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.business_registration_given",
+      "check": "filled",
+      "field": "information_schedule.business_registration_certificate",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.constitution_given",
+      "check": "filled",
+      "field": "information_schedule.memorandum_articles_of_association",
+      "consequence": "mandatory_on_request",
+      "condition": "the tenderer is a company"
+    },
+    {
+      "id": "information_schedule.annual_return_given",
+      "check": "filled",
+      "field": "information_schedule.latest_annual_return",
+      "consequence": "mandatory_on_request",
+      "condition": "the tenderer is a company"
+    },
+    {
+      "id": "information_schedule.compensation_insurance_given",
+      "check": "filled",
+      "field": "information_schedule.employees_compensation_insurance",
+      "consequence": "no_gate"
+    },
+    {
+      "id": "information_schedule.subcontractor_answered",
+      "check": "filled",
+      "field": "information_schedule.subcontractor_name",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "information_schedule.subcontractor_place_given",
+      "check": "filled",
+      "field": "information_schedule.subcontractor_place_of_business",
+      "consequence": "mandatory_on_request",
+      "condition": "a subcontractor is proposed"
+    },
+    {
+      "id": "information_schedule.subcontractor_work_given",
+      "check": "filled",
+      "field": "information_schedule.subcontractor_obligations",
+      "consequence": "mandatory_on_request",
+      "condition": "a subcontractor is proposed"
+    },
+    {
+      "id": "information_schedule.subcontractor_undertaking_given",
+      "check": "filled",
+      "field": "information_schedule.subcontractor_undertaking",
+      "consequence": "mandatory_on_request",
+      "condition": "the tender asks for a subcontractor's undertaking"
+    },
+    {
+      "id": "information_schedule.subcontractor_legal_opinion_given",
+      "check": "document_present",
+      "field": "information_schedule.subcontractor_overseas_legal_opinion",
+      "consequence": "on_request_only",
+      "condition": "the proposed subcontractor is established outside the jurisdiction and the Authority asks for a legal opinion"
+    },
+    {
+      "id": "information_schedule.service_centre_given",
+      "check": "filled",
+      "field": "information_schedule.subcontractor_service_centre_location",
+      "consequence": "mandatory_on_request",
+      "condition": "the contract includes warranty or maintenance services"
+    },
+    {
+      "id": "information_schedule.events_box_ticked",
+      "check": "tick_box",
+      "field": "information_schedule.event_disclosure_box",
+      "consequence": "mandatory_on_request"
+    }
+  ]
+}

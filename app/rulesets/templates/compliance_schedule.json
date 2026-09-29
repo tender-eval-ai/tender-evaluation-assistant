@@ -1,0 +1,119 @@
+{
+  "id": "compliance_schedule",
+  "form_name": "Compliance Schedule",
+  "slots": [
+    {
+      "name": "default_delivery_days",
+      "kind": "number",
+      "unit": "days",
+      "required": false,
+      "description": "the delivery period, in days, that the tender sets as the default, when the Compliance Schedule lets the tenderer propose an earlier one"
+    }
+  ],
+  "consequences": {
+    "deemed_compliance": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank, which counts as complying"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "definition",
+      "text": "What each Part covers (the mandatory features, delivery, packing and labelling, shelf life, ...) is set by each tender, so the rules check each Part's mark and the rule set says what the Part means."
+    },
+    {
+      "kind": "consequence",
+      "text": "A Part left blank counts as complying. A Part expressly marked as not complying excludes the tender."
+    },
+    {
+      "kind": "consequence",
+      "text": "Whatever the tenderer declares, the Authority must itself be satisfied that the goods meet every mandatory feature; a reviewer decides this at Stage II."
+    },
+    {
+      "kind": "reference",
+      "text": "Where the tenderer's and the manufacturer's information disagree, the manufacturer's is used, unless the tenderer resolves the difference when asked."
+    }
+  ],
+  "rules": [
+    {
+      "id": "compliance_schedule.part_a_answered",
+      "check": "tick_box",
+      "field": "compliance_schedule.part_a",
+      "consequence": "deemed_compliance",
+      "stage": "II"
+    },
+    {
+      "id": "compliance_schedule.part_b_answered",
+      "check": "tick_box",
+      "field": "compliance_schedule.part_b",
+      "consequence": "deemed_compliance",
+      "stage": "II"
+    },
+    {
+      "id": "compliance_schedule.part_c_answered",
+      "check": "tick_box",
+      "field": "compliance_schedule.part_c",
+      "consequence": "deemed_compliance",
+      "stage": "II"
+    },
+    {
+      "id": "compliance_schedule.part_d_answered",
+      "check": "tick_box",
+      "field": "compliance_schedule.part_d",
+      "consequence": "deemed_compliance",
+      "stage": "II"
+    },
+    {
+      "id": "compliance_schedule.no_part_marked_not_complying",
+      "check": "tick_box",
+      "field": "compliance_schedule.non_compliances",
+      "stage": "II",
+      "outcomes": {
+        "blank": {
+          "status": "pass"
+        },
+        "filled": {
+          "status": "disqualified",
+          "note": "the tenderer marks a requirement as not complied with: {field}"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "compliance_schedule.earlier_delivery_within_default",
+      "check": "range",
+      "field": "compliance_schedule.delivery_days",
+      "params": {
+        "max": "{default_delivery_days}"
+      },
+      "stage": "II",
+      "condition": "the tenderer proposes a delivery period of its own",
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is not stated, so the default delivery period applies"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    }
+  ]
+}

@@ -1,14 +1,20 @@
 """Split AI_camp's 13 rule files into reusable templates plus one tender's params.
 
     python tools/split_rule_files.py --source <AI_camp>/agent/src/procurement_agent/validator/rules \
-        --report <private>/classification.json
+        --report <private>/classification.json --templates app/rulesets/templates \
+        --params <private>/params/Tender 1.json
 
-Today it classifies every rule and places its field; the report carries rule values,
-so it goes outside git. The field map (checklist J2) names each file's template by our
-form id and each rule's `field_id` by a key of that form (`app/checks/forms.py`). A
-field the form does not have is reported as having no home, never guessed: that list
-is what the forms need before the templates can be written. Writing the templates and
-the params comes next, in our own words, never the rule files'.
+It classifies every rule and places its field; the report carries rule values, so it
+goes outside git. The field map (checklist J2) names each file's template by our form
+id and each rule's `field_id` by a key of that form (`app/checks/forms.py`). A field the
+form does not have is reported as having no home, never guessed.
+
+The templates themselves (`app/rulesets/templates/`, checklist J12) are written by hand,
+in our own words, never the rule files'. `--templates` checks them against the rule
+files: every check whose field has a home either has a template rule of the same kind on
+the same field, or is listed as left out, so nothing is dropped silently. `--params`
+writes the rule files' tender's own values under the templates' slot names, the other
+half of the split; like the report, it stays outside git.
 
 The plan's S1 deliverable. Each source file mixes two things: what the FORM always
 requires (its rules, its consequence tiers, its notes) and what THIS tender put in the
@@ -122,8 +128,12 @@ TEMPLATE_OF_FILE = {
 # Only where the form has that field; a field_id missing here has no home yet and is
 # reported. Two are close rather than word for word, and say why.
 FIELD_OF = {
-    "contact_details": {},
-    "compliance_schedule": {"compliance_part_b_earlier_delivery_days": "delivery_days"},
+    # The tenderer's contact block is five fields of the form (#76 review, point 4); the
+    # rule's own `field_id` names the block, and the address stands for it here.
+    "contact_details": {"tenderer_contact_details": "address", "process_agent_contact_details": "process_agent"},
+    "compliance_schedule": {"compliance_part_b_earlier_delivery_days": "delivery_days",
+                            "compliance_part_a": "part_a", "compliance_part_b": "part_b",
+                            "compliance_part_c": "part_c", "compliance_part_d": "part_d"},
     "contract_deposit": {"contract_deposit_method": "method"},
     "manufacturer_letter": {"manufacturer_letter_of_intent": "document"},  # the letter itself is present
     "noncollusive_certificate": {},
@@ -135,7 +145,17 @@ FIELD_OF = {
         "percentage_activity": "active_ingredient_pct",       # a polyelectrolyte's activity is its active content
         "bulk_density": "bulk_density",
     },
-    "price_schedule_parts_c_d": {"banking_details": "part_d"},
+    # Tables B to D (e2b3189). The documents other items ask for wait for #76 point 2, and
+    # the contact details belong to the contact details form (point 4).
+    "information_schedule": {name: name for name in (
+        "tenderer_name", "principal_place_of_business", "business_entity_type", "shareholders_ownership",
+        "business_experience_length", "directors_partners_names", "incorporation_place_date",
+        "business_profile_info", "business_registration_certificate", "memorandum_articles_of_association",
+        "latest_annual_return", "employees_compensation_insurance", "subcontractor_name",
+        "subcontractor_place_of_business", "subcontractor_obligations", "subcontractor_undertaking",
+        "subcontractor_overseas_legal_opinion", "subcontractor_service_centre_location", "event_disclosure_box")},
+    "price_schedule_parts_c_d": {"banking_details": "part_d", "discount_7day": "discount_7day",
+                                 "discount_8to14day": "discount_8to14day"},
     "price_schedule": {"estimated_quantity": "quantity", "one_time_unit_price": "unit_price",
                        "estimated_goods_price": "total", "optimal_dosage": "optimal_dosage"},
 }
@@ -146,10 +166,22 @@ FIELD_OF_RULE = {
     "noncollusive_certificate_filled": "document",
     "noncollusive_certificate_tenderer_identified": "tenderer_name",
     "noncollusive_certificate_signed": "signature",
+    "packing_plant_net_weight_range": "net_weight_kg",     # the number, not the printed packing row
+    "event_disclosure_tick_formatting": "event_disclosure_box",
+    "unit_price_unit": "currency",                         # the form reads the currency as its own field
 }
 
 # Kinds a person decides from the document as a whole: they read no field.
 NO_FIELD_KINDS = {"human_only"}
+
+# The rule files' tender-specific values, by the template slot that now holds them: the
+# rule's id to (template, slot, how to read the value from the rule's `value`).
+SLOT_OF_RULE = {
+    "estimated_quantity_value": ("price_schedule", "estimated_quantity", lambda v: v),
+    "unit_price_unit": ("price_schedule", "allowed_currencies", lambda v: v),
+    "compliance_part_b_earlier_delivery_proposal": ("compliance_schedule", "default_delivery_days",
+                                                    lambda v: v["default_days"]),
+}
 
 
 def template_id(filename: str) -> str:
@@ -183,10 +215,41 @@ def kind_of(rule: dict) -> tuple[str | None, str | None]:
     return None, "unmapped"
 
 
+# The kinds the engine decides by presence alone (blank, filled, redacted): one stands
+# for another, as a rule file's "filled" on a whole document is a template's
+# "document_present" on its heading.
+PRESENCE_KINDS = {"filled", "document_present", "signature", "tick_box"}
+
+
+def left_out(report: list[dict], templates: dict) -> dict[str, list[str]]:
+    """{template: [rule-file rule ids]}: the checks with a home that no template rule of the
+    same kind on the same field carries. A template the library lacks leaves all of its."""
+    group = lambda kind: "presence" if kind in PRESENCE_KINDS else kind  # noqa: E731
+    have = {(r.field, group(r.check.value)) for t in templates.values() for r in t.rules}
+    out: dict[str, list[str]] = defaultdict(list)
+    for r in report:
+        if r["field_status"] == "mapped" and (r["field"], group(r["kind"])) not in have:
+            out[r["template"]].append(r["id"])
+    return dict(out)
+
+
+def params_of(source: Path) -> dict[str, dict]:
+    """{template: {slot: value}} from the rule files' own tender."""
+    out: dict[str, dict] = defaultdict(dict)
+    for path in sorted(source.glob("*.json")):
+        for rule in json.loads(path.read_text()).get("rules", []):
+            if rule["id"] in SLOT_OF_RULE:
+                template, slot, read = SLOT_OF_RULE[rule["id"]]
+                out[template][slot] = read(rule["value"])
+    return dict(out)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", type=Path, required=True)
     ap.add_argument("--report", type=Path, help="write the per-rule classification as JSON")
+    ap.add_argument("--templates", type=Path, help="list the rule-file checks these templates leave out")
+    ap.add_argument("--params", type=Path, help="write the rule files' tender values by template slot, as JSON")
     args = ap.parse_args()
 
     wrong = [f"{t}.{n}" for t, fields in FIELD_OF.items() for n in fields.values() if n not in FORMS[t].names]
@@ -233,6 +296,19 @@ def main() -> None:
     if args.report:
         args.report.write_text(json.dumps(report, indent=1, ensure_ascii=False))
         print(f"classification written to {args.report}")
+    if args.templates:
+        from app.rulesets.library import load_templates
+        templates = load_templates(args.templates)
+        missing = left_out(report, templates)
+        checks = sum(r["field_status"] == "mapped" for r in report)
+        print(f"templates: {len(templates)}; of {checks} checks with a home, "
+              f"{checks - sum(map(len, missing.values()))} have a template rule, left out:")
+        for template in sorted(missing):
+            print(f"  {template}: {', '.join(missing[template])}")
+    if args.params:
+        args.params.parent.mkdir(parents=True, exist_ok=True)
+        args.params.write_text(json.dumps(params_of(args.source), indent=1, ensure_ascii=False))
+        print(f"params written to {args.params}")
 
 
 if __name__ == "__main__":

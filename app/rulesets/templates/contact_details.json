@@ -1,0 +1,79 @@
+{
+  "id": "contact_details",
+  "form_name": "Contact Details",
+  "consequences": {
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "consequence",
+      "text": "The correspondence address must be a street address; a post office box is not accepted. A reviewer reads the address for this; no rule can check it yet."
+    },
+    {
+      "kind": "reference",
+      "text": "The part of the form naming the Authority's own contacts is printed, not filled in by the tenderer, and is not checked."
+    }
+  ],
+  "rules": [
+    {
+      "id": "contact_details.address_given",
+      "check": "filled",
+      "field": "contact_details.address",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "contact_details.contact_person_given",
+      "check": "filled",
+      "field": "contact_details.contact_person",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "contact_details.telephone_given",
+      "check": "filled",
+      "field": "contact_details.telephone",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "contact_details.facsimile_given",
+      "check": "filled",
+      "field": "contact_details.facsimile",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "contact_details.email_given",
+      "check": "filled",
+      "field": "contact_details.email",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "contact_details.process_agent_given",
+      "check": "filled",
+      "field": "contact_details.process_agent",
+      "consequence": "mandatory_on_request",
+      "condition": "the tenderer is established outside the jurisdiction and has no place of business in it"
+    }
+  ]
+}

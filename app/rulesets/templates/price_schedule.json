@@ -1,0 +1,131 @@
+{
+  "id": "price_schedule",
+  "form_name": "Price Schedule",
+  "slots": [
+    {
+      "name": "estimated_quantity",
+      "kind": "number",
+      "required": true,
+      "description": "the estimated quantity of the goods the Price Schedule prints for the item, as a number"
+    },
+    {
+      "name": "allowed_currencies",
+      "kind": "list",
+      "required": false,
+      "description": "the currencies the Price Schedule allows prices to be quoted in, e.g. two currency symbols"
+    }
+  ],
+  "consequences": {
+    "critical": {
+      "outcomes": {
+        "blank": {
+          "status": "disqualified",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "definition",
+      "text": "The estimated quantity is printed on the schedule by the Authority; the tenderer does not fill it in. The estimated total is that quantity times the tenderer's unit price."
+    }
+  ],
+  "rules": [
+    {
+      "id": "price_schedule.quantity_as_printed",
+      "check": "value",
+      "field": "price_schedule.quantity",
+      "params": {
+        "expected": "{estimated_quantity}"
+      },
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} could not be read; the Authority prints it, so a blank is a reading problem"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    },
+    {
+      "id": "price_schedule.unit_price_quoted",
+      "check": "filled",
+      "field": "price_schedule.unit_price",
+      "consequence": "critical"
+    },
+    {
+      "id": "price_schedule.currency_allowed",
+      "check": "unit",
+      "field": "price_schedule.currency",
+      "params": {
+        "allowed": "{allowed_currencies}"
+      },
+      "stage": "II",
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is not stated, so the schedule's own currency applies"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      }
+    },
+    {
+      "id": "price_schedule.total_quoted",
+      "check": "filled",
+      "field": "price_schedule.total",
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "price_schedule.total_is_quantity_times_price",
+      "check": "math",
+      "field": "price_schedule.total",
+      "params": {
+        "inputs": [
+          "quantity",
+          "unit_price"
+        ],
+        "op": "product"
+      },
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        }
+      },
+      "depends_on": [
+        "price_schedule.total_quoted"
+      ]
+    }
+  ]
+}

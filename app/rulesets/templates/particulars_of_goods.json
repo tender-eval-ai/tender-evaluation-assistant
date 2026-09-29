@@ -1,0 +1,67 @@
+{
+  "id": "particulars_of_goods",
+  "form_name": "Particulars of Goods Schedule",
+  "consequences": {
+    "critical": {
+      "outcomes": {
+        "blank": {
+          "status": "disqualified",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "needs_review",
+          "note": "{field} is marked not applicable; excused only if the Authority, after asking the tenderer, agrees it does not apply"
+        }
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "definition",
+      "text": "The place of origin, the manufacturer and the brand or product name are the schedule's essential rows: a tender that leaves one blank is not considered further."
+    },
+    {
+      "kind": "consequence",
+      "text": "A blank essential row is excused only if the Authority, after asking the tenderer, is satisfied it does not apply to the goods offered."
+    },
+    {
+      "kind": "trigger",
+      "text": "When the tenderer is itself the manufacturer, it enters its own name and address as the manufacturer's."
+    },
+    {
+      "kind": "definition",
+      "text": "A row that does not apply to the goods is marked N/A rather than left blank, and separate sheets may be attached when a row's space is too small."
+    },
+    {
+      "kind": "reference",
+      "text": "The rows that describe the product itself differ from tender to tender, so the rule set drafts them from each tender's own schedule."
+    }
+  ],
+  "rules": [
+    {
+      "id": "particulars_of_goods.country_of_origin_given",
+      "check": "filled",
+      "field": "particulars_of_goods.country_of_origin",
+      "consequence": "critical"
+    },
+    {
+      "id": "particulars_of_goods.manufacturer_given",
+      "check": "filled",
+      "field": "particulars_of_goods.manufacturer",
+      "consequence": "critical"
+    },
+    {
+      "id": "particulars_of_goods.product_name_given",
+      "check": "filled",
+      "field": "particulars_of_goods.product_name",
+      "consequence": "critical"
+    }
+  ]
+}
