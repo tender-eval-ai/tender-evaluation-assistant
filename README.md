@@ -5,6 +5,26 @@ Input: a tender document set + one bid (offer) per tenderer. Output: an editable
 **procurement review report** — Price Summary table, Stage I / Stage II conclusions, and a
 detailed evaluation record sheet.
 
+![A reviewer checks item (l) with its page highlighted, runs a check on a scanned offer, corrects a field the model could not read, and confirms the review](docs/images/review.gif)
+
+*The review UI on its built-in mock and the synthetic tender: every verdict cites its page,
+and a person's correction keeps the model's value beside it, with who and why.*
+
+<details>
+<summary>Screens</summary>
+
+| Rules: the rule set drafted from the tender, confirmed by a second person | Stage I: the offer's page, the items, the evidence and rules |
+|---|---|
+| ![Rules window](docs/images/rules.png) | ![Stage I window](docs/images/stage1.png) |
+
+![A field corrected by a reviewer](docs/images/correction.png)
+
+| Scoring: every offer ranked, the recommended one marked | Report: the conclusions, each tenderer's review, the Word reports |
+|---|---|
+| ![Scoring window](docs/images/scoring.png) | ![Report window](docs/images/report.png) |
+
+</details>
+
 > **CONFIDENTIALITY WARNING**
 > The models are whatever `.env` points at: the measured demo configurations use
 > **cloud APIs** (DeepSeek, Gemini on Vertex AI) or local Ollama. **Never** feed real
