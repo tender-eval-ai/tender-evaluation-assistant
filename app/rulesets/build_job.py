@@ -1,10 +1,11 @@
 """The pipeline of kind "ruleset_build": one tender's rule set drafted from its documents.
 
-    parse -> locate -> match -> slots -> novel -> coverage -> save
+    parse -> locate -> match -> slots -> novel -> additions -> coverage -> save
 
 parse runs Nasi's layout parser once and caches the node table under the project's work
-folder (slow); locate finds the schedule's items and Parts (L0); match, slots and novel are
-the model layers (L1 to L3), novel checkpointed after every item; coverage is code (L4);
+folder (slow); locate finds the schedule's items and Parts (L0); match, slots, novel and
+additions are the model layers (L1 to L3: additions is L3 for the items that matched a
+template), novel and additions checkpointed after every item; coverage is code (L4);
 save merges the result into the project's draft without overwriting a person's edits.
 The model is reached only through the gateway; `LLM_FACTORY` is what tests replace."""
 from __future__ import annotations
@@ -17,13 +18,13 @@ from pathlib import Path
 from app.checks.vendor_check import _cost, data_class_of, make_llm, project_dir
 from app.jobs import registry
 from app.jobs.models import TENDER, Context, Pipeline, Step
-from app.rulesets import build as merge, coverage as l4, match as l1, novel as l3, slots as l2
+from app.rulesets import additions as l3b, build as merge, coverage as l4, match as l1, novel as l3, slots as l2
 from app.rulesets.library import EMPTY, load_templates
 from app.rulesets.locate import locate, parse_tender
 from app.rulesets.nodes import NodeIndex
 from app.rulesets.schema import DataClass, Gap, PartSpec, RuleSetItem
 
-PROMPT_VERSION = f"{l1.PROMPT_VERSION}+{l2.PROMPT_VERSION}+{l3.PROMPT_VERSION}"
+PROMPT_VERSION = f"{l1.PROMPT_VERSION}+{l2.PROMPT_VERSION}+{l3.PROMPT_VERSION}+{l3b.PROMPT_VERSION}"
 
 
 def _factory_from_env():
@@ -146,8 +147,34 @@ def novel_step(ctx: Context):
     return None
 
 
+def additions_step(ctx: Context):
+    """One call per item that matched a template and cites clauses, checkpointed after each,
+    like novel: what the tender adds to the template, and what the template's rules cover."""
+    items = _items(ctx)
+    done = set(ctx.data.get("additions_done", []))
+    todo = [i for i in items if i.template is not None and i.clauses and i.letter not in done]
+    total = len(done) + len(todo)
+    ctx.progress("additions", len(done), total, "calls")
+    index = NodeIndex(_nodes(ctx))
+    llm = _llm(ctx)
+    sources = dict(ctx.data.get("sources", {}))
+    covered = list(ctx.data.get("covered", []))
+    with llm.scope(TENDER):
+        for item in todo:
+            before = dict(getattr(llm, "stats", {}))
+            added, found, handled = l3b.add_to_item(item, index, llm, _data_class(ctx))
+            items = [added if i.letter == item.letter else i for i in items]
+            sources.update(found)
+            covered += [n for n in handled if n not in covered]
+            done.add(item.letter)
+            ctx.checkpoint(items=_dump(items), sources=sources, covered=covered, additions_done=sorted(done),
+                           cost=_cost(ctx, llm, before))
+            ctx.progress("additions", len(done), total, "calls")
+    return None
+
+
 def coverage_step(ctx: Context):
-    gaps = l4.gaps_for(_items(ctx), NodeIndex(_nodes(ctx)), ctx.data.get("sources", {}))
+    gaps = l4.gaps_for(_items(ctx), NodeIndex(_nodes(ctx)), ctx.data.get("sources", {}), ctx.data.get("covered", []))
     return {"gaps": [g.model_dump(mode="json") for g in gaps]}
 
 
@@ -172,7 +199,8 @@ def save(ctx: Context):
 PIPELINE = registry.register(Pipeline(
     kind="ruleset_build",
     steps=[Step("parse", parse, "files"), Step("locate", locate_step, "items"), Step("match", match_step, "calls"),
-           Step("slots", slots_step, "calls"), Step("novel", novel_step, "calls"), Step("coverage", coverage_step, "steps"),
+           Step("slots", slots_step, "calls"), Step("novel", novel_step, "calls"), Step("additions", additions_step, "calls"),
+           Step("coverage", coverage_step, "steps"),
            Step("save", save, "steps")],
     fields_key=None,
 ))
