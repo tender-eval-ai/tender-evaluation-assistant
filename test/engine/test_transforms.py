@@ -106,11 +106,11 @@ class TestAddWorkingDays:
         item = {"tender_sample_submission_deadline__base_date": "2026-02-06"}
         result = run_transform(
             "add_working_days", item, rule,
-            {"base_date": "date of the Authority's written request", "offset": {"value": 5, "unit": "working_days"}},
+            {"base_date": "date of the Tendering Authority's written request", "offset": {"value": 5, "unit": "working_days"}},
         )
         assert result.computed_date == "2026-02-13"
 
-    def test_falls_back_to_common_government_request_date_key(self):
+    def test_falls_back_to_common_authority_request_date_key(self):
         rule = _rule(id="some_rule")
         item = {"authority_request_date": "2026-02-06"}
         result = run_transform("add_working_days", item, rule, {"offset_value": 5, "offset_unit": "working_days"})
@@ -308,7 +308,7 @@ class TestPercentageThreshold:
 
     def test_deviation_exceeding_threshold_cannot_auto_determine(self):
         # Exceeding the threshold only means an explanation is *required* - whether
-        # the Authority accepted it is a judgment call this operation cannot make
+        # the Tendering Authority accepted it is a judgment call this operation cannot make
         # on its own; the caller must supply an explicit outcome override.
         rule = _rule(id="product_specs_deviation_explanation")
         item = {"product_specs_deviation_explanation__deviation_pct": 25}

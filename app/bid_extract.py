@@ -10,7 +10,7 @@ from .retrieval import excerpt_all, keywords_from_rubric
 from .schemas import BidExtraction, BidPrice, Rubric
 
 SYSTEM = (
-    "You support a public Tender Assessment Panel (TAP). You are given the "
+    "You support a tendering authority's Tender Assessment Panel (TAP). You are given the "
     "evaluation rubric for a tender and the content of ONE tenderer's offer (page "
     "numbers marked as [Page N]). Extract:\n"
     "1. documents — for EVERY stage1_checklist item: is it present in the offer? "
@@ -49,7 +49,7 @@ def extract_bid(tenderer: str, bid_docs: list[Document], rubric: Rubric,
 
 
 PRICE_SYSTEM = (
-    "You support a public Tender Assessment Panel (TAP). From ONE tenderer's offer "
+    "You support a tendering authority's Tender Assessment Panel (TAP). From ONE tenderer's offer "
     "(page numbers marked as [Page N]) extract ONLY the price fields: unit price, "
     "currency, optimal dosage (only if the price scheme uses one), and the quoted "
     "total / estimated goods price if stated. Numbers exactly as printed; null for "

@@ -206,7 +206,6 @@ def price_rows(scheme: PriceScheme, offers: list[Offer]) -> tuple[list[dict], st
     for row, o in zip(rows, offers):
         q, c = quotes[o.tenderer], rates[o.tenderer]
         d = row.model_dump()
-        d["unit_price_base"] = d.pop("unit_price_hkd")
         d["unit_price"] = q.unit_price
         tally = None
         if scheme.type == "unit_price_x_quantity" and q.quoted_total is not None and q.unit_price is not None:
@@ -263,7 +262,7 @@ def stage_conclusion(offers: list[Offer], which: str, ruleset: RuleSet) -> str:
     parts = []
     if groups.get("pass"):
         parts.append(f"{_names(groups['pass'])} passed {label}")
-    for status, verb in (("needs_review", "await a reviewer's decision on"), ("dormant", "have items the Authority may request:"),
+    for status, verb in (("needs_review", "await a reviewer's decision on"), ("dormant", "have items the Tendering Authority may request:"),
                          ("disqualified", "are not considered further:")):
         for tenderer in groups.get(status, []):
             o = next(x for x in offers if x.tenderer == tenderer)

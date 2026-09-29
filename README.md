@@ -1,6 +1,6 @@
 # Tender Evaluation Assistant
 
-Demo of an AI-assisted **procurement review pipeline** for public tender evaluation.
+Demo of an AI-assisted **procurement review pipeline** for tender evaluation.
 Input: a tender document set + one bid (offer) per tenderer. Output: an editable Word
 **procurement review report** — Price Summary table, Stage I / Stage II conclusions, and a
 detailed evaluation record sheet.
@@ -15,7 +15,7 @@ detailed evaluation record sheet.
 
 ## Results
 
-Measured on three real public tenders (redacted samples kept outside the repository;
+Measured on three real tenders (redacted samples kept outside the repository;
 only numbers are recorded here). The answer keys were built by reading the PDFs, never by
 running the parser that is scored against them.
 
@@ -123,7 +123,7 @@ python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 #    Install https://ollama.com then:
 #      ollama pull qwen3:8b && ollama pull qwen3-vl:8b
 # demo_case/ is committed; regenerate it (same content) with: tools/make_demo_case.py
-# test/data/synthetic_tender/ is a synthetic tender-style case (17 tender documents, running headers, PART
+# test/data/synthetic_tender/ is a synthetic tender case (17 tender documents, running headers, PART
 # numbering, a Completeness Check Schedule with items (a)-(o), four bids incl. scans); the
 # real-size tender is in test/data/synthetic_tender_full/. Regenerate: tools/make_synthetic_tender.py [--full]
 # --bids-dir holds one subfolder (or one PDF) per tenderer; --acknowledge-cloud is the

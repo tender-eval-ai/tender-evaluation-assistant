@@ -75,8 +75,8 @@ class BidPrice(BaseModel):
         default=None, description="Optimal dosage, only for cost-effectiveness schemes")
     quoted_total: Optional[float] = Field(
         default=None, description="Estimated goods price as quoted by the tenderer, if stated")
-    fx_to_hkd: Optional[float] = Field(
-        default=None, description="Conversion rate to HKD if quoted in a foreign currency")
+    fx_to_base: Optional[float] = Field(
+        default=None, description="Conversion rate to the base currency if quoted in a foreign currency")
 
 
 class BidExtraction(BaseModel):
@@ -110,7 +110,7 @@ class PriceRow(BaseModel):
     conforming: bool                        # passed Stage I and Stage II
     currency: str = "HKD"
     unit_price: Optional[float] = None      # as quoted, original currency
-    unit_price_hkd: Optional[float] = None
+    unit_price_base: Optional[float] = None
     dosage: Optional[float] = None
     dosage_rounded: Optional[float] = None  # 2 significant figures per the tender formula
     estimated_goods_price: Optional[float] = None  # HKD

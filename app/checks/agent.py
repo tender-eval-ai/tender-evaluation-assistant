@@ -30,7 +30,7 @@ TRANSCRIPT_CHARS = 3000
 TRACE_CHARS = 300
 
 SYSTEM = (
-    "You search ONE tenderer's offer to a public goods tender for a form the page labels did not find: "
+    "You search ONE tenderer's offer to a tendering authority's goods tender for a form the page labels did not find: "
     "{title}. One action per step, from: list_pages (the index of the offer's pages: label, title, summary); "
     "read_page (the text of one page; a scanned page is transcribed, which costs a call, and at most {reads} "
     "pages may be read); find (whether a phrase is on a page you name); finish (found=true with the page and "

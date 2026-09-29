@@ -364,7 +364,7 @@ def _split_notes_heading(text: str) -> list[str]:
 
 # A run-in list: sub-items written inside one sentence rather than set out as
 # their own paragraphs - "(c) in the event of (i) a claim ...; (ii) the
-# Authority having grounds ...; or (iii) an agreement ...", "Contact details
+# Tendering Authority having grounds ...; or (iii) an agreement ...", "Contact details
 # (i) telephone number (ii) facsimile number (iii) email address". The layout
 # model has no gap to split on, so the whole list arrives inside its parent's
 # block and only the parent was ever a node. The answer keys address each such
@@ -839,7 +839,7 @@ def _is_heading(text: str, x0: float, class_name: str, subitem_stack, nodes_by_i
     The layout model's `section-header` class, less three things it also
     covers: a label ending in a colon ("Glossary:") introduces what follows
     inside the current node; a line indented past the open list's marker column
-    is part of the item (an address block's "the Authority"
+    is part of the item (an address block's "Procurement Department"
     inside an item of the Appendix's contact list); and the first heading after
     a Part heading that has no title of its own ("Part I" over "Method of
     providing the Contract Deposit") is that Part's title.

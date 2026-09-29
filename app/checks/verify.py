@@ -25,7 +25,7 @@ from app.checks.pages import read_png
 PROMPT_VERSION = "second-read-v1"
 
 SYSTEM = (
-    "You transcribe named fields from the page images of ONE tenderer's offer to a public goods tender. "
+    "You transcribe named fields from the page images of ONE tenderer's offer to a tendering authority's goods tender. "
     "For every field asked, report its value exactly as printed on the pages, or null when it is not printed "
     "or is covered by a black bar, and a confidence between 0 and 1 for that field alone: 1 when it is "
     "clearly printed and legible, lower when it is faint, partly covered or ambiguous. Report only what is "

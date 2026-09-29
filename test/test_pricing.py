@@ -9,7 +9,7 @@ def bid(name, unit_price=None, dosage=None, quoted_total=None, currency="HKD", f
     return BidExtraction(
         tenderer=name, documents=[], compliance=[],
         price=BidPrice(currency=currency, unit_price=unit_price, optimal_dosage=dosage,
-                       quoted_total=quoted_total, fx_to_hkd=fx))
+                       quoted_total=quoted_total, fx_to_base=fx))
 
 
 class TestRound2sf:
@@ -59,7 +59,7 @@ class TestCostEffectiveness:
     def test_foreign_currency_converted(self):
         bids = [bid("US", unit_price=2.97, dosage=3.0, currency="USD", fx=7.8515)]
         rows, _ = compute_price_rows(self.scheme, bids, conforming=set())
-        assert rows[0].unit_price_hkd == pytest.approx(23.32, abs=0.01)
+        assert rows[0].unit_price_base == pytest.approx(23.32, abs=0.01)
         assert rows[0].cost_effectiveness == pytest.approx(69.96, abs=0.01)
 
     def test_estimated_goods_price_uses_quantity(self):

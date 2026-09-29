@@ -70,5 +70,5 @@ cloud models. `POST /jobs/{id}/retry` continued each attempt from the rendered p
 - A form absent from an offer costs one resolve call (the model is asked whether any page
   is that form); a form present costs one read and, on a scan, one second read.
 - The letter-to-form mapping for an item without a template comes from the page-label
-  vocabulary (the Authority schedule's letters). A rule set built for a tender with different
+  vocabulary (the synthetic schedule's letters). A rule set built for a tender with different
   letters needs the template to name the form; L1's closed menu will carry the form at S5.

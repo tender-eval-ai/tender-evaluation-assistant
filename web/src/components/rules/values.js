@@ -47,8 +47,8 @@ export function slug(text) {
 // an item without a template, so the rule carries its own outcomes, by Part.
 const BLANK_BY_PART = {
   A: { status: "disqualified", note: "{field} is missing; the tender is not considered further (Part A)" },
-  B: { status: "needs_review", note: "{field} is missing; the Authority may request it (Part B)" },
-  C: { status: "pass", note: "{field} is missing; the Authority may request it later (Part C)" },
+  B: { status: "needs_review", note: "{field} is missing; the Tendering Authority may request it (Part B)" },
+  C: { status: "pass", note: "{field} is missing; the Tendering Authority may request it later (Part C)" },
 };
 
 export function defaultRule(title, part) {

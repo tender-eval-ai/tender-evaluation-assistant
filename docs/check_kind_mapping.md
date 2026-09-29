@@ -38,7 +38,7 @@ Sorted by number of rules. "per rule" means the name covers rules of different k
 | `on_request_trigger` | 2 | not a rule | the item's `condition` ("on request") |
 | `range` | 2 | `range` | |
 | `self_entry_if_tenderer_is_manufacturer` | 2 | `cross_document_match` | tenderer name or address, with `condition` (tenderer is the manufacturer) |
-| `third_party_result` | 2 | `human_only` | the Authority decides (dissatisfaction, plant trial) |
+| `third_party_result` | 2 | `human_only` | the Tendering Authority decides (dissatisfaction, plant trial) |
 | `unit` | 2 | `unit` | |
 | `value` | 2 | per rule | |
 | `accredited_body_lookup` | 1 | `human_only` | needs the HKAS register; no list in the repo |
@@ -86,7 +86,7 @@ Sorted by number of rules. "per rule" means the name covers rules of different k
 | `certified_true_copy_general_mechanism` | `document_form` | not a rule | general mechanism; item note |
 | `iso_certificate_original_or_certified_copy` | `document_form` | `human_only` | original or certified copy |
 | `test_report_original_or_certified_copy` | `document_form` | `human_only` | original or certified copy |
-| `estimated_quantity_value` | `value` | `value` | public-printed constant |
+| `estimated_quantity_value` | `value` | `value` | authority-printed constant |
 | `tender_sample_quantity` | `value` | `range` | a minimum, so `range` with only `min` |
 
 ## Schema gaps and proposed fixes (decide at S0)
@@ -115,7 +115,7 @@ class Consequence(StrEnum):
     ON_REQUEST_ONLY = "on_request_only"            # not requested → dormant; requested and missed → disqualified
     DEEMED_COMPLIANCE = "deemed_compliance"        # blank → pass; expressly non-compliant → disqualified
     DEEMED_DEFAULT = "deemed_default"              # blank → pass, read as the stated default (e.g. cash)
-    DISCRETIONARY = "discretionary"                # blank → pass; the Authority may ask later
+    DISCRETIONARY = "discretionary"                # blank → pass; the Tendering Authority may ask later
     NO_GATE = "no_gate"                            # recorded, never changes the verdict
 
 

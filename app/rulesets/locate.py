@@ -53,7 +53,7 @@ def _page_footer_text(page) -> str:
     return match.group(1).strip() if match else ""
 
 
-# The Completeness Check Schedule is a standalone public-authored document (not
+# The Completeness Check Schedule is a standalone authority-authored document (not
 # prose requiring LLM interpretation) - every real tender sampled prints "Completeness
 # Check Schedule" in its own page footer (confirmed on Tender 1, Tender 2,
 # Tender 3's 366-page combined PDF). A "SAMPLE COMPLETENESS CHECK SCHEDULE" also

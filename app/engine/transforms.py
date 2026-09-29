@@ -34,10 +34,10 @@ def _input_value(item: dict, rule: dict, transform: dict, index: int = 0):
 
 def _base_date(item: dict, rule: dict) -> str | None:
     # transform.params.base_date in the rules JSON is prose ("date of the
-    # Authority's written request"), not a machine-readable item key - there is
+    # Tendering Authority's written request"), not a machine-readable item key - there is
     # no live wiring to parse there. Convention instead: a rule-specific override
     # first, then the common default every base_date description in practice
-    # resolves to (a Paragraph 16.1-style public request date).
+    # resolves to (a Paragraph 16.1-style authority request date).
     explicit = item.get(f"{rule['id']}__base_date")
     if explicit is not None:
         return explicit
@@ -83,7 +83,7 @@ def _add_working_days(start: datetime.date, count: int) -> datetime.date:
     remaining = count
     while remaining > 0:
         current += datetime.timedelta(days=1)
-        if current.weekday() < 5:  # Mon-Fri; Hong Kong public holidays not modelled
+        if current.weekday() < 5:  # Mon-Fri; public holidays not modelled
             remaining -= 1
     return current
 
@@ -198,7 +198,7 @@ def op_percentage_threshold(item: dict, rule: dict, params: dict) -> TransformRe
     if abs(deviation) <= params["max_deviation_pct"]:
         return TransformResult(bucket="neutral", value=deviation)
     # Exceeding the threshold only establishes that an explanation is required -
-    # whether the Authority accepted it is a judgment call this operation can't
+    # whether the Tendering Authority accepted it is a judgment call this operation can't
     # make; the caller supplies an explicit {rule_id}__outcome for that case
     # (handled upstream in core.py, ahead of any transform).
     return TransformResult(bucket=None, value=deviation)
