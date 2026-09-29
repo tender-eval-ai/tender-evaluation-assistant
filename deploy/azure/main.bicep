@@ -288,7 +288,8 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
         ]
       }
       volumes: [
-        { name: 'data', storageType: 'AzureFile', storageName: environmentShare.name }
+        // The image runs as uid 1000 (backend/Dockerfile): the share is mounted as that user.
+        { name: 'data', storageType: 'AzureFile', storageName: environmentShare.name, mountOptions: 'uid=1000,gid=1000' }
       ]
     }
   }

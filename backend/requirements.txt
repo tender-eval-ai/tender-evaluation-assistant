@@ -1,3 +1,6 @@
+# The image installs backend/requirements.lock, compiled from this file at the root lock's versions:
+#   uv pip compile backend/requirements.txt --python-version 3.12 --universal --generate-hashes \
+#       -c requirements.lock -o backend/requirements.lock
 # Backend: FastAPI service wrapping the evaluation pipeline
 fastapi>=0.111
 uvicorn[standard]>=0.30
