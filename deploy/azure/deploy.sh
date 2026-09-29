@@ -9,7 +9,7 @@ set -euo pipefail
 cd "$(dirname "$0")/../.."
 
 TAG=${1:?usage: deploy.sh <image tag, e.g. a commit SHA the workflow pushed>}
-REPO=${REPO:-chenyufang-data/tender-evaluation-assistant}
+REPO=${REPO:-tender-eval-ai/tender-evaluation-assistant}
 setting() {  # the environment's value, else the repository variable
     local value=${!1:-}
     [ -n "$value" ] || value=$(gh variable get "$1" -R "$REPO")

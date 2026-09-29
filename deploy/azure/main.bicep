@@ -24,7 +24,7 @@ param suffix string
 param imageTag string
 
 @description('Where the images are: CI pushes backend and web here.')
-param registry string = 'ghcr.io/chenyufang-data/tender-evaluation-assistant'
+param registry string = 'ghcr.io/tender-eval-ai/tender-evaluation-assistant'
 
 @description('GitHub user whose read:packages token (key vault secret ghcr-token) pulls the images.')
 param ghcrUser string
