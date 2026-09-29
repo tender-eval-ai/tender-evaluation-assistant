@@ -43,10 +43,10 @@ Last updated: 2026-09-20 (Chenyu).
 | F4 | Public-release audit at S5 | agreed | — (update the plan) |
 | F5 | Port source: pushed commit, no `aicamp-final` tag | agreed | — |
 | F6 | Public naming: an AI tender evaluation assistant, no tender numbers or Hong Kong wording | agreed | — (description set 2026-09-26; clean-up PR at S5) |
-| G1 | Two independent demos, same image | agreed | Nasi: domain, when chosen |
+| G1 | Two independent demos, same image | superseded by G4 | — |
 | G2 | No cloud named in code; configuration only | agreed | — (update the plan) |
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
-| G4 | One shared demo, on Azure (amends G1 and G2; takes in #83's one-demo proposal) | proposed | Nasi: position |
+| G4 | One shared demo, on Azure (amends G1 and G2; takes in #83's one-demo proposal) | agreed | Nasi: end-to-end check once deployed |
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | done | 1 and 4 done; 2 and 3 closed without change: every tender clears the S3 gate (95.6 / 97.8 / 95.2) |
@@ -365,8 +365,12 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   6. **GCP retired:** `deploy/cloudrun/` is removed in the Azure PR. The Cloud Run service and its data bucket are deleted, after a local copy of the bucket, which holds only synthetic data.
 - G2's rule still holds: nothing in the code names a cloud, and `deploy/azure/` holds only configuration.
 - Chenyu (2026-09-26): proposed. This takes in #83: one shared demo, run on Azure.
-- Nasi:
-- Decision:
+- Nasi (2026-09-26): agree: one shared demo on Azure. The AWS demo lapses and GCP is retired;
+  #84 already covers the container-level changes #83 listed (`web` as ingress, the worker as a
+  container, the settings reaching both). I'll run `tools/check_synthetic_case.py` end to end
+  against the deployed app once `setup.sh` has run, and need Contributor on the resource group
+  for that.
+- Decision: agreed (2026-09-26); built in #84.
 
 ## H. Portfolio finish
 
