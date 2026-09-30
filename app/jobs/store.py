@@ -4,6 +4,7 @@ the queue's own tables belong to Procrastinate."""
 from __future__ import annotations
 
 import os
+import re
 import uuid
 from typing import Any, Callable
 
@@ -303,13 +304,25 @@ def _same_verdict(a: dict, b: dict) -> bool:
     return strip(a) == strip(b)
 
 
+_BARE_NUMBER = re.compile(r"\s*-?[\d.,\s]*\d[\d.,\s]*")
+
+
 def _apply(fields: dict, corrections: dict) -> dict:
     """The fields as the engine should see them: each corrected key holds the person's value,
-    and its V4 record and its printed text are dropped (a person's value is not the model's
-    reading to verify, and a check counting decimals as printed must count the person's)."""
+    its V4 record is dropped (a person's value is not the model's reading to verify), and
+    `_corrected` marks it, so the checks show and count the person's figure. The printed
+    text goes only when the person typed text of their own ("4.4 kg/t", "2.5%"). A bare
+    number corrects the figure, not the unit or currency printed beside it, so a unit check
+    still finds "HK$" in the printed text (#100 re-review: a corrected 7.5 failed it)."""
     out = {**fields, **{k: v["value"] for k, v in corrections.items()}}
-    for k in corrections:
-        if not is_meta(k):
-            out[f"{k}_verification"] = None
+    for k, correction in corrections.items():
+        if is_meta(k):
+            continue
+        value = correction["value"]
+        bare = (isinstance(value, (int, float)) and not isinstance(value, bool)) or \
+            (isinstance(value, str) and _BARE_NUMBER.fullmatch(value) is not None)
+        out[f"{k}_verification"] = None
+        out[f"{k}_corrected"] = True
+        if not bare:
             out.pop(f"{k}_printed", None)
     return out
