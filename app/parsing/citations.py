@@ -41,7 +41,7 @@ import re
 from collections import defaultdict
 from typing import NamedTuple
 
-# A capitalised word of a document title ("General", "Non-collusive", "Authority").
+# A capitalised word of a document title ("General", "Non-collusive", "TAP").
 _WORD = r"(?:[A-Z][a-zA-Z\-]+|[A-Z]{2,})"
 # A target keyword is never part of a name: "...of the Terms of Tender and
 # Paragraph 5..." must stop before "Paragraph".

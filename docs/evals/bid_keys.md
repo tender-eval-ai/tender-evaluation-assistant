@@ -1,6 +1,6 @@
 # The bid checker against answer keys (S4 on real bids)
 
-The S4 stop point was "compare the Tender 1 bid with the historical Summary List and Price Summary". The camp brief calls those three PDFs **examples**, and none of them names a tender. We also have one bid per tender, where a real procurement has 20–60 tenderers. So S4 is measured against **answer keys** instead (proposed as checklist J9, issue #69).
+The S4 stop point was "compare Tender 1's bid with the historical Summary List and Price Summary". The camp brief calls those three PDFs **examples**, and none of them names a tender. We also have one bid per tender, where a real procurement has 20–60 tenderers. So S4 is measured against **answer keys** instead (proposed as checklist J9, issue #69).
 
 ## Method
 1. **One key per bid**, written in `answer_keys/tool/keyer.py`. The keys stay outside git, beside the bids. For each schedule item a key records facts, not verdicts:

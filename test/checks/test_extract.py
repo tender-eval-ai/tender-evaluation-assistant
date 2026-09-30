@@ -71,6 +71,6 @@ def test_the_reading_model_is_fixed_per_form_and_names_every_field():
 def test_the_prompt_asks_for_what_is_printed_and_treats_pages_as_evidence():
     from app.checks.extract import PROMPT_VERSION, SYSTEM
 
-    assert PROMPT_VERSION == "extract-v3"
+    assert PROMPT_VERSION == "extract-v4"
     for phrase in ("exactly as printed", "signature present", "black bar", "Never infer", "present=false", "evidence", "between 0 and 1"):
         assert phrase in SYSTEM, phrase

@@ -37,11 +37,12 @@ def _base_date(item: dict, rule: dict) -> str | None:
     # Authority's written request"), not a machine-readable item key - there is
     # no live wiring to parse there. Convention instead: a rule-specific override
     # first, then the common default every base_date description in practice
-    # resolves to (a Paragraph 16.1-style public request date).
+    # resolves to (a Paragraph 16.1-style authority request date).
     explicit = item.get(f"{rule['id']}__base_date")
     if explicit is not None:
         return explicit
-    return item.get("authority_request_date")
+    date = item.get("authority_request_date")
+    return date if date is not None else item.get("authority_request_date")  # its name before F6
 
 
 def _offset_days(params: dict) -> int | None:
@@ -83,7 +84,7 @@ def _add_working_days(start: datetime.date, count: int) -> datetime.date:
     remaining = count
     while remaining > 0:
         current += datetime.timedelta(days=1)
-        if current.weekday() < 5:  # Mon-Fri; Hong Kong public holidays not modelled
+        if current.weekday() < 5:  # Mon-Fri; public holidays not modelled
             remaining -= 1
     return current
 

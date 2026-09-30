@@ -31,7 +31,7 @@
 "title": "Registration",
 "page": 1,
 "char_start": 0,
-"char_end": 347,
+"char_end": 346,
 "text": "1. Registration\nThe nominated store keeper shall submit the monthly delivery programme unless otherwise agreed in writing. The nominated store keeper may reject any consignment that fails the acceptance test unless otherwise agreed in writing. The Authority shall maintain the insurance policy in force within fourteen days of the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
@@ -55,7 +55,7 @@
 "title": "Submission",
 "page": 1,
 "char_start": 0,
-"char_end": 369,
+"char_end": 368,
 "text": "2. Submission\nThe Authority Representative shall return the empty containers at its own cost throughout the Contract Period. The Tenderer may extend the period on written request on each occasion that a delivery is made. The nominated store keeper shall label each container with the batch number and the date of manufacture within fourteen days of the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
@@ -79,7 +79,7 @@
 "title": "Receipts",
 "page": 1,
 "char_start": 0,
-"char_end": 324,
+"char_end": 323,
 "text": "3. Receipts\nThe Contractor shall keep a record of every batch supplied before the delivery date stated in the Purchase Order. The Tenderer shall notify the other party in writing within fourteen days of the Purchase Order. The Authority shall maintain the insurance policy in force on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
@@ -103,7 +103,7 @@
 "title": "Withdrawal",
 "page": 1,
 "char_start": 0,
-"char_end": 1411,
+"char_end": 1404,
 "text": "4. Withdrawal\nThe Authority Representative shall comply with the Technical Specifications before the delivery date stated in the Purchase Order. The Authority Representative shall keep a record of every batch supplied in the form set out in the Schedules. The Authority may reject any consignment that fails the acceptance test subject to the Special Conditions of Contract. The Supplier shall notify the other party in writing before the delivery date stated in the Purchase Order.\nThe Authority shall keep a record of every batch supplied throughout the Contract Period. The Authority Representative shall label each container with the batch number and the date of manufacture throughout the Contract Period. The Tenderer shall label each container with the batch number and the date of manufacture within fourteen days of the Purchase Order. The Authority shall keep a record of every batch supplied before the delivery date stated in the Purchase Order.\nThe Authority may reject any consignment that fails the acceptance test without prejudice to any other remedy. The Supplier shall comply with the Technical Specifications unless otherwise agreed in writing. The Supplier shall submit the monthly delivery programme where the Goods are supplied in bulk. The Tenderer shall label each container with the batch number and the date of manufacture before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
@@ -218,7 +218,7 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 418,
+"char_end": 415,
 "text": "Invitation\nThe Tenderer shall notify the other party in writing on each occasion that a delivery is made. The Authority shall maintain the insurance policy in force in the form set out in the Schedules. The Authority shall deliver the Goods to the nominated store throughout the Contract Period. The Authority Representative shall comply with the Technical Specifications within fourteen days of the Purchase Order.",
 "is_coarse": 0,
 "bbox": [
@@ -266,14 +266,14 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 101,
+"char_end": 100,
 "text": "(b) The Tenderer shall keep a record of every batch supplied at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 317.947998046875,
 468.1869812011719,
-340.25299072265625
+342.39801025390625
 ],
 "source_file": "01 Tender Form.pdf"
 },
@@ -362,7 +362,7 @@
 "title": "",
 "page": 1,
 "char_start": 0,
-"char_end": 478,
+"char_end": 476,
 "text": "2.\nClosing Date and Time\nThe Authority may extend the period on written request in the form set out in the Schedules. The Authority Representative shall provide a certificate of analysis for each batch before the delivery date stated in the Purchase Order. The Supplier shall label each container with the batch number and the date of manufacture throughout the Contract Period. The Contractor shall submit the monthly delivery programme without prejudice to any other remedy.",
 "is_coarse": 1,
 "bbox": [
@@ -794,7 +794,7 @@
 "title": "",
 "page": 3,
 "char_start": 0,
-"char_end": 565,
+"char_end": 563,
 "text": "1.\nOffer\nThe Contractor may reject any consignment that fails the acceptance test before the delivery date stated in the Purchase Order. The Authority Representative shall comply with the Technical Specifications before the delivery date stated in the Purchase Order. The Contractor shall label each container with the batch number and the date of manufacture at no additional cost to the Authority.\nHaving read the Tender Documents, the Tenderer offers to supply the Goods at the prices quoted in the Price Schedule and agrees to be bound by the Terms of Tender.",
 "is_coarse": 1,
 "bbox": [
@@ -818,7 +818,7 @@
 "title": "",
 "page": 3,
 "char_start": 0,
-"char_end": 218,
+"char_end": 216,
 "text": "2.\nValidity\nThe Authority Representative shall comply with the Technical Specifications throughout the Contract Period. The Authority may extend the period on written request on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
@@ -890,7 +890,7 @@
 "title": "",
 "page": 4,
 "char_start": 0,
-"char_end": 330,
+"char_end": 328,
 "text": "1.\nAcceptance\nThe Tenderer shall keep a record of every batch supplied without prejudice to any other remedy. The Authority Representative shall deliver the Goods to the nominated store subject to the Special Conditions of Contract. The Authority shall submit the monthly delivery programme where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
@@ -981,13 +981,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 223,
+"char_end": 222,
 "text": "1.1 The Authority Representative shall keep a record of every batch supplied on each occasion that a delivery is made. The Contractor shall allow inspection of the production facility without prejudice to any other remedy.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-261.8489990234375,
-477.3609313964844,
+261.947998046875,
+487.1509704589844,
 300.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
@@ -1029,13 +1029,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 114,
+"char_end": 113,
 "text": "(a) The Authority may reject any consignment that fails the acceptance test where the Goods are supplied in bulk.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-373.8489990234375,
-486.5130310058594,
+373.947998046875,
+469.39703369140625,
 398.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
@@ -1077,7 +1077,7 @@
 "title": "",
 "page": 1,
 "char_start": 0,
-"char_end": 371,
+"char_end": 368,
 "text": "2.\nInterpretation\nThe Authority Representative may reject any consignment that fails the acceptance test at no additional cost to the Authority. The Contractor shall label each container with the batch number and the date of manufacture in the form set out in the Schedules. The Tenderer may extend the period on written request at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
@@ -1125,13 +1125,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 231,
+"char_end": 229,
 "text": "2.2 The Authority shall allow inspection of the production facility before the delivery date stated in the Purchase Order. The Authority shall provide a certificate of analysis for each batch in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-625.8489990234375,
-452.8970031738281,
+625.947998046875,
+437.6290588378906,
 664.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
@@ -1149,13 +1149,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 77,
-"text": "(a) The Authority Representative shall submit the monthly delivery programme",
+"char_end": 84,
+"text": "(a) The Authority Representative shall submit the monthly delivery programme without",
 "is_coarse": 0,
 "bbox": [
 72.0,
-681.8489990234375,
-469.3529052734375,
+681.9810180664062,
+490.1429138183594,
 692.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
@@ -1173,13 +1173,13 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 38,
-"text": "without prejudice to any other remedy.",
+"char_end": 30,
+"text": "prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 65.98100280761719,
-270.7039489746094,
+232.79794311523438,
 76.39800262451172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
@@ -1197,7 +1197,7 @@
 "title": "",
 "page": 2,
 "char_start": 0,
-"char_end": 345,
+"char_end": 343,
 "text": "3.\nHeadings\nThe nominated store keeper shall allow inspection of the production facility on each occasion that a delivery is made. The Authority shall submit the monthly delivery programme within fourteen days of the Purchase Order. The Authority Representative shall keep a record of every batch supplied in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
@@ -1221,13 +1221,13 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 203,
+"char_end": 202,
 "text": "3.1 The Authority shall maintain the insurance policy in force within fourteen days of the Purchase Order. The Tenderer shall maintain the insurance policy in force where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-205.8489990234375,
-483.4549255371094,
+205.947998046875,
+474.8968811035156,
 244.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
@@ -1245,14 +1245,14 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 97,
+"char_end": 96,
 "text": "(a) The Tenderer shall notify the other party in writing at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 261.947998046875,
 443.7229919433594,
-284.25299072265625
+286.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1317,13 +1317,13 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 206,
+"char_end": 205,
 "text": "4.1 The Authority shall deliver the Goods to the nominated store unless otherwise agreed in writing. The nominated store keeper shall notify the other party in writing in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 401.8489990234375,
-485.302978515625,
+468.1869812011719,
 440.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
@@ -1341,7 +1341,7 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 221,
+"char_end": 220,
 "text": "4.2 The nominated store keeper may extend the period on written request where the Goods are supplied in bulk. The nominated store keeper shall keep a record of every batch supplied at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
@@ -1389,14 +1389,14 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 114,
+"char_end": 112,
 "text": "(a) The Authority Representative shall notify the other party in writing at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-569.8489990234375,
-451.04901123046875,
-592.2529907226562
+569.947998046875,
+433.9330139160156,
+594.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1437,7 +1437,7 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 414,
+"char_end": 413,
 "text": "Notices\nThe Authority Representative may extend the period on written request unless otherwise agreed in writing. The Contractor shall return the empty containers at its own cost where the Goods are supplied in bulk. The Supplier shall comply with the\nTechnical Specifications in the form set out in the Schedules. The Tenderer shall comply with the Technical Specifications without prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
@@ -1461,13 +1461,13 @@
 "title": null,
 "page": 3,
 "char_start": 0,
-"char_end": 204,
+"char_end": 203,
 "text": "5.1 The Authority shall comply with the Technical Specifications subject to the Special Conditions of Contract. The Supplier shall notify the other party in writing without prejudice to any other remedy.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 107.8489990234375,
-466.9440002441406,
+449.8279724121094,
 146.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
@@ -1533,13 +1533,13 @@
 "title": null,
 "page": 3,
 "char_start": 0,
-"char_end": 103,
+"char_end": 102,
 "text": "(c) The Authority may extend the period on written request within fourteen days of the Purchase Order.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-219.8489990234375,
-485.9079895019531,
+219.947998046875,
+468.7919921875,
 242.2530059814453
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
@@ -1557,13 +1557,13 @@
 "title": null,
 "page": 3,
 "char_start": 0,
-"char_end": 122,
+"char_end": 121,
 "text": "(i) The Authority Representative shall deliver the Goods to the nominated store on each occasion that a delivery is made.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 247.8489990234375,
-484.0710144042969,
+466.9549865722656,
 272.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
@@ -1653,7 +1653,7 @@
 "title": null,
 "page": 4,
 "char_start": 0,
-"char_end": 490,
+"char_end": 486,
 "text": "Invitation\nThe Tenderer shall allow inspection of the production facility at no additional cost to the Authority. The Authority Representative shall label each container with the batch number and the date of manufacture on each occasion that a delivery is made. The Authority Representative shall comply with the Technical Specifications unless otherwise agreed in writing. The Authority Representative shall maintain the insurance policy in force without prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
@@ -1677,12 +1677,12 @@
 "title": null,
 "page": 4,
 "char_start": 0,
-"char_end": 217,
+"char_end": 216,
 "text": "1.1 The Authority shall provide a certificate of analysis for each batch without prejudice to any other remedy. The Tenderer shall return the empty containers at its own cost on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-247.8489990234375,
+247.947998046875,
 477.3499755859375,
 286.39801025390625
 ],
@@ -1701,14 +1701,14 @@
 "title": null,
 "page": 4,
 "char_start": 0,
-"char_end": 101,
+"char_end": 100,
 "text": "(a) The Tenderer shall submit the monthly delivery programme at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 303.9809875488281,
 477.3169250488281,
-326.25299072265625
+328.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1749,14 +1749,14 @@
 "title": null,
 "page": 4,
 "char_start": 0,
-"char_end": 238,
+"char_end": 237,
 "text": "2.1 The Supplier shall label each container with the batch number and the date of manufacture on each occasion that a delivery is made. The Authority shall return the empty containers at its own cost where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 443.8489990234375,
-467.6040344238281,
-494.25299072265625
+476.12896728515625,
+482.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1778,9 +1778,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-513.8489990234375,
+499.8489990234375,
 470.0129699707031,
-538.3980102539062
+524.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1802,9 +1802,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-541.9810180664062,
+527.9810180664062,
 476.1069641113281,
-566.3980102539062
+552.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1818,17 +1818,17 @@
 "part": "Part 2",
 "number": "3",
 "label": null,
-"title": "Submission of Tender",
+"title": "",
 "page": 4,
 "char_start": 0,
-"char_end": 370,
-"text": "3. Submission of Tender\nThe nominated store keeper shall label each container with the batch number and the date of manufacture where the Goods are supplied in bulk. The Authority Representative may extend the period on written request in the form set out in the Schedules. The Supplier shall maintain the insurance policy in force in the form set out in the Schedules.",
+"char_end": 369,
+"text": "3.\nSubmission of Tender\nThe nominated store keeper shall label each container with the batch number and the date of manufacture where the Goods are supplied in bulk. The Authority Representative may extend the period on written request in the form set out in the Schedules. The Supplier shall maintain the insurance policy in force in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-584.0469970703125,
-178.9859619140625,
-606.2529907226562
+570.0469970703125,
+81.17399597167969,
+578.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1846,13 +1846,13 @@
 "page": 5,
 "char_start": 0,
 "char_end": 211,
-"text": "3.1 The Authority shall return the empty containers at its own cost unless otherwise agreed in writing. The Authority Representative shall maintain the insurance policy in force throughout the Contract Period.",
+"text": "3.1 The Authority shall return the empty containers at its own cost unless otherwise a greed in writing. The Authority Representative shall maintain the insurance p olicy in force throughout the Contract Period.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-79.8489990234375,
-469.38592529296875,
-118.39800262451172
+65.98100280761719,
+476.11798095703125,
+104.39800262451172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1869,14 +1869,14 @@
 "title": null,
 "page": 5,
 "char_start": 0,
-"char_end": 217,
-"text": "3.2 The Tenderer shall deliver the Goods to the nominated store within fourteen days o f the Purchase Order. The Authority Representative shall notify the other p arty in writing in the form set out in the Schedules.",
+"char_end": 214,
+"text": "3.2 The Tenderer shall deliver the Goods to the nominated store within fourteen days of the Purchase Order. The Authority Representative shall notify the other party in writing in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-135.8489990234375,
+121.8489990234375,
 485.3139953613281,
-174.3979949951172
+160.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1898,9 +1898,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-191.947998046875,
+177.947998046875,
 444.34991455078125,
-230.3979949951172
+216.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1917,14 +1917,14 @@
 "title": null,
 "page": 5,
 "char_start": 0,
-"char_end": 245,
-"text": "3.4 The Tenderer shall label each container with the batch number and the date of manufacture at no additional cost to the Authority. The Authority Representative may extend the period on written request without prejudice to any o ther remedy.",
+"char_end": 242,
+"text": "3.4 The Tenderer shall label each container with the batch number and the date of manufacture at no additional cost to the Authority. The Authority Representative may extend the period on written request without prejudice to any other remedy.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-247.947998046875,
-479.1979675292969,
-300.39801025390625
+233.947998046875,
+473.08197021484375,
+272.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1946,9 +1946,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-317.947998046875,
+289.947998046875,
 449.805908203125,
-342.39801025390625
+314.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1965,14 +1965,14 @@
 "title": null,
 "page": 5,
 "char_start": 0,
-"char_end": 115,
-"text": "(b) The Authority Representative shall maintain the insurance policy in force u nless otherwise agreed in writing.",
+"char_end": 113,
+"text": "(b) The Authority Representative shall maintain the insurance policy in force unless otherwise agreed in writing.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-345.8489990234375,
-457.7589111328125,
-370.39801025390625
+317.947998046875,
+475.49090576171875,
+342.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -1994,9 +1994,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-373.947998046875,
+345.947998046875,
 462.071044921875,
-398.39801025390625
+370.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2018,9 +2018,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-401.947998046875,
+373.947998046875,
 436.9909973144531,
-426.39801025390625
+398.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2042,9 +2042,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-429.947998046875,
+401.947998046875,
 445.5379638671875,
-454.39801025390625
+426.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2061,14 +2061,14 @@
 "title": "",
 "page": 5,
 "char_start": 0,
-"char_end": 341,
+"char_end": 340,
 "text": "4.\nLate Tenders\nThe Contractor shall notify the other party in writing within fourteen days of the Purchase Order. The Supplier may reject any consignment that fails the acceptance test within fourteen days of the Purchase Order. The Authority Representative shall submit the monthly delivery programme where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-472.0469970703125,
+444.0469970703125,
 81.17399597167969,
-480.0
+452.0
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2085,14 +2085,14 @@
 "title": null,
 "page": 5,
 "char_start": 0,
-"char_end": 207,
+"char_end": 206,
 "text": "4.1 The Authority shall allow inspection of the production facility in the form set out in the Schedules. The Supplier shall keep a record of every batch supplied within fourteen days of the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-583.8489990234375,
-470.6180419921875,
-622.3980102539062
+555.947998046875,
+464.5349426269531,
+594.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2109,14 +2109,14 @@
 "title": "",
 "page": 5,
 "char_start": 0,
-"char_end": 417,
-"text": "5.\nPrice Basis\nThe Tenderer shall return the empty containers at its own cost within fourteen days\nof the Purchase Order. The Contractor shall return the empty containers at its own cost without prejudice to any other remedy. The Authority shall keep a record of every batch supplied unless otherwise agreed in writing. The Authority shall keep a record of every batch supplied where the Goods are supplied in bulk.",
+"char_end": 415,
+"text": "5.\nPrice Basis\nThe Tenderer shall return the empty containers at its own cost within fourteen days of the Purchase Order. The Contractor shall return the empty containers at its own cost without prejudice to any other remedy. The Authority shall keep a record of\nevery batch supplied unless otherwise agreed in writing. The Authority shall keep a record of every batch supplied where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-640.2009887695312,
+612.2009887695312,
 81.17399597167969,
-648.2529907226562
+620.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2138,9 +2138,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-135.947998046875,
+107.947998046875,
 477.9769592285156,
-174.3979949951172
+146.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2157,14 +2157,14 @@
 "title": null,
 "page": 6,
 "char_start": 0,
-"char_end": 219,
+"char_end": 217,
 "text": "5.2 The Authority Representative may extend the period on written request on each occasion that a delivery is made. The Authority shall return the empty containers at its own cost in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-191.8489990234375,
-494.4880065917969,
-228.2530059814453
+163.9810028076172,
+477.37200927734375,
+200.2530059814453
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2186,9 +2186,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-247.8489990234375,
+219.8489990234375,
 473.68707275390625,
-270.25299072265625
+242.2530059814453
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2205,14 +2205,14 @@
 "title": null,
 "page": 6,
 "char_start": 0,
-"char_end": 109,
+"char_end": 108,
 "text": "(b) The Authority shall deliver the Goods to the nominated store within fourteen days of the Purchase Order.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-275.8489990234375,
-473.0710144042969,
-300.39801025390625
+247.8489990234375,
+455.95501708984375,
+272.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2234,9 +2234,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-303.8489990234375,
+275.8489990234375,
 470.0129699707031,
-326.25299072265625
+298.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2258,9 +2258,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-331.8489990234375,
+303.8489990234375,
 465.1400451660156,
-354.25299072265625
+326.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2282,9 +2282,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-359.8489990234375,
+331.8489990234375,
 448.59600830078125,
-384.39801025390625
+356.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2306,9 +2306,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-402.0469970703125,
+374.0469970703125,
 81.17399597167969,
-410.25299072265625
+382.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2325,14 +2325,14 @@
 "title": null,
 "page": 6,
 "char_start": 0,
-"char_end": 193,
+"char_end": 192,
 "text": "6.1 The Authority shall keep a record of every batch supplied within fourteen days of the Purchase Order. The Tenderer shall bear the cost of replacement without prejudice to any other remedy.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-499.8489990234375,
-485.9189758300781,
-538.3980102539062
+471.947998046875,
+471.2449645996094,
+510.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2349,14 +2349,14 @@
 "title": null,
 "page": 6,
 "char_start": 0,
-"char_end": 243,
+"char_end": 242,
 "text": "6.2 The nominated store keeper may reject any consignment that fails the acceptance test where the Goods are supplied in bulk. The Authority Representative shall maintain the insurance policy in force on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-555.947998046875,
+527.947998046875,
 489.5929870605469,
-594.3980102539062
+566.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2373,14 +2373,14 @@
 "title": "",
 "page": 6,
 "char_start": 0,
-"char_end": 354,
-"text": "7.\nCompliance Schedule\nThe Tenderer shall deliver the Goods to the nominated store on each occasion that a delivery is made. The Authority Representative shall provide a certificate of analysis for each batch before the delivery date stated in the Purchase Order. The\nSupplier shall bear the cost of replacement on each occasion that a delivery is made.",
+"char_end": 353,
+"text": "7.\nCompliance Schedule\nThe Tenderer shall deliver the Goods to the nominated store on each occasion that a delivery is made. The Authority Representative shall provide a certificate of analysis for each batch before the delivery date stated in the Purchase Order. The Supplier shall bear the cost of replacement on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-612.2009887695312,
+584.2009887695312,
 81.17399597167969,
-620.0
+592.0
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2397,14 +2397,14 @@
 "title": null,
 "page": 7,
 "char_start": 0,
-"char_end": 228,
+"char_end": 227,
 "text": "7.1 The Contractor shall return the empty containers at its own cost where the Goods are supplied in bulk. The Authority Representative shall maintain the insurance policy in force subject to the Special Conditions of Contract.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-107.8489990234375,
+79.8489990234375,
 485.90802001953125,
-146.3979949951172
+118.39800262451172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2426,9 +2426,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-163.8489990234375,
+135.8489990234375,
 466.9769592285156,
-202.3979949951172
+174.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2445,14 +2445,14 @@
 "title": null,
 "page": 7,
 "char_start": 0,
-"char_end": 128,
+"char_end": 127,
 "text": "(a) The Authority Representative shall notify the other party in writing before the delivery date stated in the Purchase Order.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-219.8489990234375,
-476.1180114746094,
-244.3979949951172
+191.947998046875,
+459.00201416015625,
+216.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2474,9 +2474,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-247.9810028076172,
+219.9810028076172,
 485.9189453125,
-272.39801025390625
+244.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2493,14 +2493,14 @@
 "title": "",
 "page": 7,
 "char_start": 0,
-"char_end": 228,
+"char_end": 227,
 "text": "8.\nParticulars of Goods\nThe Authority Representative may extend the period on written request where the Goods are supplied in bulk. The Tenderer shall maintain the insurance policy in force in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-290.0469970703125,
+262.0469970703125,
 81.17399597167969,
-298.25299072265625
+270.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2517,14 +2517,14 @@
 "title": null,
 "page": 7,
 "char_start": 0,
-"char_end": 191,
+"char_end": 190,
 "text": "8.1 The Supplier shall bear the cost of replacement unless otherwise agreed in writing. The Tenderer shall allow inspection of the production facility at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-387.8489990234375,
+359.8489990234375,
 454.73388671875,
-424.25299072265625
+398.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2541,14 +2541,14 @@
 "title": null,
 "page": 7,
 "char_start": 0,
-"char_end": 209,
+"char_end": 208,
 "text": "8.2 The Supplier shall comply with the Technical Specifications at no additional cost to the Authority. The Tenderer shall return the empty containers at its own cost on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-443.8489990234375,
-460.2339782714844,
-482.39801025390625
+415.8489990234375,
+466.3499755859375,
+454.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2565,14 +2565,14 @@
 "title": null,
 "page": 7,
 "char_start": 0,
-"char_end": 95,
+"char_end": 94,
 "text": "(a) The Authority shall maintain the insurance policy in force throughout the Contract Period.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-499.8489990234375,
-454.72296142578125,
-522.2529907226562
+471.947998046875,
+437.6069641113281,
+494.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2594,9 +2594,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-527.947998046875,
+499.947998046875,
 470.0019226074219,
-552.3980102539062
+524.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2613,14 +2613,14 @@
 "title": "",
 "page": 7,
 "char_start": 0,
-"char_end": 344,
+"char_end": 341,
 "text": "9.\nNon-collusive Tendering\nThe nominated store keeper may reject any consignment that fails the acceptance test at no additional cost to the Authority. The Authority shall maintain the insurance policy in force throughout the Contract Period. The Authority shall deliver the Goods to the nominated store in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-570.0469970703125,
+542.0469970703125,
 81.17399597167969,
-578.2529907226562
+550.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2638,11 +2638,11 @@
 "page": 7,
 "char_start": 0,
 "char_end": 203,
-"text": "9.1 The Tenderer shall maintain the insurance policy in force on each occasion that\na delivery is made. The Supplier shall provide a certificate of analysis for each batch throughout the Contract Period.",
+"text": "9.1 The Tenderer shall maintain the insurance policy in force on each occasion that a delivery is made. The Supplier shall provide a certificate of analysis for each batch throughout the Contract Period.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-681.947998046875,
+653.947998046875,
 476.7449645996094,
 692.3980102539062
 ],
@@ -2666,9 +2666,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-107.8489990234375,
+79.8489990234375,
 487.7559814453125,
-146.3979949951172
+118.39800262451172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2685,14 +2685,14 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 215,
+"char_end": 214,
 "text": "9.3 The Contractor shall provide a certificate of analysis for each batch without prejudice to any other remedy. The Authority shall return the empty containers at its own cost where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-163.8489990234375,
-481.0129699707031,
-202.3979949951172
+135.8489990234375,
+463.89697265625,
+174.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2709,14 +2709,14 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 230,
+"char_end": 228,
 "text": "9.4 The nominated store keeper shall submit the monthly delivery programme at no additional cost to the Authority. The Authority may reject any consignment that fails the acceptance test on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-219.9810028076172,
-477.3499450683594,
-258.39801025390625
+191.9810028076172,
+476.7229309082031,
+230.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2738,9 +2738,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-275.8489990234375,
+247.8489990234375,
 464.5020446777344,
-300.39801025390625
+272.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2757,14 +2757,14 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 119,
+"char_end": 118,
 "text": "(b) The Authority Representative shall comply with the Technical Specifications without prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-303.8489990234375,
-473.6429138183594,
-328.39801025390625
+275.8489990234375,
+456.52691650390625,
+300.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2786,9 +2786,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-346.0469970703125,
+318.0469970703125,
 87.28999328613281,
-354.25299072265625
+326.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2810,9 +2810,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-443.947998046875,
+415.947998046875,
 470.6399841308594,
-482.39801025390625
+454.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2829,14 +2829,14 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 194,
+"char_end": 192,
 "text": "10.2 The Authority shall notify the other party in writing throughout the Contract Period. The Contractor shall comply with the Technical Specifications at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-499.8489990234375,
-473.0820007324219,
-536.2529907226562
+471.8489990234375,
+455.9659729003906,
+510.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2853,14 +2853,14 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 206,
+"char_end": 205,
 "text": "10.3 The Supplier shall allow inspection of the production facility without prejudice to any other remedy. The Authority shall deliver the Goods to the nominated store in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-555.8489990234375,
-463.9079895019531,
-592.2529907226562
+527.8489990234375,
+446.7919921875,
+564.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2882,9 +2882,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-611.8489990234375,
+583.8489990234375,
 446.16497802734375,
-650.3980102539062
+622.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2901,14 +2901,14 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 119,
+"char_end": 118,
 "text": "(a) The Authority Representative shall comply with the Technical Specifications without prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-667.8489990234375,
-473.6429138183594,
-692.3980102539062
+639.8489990234375,
+456.52691650390625,
+664.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2923,16 +2923,16 @@
 "number": null,
 "label": "(b)",
 "title": null,
-"page": 9,
+"page": 8,
 "char_start": 0,
 "char_end": 111,
 "text": "(b) The nominated store keeper shall maintain the insurance policy in force unless otherwise agreed in writing.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-65.947998046875,
+667.947998046875,
 470.6069030761719,
-90.39800262451172
+692.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2954,9 +2954,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-108.0469970703125,
+80.0469970703125,
 87.28999328613281,
-116.0
+88.0
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2978,9 +2978,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-205.947998046875,
+177.947998046875,
 475.5350341796875,
-244.3979949951172
+216.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -2997,14 +2997,14 @@
 "title": null,
 "page": 9,
 "char_start": 0,
-"char_end": 186,
+"char_end": 185,
 "text": "11.2 The Tenderer shall bear the cost of replacement in the form set out in the Schedules. The Contractor shall notify the other party in writing at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-261.947998046875,
+233.947998046875,
 452.30303955078125,
-298.25299072265625
+272.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3021,14 +3021,14 @@
 "title": null,
 "page": 9,
 "char_start": 0,
-"char_end": 130,
+"char_end": 129,
 "text": "(a) The Authority Representative shall provide a certificate of analysis for each batch on each occasion that a delivery is made.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-317.8489990234375,
-469.990966796875,
-342.39801025390625
+289.947998046875,
+452.8749694824219,
+314.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3050,9 +3050,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-345.8489990234375,
+317.8489990234375,
 481.595947265625,
-368.25299072265625
+340.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3069,14 +3069,14 @@
 "title": "",
 "page": 9,
 "char_start": 0,
-"char_end": 251,
+"char_end": 248,
 "text": "12.\nNon-collusive Tendering Certificate\nThe Authority shall allow inspection of the production facility unless otherwise agreed in writing. The Authority Representative shall notify the other party in writing at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-388.0469970703125,
+360.0469970703125,
 87.28999328613281,
-396.0
+368.0
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3093,14 +3093,14 @@
 "title": null,
 "page": 9,
 "char_start": 0,
-"char_end": 202,
+"char_end": 201,
 "text": "12.1 The Supplier shall keep a record of every batch supplied where the Goods are supplied in bulk. The Contractor shall comply with the Technical Specifications at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-485.8489990234375,
+457.8489990234375,
 476.7559814453125,
-522.2529907226562
+496.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3117,14 +3117,14 @@
 "title": null,
 "page": 9,
 "char_start": 0,
-"char_end": 221,
+"char_end": 220,
 "text": "12.2 The Supplier shall keep a record of every batch supplied before the delivery date stated in the Purchase Order. The Authority may reject any consignment that fails the acceptance test throughout the Contract Period.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-541.8489990234375,
-477.9659423828125,
-580.3980102539062
+513.8489990234375,
+482.2559814453125,
+552.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3146,9 +3146,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-598.0469970703125,
+570.0469970703125,
 87.28999328613281,
-606.2529907226562
+578.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3163,16 +3163,16 @@
 "number": "13.1",
 "label": null,
 "title": null,
-"page": 10,
+"page": 9,
 "char_start": 0,
 "char_end": 197,
-"text": "13.1 The Contractor shall bear the cost of replacement on each occasion that a delivery is made. The Supplier shall allow inspection of the production facility in the form set out in the Schedules.",
+"text": "13.1 The Contractor shall bear the cost of replacement on each occasion that a delivery is made. The Supplier shall allow inspection of the production facility\nin the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-65.8489990234375,
+667.8489990234375,
 457.1980285644531,
-102.25299835205078
+692.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3194,9 +3194,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-121.8489990234375,
+93.8489990234375,
 469.3970031738281,
-144.2530059814453
+116.25299835205078
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3213,14 +3213,14 @@
 "title": "",
 "page": 10,
 "char_start": 0,
-"char_end": 231,
+"char_end": 229,
 "text": "14.\nClarification\nThe Authority Representative shall notify the other party in writing unless otherwise agreed in writing. The Authority Representative shall notify the other party in writing in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-164.0469970703125,
+136.0469970703125,
 87.28999328613281,
-172.0
+144.0
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3237,14 +3237,14 @@
 "title": null,
 "page": 10,
 "char_start": 0,
-"char_end": 225,
+"char_end": 224,
 "text": "14.1 The nominated store keeper may extend the period on written request in the form set out in the Schedules. The nominated store keeper shall comply with the Technical Specifications at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-261.947998046875,
+233.947998046875,
 491.4300231933594,
-300.39801025390625
+272.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3266,9 +3266,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-317.8489990234375,
+289.8489990234375,
 461.4329833984375,
-340.25299072265625
+312.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3285,14 +3285,14 @@
 "title": null,
 "page": 10,
 "char_start": 0,
-"char_end": 106,
+"char_end": 105,
 "text": "(b) The nominated store keeper shall bear the cost of replacement at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-345.947998046875,
+317.947998046875,
 471.8609924316406,
-368.25299072265625
+342.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3314,9 +3314,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-373.8489990234375,
+345.8489990234375,
 483.4109191894531,
-396.25299072265625
+368.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3333,38 +3333,14 @@
 "title": null,
 "page": 10,
 "char_start": 0,
-"char_end": 152,
-"text": "(i) The Authority Representative shall label each container with the batch number and the date of manufacture on each occasion that a delivery is made.",
+"char_end": 263,
+"text": "(i) The Authority Representative shall label each container with the batch\nnumber and the date of manufacture on each occasion that a delivery is made. (ii) The Supplier may reject any consignment that fails the acceptance test unless otherwise agreed in writing.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-401.8489990234375,
-479.219970703125,
-426.39801025390625
-],
-"source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
-},
-{
-"doc_name": null,
-"ref_no": "SYN-TERMS-1",
-"rule_version": "January 2026",
-"node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:14.1:(c):(ii)",
-"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:14.1:(c)",
-"kind": "subitem",
-"part": "Part 2",
-"number": null,
-"label": "(ii)",
-"title": null,
-"page": 10,
-"char_start": 0,
-"char_end": 111,
-"text": "(ii) The Supplier may reject any consignment that fails the acceptance test unless otherwise agreed in writing.",
-"is_coarse": 0,
-"bbox": [
-72.0,
-429.8489990234375,
-444.3280334472656,
-454.39801025390625
+373.9809875488281,
+437.60693359375,
+384.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3381,14 +3357,14 @@
 "title": "",
 "page": 10,
 "char_start": 0,
-"char_end": 209,
+"char_end": 208,
 "text": "15.\nAlternative Offers\nThe Authority may extend the period on written request throughout the Contract Period. The Supplier shall keep a record of every batch supplied on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-472.0469970703125,
+444.0469970703125,
 87.28999328613281,
-480.25299072265625
+452.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3405,14 +3381,14 @@
 "title": null,
 "page": 10,
 "char_start": 0,
-"char_end": 227,
+"char_end": 225,
 "text": "15.1 The Contractor shall allow inspection of the production facility at no additional cost to the Authority. The Authority shall comply with the Technical Specifications before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-569.8489990234375,
-466.9660339355469,
-608.3980102539062
+541.8489990234375,
+457.78094482421875,
+580.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3430,13 +3406,13 @@
 "page": 10,
 "char_start": 0,
 "char_end": 332,
-"text": "16.\nEvaluation of Tenders\nThe Supplier shall return the empty containers at its own cost subject to the Special Conditions of Contract. The Tenderer shall deliver the Goods to the\nnominated store where the Goods are supplied in bulk. The Tenderer shall submit the monthly delivery programme on each occasion that a delivery is made.",
+"text": "16.\nEvaluation of Tenders\nThe Supplier shall return the empty containers at its own cost subject to the Special Conditions of Contract. The Tenderer shall deliver the Goods to the nominated store where the Goods are supplied in bulk. The Tenderer shall submit the monthly delivery programme on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-626.0469970703125,
+598.0469970703125,
 87.28999328613281,
-634.2529907226562
+606.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3458,9 +3434,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-107.947998046875,
+79.947998046875,
 495.7090148925781,
-146.3979949951172
+118.39800262451172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3477,14 +3453,14 @@
 "title": null,
 "page": 11,
 "char_start": 0,
-"char_end": 224,
+"char_end": 223,
 "text": "16.2 The Authority shall comply with the Technical Specifications throughout the Contract Period. The nominated store keeper shall keep a record of every batch supplied before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-163.8489990234375,
-478.57098388671875,
-202.3979949951172
+135.8489990234375,
+472.4659729003906,
+174.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3501,14 +3477,14 @@
 "title": null,
 "page": 11,
 "char_start": 0,
-"char_end": 115,
+"char_end": 114,
 "text": "(a) The Authority shall return the empty containers at its own cost subject to the Special Conditions of Contract.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-219.8489990234375,
-474.8970642089844,
-244.3979949951172
+191.9810028076172,
+457.7810363769531,
+216.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3530,9 +3506,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-247.9810028076172,
+219.9810028076172,
 478.5268859863281,
-272.39801025390625
+244.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3554,9 +3530,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-275.8489990234375,
+247.8489990234375,
 442.47998046875,
-300.39801025390625
+272.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3573,14 +3549,14 @@
 "title": null,
 "page": 11,
 "char_start": 0,
-"char_end": 112,
+"char_end": 111,
 "text": "(i) The Authority may reject any consignment that fails the acceptance test unless otherwise agreed in writing.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-303.8489990234375,
-462.0600280761719,
-328.39801025390625
+275.947998046875,
+444.94403076171875,
+300.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3602,9 +3578,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-331.9809875488281,
+303.9809875488281,
 451.6540222167969,
-356.39801025390625
+328.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3618,17 +3594,17 @@
 "part": "Part 2",
 "number": "17",
 "label": null,
-"title": "",
+"title": "Acceptance",
 "page": 11,
 "char_start": 0,
-"char_end": 382,
-"text": "17.\nAcceptance\nThe Supplier shall submit the monthly delivery programme before the delivery date stated in the Purchase Order. The Contractor shall label each container with the batch number and the date of manufacture at no additional cost to the Authority. The Tenderer shall provide a certificate of analysis for each batch before the delivery date stated in the Purchase Order.",
+"char_end": 381,
+"text": "17. Acceptance\nThe Supplier shall submit the monthly delivery programme before the delivery date stated in the Purchase Order. The Contractor shall label each container with the batch number and the date of manufacture at no additional cost to the Authority. The Tenderer shall provide a certificate of analysis for each batch before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-374.0469970703125,
-87.28999328613281,
-382.0
+346.0469970703125,
+129.47499084472656,
+370.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3645,14 +3621,14 @@
 "title": null,
 "page": 11,
 "char_start": 0,
-"char_end": 251,
+"char_end": 250,
 "text": "17.1 The nominated store keeper may extend the period on written request subject to the Special Conditions of Contract. The Authority Representative may reject any consignment that fails the acceptance test within fourteen days of the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-499.9809875488281,
-490.7919616699219,
-550.2529907226562
+471.9809875488281,
+486.5460205078125,
+522.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3674,9 +3650,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-569.8489990234375,
+541.8489990234375,
 476.7339782714844,
-594.3980102539062
+566.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3698,9 +3674,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-597.947998046875,
+569.947998046875,
 451.6650390625,
-620.2529907226562
+592.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3722,9 +3698,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-625.8489990234375,
+597.8489990234375,
 455.9439392089844,
-648.2529907226562
+620.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3746,9 +3722,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-653.8489990234375,
+625.8489990234375,
 452.88604736328125,
-678.3980102539062
+650.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3765,38 +3741,14 @@
 "title": null,
 "page": 11,
 "char_start": 0,
-"char_end": 78,
-"text": "(ii) The Contractor shall submit the monthly delivery programme throughout the",
+"char_end": 95,
+"text": "(ii) The Contractor shall submit the monthly delivery programme throughout the Contract Period.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-681.8489990234375,
+653.8489990234375,
 468.1429138183594,
-692.3980102539062
-],
-"source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
-},
-{
-"doc_name": null,
-"ref_no": "SYN-TERMS-1",
-"rule_version": "January 2026",
-"node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:17.1:(c):tail",
-"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:17.1:(c)",
-"kind": "subitem",
-"part": "Part 2",
-"number": null,
-"label": null,
-"title": null,
-"page": 12,
-"char_start": 0,
-"char_end": 16,
-"text": "Contract Period.",
-"is_coarse": 0,
-"bbox": [
-72.0,
-65.8489990234375,
-175.93898010253906,
-74.25299835205078
+676.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3813,14 +3765,14 @@
 "title": "",
 "page": 12,
 "char_start": 0,
-"char_end": 434,
+"char_end": 432,
 "text": "18.\nCancellation\nThe Authority shall allow inspection of the production facility throughout the Contract Period. The Authority shall bear the cost of replacement in the form set out in the Schedules. The Tenderer shall return the empty containers at its own cost within fourteen days of the Purchase Order. The Supplier may reject any consignment that fails the acceptance test before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-94.0469970703125,
+66.0469970703125,
 87.28999328613281,
-102.25299835205078
+74.25299835205078
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3837,14 +3789,14 @@
 "title": null,
 "page": 12,
 "char_start": 0,
-"char_end": 206,
+"char_end": 205,
 "text": "18.1 The Authority Representative shall keep a record of every batch supplied where the Goods are supplied in bulk. The Supplier shall maintain the insurance policy in force throughout the Contract Period.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-233.8489990234375,
-501.19793701171875,
-272.39801025390625
+205.947998046875,
+484.0819396972656,
+244.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3866,9 +3818,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-289.8489990234375,
+261.8489990234375,
 433.9329528808594,
-312.25299072265625
+284.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3890,9 +3842,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-317.947998046875,
+289.947998046875,
 489.58197021484375,
-342.39801025390625
+314.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3906,17 +3858,17 @@
 "part": "Part 2",
 "number": "19",
 "label": null,
-"title": "",
+"title": "Personal Data",
 "page": 12,
 "char_start": 0,
-"char_end": 405,
-"text": "19.\nPersonal Data\nThe Authority Representative shall label each container with the batch number and the date of manufacture where the Goods are supplied in bulk. The Authority Representative may reject any consignment that fails the acceptance test on each occasion that a delivery is made. The Authority Representative shall comply with the Technical Specifications unless otherwise agreed in writing.",
+"char_end": 402,
+"text": "19. Personal Data\nThe Authority Representative shall label each container with the batch number and the date of manufacture where the Goods are supplied in bulk. The Authority Representative may reject any consignment that fails the acceptance test on each occasion that a delivery is made. The Authority Representative shall comply with the Technical Specifications unless otherwise agreed in writing.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-360.0469970703125,
-87.28999328613281,
-368.25299072265625
+332.0469970703125,
+141.69598388671875,
+354.25299072265625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3938,9 +3890,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-485.9809875488281,
+457.9809875488281,
 486.4908752441406,
-524.3980102539062
+496.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3957,14 +3909,14 @@
 "title": null,
 "page": 12,
 "char_start": 0,
-"char_end": 113,
+"char_end": 112,
 "text": "(a) The Authority Representative shall keep a record of every batch supplied unless otherwise agreed in writing.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-541.8489990234375,
-495.0709533691406,
-566.3980102539062
+513.947998046875,
+477.9549560546875,
+538.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -3986,9 +3938,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-569.9810180664062,
+541.9810180664062,
 485.9189453125,
-594.3980102539062
+566.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4010,9 +3962,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-597.8489990234375,
+569.8489990234375,
 483.42193603515625,
-620.2529907226562
+592.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4034,9 +3986,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-625.947998046875,
+597.947998046875,
 463.2920227050781,
-648.2529907226562
+620.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4053,14 +4005,14 @@
 "title": null,
 "page": 12,
 "char_start": 0,
-"char_end": 112,
+"char_end": 111,
 "text": "(ii) The Authority Representative shall notify the other party in writing in the form set out in the Schedules.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-653.8489990234375,
-446.1429748535156,
-676.2529907226562
+625.947998046875,
+447.375,
+648.2529907226562
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4068,23 +4020,47 @@
 "doc_name": null,
 "ref_no": "SYN-TERMS-1",
 "rule_version": "January 2026",
-"node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:20",
-"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2",
-"kind": "clause",
+"node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:19.1:(c):tail",
+"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:19.1:(c)",
+"kind": "subitem",
 "part": "Part 2",
-"number": "20",
+"number": null,
 "label": null,
-"title": "",
-"page": 13,
+"title": null,
+"page": 12,
 "char_start": 0,
-"char_end": 249,
-"text": "20.\nBreach of Anti-collusion Terms\nThe nominated store keeper shall notify the other party in writing in the form set out in the Schedules. The nominated store keeper shall maintain the insurance policy in force in the form set out in the Schedules.",
-"is_coarse": 1,
+"char_end": 30,
+"text": "Breach of Anti-collusion Terms",
+"is_coarse": 0,
 "bbox": [
 72.0,
-66.0469970703125,
-87.28999328613281,
-74.25299835205078
+681.947998046875,
+221.76495361328125,
+690.2529907226562
+],
+"source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
+},
+{
+"doc_name": null,
+"ref_no": "SYN-TERMS-1",
+"rule_version": "January 2026",
+"node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:19.1:tail",
+"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:19.1",
+"kind": "subitem",
+"part": "Part 2",
+"number": null,
+"label": null,
+"title": null,
+"page": 13,
+"char_start": 0,
+"char_end": 214,
+"text": "The nominated store keeper shall notify the other party in writing in the form set out in the Schedules. The nominated store keeper shall maintain the insurance policy in force in the form set out in the Schedules.",
+"is_coarse": 0,
+"bbox": [
+72.0,
+79.947998046875,
+485.91888427734375,
+116.25299835205078
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4093,7 +4069,7 @@
 "ref_no": "SYN-TERMS-1",
 "rule_version": "January 2026",
 "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:20.1",
-"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:20",
+"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:19",
 "kind": "subclause",
 "part": "Part 2",
 "number": "20.1",
@@ -4106,9 +4082,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-163.947998046875,
+135.947998046875,
 485.89691162109375,
-202.3979949951172
+174.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4117,7 +4093,7 @@
 "ref_no": "SYN-TERMS-1",
 "rule_version": "January 2026",
 "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:20.2",
-"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:20",
+"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:19",
 "kind": "subclause",
 "part": "Part 2",
 "number": "20.2",
@@ -4130,9 +4106,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-219.9810028076172,
+191.9810028076172,
 481.0240173339844,
-258.39801025390625
+230.3979949951172
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4141,7 +4117,7 @@
 "ref_no": "SYN-TERMS-1",
 "rule_version": "January 2026",
 "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:20.3",
-"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:20",
+"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:19",
 "kind": "subclause",
 "part": "Part 2",
 "number": "20.3",
@@ -4149,14 +4125,14 @@
 "title": null,
 "page": 13,
 "char_start": 0,
-"char_end": 218,
+"char_end": 217,
 "text": "20.3 The Supplier shall comply with the Technical Specifications in the form set out in the Schedules. The Authority Representative shall keep a record of every batch supplied on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-275.8489990234375,
+247.8489990234375,
 475.50201416015625,
-314.39801025390625
+286.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4165,7 +4141,7 @@
 "ref_no": "SYN-TERMS-1",
 "rule_version": "January 2026",
 "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:20.4",
-"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:20",
+"parent_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:19",
 "kind": "subclause",
 "part": "Part 2",
 "number": "20.4",
@@ -4173,14 +4149,14 @@
 "title": null,
 "page": 13,
 "char_start": 0,
-"char_end": 203,
+"char_end": 202,
 "text": "20.4 The Contractor shall bear the cost of replacement where the Goods are supplied in bulk. The Authority may reject any consignment that fails the acceptance test where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-331.8489990234375,
+303.8489990234375,
 487.7559814453125,
-370.39801025390625
+342.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4194,17 +4170,17 @@
 "part": "Part 2",
 "number": "21",
 "label": null,
-"title": "",
+"title": "Enquiries",
 "page": 13,
 "char_start": 0,
-"char_end": 423,
-"text": "21.\nEnquiries\nThe Authority shall notify the other party in writing without prejudice to any other remedy. The Tenderer shall maintain the insurance policy in force unless otherwise agreed in writing. The nominated store keeper may extend the period on written request subject to the Special Conditions of Contract. The Tenderer shall provide a certificate of analysis for each batch without prejudice to any other remedy.",
+"char_end": 422,
+"text": "21. Enquiries\nThe Authority shall notify the other party in writing without prejudice to any other remedy. The Tenderer shall maintain the insurance policy in force unless otherwise agreed in writing. The nominated store keeper may extend the period on written request subject to the Special Conditions of Contract. The Tenderer shall provide a certificate of analysis for each batch without prejudice to any other remedy.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-388.0469970703125,
-87.28999328613281,
-396.0
+360.0469970703125,
+117.84799194335938,
+384.39801025390625
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4221,14 +4197,14 @@
 "title": null,
 "page": 13,
 "char_start": 0,
-"char_end": 211,
+"char_end": 210,
 "text": "21.1 The nominated store keeper shall bear the cost of replacement within fourteen days of the Purchase Order. The Supplier shall comply with the Technical Specifications at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-527.947998046875,
+485.947998046875,
 476.7559814453125,
-566.3980102539062
+524.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4245,14 +4221,14 @@
 "title": null,
 "page": 13,
 "char_start": 0,
-"char_end": 119,
+"char_end": 118,
 "text": "(a) The Authority Representative shall allow inspection of the production facility unless otherwise agreed in writing.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-583.8489990234375,
-473.0489196777344,
-608.3980102539062
+541.947998046875,
+455.93292236328125,
+566.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4274,9 +4250,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-611.8489990234375,
+569.8489990234375,
 468.8030090332031,
-636.3980102539062
+594.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4293,14 +4269,14 @@
 "title": null,
 "page": 13,
 "char_start": 0,
-"char_end": 134,
+"char_end": 133,
 "text": "(c) The Tenderer shall label each container with the batch number and the date of manufacture at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-639.947998046875,
+597.947998046875,
 469.4190368652344,
-662.2529907226562
+622.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4317,14 +4293,14 @@
 "title": null,
 "page": 13,
 "char_start": 0,
-"char_end": 106,
+"char_end": 104,
 "text": "(i) The Authority shall comply with the Technical Specifications at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-667.8489990234375,
-432.69000244140625,
-690.2529907226562
+625.8489990234375,
+415.573974609375,
+650.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4339,16 +4315,16 @@
 "number": null,
 "label": "(ii)",
 "title": null,
-"page": 14,
+"page": 13,
 "char_start": 0,
 "char_end": 95,
-"text": "(ii) The Contractor shall notify the other party in writing unless otherwise agreed in writing.",
+"text": "(ii) The Contractor shall notify the other party in writing unless otherwise\nagreed in writing.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-65.8489990234375,
+653.8489990234375,
 433.2948913574219,
-90.39800262451172
+664.3980102539062
 ],
 "source_file": "02 Interpretation, Terms of Tender and General Conditions of Contract.pdf"
 },
@@ -4363,7 +4339,7 @@
 "number": "3",
 "label": null,
 "title": "",
-"page": 15,
+"page": 14,
 "char_start": 0,
 "char_end": 37,
 "text": "PART 3\nGENERAL CONDITIONS OF CONTRACT",
@@ -4387,7 +4363,7 @@
 "number": "4",
 "label": null,
 "title": "",
-"page": 16,
+"page": 15,
 "char_start": 0,
 "char_end": 31,
 "text": "PART 4\nMEMORANDUM OF ACCEPTANCE",
@@ -4411,9 +4387,9 @@
 "number": "1",
 "label": null,
 "title": "",
-"page": 16,
+"page": 15,
 "char_start": 0,
-"char_end": 209,
+"char_end": 207,
 "text": "1.\nAcceptance of Offer\nThe Contractor shall maintain the insurance policy in force unless otherwise agreed in writing. The Authority shall bear the cost of replacement at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
@@ -4456,13 +4432,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 123,
-"text": "(a) \"Goods\" means the public shall comply with the technical specifications within fourteen days of the purchase order.",
+"char_end": 122,
+"text": "(a) \"Goods\" means the authority shall comply with the technical specifications within fourteen days of the purchase order.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 107.8489990234375,
-464.347900390625,
+448.4529113769531,
 132.3979949951172
 ],
 "source_file": "03 Interpretation (Supplement).pdf"
@@ -4480,13 +4456,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 161,
-"text": "(b) \"Contract Period\" means the public shall label each container with the batch number and the date of manufacture on each occasion that a delivery is made.",
+"char_end": 160,
+"text": "(b) \"Contract Period\" means the authority shall label each container with the batch number and the date of manufacture on each occasion that a delivery is made.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 149.8489990234375,
-486.3809509277344,
+470.4859313964844,
 174.3979949951172
 ],
 "source_file": "03 Interpretation (Supplement).pdf"
@@ -4528,8 +4504,8 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 125,
-"text": "(d) \"Nominated Store\" means the supplier shall keep a record of every batch supplied at no additional cost to the public.",
+"char_end": 124,
+"text": "(d) \"Nominated Store\" means the supplier shall keep a record of every batch supplied at no additional cost to the authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
@@ -4552,13 +4528,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 139,
-"text": "(e) \"Batch\" means the public representative shall allow inspection of the production facility on each occasion that a delivery is made.",
+"char_end": 138,
+"text": "(e) \"Batch\" means the authority representative shall allow inspection of the production facility on each occasion that a delivery is made.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 275.947998046875,
-449.6959228515625,
+433.8009033203125,
 300.39801025390625
 ],
 "source_file": "03 Interpretation (Supplement).pdf"
@@ -4648,13 +4624,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 134,
-"text": "(i) \"Item 1\" means the public representative shall keep a record of every batch supplied on each occasion that a delivery is made.",
+"char_end": 133,
+"text": "(i) \"Item 1\" means the authority representative shall keep a record of every batch supplied on each occasion that a delivery is made.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 443.947998046875,
-479.64898681640625,
+463.75396728515625,
 468.39801025390625
 ],
 "source_file": "03 Interpretation (Supplement).pdf"
@@ -4672,13 +4648,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 154,
-"text": "(j) \"Technical Specifications\" means the public representative shall deliver the goods to the nominated store at no additional cost to the public.",
+"char_end": 152,
+"text": "(j) \"Technical Specifications\" means the authority representative shall deliver the goods to the nominated store at no additional cost to the authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 485.8489990234375,
-478.40594482421875,
+462.5109558105469,
 510.39801025390625
 ],
 "source_file": "03 Interpretation (Supplement).pdf"
@@ -4696,13 +4672,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 933,
-"text": "The Contractor shall keep a record of every batch supplied where the Goods are supplied in bulk. The Contractor shall return the empty containers at its own cost throughout the Contract Period. The Tenderer shall return the empty containers at its own cost before the delivery date stated in the Purchase Order. The Authority shall provide a certificate of analysis for each batch subject to the Special Conditions of Contract.\nThe nominated store keeper shall comply with the Technical Specifications where the Goods are supplied in bulk. The Authority Representative shall deliver the Goods to the nominated store at no additional cost to the Authority. The Contractor shall comply with the Technical Specifications at no additional cost to the Authority. The Contractor shall return the empty containers at its own cost at no additional\nTender Ref.: SYN-2026-001 Interpretation (Supplement) Page 2 of 2\ncost to the Authority.",
+"char_end": 862,
+"text": "The Contractor shall keep a record of every batch supplied where the Goods are supplied in bulk. The Contractor shall return the empty containers at its own cost throughout the Contract Period. The Tenderer shall return the empty containers at its own cost before the delivery date stated in the Purchase Order. The Authority shall provide a certificate of analysis for each batch subject to the Special Conditions of Contract.\nThe nominated store keeper shall comply with the Technical Specifications where the Goods are supplied in bulk. The Authority Representative shall deliver the Goods to the nominated store at no additional cost to the Authority. The Contractor shall comply with the Technical Specifications at no additional cost to the Authority. The Contractor shall return the empty containers at its own cost at no additional cost\nto the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 527.8489990234375,
-479.80303955078125,
+470.0239562988281,
 606.2529907226562
 ],
 "source_file": "03 Interpretation (Supplement).pdf"
@@ -4787,13 +4763,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 239,
+"char_end": 238,
 "text": "1.1 The Authority shall label each container with the batch number and the date of manufacture without prejudice to any other remedy. The Contractor shall bear the cost of replacement before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-219.8489990234375,
-487.7780456542969,
+219.947998046875,
+480.4079895019531,
 258.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -4811,13 +4787,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 259,
+"char_end": 258,
 "text": "1.2 The Authority shall label each container with the batch number and the date of manufacture before the delivery date stated in the Purchase Order. The nominated store keeper shall keep a record of every batch supplied where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-275.8489990234375,
-487.7780456542969,
+275.947998046875,
+486.5460205078125,
 328.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -4883,13 +4859,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 214,
+"char_end": 212,
 "text": "3.1 The Authority Representative may extend the period on written request at no additional cost to the Authority. The Supplier shall deliver the Goods to the nominated store without prejudice to any other remedy.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-555.8489990234375,
-479.81402587890625,
+555.9810180664062,
+462.6980285644531,
 594.3980102539062
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -4979,7 +4955,7 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 346,
+"char_end": 345,
 "text": "Tender Validity Period\nThe nominated store keeper shall return the empty containers at its own cost on each occasion that a delivery is made. The Authority shall submit the monthly delivery programme in the form set out in the Schedules. The Contractor shall provide a certificate of analysis for each batch in the form set out in the Schedules.",
 "is_coarse": 0,
 "bbox": [
@@ -5099,13 +5075,13 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 94,
+"char_end": 93,
 "text": "(a) The Authority shall keep a record of every batch supplied throughout the Contract Period.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-485.8489990234375,
-457.18701171875,
+485.947998046875,
+440.07098388671875,
 508.25299072265625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -5195,7 +5171,7 @@
 "title": "",
 "page": 3,
 "char_start": 0,
-"char_end": 450,
+"char_end": 448,
 "text": "7.\nCompliance Schedule\nThe Authority shall bear the cost of replacement without prejudice to any other remedy. The Contractor shall return the empty containers at its own cost subject to the Special Conditions of Contract. The Supplier shall allow inspection of the production facility subject to the Special Conditions of Contract. The Authority shall provide a certificate of analysis for each batch subject to the Special Conditions of Contract.",
 "is_coarse": 1,
 "bbox": [
@@ -5267,7 +5243,7 @@
 "title": "",
 "page": 3,
 "char_start": 0,
-"char_end": 349,
+"char_end": 348,
 "text": "8.\nParticulars of Goods Schedule\nThe nominated store keeper shall keep a record of every batch supplied at no additional cost to the Authority. The Contractor shall allow inspection of the production facility throughout the Contract Period. The Tenderer shall notify the other party in writing before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
@@ -5339,7 +5315,7 @@
 "title": null,
 "page": 3,
 "char_start": 0,
-"char_end": 214,
+"char_end": 213,
 "text": "8.3 The Contractor may extend the period on written request subject to the Special Conditions of Contract. The Authority shall provide a certificate of analysis for each batch in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
@@ -5435,7 +5411,7 @@
 "title": "",
 "page": 4,
 "char_start": 0,
-"char_end": 232,
+"char_end": 231,
 "text": "9.\nOffer to be Bound\nThe Authority may reject any consignment that fails the acceptance test unless otherwise agreed in writing. The Supplier may reject any consignment that fails the acceptance test throughout the Contract Period.",
 "is_coarse": 1,
 "bbox": [
@@ -5459,14 +5435,14 @@
 "title": null,
 "page": 4,
 "char_start": 0,
-"char_end": 253,
+"char_end": 251,
 "text": "9.1 The Authority Representative may reject any consignment that fails the acceptance test subject to the Special Conditions of Contract. The nominated store keeper shall deliver the Goods to the nominated store at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-261.8489990234375,
+261.947998046875,
 460.2559509277344,
-312.25299072265625
+314.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -5507,7 +5483,7 @@
 "title": null,
 "page": 4,
 "char_start": 0,
-"char_end": 236,
+"char_end": 235,
 "text": "9.3 The nominated store keeper shall comply with the Technical Specifications at no additional cost to the Authority. The Tenderer shall allow inspection of the production facility before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
@@ -5531,13 +5507,13 @@
 "title": null,
 "page": 4,
 "char_start": 0,
-"char_end": 244,
+"char_end": 242,
 "text": "9.4 The nominated store keeper shall return the empty containers at its own cost at no additional cost to the Authority. The nominated store keeper shall provide a certificate of analysis for each batch at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 457.9809875488281,
-481.6509704589844,
+475.5240478515625,
 496.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -5579,13 +5555,13 @@
 "title": null,
 "page": 4,
 "char_start": 0,
-"char_end": 100,
+"char_end": 99,
 "text": "(b) The Authority shall return the empty containers at its own cost throughout the Contract Period.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-541.8489990234375,
-480.4080505371094,
+541.9810180664062,
+463.2920227050781,
 564.2529907226562
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -5603,7 +5579,7 @@
 "title": "Information Schedule",
 "page": 4,
 "char_start": 0,
-"char_end": 376,
+"char_end": 375,
 "text": "10. Information Schedule\nThe nominated store keeper shall return the empty containers at its own cost before the delivery date stated in the Purchase Order. The Contractor shall maintain the insurance policy in force unless otherwise agreed in writing. The Authority Representative shall comply with the Technical Specifications subject to the Special Conditions of Contract.",
 "is_coarse": 1,
 "bbox": [
@@ -5627,13 +5603,13 @@
 "title": null,
 "page": 5,
 "char_start": 0,
-"char_end": 126,
+"char_end": 125,
 "text": "(a) The Authority Representative shall provide a certificate of analysis for each batch where the Goods are supplied in bulk.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-93.8489990234375,
-469.990966796875,
+93.947998046875,
+452.8749694824219,
 118.39800262451172
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -5747,13 +5723,13 @@
 "title": null,
 "page": 5,
 "char_start": 0,
-"char_end": 252,
+"char_end": 250,
 "text": "11.2 The Authority may reject any consignment that fails the acceptance test before the delivery date stated in the Purchase Order. The Authority shall allow inspection of the production facility before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-331.8489990234375,
-495.70904541015625,
+331.947998046875,
+478.5930480957031,
 382.25299072265625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -5795,7 +5771,7 @@
 "title": "",
 "page": 5,
 "char_start": 0,
-"char_end": 327,
+"char_end": 326,
 "text": "12.\nDocumentary Evidence of Compliance\nThe Contractor shall maintain the insurance policy in force throughout the Contract Period. The Supplier may extend the period on written request on each occasion that a delivery is made. The Supplier shall deliver the Goods to the nominated store at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
@@ -5819,13 +5795,13 @@
 "title": null,
 "page": 5,
 "char_start": 0,
-"char_end": 216,
+"char_end": 214,
 "text": "12.1 The Authority shall return the empty containers at its own cost at no additional cost to the Authority. The nominated store keeper shall bear the cost of replacement within fourteen days of the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-555.8489990234375,
-461.4769287109375,
+555.9810180664062,
+467.5929870605469,
 594.3980102539062
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -5843,14 +5819,14 @@
 "title": null,
 "page": 5,
 "char_start": 0,
-"char_end": 198,
+"char_end": 196,
 "text": "12.2 The Contractor shall deliver the Goods to the nominated store throughout the Contract Period. The Authority shall keep a record of every batch supplied at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 611.8489990234375,
-473.6869812011719,
-648.2529907226562
+471.86102294921875,
+650.3980102539062
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -5867,7 +5843,7 @@
 "title": "",
 "page": 5,
 "char_start": 0,
-"char_end": 355,
+"char_end": 353,
 "text": "13.\nNon-collusive Tendering Certificate\nThe Authority may extend the period on written request without prejudice to any other remedy. The Authority Representative may extend the period on written request throughout the Contract Period. The nominated store keeper shall deliver the Goods to the nominated store within fourteen days of the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
@@ -5915,12 +5891,12 @@
 "title": null,
 "page": 6,
 "char_start": 0,
-"char_end": 200,
+"char_end": 198,
 "text": "13.2 The Authority shall return the empty containers at its own cost unless otherwise agreed in writing. The Tenderer may extend the period on written request at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-233.8489990234375,
+233.9810028076172,
 450.4439697265625,
 272.39801025390625
 ],
@@ -5939,7 +5915,7 @@
 "title": null,
 "page": 6,
 "char_start": 0,
-"char_end": 193,
+"char_end": 192,
 "text": "13.3 The Contractor may extend the period on written request where the Goods are supplied in bulk. The Authority shall submit the monthly delivery programme unless otherwise agreed in writing.",
 "is_coarse": 1,
 "bbox": [
@@ -5963,13 +5939,13 @@
 "title": null,
 "page": 6,
 "char_start": 0,
-"char_end": 238,
+"char_end": 236,
 "text": "13.4 The Supplier shall return the empty containers at its own cost before the delivery date stated in the Purchase Order. The Authority Representative shall maintain the insurance policy in force at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 345.8489990234375,
-481.6289978027344,
+464.51300048828125,
 384.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -6059,13 +6035,13 @@
 "title": null,
 "page": 6,
 "char_start": 0,
-"char_end": 103,
+"char_end": 102,
 "text": "(i) The Authority shall deliver the Goods to the nominated store where the Goods are supplied in bulk.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 485.8489990234375,
-458.39703369140625,
+476.7450256347656,
 510.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -6107,7 +6083,7 @@
 "title": "Cont ract Deposit",
 "page": 6,
 "char_start": 0,
-"char_end": 359,
+"char_end": 358,
 "text": "14. Cont ract Deposit\nThe nominated store keeper shall return the empty containers at its own cost unless otherwise agreed in writing. The Contractor shall comply with the Technical Specifications where the Goods are supplied in bulk. The Authority Representative shall notify the other party in writing before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
@@ -6131,13 +6107,13 @@
 "title": null,
 "page": 6,
 "char_start": 0,
-"char_end": 236,
-"text": "14.1 The Authority shall allow inspection of the production facility in the form\nset out in the Schedules. The Authority Representative shall submit the monthly delivery programme before the delivery date stated in the Purchase Order.",
+"char_end": 234,
+"text": "14.1 The Authority shall allow inspection of the production facility in the form set\nout in the Schedules. The Authority Representative shall submit the monthly delivery programme before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-681.8489990234375,
-459.00201416015625,
+681.947998046875,
+459.6180419921875,
 692.3980102539062
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -6155,7 +6131,7 @@
 "title": "",
 "page": 7,
 "char_start": 0,
-"char_end": 273,
+"char_end": 272,
 "text": "15.\nManufacturer’s Letter of Intent\nThe Authority Representative shall submit the monthly delivery programme subject to the Special Conditions of Contract. The Contractor may reject any consignment that fails the acceptance test within fourteen days of the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
@@ -6179,7 +6155,7 @@
 "title": null,
 "page": 7,
 "char_start": 0,
-"char_end": 204,
+"char_end": 203,
 "text": "15.1 The Contractor shall notify the other party in writing unless otherwise agreed in writing. The Authority Representative shall notify the other party in writing without prejudice to any other remedy.",
 "is_coarse": 1,
 "bbox": [
@@ -6203,13 +6179,13 @@
 "title": null,
 "page": 7,
 "char_start": 0,
-"char_end": 195,
+"char_end": 194,
 "text": "15.2 The Supplier shall keep a record of every batch supplied at no additional cost to the Authority. The Tenderer may extend the period on written request without prejudice to any other remedy.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 275.8489990234375,
-488.3719482421875,
+471.8719787597656,
 314.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -6227,13 +6203,13 @@
 "title": null,
 "page": 7,
 "char_start": 0,
-"char_end": 214,
+"char_end": 213,
 "text": "15.3 The Authority Representative shall submit the monthly delivery programme within fourteen days of the Purchase Order. The Contractor may extend the period on written request unless otherwise agreed in writing.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-331.8489990234375,
-484.6980285644531,
+331.9809875488281,
+491.3748779296875,
 370.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -6275,14 +6251,14 @@
 "title": null,
 "page": 7,
 "char_start": 0,
-"char_end": 116,
+"char_end": 115,
 "text": "(a) The nominated store keeper shall maintain the insurance policy in force at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 443.947998046875,
 463.28094482421875,
-466.25299072265625
+468.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6299,14 +6275,14 @@
 "title": null,
 "page": 7,
 "char_start": 0,
-"char_end": 114,
+"char_end": 112,
 "text": "(b) The Authority shall provide a certificate of analysis for each batch at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-471.8489990234375,
-450.44403076171875,
-494.25299072265625
+471.947998046875,
+433.3280334472656,
+496.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6371,13 +6347,13 @@
 "title": null,
 "page": 7,
 "char_start": 0,
-"char_end": 104,
+"char_end": 103,
 "text": "(ii) The Authority shall comply with the Technical Specifications where the Goods are supplied in bulk.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 555.8489990234375,
-458.9689636230469,
+441.8529357910156,
 580.3980102539062
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -6395,7 +6371,7 @@
 "title": "Boar d Resolution",
 "page": 7,
 "char_start": 0,
-"char_end": 247,
+"char_end": 246,
 "text": "16. Boar d Resolution\nThe Tenderer shall provide a certificate of analysis for each batch before the delivery date stated in the Purchase Order. The Authority Representative may extend the period on written request throughout the Contract Period.",
 "is_coarse": 1,
 "bbox": [
@@ -6419,13 +6395,13 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 219,
+"char_end": 218,
 "text": "16.1 The Authority shall keep a record of every batch supplied in the form set out in the Schedules. The nominated store keeper shall submit the monthly delivery programme subject to the Special Conditions of Contract.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-79.8489990234375,
-482.25604248046875,
+79.947998046875,
+471.2339172363281,
 118.39800262451172
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -6443,13 +6419,13 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 127,
+"char_end": 126,
 "text": "(a) The Authority Representative shall allow inspection of the production facility within fourteen days of the Purchase Order.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-135.8489990234375,
-473.0489196777344,
+135.947998046875,
+455.93292236328125,
 160.3979949951172
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -6467,13 +6443,13 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 107,
+"char_end": 106,
 "text": "(b) The Authority shall deliver the Goods to the nominated store on each occasion that a delivery is made.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 163.8489990234375,
-487.1400146484375,
+470.0240173339844,
 188.3979949951172
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
@@ -6491,14 +6467,14 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 85,
+"char_end": 84,
 "text": "(c) The Authority shall bear the cost of replacement throughout the Contract Period.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 191.8489990234375,
-457.176025390625,
-214.2530059814453
+477.96600341796875,
+202.3979949951172
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6515,14 +6491,14 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 100,
+"char_end": 99,
 "text": "(i) The Authority shall bear the cost of replacement subject to the Special Conditions of Contract.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-219.8489990234375,
-455.3389892578125,
-242.2530059814453
+205.8489990234375,
+438.2229919433594,
+228.2530059814453
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6544,9 +6520,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-247.947998046875,
+233.947998046875,
 447.3749694824219,
-272.39801025390625
+258.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6564,13 +6540,13 @@
 "page": 8,
 "char_start": 0,
 "char_end": 213,
-"text": "17.\nContact Details\nThe Supplier shall maintain the insurance policy in force in the form set out in the Schedules. The Authority shall maintain the insurance policy in force where the Goods are supplied in bulk.",
+"text": "17.\nCont act Details\nThe Supplier shall maintain the insurance policy in force in the form set out in the Schedules. The Authority shall maintain the insurance policy in force where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-290.0469970703125,
+276.0469970703125,
 87.28999328613281,
-298.0
+284.0
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6592,9 +6568,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-387.8489990234375,
+373.8489990234375,
 463.9079284667969,
-440.39801025390625
+426.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6611,14 +6587,14 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 230,
+"char_end": 229,
 "text": "17.2 The Authority Representative shall deliver the Goods to the nominated store subject to the Special Conditions of Contract. The Tenderer shall return the empty containers at its own cost without prejudice to any other remedy.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-457.8489990234375,
-483.47698974609375,
-496.39801025390625
+443.8489990234375,
+466.3609924316406,
+482.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6635,14 +6611,14 @@
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 106,
+"char_end": 105,
 "text": "(a) The Authority shall keep a record of every batch supplied within fourteen days of the Purchase Order.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-513.8489990234375,
-484.07098388671875,
-536.2529907226562
+499.947998046875,
+466.9549560546875,
+522.2529907226562
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6664,9 +6640,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-541.8489990234375,
+527.8489990234375,
 475.5240783691406,
-566.3980102539062
+552.3980102539062
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6683,38 +6659,14 @@
 "title": "",
 "page": 8,
 "char_start": 0,
-"char_end": 219,
-"text": "18.\nPlant Trial\nThe Tenderer shall keep a record of every batch supplied unless otherwise agreed in writing. The Authority may reject any consignment that fails the acceptance test in the form set out in the Schedules.",
+"char_end": 528,
+"text": "18.\nPlant Trial\nThe Tenderer shall keep a record of every batch supplied unless otherwise agreed in writing. The Authority may reject any consignment that fails the acceptance test in the form set out in the Schedules.\nThe Authority shall submit the monthly delivery programme in the form set out in the Schedules. The Authority shall submit the monthly delivery programme at no additional cost to the Authority. The Authority Representative shall provide a certificate of analysis for each batch throughout the Contract Period.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-584.0469970703125,
+570.0469970703125,
 87.28999328613281,
-592.2529907226562
-],
-"source_file": "04 Terms of Tender (Supplement).pdf"
-},
-{
-"doc_name": "Terms of Tender (Supplement)",
-"ref_no": null,
-"rule_version": null,
-"node_id": "04-Terms-of-Tender-Supplement:heading#4",
-"parent_id": "04-Terms-of-Tender-Supplement",
-"kind": "subitem",
-"part": null,
-"number": null,
-"label": null,
-"title": null,
-"page": 9,
-"char_start": 0,
-"char_end": 331,
-"text": "Tender Evaluation\nThe Authority shall submit the monthly delivery programme in the form set out in the Schedules. The Authority shall submit the monthly delivery programme at no additional cost to the Authority. The Authority Representative shall provide a certificate of analysis for each batch throughout the Contract Period.",
-"is_coarse": 0,
-"bbox": [
-72.0,
-79.98100280761719,
-161.26498413085938,
-88.25299835205078
+578.2529907226562
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6736,9 +6688,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-177.8489990234375,
+163.8489990234375,
 479.79193115234375,
-216.3979949951172
+202.3979949951172
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6760,9 +6712,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-233.947998046875,
+219.947998046875,
 468.7919921875,
-258.39801025390625
+244.3979949951172
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6784,9 +6736,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-276.0469970703125,
+262.0469970703125,
 87.28999328613281,
-284.25299072265625
+270.25299072265625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6803,14 +6755,14 @@
 "title": null,
 "page": 9,
 "char_start": 0,
-"char_end": 128,
+"char_end": 127,
 "text": "(a) The Authority shall provide a certificate of analysis for each batch before the delivery date stated in the Purchase Order.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-415.8489990234375,
-475.5130310058594,
-440.39801025390625
+401.947998046875,
+458.39703369140625,
+426.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6832,9 +6784,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-443.8489990234375,
+429.8489990234375,
 467.5599670410156,
-468.39801025390625
+454.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6851,14 +6803,14 @@
 "title": "",
 "page": 9,
 "char_start": 0,
-"char_end": 375,
+"char_end": 373,
 "text": "21.\nMethod of Production Statement\nThe Authority Representative shall provide a certificate of analysis for each batch subject to the Special Conditions of Contract. The Contractor shall deliver the Goods to the nominated store in the form set out in the Schedules. The Supplier shall provide a certificate of analysis for each batch at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-486.0469970703125,
+472.0469970703125,
 87.28999328613281,
-494.0
+480.0
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6875,14 +6827,14 @@
 "title": null,
 "page": 9,
 "char_start": 0,
-"char_end": 207,
+"char_end": 206,
 "text": "21.1 The Tenderer shall bear the cost of replacement on each occasion that a delivery is made. The Authority Representative may extend the period on written request on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-611.947998046875,
-492.012939453125,
-650.3980102539062
+597.947998046875,
+474.89697265625,
+636.3980102539062
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6904,9 +6856,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-667.8489990234375,
+653.8489990234375,
 454.71197509765625,
-690.2529907226562
+676.2529907226562
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6923,14 +6875,14 @@
 "title": "",
 "page": 10,
 "char_start": 0,
-"char_end": 281,
+"char_end": 280,
 "text": "22.\nCancellation of Tender\nThe Authority Representative shall return the empty containers at its own cost subject to the Special Conditions of Contract. The Contractor may reject any consignment that fails the acceptance test before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-94.0469970703125,
+80.0469970703125,
 87.28999328613281,
-102.0
+88.0
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6952,9 +6904,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-205.8489990234375,
+191.8489990234375,
 472.4659729003906,
-244.3979949951172
+230.3979949951172
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -6971,14 +6923,14 @@
 "title": "",
 "page": 10,
 "char_start": 0,
-"char_end": 253,
+"char_end": 251,
 "text": "23.\nPersonal Data\nThe Authority Representative shall comply with the Technical Specifications at no additional cost to the Authority. The nominated store keeper shall submit the monthly delivery programme subject to the Special Conditions of Contract.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-262.0469970703125,
+248.0469970703125,
 87.28999328613281,
-270.25299072265625
+256.25299072265625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -7000,9 +6952,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-359.8489990234375,
+345.8489990234375,
 440.0379638671875,
-384.39801025390625
+370.39801025390625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -7024,9 +6976,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-387.8489990234375,
+373.8489990234375,
 454.71197509765625,
-410.25299072265625
+396.25299072265625
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -7043,14 +6995,14 @@
 "title": "",
 "page": 10,
 "char_start": 0,
-"char_end": 260,
+"char_end": 258,
 "text": "24.\nEnquiries\nThe Authority Representative shall allow inspection of the production facility unless otherwise agreed in writing. The Supplier shall label each container with the batch number and the date of manufacture at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-430.0469970703125,
+416.0469970703125,
 87.28999328613281,
-438.0
+424.0
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -7067,14 +7019,14 @@
 "title": null,
 "page": 10,
 "char_start": 0,
-"char_end": 198,
+"char_end": 197,
 "text": "24.1 The Authority shall deliver the Goods to the nominated store throughout the Contract Period. The nominated store keeper shall bear the cost of replacement where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-527.8489990234375,
-480.4410705566406,
-566.3980102539062
+513.8489990234375,
+472.4659729003906,
+552.3980102539062
 ],
 "source_file": "04 Terms of Tender (Supplement).pdf"
 },
@@ -7273,13 +7225,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 102,
+"char_end": 101,
 "text": "(c) The Authority shall maintain the insurance policy in force without prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-177.8489990234375,
-477.93292236328125,
+177.947998046875,
+460.8169250488281,
 202.3979949951172
 ],
 "source_file": "06 Annex B (Procedures and Conditions of Plant Trial) to the Terms of Tender (Supplement).pdf"
@@ -7369,13 +7321,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 104,
+"char_end": 103,
 "text": "(g) The Authority shall deliver the Goods to the nominated store without prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 289.8489990234375,
-484.07098388671875,
+466.9549865722656,
 314.39801025390625
 ],
 "source_file": "06 Annex B (Procedures and Conditions of Plant Trial) to the Terms of Tender (Supplement).pdf"
@@ -7436,7 +7388,7 @@
 "title": "",
 "page": 1,
 "char_start": 0,
-"char_end": 314,
+"char_end": 313,
 "text": "1.\nForce Majeure\nThe Contractor shall deliver the Goods to the nominated store without prejudice to any other remedy. The Tenderer shall keep a record of every batch supplied in the form set out in the Schedules. The Authority shall maintain the insurance policy in force on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
@@ -7461,12 +7413,12 @@
 "page": 1,
 "char_start": 0,
 "char_end": 101,
-"text": "(a) The Authority shall keep a record of every batch supplied without prejudice to any other remedy.",
+"text": "(a) The Authority shall keep a record of every batch supplied without prejudice to a ny other remedy.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-219.8489990234375,
-481.0129699707031,
+219.947998046875,
+463.8969421386719,
 244.3979949951172
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
@@ -7509,12 +7461,12 @@
 "page": 1,
 "char_start": 0,
 "char_end": 95,
-"text": "(c) The Authority shall bear the cost of replacement on each occasion that a delivery is made.",
+"text": "(c) The Authority shall bear the cost of replacement on each occasion that a d elivery is made.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-275.8489990234375,
-457.7920227050781,
+275.947998046875,
+440.6759948730469,
 300.39801025390625
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
@@ -7604,14 +7556,38 @@
 "title": "",
 "page": 1,
 "char_start": 0,
-"char_end": 483,
-"text": "2.\nDefinitions\nThe Authority Representative shall notify the other party in writing before the delivery date stated in the Purchase Order. The Tenderer shall return the empty containers at its own cost before the delivery date stated in the Purchase Order. The Tenderer shall comply with the Technical Specifications without prejudice to any other remedy. The Authority Representative may reject any consignment that fails the acceptance test without prejudice to any other remedy.",
+"char_end": 2,
+"text": "2.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 402.0469970703125,
 81.17399597167969,
 410.0
+],
+"source_file": "07 Special Conditions of Contract.pdf"
+},
+{
+"doc_name": "Special Conditions of Contract",
+"ref_no": null,
+"rule_version": null,
+"node_id": "07-Special-Conditions-of-Contract:heading",
+"parent_id": "07-Special-Conditions-of-Contract",
+"kind": "subitem",
+"part": null,
+"number": null,
+"label": null,
+"title": null,
+"page": 1,
+"char_start": 0,
+"char_end": 478,
+"text": "Definitions\nThe Authority Representative shall notify the other party in writing before the delivery date stated in the Purchase Order. The Tenderer shall return the empty containers at its own cost before the delivery date stated in the Purchase Order. The Tenderer shall comply with the Technical Specifications without prejudice to any other remedy. The Authority Representative may reject any consignment that fails the acceptance test without prejudice to any other remedy.",
+"is_coarse": 0,
+"bbox": [
+72.0,
+415.947998046875,
+123.34799194335938,
+424.25299072265625
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -7628,7 +7604,7 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 233,
+"char_end": 232,
 "text": "2.1 The nominated store keeper may reject any consignment that fails the acceptance test unless otherwise agreed in writing. The Authority Representative may extend the period on written request in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
@@ -7676,13 +7652,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 218,
+"char_end": 215,
 "text": "2.3 The Authority shall deliver the Goods to the nominated store at no additional cost to the Authority. The Authority Representative shall notify the other party in writing on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 653.8489990234375,
-477.9880065917969,
+460.87200927734375,
 692.3980102539062
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
@@ -7724,7 +7700,7 @@
 "title": "",
 "page": 2,
 "char_start": 0,
-"char_end": 263,
+"char_end": 261,
 "text": "3.\nPackaging and Labelling\nThe Authority Representative shall return the empty containers at its own cost on each occasion that a delivery is made. The Authority shall maintain the insurance policy in force before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
@@ -7748,13 +7724,13 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 194,
+"char_end": 192,
 "text": "3.1 The Authority shall bear the cost of replacement subject to the Special Conditions of Contract. The Authority shall comply with the Technical Specifications throughout the Contract Period.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 233.8489990234375,
-448.6289978027344,
+431.5129699707031,
 272.39801025390625
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
@@ -7820,13 +7796,13 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 104,
+"char_end": 103,
 "text": "(c) The Authority shall submit the monthly delivery programme on each occasion that a delivery is made.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-345.8489990234375,
-501.7699279785156,
+345.9809875488281,
+484.6539306640625,
 370.39801025390625
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
@@ -7868,12 +7844,12 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 150,
+"char_end": 149,
 "text": "(ii) The Authority Representative shall label each container with the batch number and the date of manufacture without prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-401.8489990234375,
+401.9809875488281,
 463.9299621582031,
 426.39801025390625
 ],
@@ -7940,14 +7916,14 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 238,
+"char_end": 235,
 "text": "4.2 The Authority shall deliver the Goods to the nominated store at no additional cost to the Authority. The Authority Representative shall provide a certificate of analysis for each batch subject to the Special Conditions of Contract.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 625.8489990234375,
-477.9880065917969,
-676.2529907226562
+460.87200927734375,
+664.3980102539062
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -7962,16 +7938,16 @@
 "number": "4.3",
 "label": null,
 "title": null,
-"page": 3,
+"page": 2,
 "char_start": 0,
-"char_end": 204,
-"text": "4.3 The nominated store keeper shall notify the other party in writing subject to the Special Conditions of Contract. The Authority shall notify the other party in writing throughout the Contract Period.",
+"char_end": 203,
+"text": "4.3 The nominated store keeper shall notify the other party in writing subject to\nthe Special Conditions of Contract. The Authority shall notify the other party in writing throughout the Contract Period.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-79.947998046875,
-468.18701171875,
-118.39800262451172
+681.947998046875,
+453.51300048828125,
+692.3980102539062
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -7988,14 +7964,14 @@
 "title": null,
 "page": 3,
 "char_start": 0,
-"char_end": 116,
+"char_end": 115,
 "text": "(a) The Authority Representative shall submit the monthly delivery programme without prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-135.8489990234375,
-469.3529052734375,
-160.3979949951172
+121.98100280761719,
+490.1429138183594,
+146.3979949951172
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8012,14 +7988,14 @@
 "title": null,
 "page": 3,
 "char_start": 0,
-"char_end": 107,
+"char_end": 106,
 "text": "(b) The Authority shall allow inspection of the production facility without prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-163.8489990234375,
-433.9219970703125,
-188.3979949951172
+149.947998046875,
+416.8059997558594,
+174.3979949951172
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8036,14 +8012,14 @@
 "title": "",
 "page": 3,
 "char_start": 0,
-"char_end": 449,
+"char_end": 446,
 "text": "5.\nInsurance\nThe Authority shall allow inspection of the production facility before the delivery date stated in the Purchase Order. The Authority shall submit the monthly delivery programme before the delivery date stated in the Purchase Order. The Authority shall provide a certificate of analysis for each batch throughout the Contract Period. The Tenderer shall allow inspection of the production facility where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-206.2010040283203,
+192.2010040283203,
 81.17399597167969,
-214.2530059814453
+200.2530059814453
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8060,14 +8036,14 @@
 "title": null,
 "page": 3,
 "char_start": 0,
-"char_end": 94,
+"char_end": 93,
 "text": "(a) The Authority shall notify the other party in writing unless otherwise agreed in writing.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-345.8489990234375,
-468.7698974609375,
-370.39801025390625
+331.947998046875,
+463.2698974609375,
+356.39801025390625
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8084,14 +8060,14 @@
 "title": null,
 "page": 3,
 "char_start": 0,
-"char_end": 115,
+"char_end": 114,
 "text": "(b) The Authority shall provide a certificate of analysis for each batch on each occasion that a delivery is made.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-373.8489990234375,
-465.1180114746094,
-398.39801025390625
+359.947998046875,
+448.00201416015625,
+384.39801025390625
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8113,9 +8089,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-401.947998046875,
+387.947998046875,
 447.3749694824219,
-426.39801025390625
+412.39801025390625
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8137,9 +8113,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-429.8489990234375,
+415.8489990234375,
 473.67596435546875,
-452.25299072265625
+438.25299072265625
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8161,9 +8137,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-457.8489990234375,
+443.8489990234375,
 457.14288330078125,
-482.39801025390625
+468.39801025390625
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8180,14 +8156,14 @@
 "title": "",
 "page": 3,
 "char_start": 0,
-"char_end": 366,
+"char_end": 365,
 "text": "6.\nSub-contracting\nThe Tenderer shall label each container with the batch number and the date of manufacture within fourteen days of the Purchase Order. The Authority Representative shall allow inspection of the production facility in the form set out in the Schedules. The Supplier shall maintain the insurance policy in force in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-500.0469970703125,
+486.0469970703125,
 81.17399597167969,
-508.25299072265625
+494.25299072265625
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8209,9 +8185,9 @@
 "is_coarse": 1,
 "bbox": [
 72.0,
-625.9810180664062,
+611.9810180664062,
 487.1069030761719,
-664.3980102539062
+650.3980102539062
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8228,38 +8204,14 @@
 "title": null,
 "page": 3,
 "char_start": 0,
-"char_end": 83,
-"text": "(a) The Authority Representative shall return the empty containers at its own cost",
+"char_end": 120,
+"text": "(a) The Authority Representative shall return the empty containers at its own cost where the Goods are supplied in bulk.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-681.8489990234375,
-483.44403076171875,
+667.9810180664062,
+466.3280334472656,
 692.3980102539062
-],
-"source_file": "07 Special Conditions of Contract.pdf"
-},
-{
-"doc_name": "Special Conditions of Contract",
-"ref_no": null,
-"rule_version": null,
-"node_id": "07-Special-Conditions-of-Contract:6.1:tail",
-"parent_id": "07-Special-Conditions-of-Contract:6.1",
-"kind": "subitem",
-"part": null,
-"number": null,
-"label": null,
-"title": null,
-"page": 4,
-"char_start": 0,
-"char_end": 37,
-"text": "where the Goods are supplied in bulk.",
-"is_coarse": 0,
-"bbox": [
-72.0,
-79.8489990234375,
-268.8779602050781,
-90.39800262451172
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8277,11 +8229,11 @@
 "page": 4,
 "char_start": 0,
 "char_end": 129,
-"text": "(b) The nominated store keeper shall submit the monthly delivery programme before\nthe delivery date stated in the Purchase Order.",
+"text": "(b) The nominated store keeper shall submit the monthly delivery programme before the delivery date stated in the Purchase Order.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-93.947998046875,
+79.947998046875,
 481.5959167480469,
 104.39800262451172
 ],
@@ -8300,14 +8252,14 @@
 "title": null,
 "page": 4,
 "char_start": 0,
-"char_end": 105,
+"char_end": 104,
 "text": "(c) The Authority Representative shall notify the other party in writing throughout the Contract Period.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-121.8489990234375,
-478.5599670410156,
-144.2530059814453
+107.947998046875,
+461.4440002441406,
+130.2530059814453
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8324,14 +8276,14 @@
 "title": null,
 "page": 4,
 "char_start": 0,
-"char_end": 106,
+"char_end": 105,
 "text": "(i) The Authority Representative shall bear the cost of replacement where the Goods are supplied in bulk.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-149.8489990234375,
-476.1180114746094,
-174.3979949951172
+135.947998046875,
+459.0019836425781,
+160.3979949951172
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8353,9 +8305,9 @@
 "is_coarse": 0,
 "bbox": [
 72.0,
-177.947998046875,
+163.947998046875,
 452.27001953125,
-202.3979949951172
+188.3979949951172
 ],
 "source_file": "07 Special Conditions of Contract.pdf"
 },
@@ -8388,17 +8340,17 @@
 "part": null,
 "number": "1",
 "label": null,
-"title": "",
+"title": "Scope",
 "page": 1,
 "char_start": 0,
 "char_end": 216,
-"text": "1.\nScope\nThe nominated store keeper shall bear the cost of replacement within fourteen days of the Purchase Order. The Contractor shall provide a certificate of analysis for each batch throughout the Contract Period.",
+"text": "1. Scope\nThe nominated store keeper shall bear the cost of replacement within fourteen days of the Purchase Order. The Contractor shall provide a certificate of analysis for each batch throughout the Contract Period.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 108.0469970703125,
-81.17399597167969,
-116.0
+103.18498992919922,
+132.3979949951172
 ],
 "source_file": "08 Technical Specifications.pdf"
 },
@@ -8439,13 +8391,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 120,
+"char_end": 119,
 "text": "(b) The Authority Representative shall provide a certificate of analysis for each batch throughout the Contract Period.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-233.8489990234375,
-469.990966796875,
+233.947998046875,
+452.8749694824219,
 258.39801025390625
 ],
 "source_file": "08 Technical Specifications.pdf"
@@ -8559,7 +8511,7 @@
 "title": "",
 "page": 1,
 "char_start": 0,
-"char_end": 360,
+"char_end": 359,
 "text": "2.\nProduct Requirements\nThe Contractor shall deliver the Goods to the nominated store throughout the Contract Period. The Authority shall label each container with the batch number and the date of manufacture within fourteen days of the Purchase Order. The nominated store keeper shall keep a record of every batch supplied unless otherwise agreed in writing.",
 "is_coarse": 1,
 "bbox": [
@@ -8583,13 +8535,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 191,
+"char_end": 190,
 "text": "2.1 The Authority Representative shall notify the other party in writing throughout the Contract Period. The Supplier shall bear the cost of replacement in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-513.8489990234375,
-481.0239562988281,
+513.947998046875,
+470.6289978027344,
 550.2529907226562
 ],
 "source_file": "08 Technical Specifications.pdf"
@@ -8607,13 +8559,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 198,
+"char_end": 196,
 "text": "2.2 The Authority shall keep a record of every batch supplied throughout the Contract Period. The Authority shall maintain the insurance policy in force within fourteen days of the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-569.8489990234375,
-459.0350036621094,
+569.947998046875,
+441.9189758300781,
 608.3980102539062
 ],
 "source_file": "08 Technical Specifications.pdf"
@@ -8631,13 +8583,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 215,
+"char_end": 213,
 "text": "2.3 The Supplier shall deliver the Goods to the nominated store at no additional cost to the Authority. The Authority may reject any consignment that fails the acceptance test where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 625.8489990234375,
-489.5820007324219,
+457.8139953613281,
 664.3980102539062
 ],
 "source_file": "08 Technical Specifications.pdf"
@@ -8655,7 +8607,7 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 226,
+"char_end": 224,
 "text": "2.4 The nominated store keeper shall comply with the Technical Specifications in the\nform set out in the Schedules. The Authority Representative shall notify the other party in writing at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
@@ -8703,7 +8655,7 @@
 "title": "",
 "page": 2,
 "char_start": 0,
-"char_end": 228,
+"char_end": 227,
 "text": "3.\nAcceptance Testing\nThe Authority may extend the period on written request unless otherwise agreed in writing. The Tenderer shall provide a certificate of analysis for each batch subject to the Special Conditions of Contract.",
 "is_coarse": 1,
 "bbox": [
@@ -8727,13 +8679,13 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 228,
+"char_end": 226,
 "text": "3.1 The Authority Representative may extend the period on written request subject to the Special Conditions of Contract. The Authority shall maintain the insurance policy in force subject to the Special Conditions of Contract.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-275.8489990234375,
-490.197998046875,
+275.9809875488281,
+485.31402587890625,
 314.39801025390625
 ],
 "source_file": "08 Technical Specifications.pdf"
@@ -8751,7 +8703,7 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 233,
+"char_end": 232,
 "text": "3.2 The Supplier may reject any consignment that fails the acceptance test at no additional cost to the Authority. The Tenderer shall allow inspection of the production facility before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
@@ -8775,13 +8727,13 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 246,
+"char_end": 244,
 "text": "3.3 The Authority Representative shall deliver the Goods to the nominated store where the Goods are supplied in bulk. The Authority shall label each container with the batch number and the date of manufacture unless otherwise agreed in writing.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 387.8489990234375,
-481.63995361328125,
+466.9879455566406,
 440.39801025390625
 ],
 "source_file": "08 Technical Specifications.pdf"
@@ -8799,8 +8751,8 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 75,
-"text": "Attachment A to the Technical Specifications Sampling and Analysis Methods",
+"char_end": 0,
+"text": "",
 "is_coarse": 0,
 "bbox": null,
 "source_file": "08A Attachment A to the Technical Specifications.pdf"
@@ -8818,7 +8770,7 @@
 "title": "",
 "page": 1,
 "char_start": 0,
-"char_end": 370,
+"char_end": 368,
 "text": "1.\nWarranty\nThe Authority Representative shall allow inspection of the production facility su bject to the Special Conditions of Contract. The nominated store keeper shall return the empty containers at its own cost where the Goods are supplied in bulk. The Authority Representative shall return the empty containers at its own cost unless otherwise agreed in writing.",
 "is_coarse": 1,
 "bbox": [
@@ -8842,7 +8794,7 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 263,
+"char_end": 262,
 "text": "1.1 The nominated store keeper shall allow inspection of the production facility throughout the Contract Period. The Authority Representative shall label each container with the batch number and the date of manufacture within fourteen days of the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
@@ -8866,7 +8818,7 @@
 "title": "",
 "page": 1,
 "char_start": 0,
-"char_end": 418,
+"char_end": 416,
 "text": "2.\nStorage Conditions\nThe Authority shall deliver the Goods to the nominated store subject to the Special Conditions of Contract. The Authority Representative may extend the period on written request throughout the Contract Period. The Supplier shall keep a record of ev ery batch supplied unless otherwise agreed in writing. The Supplier shall notify the other party in writing where the Goods are supplied in bulk.",
 "is_coarse": 1,
 "bbox": [
@@ -8914,13 +8866,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 241,
+"char_end": 239,
 "text": "3.1 The Authority Representative shall submit the monthly delivery programme before the delivery date stated in the Purchase Order. The Authority Representative may extend the period on written request in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-513.8489990234375,
-505.4438781738281,
+513.947998046875,
+488.3279113769531,
 552.3980102539062
 ],
 "source_file": "08A Attachment A to the Technical Specifications.pdf"
@@ -8938,13 +8890,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 223,
+"char_end": 222,
 "text": "3.2 The Supplier may reject any consignment that fails the acceptance test without prejudice to any other remedy. The Authority Representative shall keep a record of every batch supplied unless otherwise agreed in writing.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 569.8489990234375,
-491.4079284667969,
+474.29193115234375,
 608.3980102539062
 ],
 "source_file": "08A Attachment A to the Technical Specifications.pdf"
@@ -9034,14 +8986,14 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 97,
+"char_end": 96,
 "text": "(b) The Supplier shall notify the other party in writing at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 65.8489990234375,
 439.4439697265625,
-88.25299835205078
+90.39800262451172
 ],
 "source_file": "08A Attachment A to the Technical Specifications.pdf"
 },
@@ -9058,14 +9010,14 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 101,
-"text": "(c) The Authority shall deliver the Goods to the nominated store unless otherwise agreed in writing.",
+"char_end": 100,
+"text": "(c) The Authority shall deliver the Goods to the nominated store unless otherwise\nagreed in writing.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 93.8489990234375,
-482.8389892578125,
-118.39800262451172
+465.7229919433594,
+104.39800262451172
 ],
 "source_file": "08A Attachment A to the Technical Specifications.pdf"
 },
@@ -9149,14 +9101,38 @@
 "title": "",
 "page": 1,
 "char_start": 0,
-"char_end": 426,
-"text": "1.\nNotices\nThe Authority shall allow inspection of the production facility within fourteen days of the Purchase Order. The Supplier may extend the period on written request before the delivery date stated in the Purchase Order. The Authority shall submit the monthly delivery programme without prejudice to any other remedy. The Authority shall comply with the Technical Specifications where the Goods are supplied in bulk.",
+"char_end": 2,
+"text": "1.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 94.0469970703125,
 81.17399597167969,
 102.0
+],
+"source_file": "08B Attachment B to the Technical Specifications.pdf"
+},
+{
+"doc_name": null,
+"ref_no": null,
+"rule_version": null,
+"node_id": "08B-Attachment-B-to-the-Technical-Specif:heading",
+"parent_id": "08B-Attachment-B-to-the-Technical-Specif",
+"kind": "subitem",
+"part": null,
+"number": null,
+"label": null,
+"title": null,
+"page": 1,
+"char_start": 0,
+"char_end": 420,
+"text": "Notices\nThe Authority shall allow inspection of the production facility within fourteen days of the Purchase Order. The Supplier may extend the period on written request before the delivery date stated in the Purchase Order. The Authority shall submit the monthly delivery programme without prejudice to any other remedy. The Authority shall comply with the Technical Specifications where the Goods are supplied in bulk.",
+"is_coarse": 0,
+"bbox": [
+72.0,
+107.98100280761719,
+108.67399597167969,
+116.25299835205078
 ],
 "source_file": "08B Attachment B to the Technical Specifications.pdf"
 },
@@ -9173,13 +9149,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 221,
+"char_end": 220,
 "text": "1.1 The Contractor shall keep a record of every batch supplied subject to the Special Conditions of Contract. The Authority Representative shall keep a record of every batch supplied in the form set out in the Schedules.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 219.8489990234375,
-459.6179504394531,
+476.73394775390625,
 258.39801025390625
 ],
 "source_file": "08B Attachment B to the Technical Specifications.pdf"
@@ -9197,7 +9173,7 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 269,
+"char_end": 268,
 "text": "1.2 The nominated store keeper shall label each container with the batch number and the date of manufacture in the form set out in the Schedules. The Authority Representative may reject any consignment that fails the acceptance test unless otherwise agreed in writing.",
 "is_coarse": 1,
 "bbox": [
@@ -9221,13 +9197,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 230,
+"char_end": 229,
 "text": "1.3 The Supplier shall allow inspection of the production facility subject to the Special Conditions of Contract. The Authority shall comply with the Technical Specifications before the delivery date stated in the Purchase Order.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 345.8489990234375,
-475.4909362792969,
+458.37493896484375,
 384.39801025390625
 ],
 "source_file": "08B Attachment B to the Technical Specifications.pdf"
@@ -9293,13 +9269,13 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 207,
+"char_end": 206,
 "text": "2.1 The Authority shall allow inspection of the production facility within fourteen days of the Purchase Order. The Supplier shall notify the other party in writing on each occasion that a delivery is made.",
 "is_coarse": 1,
 "bbox": [
 72.0,
-541.8489990234375,
-472.4549865722656,
+541.947998046875,
+462.6759338378906,
 580.3980102539062
 ],
 "source_file": "08B Attachment B to the Technical Specifications.pdf"
@@ -9317,14 +9293,14 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 254,
+"char_end": 252,
 "text": "2.2 The nominated store keeper shall keep a record of every batch supplied throughout the Contract Period. The Authority Representative shall label each container with the batch number and the date of manufacture at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
 72.0,
 597.947998046875,
-479.1979064941406,
-648.2529907226562
+462.0819091796875,
+650.3980102539062
 ],
 "source_file": "08B Attachment B to the Technical Specifications.pdf"
 },
@@ -9341,14 +9317,14 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 103,
+"char_end": 101,
 "text": "(a) The Authority shall submit the monthly delivery programme at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-667.8489990234375,
-493.2119140625,
-690.2529907226562
+667.9810180664062,
+476.0959167480469,
+692.3980102539062
 ],
 "source_file": "08B Attachment B to the Technical Specifications.pdf"
 },
@@ -9365,13 +9341,13 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 107,
+"char_end": 106,
 "text": "(b) The Authority shall allow inspection of the production facility without prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-51.8489990234375,
-433.9219970703125,
+51.947998046875,
+416.8059997558594,
 76.39800262451172
 ],
 "source_file": "08B Attachment B to the Technical Specifications.pdf"
@@ -9733,7 +9709,7 @@
 "title": "Optional Items",
 "page": 2,
 "char_start": 0,
-"char_end": 221,
+"char_end": 219,
 "text": "Part C - Optional Items\nThe Tenderer shall bear the cost of replacement throughout the Contract Period. The Authority Representative shall comply with the Technical Specifications at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
@@ -9757,14 +9733,14 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 197,
+"char_end": 195,
 "text": "The Tenderer shall bear the cost of replacement throughout the Contract Period. The Authority Representative shall comply with the Technical Specifications at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
 191.8489990234375,
 485.3139953613281,
-228.2530059814453
+230.3979949951172
 ],
 "source_file": "09 Schedules.pdf"
 },
@@ -9781,7 +9757,7 @@
 "title": "Price Adjustment",
 "page": 2,
 "char_start": 0,
-"char_end": 252,
+"char_end": 250,
 "text": "Part D - Price Adjustment\nThe Authority Representative shall submit the monthly delivery programme subject to the Special Conditions of Contract. The Contractor shall return the empty containers at its own cost at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
@@ -9805,14 +9781,14 @@
 "title": null,
 "page": 2,
 "char_start": 0,
-"char_end": 226,
+"char_end": 224,
 "text": "The Authority Representative shall submit the monthly delivery programme subject to the Special Conditions of Contract. The Contractor shall return the empty containers at its own cost at no additional cost to the Authority.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-275.8489990234375,
-502.9909362792969,
-312.25299072265625
+275.9809875488281,
+485.87493896484375,
+314.39801025390625
 ],
 "source_file": "09 Schedules.pdf"
 },
@@ -10213,13 +10189,13 @@
 "title": null,
 "page": 6,
 "char_start": 0,
-"char_end": 154,
+"char_end": 153,
 "text": "(g) Samples of the Goods, if requested by the Authority at any time after the Tender Closing Date (see Paragraph 11 of the Terms of Tender (Supplement)).",
 "is_coarse": 0,
 "bbox": [
 72.0,
 121.8489990234375,
-470.0020446777344,
+478.5931091308594,
 146.3979949951172
 ],
 "source_file": "09 Schedules.pdf"
@@ -10429,7 +10405,7 @@
 "title": "",
 "page": 7,
 "char_start": 0,
-"char_end": 181,
+"char_end": 180,
 "text": "Part C\nThe Authority may at its discretion request the following item after the Tender Closing Date or evaluate the Tender as submitted (see Paragraph 16.1 of the Terms of Tender).",
 "is_coarse": 0,
 "bbox": [
@@ -10564,16 +10540,16 @@
 "doc_name": "Information Schedule",
 "ref_no": null,
 "rule_version": null,
-"node_id": "09-Schedules:04-Information-Schedule:PA",
+"node_id": "09-Schedules:04-Information-Schedule:TA",
 "parent_id": "09-Schedules:04-Information-Schedule",
 "kind": "part",
-"part": "Part A",
+"part": "Table A",
 "number": "A",
 "label": null,
 "title": "Track Record of Supply",
 "page": 8,
 "char_start": 0,
-"char_end": 293,
+"char_end": 291,
 "text": "Table A - Track Record of Supply\nThe Authority Representative shall return the empty containers at its own cost without prejudice to any other remedy. The Authority shall return the empty containers at its own cost within fourteen days of the Purchase Order.\nContract  Client  Quantity  Year",
 "is_coarse": 0,
 "bbox": [
@@ -10588,22 +10564,22 @@
 "doc_name": "Information Schedule",
 "ref_no": null,
 "rule_version": null,
-"node_id": "09-Schedules:04-Information-Schedule:PA:para",
-"parent_id": "09-Schedules:04-Information-Schedule:PA",
+"node_id": "09-Schedules:04-Information-Schedule:TA:para",
+"parent_id": "09-Schedules:04-Information-Schedule:TA",
 "kind": "subitem",
-"part": "Part A",
+"part": "Table A",
 "number": null,
 "label": null,
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 227,
+"char_end": 225,
 "text": "The Authority Representative shall return the empty containers at its own cost without prejudice to any other remedy. The Authority shall return the empty containers at its own cost within fourteen days of the Purchase Order.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-135.8489990234375,
-466.94403076171875,
+135.9810028076172,
+449.8280334472656,
 174.3979949951172
 ],
 "source_file": "09 Schedules.pdf"
@@ -10612,10 +10588,10 @@
 "doc_name": "Information Schedule",
 "ref_no": null,
 "rule_version": null,
-"node_id": "09-Schedules:04-Information-Schedule:PA:para#2",
-"parent_id": "09-Schedules:04-Information-Schedule:PA",
+"node_id": "09-Schedules:04-Information-Schedule:TA:para#2",
+"parent_id": "09-Schedules:04-Information-Schedule:TA",
 "kind": "subitem",
-"part": "Part A",
+"part": "Table A",
 "number": null,
 "label": null,
 "title": null,
@@ -10636,16 +10612,16 @@
 "doc_name": "Information Schedule",
 "ref_no": null,
 "rule_version": null,
-"node_id": "09-Schedules:04-Information-Schedule:PB",
+"node_id": "09-Schedules:04-Information-Schedule:TB",
 "parent_id": "09-Schedules:04-Information-Schedule",
 "kind": "part",
-"part": "Part B",
+"part": "Table B",
 "number": "B",
 "label": null,
 "title": "Quality Certification",
 "page": 8,
 "char_start": 0,
-"char_end": 296,
+"char_end": 294,
 "text": "Table B - Quality Certification\nThe Authority Representative shall maintain the insurance policy in force unless otherwise agreed in writing. The Authority Representative shall keep a record of every batch supplied subject to the Special Conditions of Contract.\nContract  Client  Quantity  Year",
 "is_coarse": 0,
 "bbox": [
@@ -10660,22 +10636,22 @@
 "doc_name": "Information Schedule",
 "ref_no": null,
 "rule_version": null,
-"node_id": "09-Schedules:04-Information-Schedule:PB:para",
-"parent_id": "09-Schedules:04-Information-Schedule:PB",
+"node_id": "09-Schedules:04-Information-Schedule:TB:para",
+"parent_id": "09-Schedules:04-Information-Schedule:TB",
 "kind": "subitem",
-"part": "Part B",
+"part": "Table B",
 "number": null,
 "label": null,
 "title": null,
 "page": 8,
 "char_start": 0,
-"char_end": 231,
+"char_end": 229,
 "text": "The Authority Representative shall maintain the insurance policy in force unless otherwise agreed in writing. The Authority Representative shall keep a record of every batch supplied subject to the Special Conditions of Contract.",
 "is_coarse": 0,
 "bbox": [
 72.0,
-261.8489990234375,
-476.72296142578125,
+261.947998046875,
+459.6069641113281,
 300.39801025390625
 ],
 "source_file": "09 Schedules.pdf"
@@ -10684,10 +10660,10 @@
 "doc_name": "Information Schedule",
 "ref_no": null,
 "rule_version": null,
-"node_id": "09-Schedules:04-Information-Schedule:PB:para#2",
-"parent_id": "09-Schedules:04-Information-Schedule:PB",
+"node_id": "09-Schedules:04-Information-Schedule:TB:para#2",
+"parent_id": "09-Schedules:04-Information-Schedule:TB",
 "kind": "subitem",
-"part": "Part B",
+"part": "Table B",
 "number": null,
 "label": null,
 "title": null,
@@ -10708,10 +10684,10 @@
 "doc_name": "Information Schedule",
 "ref_no": null,
 "rule_version": null,
-"node_id": "09-Schedules:04-Information-Schedule:PC",
+"node_id": "09-Schedules:04-Information-Schedule:TC",
 "parent_id": "09-Schedules:04-Information-Schedule",
 "kind": "part",
-"part": "Part C",
+"part": "Table C",
 "number": "C",
 "label": null,
 "title": "Production Capacity",
@@ -10732,10 +10708,10 @@
 "doc_name": "Information Schedule",
 "ref_no": null,
 "rule_version": null,
-"node_id": "09-Schedules:04-Information-Schedule:PC:para",
-"parent_id": "09-Schedules:04-Information-Schedule:PC",
+"node_id": "09-Schedules:04-Information-Schedule:TC:para",
+"parent_id": "09-Schedules:04-Information-Schedule:TC",
 "kind": "subitem",
-"part": "Part C",
+"part": "Table C",
 "number": null,
 "label": null,
 "title": null,
@@ -10756,10 +10732,10 @@
 "doc_name": "Information Schedule",
 "ref_no": null,
 "rule_version": null,
-"node_id": "09-Schedules:04-Information-Schedule:PC:para#2",
-"parent_id": "09-Schedules:04-Information-Schedule:PC",
+"node_id": "09-Schedules:04-Information-Schedule:TC:para#2",
+"parent_id": "09-Schedules:04-Information-Schedule:TC",
 "kind": "subitem",
-"part": "Part C",
+"part": "Table C",
 "number": null,
 "label": null,
 "title": null,
@@ -10832,7 +10808,7 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 303,
+"char_end": 302,
 "text": "Declaration\nThe Tenderer may extend the period on written request throughout the Contract Period. The Authority Representative shall notify the other party in writing without prejudice to any other remedy. The Tenderer shall maintain the insurance policy in force without prejudice to any other remedy.",
 "is_coarse": 0,
 "bbox": [
@@ -10856,7 +10832,7 @@
 "title": "",
 "page": 1,
 "char_start": 0,
-"char_end": 274,
+"char_end": 273,
 "text": "2.\nCommunication with Competitors\nThe Supplier shall label each container with the batch number and the date of manufacture on each occasion that a delivery is made. The Authority Representative shall deliver the Goods to the nominated store throughout the Contract Period.",
 "is_coarse": 1,
 "bbox": [
@@ -10928,7 +10904,7 @@
 "title": "",
 "page": 1,
 "char_start": 0,
-"char_end": 244,
+"char_end": 241,
 "text": "3.\nBid Rigging\nThe Authority may reject any consignment that fails the acceptance test without prejudice to any other remedy. The Authority Representative shall deliver the Goods to the nominated store at no additional cost to the Authority.",
 "is_coarse": 1,
 "bbox": [
@@ -11000,7 +10976,7 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 442,
+"char_end": 441,
 "text": "Disclosure\nThe Tenderer may extend the period on written request before the delivery date stated in the Purchase Order. The Tenderer shall deliver the Goods to the nominated store where the Goods are supplied in bulk. The nominated store keeper shall submit the monthly delivery programme subject to the Special Conditions of Contract. The Authority Representative may extend the period on written request unless otherwise\nagreed in writing.",
 "is_coarse": 0,
 "bbox": [
@@ -11024,7 +11000,7 @@
 "title": "",
 "page": 2,
 "char_start": 0,
-"char_end": 565,
+"char_end": 561,
 "text": "6.\nConsequences of Breach\nThe Authority shall keep a record of every batch supplied unless otherwise agreed in writing. The Authority shall label each container with the batch number and the date of manufacture unless otherwise agreed in writing. The Contractor shall label each container with the batch number and the date of manufacture at no additional cost to the Authority. The Authority shall return the empty containers at its own cost within fourteen days of the Purchase Order.\nSigned: ____________________  Name: ____________________  Date: __________",
 "is_coarse": 1,
 "bbox": [
@@ -11163,7 +11139,7 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 447,
+"char_end": 446,
 "text": "Annex A to the Terms of Tender PART I - METHOD OF PRODUCTION STATEMENT\nThe Contractor shall comply with the Technical Specifications unless otherwise agreed in writing. The Tenderer may reject any consignment that fails the acceptance test throughout the Contract Period. The Authority Representative shall provide a certificate of analysis for each batch throughout the Contract Period.\nStatement: ______________________________________________",
 "is_coarse": 0,
 "bbox": null,
@@ -11182,7 +11158,7 @@
 "title": null,
 "page": 1,
 "char_start": 0,
-"char_end": 317,
+"char_end": 316,
 "text": "The Contractor shall comply with the Technical Specifications unless otherwise agreed in writing. The Tenderer may reject any consignment that fails the acceptance test throughout the Contract Period. The Authority Representative shall provide a certificate of analysis for each batch throughout the Contract Period.",
 "is_coarse": 0,
 "bbox": [

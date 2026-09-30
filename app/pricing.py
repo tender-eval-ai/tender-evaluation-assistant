@@ -46,15 +46,15 @@ def compute_price_rows(scheme: PriceScheme, bids: list[BidExtraction],
             unit_price=p.unit_price,
         )
         if p.unit_price is not None:
-            fx = p.fx_to_hkd if (p.fx_to_hkd and row.currency.upper() not in ("HKD", "HK$")) else 1.0
-            row.unit_price_hkd = round(p.unit_price * fx, 4)
-            row.estimated_goods_price = round(row.unit_price_hkd * scheme.quantity, 2)
+            fx = p.fx_to_base if (p.fx_to_base and row.currency.upper() not in ("HKD", "HK$")) else 1.0
+            row.unit_price_base = round(p.unit_price * fx, 4)
+            row.estimated_goods_price = round(row.unit_price_base * scheme.quantity, 2)
 
         if scheme.type == "cost_effectiveness":
-            if p.optimal_dosage is not None and row.unit_price_hkd is not None:
+            if p.optimal_dosage is not None and row.unit_price_base is not None:
                 row.dosage = p.optimal_dosage
                 row.dosage_rounded = round_2sf(p.optimal_dosage)
-                row.cost_effectiveness = round(row.dosage_rounded * row.unit_price_hkd, 2)
+                row.cost_effectiveness = round(row.dosage_rounded * row.unit_price_base, 2)
             else:
                 row.remark = "cannot be calculated"
         else:

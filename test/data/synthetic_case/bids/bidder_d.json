@@ -11,6 +11,6 @@
     {"requirement_id": "S2-02", "complies": "no", "evidence": "Shelf life stated as 6 months, below the 12-month essential requirement", "page": 7},
     {"requirement_id": "S2-03", "complies": "unclear", "evidence": "Part C of Compliance Schedule left blank", "page": 9}
   ],
-  "price": {"currency": "HKD", "unit_price": 18.5, "optimal_dosage": null, "quoted_total": null, "fx_to_hkd": null},
+  "price": {"currency": "HKD", "unit_price": 18.5, "optimal_dosage": null, "quoted_total": null, "fx_to_base": null},
   "source_file": "bidder_d_offer.pdf"
 }

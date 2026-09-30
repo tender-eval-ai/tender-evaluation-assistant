@@ -24,7 +24,7 @@ data (TERMS-1 p.23, p.47).
 
 import re
 
-# Page furniture repeated on every page of the Authority standard terms. Left in place it
+# Page furniture repeated on every page of the standard terms. Left in place it
 # would land inside whichever clause happens to span the page break, and "Page 47
 # of 161" would then read as clause text.
 _PAGE_HEADER = re.compile(
@@ -63,7 +63,7 @@ _PART = re.compile(
 _ANNEX = re.compile(
     r"(?m)^[ \t]*Annex[ \t]+([A-Z0-9]+)[ \t]+to[ \t]+the\b[^\n]*\n[ \t]*\n?[ \t]*(?!Page\s+\d+\s+of\s+\d+)([A-Z][^\n]*)"
 )
-# An Authority tender PDF often concatenates several documents, each keeping its own
+# A tender PDF often concatenates several documents, each keeping its own
 # footer and its own page numbering: "Compliance Schedule  Page 1 of 6". A reset to
 # "Page 1 of N" therefore marks a sub-document boundary, and the text before it
 # names that sub-document. This matters because clause numbering restarts at each
@@ -410,7 +410,7 @@ def derive_doc_id(pages) -> str:
     """The document's id prefix, derived from the source file rather than passed in.
 
     An earlier version took this as a caller argument, so the same node had a
-    different node_id depending on who parsed it ("GLD1:P1:20.2" from one caller,
+    different node_id depending on who parsed it ("T1:P1:20.2" from one caller,
     "02 Interpretation,:P1:20.2" from another, the latter truncated mid-word by a
     filename[:18] slice). A primary key cannot depend on the caller.
     """

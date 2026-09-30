@@ -26,7 +26,7 @@ from .retrieval import excerpt_all, keywords_for_text
 from .schemas import BidExtraction, Rubric
 
 SYSTEM = (
-    "You are an adversarial second reviewer for a public Tender Assessment Panel. "
+    "You are an adversarial second reviewer for a tendering authority's Tender Assessment Panel. "
     "A first-pass reviewer made a NEGATIVE finding about a tenderer's offer. Your only "
     "job is to try to REFUTE it: search the offer content for evidence that the "
     "document IS present or the requirement IS met. Set refuted=true ONLY if you can "

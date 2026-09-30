@@ -50,7 +50,7 @@ Cloud Run steps) — no embellishment needed; the honest version is the strong v
 ### One-line version (for a crowded resume)
 
 > Built a LangGraph-orchestrated LLM pipeline with a bounded evidence-search agent
-> that drafts public tender-evaluation reports from scanned bids (OCR → rubric
+> that drafts tender-evaluation reports from scanned bids (OCR → rubric
 > derivation → cited extraction → deterministic scoring → Word); 100% ground-truth
 > agreement on a 30-bidder case, 0→100% buried-evidence recall with zero false
 > positives; tools also served over MCP with a local-model client; measured on three providers and deployed privately on Cloud Run; 105-test CI;
@@ -69,7 +69,7 @@ bullet 5 and be ready for the egress question below.
 
 *(~230 words ≈ 90 s. Bold = hit these words clearly.)*
 
-> I built an AI assistant for public tender evaluation — the process where a
+> I built an AI assistant for tender evaluation — the process where a
 > procurement panel checks dozens of bids and writes a formal review report.
 >
 > Three things make it hard. The bids are **pure scans** — zero extractable text. The
@@ -143,7 +143,7 @@ bullet 5 and be ready for the egress question below.
 ### Design decisions
 
 **Q: Why not just send the whole PDF to GPT-4/a big model and ask for the report?**
-A: Three reasons. Accountability — a public panel must verify every cell, so I
+A: Three reasons. Accountability — a tender panel must verify every cell, so I
 need page-cited facts and deterministic math, not free-form prose. Correctness — the
 price rules are precise (2-significant-figure rounding, half-up, tally checks);
 models get those subtly wrong, code never does. And confidentiality — production

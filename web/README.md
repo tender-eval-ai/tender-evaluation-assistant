@@ -4,11 +4,15 @@ Three-column review screens ported from Bidding-AI-expert@7e8e273 (`frontend/`),
 rewritten onto the routes of [`docs/api_contract.md`](../docs/api_contract.md).
 It is the project's only UI: `docker compose up` serves it on :8080 (`web/Dockerfile`).
 
-| Window | Routes | Ready |
+Every window is built, and every route it calls is served by `backend/`; the mock
+answers the same routes for development without a backend.
+
+| Window | Routes | Served by |
 |---|---|---|
-| Rules (`src/windows/RulesWindow.jsx`) | `GET /ruleset` (`?version=`), `/ruleset/versions`, `/ruleset/diff`, `/ruleset/gaps`, `PATCH`/`POST`/`DELETE /ruleset/items`, `PUT /ruleset/draft`, `POST /ruleset/confirm`, documents and pages | S3 (mock) |
-| Stage I / II (`src/components/StageResultsWindow.jsx`) | `GET /projects/{pid}`, `GET /bids/{t}/results`, `POST /checks`, `GET /jobs/{id}` | S2 |
-| Scoring, report | price summary, evaluation, reports | S4, not built here yet |
+| Rules (`src/windows/RulesWindow.jsx`) | `GET /ruleset` (`?version=`), `/ruleset/versions`, `/ruleset/diff`, `/ruleset/gaps`, `PATCH`/`POST`/`DELETE /ruleset/items`, `PUT /ruleset/draft`, `POST /ruleset/confirm`, documents and pages | `backend/routes/rulesets.py` |
+| Stage I / II (`src/windows/StageIWindow.jsx`, `StageIIWindow.jsx`, both on `src/components/StageResultsWindow.jsx`) | `GET /projects/{pid}`, `GET /bids/{t}/results`, `POST /checks`, `GET /jobs/{id}`, `PATCH /bids/{t}/fields/{letter}/{field}` (a reviewer's correction), `POST /bids/{t}/review/confirm` | `backend/routes/results.py`, `backend/routes/review.py` |
+| Scoring (`src/windows/ScoringWindow.jsx`) | `GET /price-summary` | `backend/routes/pricing.py` |
+| Report (`src/windows/ReportWindow.jsx`) | `GET /evaluation`, `GET /reports`, `GET /reports/{name}` (the Word files) | `backend/routes/pricing.py`, `backend/routes/reports.py` |
 
 ## Run on the mock
 
@@ -75,12 +79,19 @@ The API must allow the web origin through CORS.
 ## Tests and build
 
 ```sh
-npm test             # vitest run: StageResultsWindow, RulesWindow + the mock-vs-contract check
+npm test             # vitest run: every window, the review corrections + the mock-vs-contract check
 npm run build
 npm run lint         # oxlint
+npx playwright install chromium   # once
+npm run e2e          # Playwright, in a real browser on the mock
 ```
 
-`e2e/item-l.spec.js` is a Playwright stub for the S2 check: item (l) shows in Stage I with
-its page highlighted. Playwright is not a dependency yet. To run the stub, install it with
-`npm i -D @playwright/test && npx playwright install chromium`, then run
-`npx playwright test e2e/` against `npm run dev`.
+Playwright (`@playwright/test`) is a dev dependency, and CI runs `npm run e2e` in the
+`e2e` job. `playwright.config.js` starts `npm run dev` itself; set `WEB_URL` to use a
+server that is already running, or start the dev server with `VITE_API_BASE` to run the
+same steps against the real API.
+
+- `e2e/item-l.spec.js`: the S2 check. Item (l) shows in Stage I with its page highlighted.
+- `e2e/review-flow.spec.js`: the S4 review flow. The rules, a check run, a field the
+  reviewer corrects and the verdict changing with it, the review confirmed, then the
+  Scoring and Report windows, down to the report download.

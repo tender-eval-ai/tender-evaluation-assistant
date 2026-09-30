@@ -11,6 +11,6 @@
     {"requirement_id": "S2-02", "complies": "yes", "evidence": "Shelf life 12 months stated", "page": 5},
     {"requirement_id": "S2-03", "complies": "yes", "evidence": "Confirmed in Compliance Schedule", "page": 7}
   ],
-  "price": {"currency": "HKD", "unit_price": 25.0, "optimal_dosage": 1.0, "quoted_total": null, "fx_to_hkd": null},
+  "price": {"currency": "HKD", "unit_price": 25.0, "optimal_dosage": 1.0, "quoted_total": null, "fx_to_base": null},
   "source_file": "bidder_c_offer.pdf"
 }

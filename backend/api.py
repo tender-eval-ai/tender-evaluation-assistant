@@ -70,6 +70,22 @@ deps.reset_runner()               # and with no open queue connection from a pre
 
 app = FastAPI(title="Tender Evaluation Assistant API", version="0.1.0")
 
+
+@app.middleware("http")
+async def upload_limit(request, call_next):
+    """An upload's size is checked before its body is read: FastAPI parses a multipart body,
+    spooling every file to disk, before the route runs, so a check inside the route would
+    come after the disk was already used. A body without a length is refused. Added before
+    CORS, so CORS stays the outer layer and a refusal still carries its headers."""
+    if request.method == "POST" and deps.UPLOAD_PATH.match(request.url.path):
+        length, limit = request.headers.get("content-length"), deps.max_upload_bytes()
+        if length is None:
+            return errors.error_response(411, "length_required", "an upload must say its length (Content-Length)")
+        if not length.isdigit() or int(length) > limit:
+            return errors.error_response(413, "too_large", f"the upload is larger than the {limit / (1024 * 1024):.3g} MB limit")
+    return await call_next(request)
+
+
 # The UI's folder picker uploads from the browser straight to this API (the Streamlit
 # server never proxies the files), which is a cross-origin request from the UI's port.
 app.add_middleware(

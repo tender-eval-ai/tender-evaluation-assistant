@@ -54,7 +54,7 @@ The React UI is built against this file through `web/mock/`, which answers exact
 | GET | `/projects/{pid}/documents` | | `[Document]` | S2 | S2 done
 | GET | `/projects/{pid}/documents/{doc_id}/pages` | | `[Page]` | S2 | S2 done
 | GET | `/projects/{pid}/documents/{doc_id}/pages/{n}/image` | `?highlight=` | `image/png` | S2 done | Served through a signed, short-lived URL returned inside `BidResult` and `Page`; the API key never appears in a query string. A `PageCitation` with a `quote` carries `highlight` inside the signature: use `image_url` as given. A page-only link with a client-appended `highlight` still opens (pre-S2 clients); that fallback goes once the web UI uses the signed link. |
-| GET | `/projects/{pid}/documents/{doc_id}/nodes` | | `[Node]` | S3 done | Clause tree from L0: `{node_id, parent_id, kind, number, title, page, box}`; `409 not_built` before the first build. |
+| GET | `/projects/{pid}/documents/{doc_id}/nodes` | | `[Node]` | S3 done | Clause tree from L0: every field of the parser's node (see `Node` under Models); `409 not_built` before the first build. |
 
 ## Scoring, report, audit
 
@@ -68,7 +68,7 @@ The React UI is built against this file through `web/mock/`, which answers exact
 
 ## Projects and uploads (today's routes, kept)
 
-`POST/GET /projects`, `GET/DELETE /projects/{pid}`, `POST /projects/{pid}/tender`, `POST /projects/{pid}/bids/{t}`, `POST /projects/{pid}/import`, `GET /inbox`, `GET /projects/{pid}/status`, `GET /projects/{pid}/usage` stay as they are. `POST /projects` gains a required `data_class`.
+`POST/GET /projects`, `GET/DELETE /projects/{pid}`, `POST /projects/{pid}/tender`, `POST /projects/{pid}/bids/{t}`, `POST /projects/{pid}/import`, `GET /inbox`, `GET /projects/{pid}/status`, `GET /projects/{pid}/usage` stay as they are. `POST /projects` gains a required `data_class`. An upload is refused whole, before anything is written, when a name is unusable (`.` and `..` included) or not a `.pdf` (`400 bad_request`); a file that does not start as a PDF (`%PDF-` in its first kilobyte) is `400 bad_request`. A request over `MAX_UPLOAD_MB` (default 512, all files together) is `413 too_large` and one without a `Content-Length` is `411 length_required`, both before the body is read. Any refusal leaves none of the request's files, and no folder it created, behind.
 
 ## Routes removed at S5
 
@@ -87,7 +87,7 @@ API-only models, defined in `backend/schemas_api.py` and exported into `docs/ope
 - `Project {id, name, synthetic, data_class, created, status: ProjectStatus {state: idle|running|waiting|done|error, detail?, updated?}, tender_files?, bidders?, extracted?, has_rubric?, has_evaluation?, reports?}`; `GET /projects` lists them without the detail fields; `status` is an object (`status.state` is `idle|running|waiting|done|error`), not a string (I1.6)
 - `RuleSetVersion {version, status, parent_version, created_by, created_at, confirmed_by, confirmed_at, updated_by}`, ISO datetimes (I1.17)
 - `NotePatch {note: ItemNote, reason}`, `ReasonBody {reason}` (the DELETE bodies and the gap PATCH)
-- `Node {node_id, parent_id?, kind, number?, title?, page?, box?}` (the marker's box in PDF points), `BuildResponse {job_id}`
+- `Node {node_id, parent_id?, kind, number?, label?, part?, title?, page?, box?, text, char_start?, char_end?, is_coarse, doc_name?, ref_no?, rule_version?}` (the marker's box in PDF points; `number` falls back to `label`; `doc_name`, `ref_no` and `rule_version` come from the page footer; `char_start`/`char_end` are offsets into the node's own text, so the layout parser gives 0 and its length), `BuildResponse {job_id}`
 - `EvaluateRequest {version?}`, `JobStarted {job_id}` (evaluate and retry)
 - `ErrorBody {error: {code, message, details}, detail}` (I1.9)
 - `BidResult {tenderer, run_id, ruleset_version, fields: {letter: {field: FieldValue}}, verdicts: {letter: Verdict}, stage1: StageSummary, stage2?: StageSummary, trace?, cost: {calls, cache_hits, usd, waited_seconds}, review_confirmed_by?}`. Since S4-3 every item of the rule set has a verdict and its fields come through the item's form (the template's form, else the form serving the item's letter; see Forms and fields); `stage1` and `stage2` roll up the rules' stages (`stage2` is null when no rule is Stage II; an item whose every field is dormant is `dormant`). A comparison check (`value`, `range`, `unit`, `date`, `math`, `cross_document_match`, `contains`) never disqualifies: a mismatch is `needs_review` with the reading and the expectation in `note`; `human_only` is always `needs_review`; a rule on a field no form reads is `needs_review` (`unextracted:`), never a blank; an item whose template is not in the library is `needs_review`, never a silent pass. `trace` is the V5 agent's log (S4-5): `{form id: [{step, thought, tool, args, result}]}` for every Part A form no page was labelled as, null when the agent had nothing to look for.
