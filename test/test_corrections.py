@@ -45,3 +45,11 @@ def test_open_reviews_walks_every_item_and_still_reads_a_single_item_verdict():
     assert open_reviews(multi) == ["x.a", "y.c"]
     single = {"item": "l", "fields": [{"field_id": "x.a", "status": "disqualified"}, {"field_id": "x.b", "status": "needs_review"}]}
     assert open_reviews(single) == ["x.b"] and open_reviews({}) == []
+
+
+def test_a_corrected_number_drops_the_models_printed_text():
+    """A check that counts decimals as printed must count the person's value (#100 review)."""
+    key = "price_schedule_parts_c_d.discount_7day"
+    fields = {key: 2.505, f"{key}_printed": "2.505%", f"{key}_verification": {"verified": True}}
+    out = _apply(fields, {key: {"value": "2.5%", "by": "nasi", "reason": "misread"}})
+    assert out[key] == "2.5%" and f"{key}_printed" not in out and out[f"{key}_verification"] is None

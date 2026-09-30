@@ -82,6 +82,6 @@ def fields_from(form: Form, reading: BaseModel | None, refs: list[dict]) -> dict
             value = coerce(value, SlotKind.NUMBER)
         out[key] = value
         out[f"{key}_redacted"] = redacted
-        out[f"{key}_confidence"] = confidence
+        out[f"{key}_confidence"] = None if f.by == "reviewer" else confidence
         out[f"{key}_page"] = citation if (value is not None or redacted) else None
     return out

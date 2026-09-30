@@ -305,9 +305,11 @@ def _same_verdict(a: dict, b: dict) -> bool:
 
 def _apply(fields: dict, corrections: dict) -> dict:
     """The fields as the engine should see them: each corrected key holds the person's value,
-    and its V4 record is dropped (a person's value is not the model's reading to verify)."""
+    and its V4 record and its printed text are dropped (a person's value is not the model's
+    reading to verify, and a check counting decimals as printed must count the person's)."""
     out = {**fields, **{k: v["value"] for k, v in corrections.items()}}
     for k in corrections:
         if not is_meta(k):
             out[f"{k}_verification"] = None
+            out.pop(f"{k}_printed", None)
     return out
