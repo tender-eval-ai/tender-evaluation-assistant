@@ -150,6 +150,22 @@ def test_the_compliance_schedule_passes_blank_parts_and_excludes_an_express_non_
     assert statuses(verdict("compliance_schedule", late, default_delivery_days=60))["delivery_days"] == "needs_review"
 
 
+@pytest.mark.parametrize("answer, status", [
+    ("Comply", "pass"), ("Complied", "pass"), ("Yes", "pass"), ("\u2713", "pass"),
+    ("Cannot comply", "needs_review"), ("Unable to comply", "needs_review"), ("No", "needs_review"),
+    ("Partially comply", "needs_review"), ("X", "needs_review"), ("Will comply except clause 3", "needs_review")])
+def test_a_part_answer_that_is_not_plainly_complying_goes_to_a_reviewer(answer, status):
+    """#117: "not comply" alone missed a refusal worded another way, and an "X" may be a tick or a cross."""
+    marked = bid("compliance_schedule", document="Compliance Schedule", part_b=answer)
+    assert statuses(verdict("compliance_schedule", marked, default_delivery_days=60))["part_b"] == status
+
+
+def test_a_missing_compliance_schedule_leaves_no_stage_ii_review_row():
+    """#117: the Authority's own satisfaction is judged on a schedule that was submitted."""
+    result = verdict("compliance_schedule", bid("compliance_schedule"), default_delivery_days=60)
+    assert stage_i(result) == "dormant" and stage_summary({"x": result}, "II")["outcome"] == "pass"
+
+
 def test_blank_discounts_and_deposit_method_take_the_forms_defaults():
     assert verdict("price_schedule_parts_c_d", bid("price_schedule_parts_c_d"))["outcome"] == "pass"
     assert verdict("contract_deposit", bid("contract_deposit"))["outcome"] == "pass"

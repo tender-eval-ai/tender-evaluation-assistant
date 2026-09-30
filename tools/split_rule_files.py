@@ -329,6 +329,13 @@ def params_of(source: Path) -> dict[str, dict]:
     return dict(out)
 
 
+def inside_repo(path: Path) -> bool:
+    """Whether `path` is inside the repository. Compared case-folded: on a Mac the disk
+    ignores case, so /users/... names the same folder as /Users/... (#117)."""
+    here, root = path.resolve().as_posix().casefold(), ROOT.as_posix().casefold()
+    return here == root or here.startswith(root + "/")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--source", type=Path, required=True)
@@ -381,7 +388,7 @@ def main() -> None:
         print(f"  {template}: {', '.join(sorted(homeless[template]))}")
     for out in (args.report, args.params):
         # The report and the params carry a real tender's values: never inside the repository.
-        if out is not None and out.resolve().is_relative_to(ROOT):
+        if out is not None and inside_repo(out):
             sys.exit(f"{out} is inside the repository; write it beside the answer keys, outside git")
     if args.report:
         args.report.parent.mkdir(parents=True, exist_ok=True)

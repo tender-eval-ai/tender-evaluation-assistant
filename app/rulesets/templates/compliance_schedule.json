@@ -142,7 +142,18 @@
           "non-compliance",
           "non compliance",
           "not in compliance",
-          "non-compliant"
+          "non-compliant",
+          "not",
+          "cannot",
+          "can't",
+          "unable",
+          "partially",
+          "partial",
+          "except",
+          "deviation",
+          "deviations",
+          "no",
+          "x"
         ],
         "absent": true
       },
@@ -176,7 +187,18 @@
           "non-compliance",
           "non compliance",
           "not in compliance",
-          "non-compliant"
+          "non-compliant",
+          "not",
+          "cannot",
+          "can't",
+          "unable",
+          "partially",
+          "partial",
+          "except",
+          "deviation",
+          "deviations",
+          "no",
+          "x"
         ],
         "absent": true
       },
@@ -210,7 +232,18 @@
           "non-compliance",
           "non compliance",
           "not in compliance",
-          "non-compliant"
+          "non-compliant",
+          "not",
+          "cannot",
+          "can't",
+          "unable",
+          "partially",
+          "partial",
+          "except",
+          "deviation",
+          "deviations",
+          "no",
+          "x"
         ],
         "absent": true
       },
@@ -244,7 +277,18 @@
           "non-compliance",
           "non compliance",
           "not in compliance",
-          "non-compliant"
+          "non-compliant",
+          "not",
+          "cannot",
+          "can't",
+          "unable",
+          "partially",
+          "partial",
+          "except",
+          "deviation",
+          "deviations",
+          "no",
+          "x"
         ],
         "absent": true
       },
@@ -360,7 +404,10 @@
           "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
-      "note": "whatever the tenderer declares, the Authority must itself be satisfied that the goods meet every mandatory feature"
+      "note": "whatever the tenderer declares, the Authority must itself be satisfied that the goods meet every mandatory feature",
+      "depends_on": [
+        "compliance_schedule.submitted"
+      ]
     }
   ]
 }

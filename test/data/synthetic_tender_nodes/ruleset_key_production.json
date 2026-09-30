@@ -1,0 +1,21 @@
+{
+  "case": "SYN-2026-001",
+  "source": "Part, page, slots and expected check kinds as in ruleset_key.json; templates from the production library in app/rulesets/templates, one per form, each item's form as tools/make_synthetic_tender_ruleset.py names it",
+  "items": {
+    "a": {"part": "A", "page": 5, "template": "offer_to_be_bound", "checks": ["signature"]},
+    "b": {"part": "A", "page": 5, "template": "price_schedule", "slots": {"estimated_quantity": 875000}},
+    "c": {"part": "A", "page": 5, "template": "price_schedule", "slots": {"estimated_quantity": 875000}},
+    "d": {"part": "A", "page": 5, "template": "particulars_of_goods"},
+    "e": {"part": "B", "page": 5, "template": "particulars_of_goods"},
+    "f": {"part": "B", "page": 6, "template": "information_schedule", "checks": ["filled"]},
+    "g": {"part": "B", "page": 6, "template": "tender_sample_declaration"},
+    "h": {"part": "B", "page": 6, "template": "documentary_evidence", "checks": ["document_present"]},
+    "i": {"part": "A", "page": 6, "template": "manufacturer_letter", "checks": ["document_present"]},
+    "j": {"part": "B", "page": 6, "template": "board_resolution", "checks": ["document_present"]},
+    "k": {"part": "B", "page": 7, "template": "contact_details", "checks": ["filled"]},
+    "l": {"part": "A", "page": 7, "template": "noncollusive_certificate"},
+    "m": {"part": "C", "page": 7, "template": "price_schedule_parts_c_d"},
+    "n": {"part": "A", "page": 7, "template": "compliance_schedule", "checks": ["document_present"]},
+    "o": {"part": "B", "page": 7, "template": "method_of_production", "checks": ["document_present"]}
+  }
+}
