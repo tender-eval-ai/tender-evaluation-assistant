@@ -73,6 +73,14 @@ Fresh parse at `d64a66d` (`main` at `ba3ebcd` plus the citation-list fix).
 | Tender 2 | **718/756 95.0%** | 602/623 96.6% | 116/133 87.2% | **531/566 93.8%** | 14 | 21 |
 | Tender 3 | **1441/1582 91.1%** | 1216/1265 96.1% | 225/317 71.0% | **697/801 87.0%** | 24 | 80 |
 
+**Accepted (Nasi, 2026-09-29):** we are happy with these results, and they are the numbers the README quotes. No further parser or citation work is planned. Known limitations from the #104 review, left as they are:
+
+- Since `81ec4c1` a table of numbered paragraphs is nested under its first row where that row opened the clause (Tender 2's Particulars of Goods Table A: rows 2–4 under row 1), so "Paragraph 2 of Table A" does not resolve there. Tender 1's rows are nested under "1. Particulars of Offer" as the key has them, but "Paragraph 4 of the Particulars of Goods Schedule" does not resolve to them either. `test_locate`'s cited-clause counts (39/43, 56/65) include these misses.
+- Marker paths are matched by their ending only, so a node in the wrong place can count as found; marked recall may be slightly high.
+- A citation counts as resolved when it lands on exactly one node; that node is not checked for being the right one.
+
+A fix for the first two was drafted and tested but not applied.
+
 ### What the parser misses
 
 Marked nodes, all parser structure rather than missing text:
