@@ -47,6 +47,9 @@ param openAiSku string = 'GlobalStandard'
 @description('Thousands of tokens per minute.')
 param openAiCapacity int = 10
 
+@description('Where the demo sends anyone who wants to run it on real documents (the UI\'s banner, GET /settings).')
+param sourceUrl string = 'https://github.com/tender-eval-ai/tender-evaluation-assistant'
+
 @description('The gateway stops model calls for a project past this many US dollars a day.')
 param dailyBudgetUsd string = '2'
 
@@ -263,6 +266,9 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
             { name: 'API_KEY', secretRef: 'api-key' }
             { name: 'INBOX_DIR', value: '/data/inbox' }
             { name: 'CORS_ORIGINS', value: 'https://${appFqdn}' }
+            // Synthetic cases only, no uploads: real documents run on the client's machine.
+            { name: 'HOSTED_DEMO', value: '1' }
+            { name: 'SOURCE_URL', value: sourceUrl }
           ])
           volumeMounts: dataMount
           probes: [

@@ -1,6 +1,7 @@
 """Projects: create, list, inspect, delete; PDF uploads; one-click imports from the inbox."""
 from __future__ import annotations
 
+import json
 import re
 import secrets
 import shutil
@@ -12,7 +13,8 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from backend import deps
-from backend.schemas_api import Project
+from backend.errors import ApiError
+from backend.schemas_api import InboxCase, Project, Settings
 from backend.times import when
 
 router = APIRouter(dependencies=[Depends(deps.require_key)])
@@ -31,25 +33,33 @@ def _project(meta: dict, **detail) -> Project:
     """meta.json as the contract's Project; projects created before data classes existed
     derive theirs from the synthetic flag."""
     data_class = meta.get("data_class") or ("synthetic" if meta.get("synthetic") else "confidential")
-    status = dict(detail.pop("status", None) or {})
-    status["updated"] = when(status.get("updated"))
-    return Project.model_validate({**meta, "data_class": data_class, "created": when(meta.get("created")), "status": status, **detail})
+    return Project.model_validate({**meta, "data_class": data_class, "created": when(meta.get("created")), **detail})
+
+
+@router.get("/settings")
+def settings() -> Settings:
+    hosted = deps.HOSTED_DEMO
+    return Settings(hosted_demo=hosted, uploads=not hosted, source_url=deps.SOURCE_URL or None,
+                    data_classes=["synthetic"] if hosted else ["synthetic", "redacted_sample", "confidential"])
 
 
 @router.post("/projects")
 def create_project(req: NewProject) -> Project:
+    data_class = req.data_class or ("synthetic" if req.synthetic else "confidential")
+    if deps.HOSTED_DEMO and data_class != "synthetic":
+        raise ApiError(403, "data_class_forbidden",
+                       "this hosted demo runs synthetic cases only; run it on your own machine for real documents",
+                       {"source_url": deps.SOURCE_URL or None})
     slug = re.sub(r"[^a-z0-9]+", "-", req.name.lower()).strip("-")[:40] or "project"
     pid = f"{slug}-{secrets.token_hex(3)}"
     pdir = deps.PROJECTS / pid
     (pdir / "tender").mkdir(parents=True)
     (pdir / "bids").mkdir()
     (pdir / "work").mkdir()
-    data_class = req.data_class or ("synthetic" if req.synthetic else "confidential")
     synthetic = data_class == "synthetic"
     deps._write_json(pdir / "meta.json", {"id": pid, "name": req.name, "created": time.time(),
                                           "synthetic": synthetic, "data_class": data_class})
-    deps._set_status(pdir, "idle")
-    return _project(deps._read_json(pdir / "meta.json"), status=deps._get_status(pdir))
+    return _project(deps._read_json(pdir / "meta.json"))
 
 
 @router.get("/projects")
@@ -57,7 +67,7 @@ def list_projects() -> list[Project]:
     out = []
     if deps.PROJECTS.is_dir():
         for meta_path in sorted(deps.PROJECTS.glob("*/meta.json")):
-            out.append(_project(deps._read_json(meta_path), status=deps._get_status(meta_path.parent)))
+            out.append(_project(deps._read_json(meta_path)))
     return out
 
 
@@ -66,7 +76,6 @@ def get_project(pid: str) -> Project:
     pdir = deps._project_dir(pid)
     return _project(
         deps._read_json(pdir / "meta.json"),
-        status=deps._get_status(pdir),
         tender_files=sorted(p.name for p in (pdir / "tender").glob("*.pdf")),
         bidders=sorted(p.name for p in (pdir / "bids").iterdir() if p.is_dir()),
     )
@@ -100,10 +109,26 @@ def _pdfs_in(folder: Path) -> list[Path]:
     return sorted(p for p in folder.rglob("*.pdf") if not p.name.startswith("~$"))
 
 
+def _case_card(folder: Path) -> dict:
+    """title, summary and look_for from the case's case.json; nothing when it is missing or
+    not what it should be, so a hand-made folder still lists."""
+    try:
+        card = json.loads((folder / "case.json").read_text())
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(card, dict):
+        return {}
+    out = {k: card[k] for k in ("title", "summary") if isinstance(card.get(k), str)}
+    if isinstance(card.get("look_for"), list) and all(isinstance(x, str) for x in card["look_for"]):
+        out["look_for"] = card["look_for"]
+    return out
+
+
 @router.get("/inbox")
-def list_inbox() -> list[dict]:
+def list_inbox() -> list[InboxCase]:
     """Case folders available for one-click import (host ./inbox; compose mounts the
-    synthetic tender there too). Convention: <case>/tender/*.pdf + <case>/bids/<tenderer>/."""
+    synthetic tender there too). Convention: <case>/tender/*.pdf + <case>/bids/<tenderer>/,
+    and optionally a case.json with the card the UI shows."""
     if not deps.INBOX_DIR.is_dir():
         return []
     out = []
@@ -120,7 +145,7 @@ def list_inbox() -> list[dict]:
             "loose_pdfs": len(_pdfs_in(d)),
         }
         if entry["tender_pdfs"] or entry["bidders"] or entry["loose_pdfs"]:
-            out.append(entry)
+            out.append(InboxCase(**entry, **_case_card(d)))
     return out
 
 

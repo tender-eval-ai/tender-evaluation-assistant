@@ -24,6 +24,12 @@ def test_nothing_is_public_without_sign_in():
     assert "allowInsecure: false" in MAIN
 
 
+def test_the_hosted_demo_takes_synthetic_cases_only():
+    """The gateway already keeps a confidential project's text off Azure OpenAI; HOSTED_DEMO
+    also keeps its files off Azure: synthetic projects only, and no uploads."""
+    assert "{ name: 'HOSTED_DEMO', value: '1' }" in MAIN
+
+
 def test_the_app_scales_to_zero_and_to_one_replica_at_most():
     assert "minReplicas: 0" in MAIN, "an always-on replica runs far past the free grant"
     assert "maxReplicas: 1" in MAIN, "one writer on the file share"

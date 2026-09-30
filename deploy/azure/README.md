@@ -93,7 +93,10 @@ database URL, the sign-in secret, the image-pull token), and write their logs to
 key is the exception: a Container Apps secret that the template reads from the resource (`listKeys`).
 
 **This demo runs synthetic projects only.** The gateway sends a project's text to Azure OpenAI only as its data
-class allows, and a real bid is `confidential`, so it stays on local models (the client-site deployment).
+class allows, and a real bid is `confidential`, so it stays on local models (the client-site deployment). The API
+also runs as a hosted demo (`HOSTED_DEMO=1`): it creates synthetic projects only, takes no uploads, and a project
+starts from one of the synthetic cases in the inbox. The UI links to the repository for anyone who wants to run it
+on real documents.
 
 ## First time
 1. **A subscription.** A Free Trial, made with a personal Microsoft account rather than a university one, so the demo outlives the university account. Start it when you're ready to deploy: the trial credit lasts 30 days.

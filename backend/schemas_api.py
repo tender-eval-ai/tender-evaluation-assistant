@@ -187,15 +187,6 @@ class JobPage(BaseModel):
     next_cursor: str | None = None
 
 
-class ProjectStatus(BaseModel):
-    """The project's state file. Only the prototype's pipeline moved it past `idle`, and it went at
-    S5; the jobs carry the state now (`GET /projects/{pid}/jobs`)."""
-
-    state: Literal["idle", "running", "waiting", "done", "error"] = "idle"
-    detail: str | None = None
-    updated: datetime | None = None
-
-
 class Project(BaseModel):
     """A project as `GET /projects` lists it and `GET /projects/{pid}` describes it (the
     detail fields are null in the list)."""
@@ -205,9 +196,32 @@ class Project(BaseModel):
     synthetic: bool = False
     data_class: DataClass = DataClass.CONFIDENTIAL
     created: datetime | None = None
-    status: ProjectStatus = Field(default_factory=ProjectStatus, description="an object, not a string: read status.state")
     tender_files: list[str] | None = None
     bidders: list[str] | None = None
+
+
+class InboxCase(BaseModel):
+    """A case folder `POST /projects/{pid}/import` can copy in. `title`, `summary` and `look_for`
+    come from the folder's `case.json` (the synthetic cases carry one), null without it."""
+
+    name: str
+    tender_pdfs: int
+    bidders: list[str]
+    loose_pdfs: int
+    title: str | None = None
+    summary: str | None = None
+    look_for: list[str] | None = None
+
+
+class Settings(BaseModel):
+    """What the UI needs to know about this deployment. On a hosted demo (`hosted_demo`) a
+    project is synthetic and starts from an inbox case: `data_classes` is `["synthetic"]`,
+    `uploads` is false, and `source_url` is where to get the code to run it on real documents."""
+
+    hosted_demo: bool
+    data_classes: list[DataClass]
+    uploads: bool
+    source_url: str | None = None
 
 
 class CorrectionRequest(BaseModel):
