@@ -12,14 +12,14 @@ from pydantic import BaseModel, Field
 from app.checks.labels import PAGE_LABELS, normalise
 from app.checks.pages import read_png
 
-PROMPT_VERSION = "triage-v1"
+PROMPT_VERSION = "triage-v2"
 # Six page images per call is the design number (a 300-page offer is 50 calls); a model
 # with a small context window takes fewer through TRIAGE_PAGES_PER_CALL.
 PAGES_PER_CALL = max(1, int(os.environ.get("TRIAGE_PAGES_PER_CALL", "6")))
 Progress = Callable[[str, int, int], None]
 
 SYSTEM = (
-    "You label the pages of ONE tenderer's offer to a public goods tender. For every page image "
+    "You label the pages of ONE tenderer's offer to a tendering authority's goods tender. For every page image "
     "you are given, say what the page is, using one label from this list and no other: "
     + ", ".join(PAGE_LABELS) + ". "
     "The labels are named after the Completeness Check Schedule items they serve: the Tender Form's "

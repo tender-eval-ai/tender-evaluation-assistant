@@ -23,14 +23,14 @@ from app.config import DEFAULT_AGENT_STEPS
 from app.checks.verify import TextOf
 from app.grounding import quote_on_page
 
-PROMPT_VERSION = "agent-v5"
+PROMPT_VERSION = "agent-v6"
 MAX_STEPS = max(1, int(os.environ.get("AGENT_MAX_STEPS", str(DEFAULT_AGENT_STEPS))))
 MAX_READS = max(0, int(os.environ.get("AGENT_MAX_READS", "3")))
 TRANSCRIPT_CHARS = 3000
 TRACE_CHARS = 300
 
 SYSTEM = (
-    "You search ONE tenderer's offer to a public goods tender for a form the page labels did not find: "
+    "You search ONE tenderer's offer to a tendering authority's goods tender for a form the page labels did not find: "
     "{title}. One action per step, from: list_pages (the index of the offer's pages: label, title, summary); "
     "read_page (the text of one page; a scanned page is transcribed, which costs a call, and at most {reads} "
     "pages may be read); find (whether a phrase is on a page you name); finish (found=true with the page and "

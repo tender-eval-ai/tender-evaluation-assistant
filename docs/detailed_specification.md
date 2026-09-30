@@ -8,7 +8,7 @@ tests, 105 offline tests, CI on every push.*
 
 ## 1. What the system does
 
-The assistant drafts the **procurement review report** a public Tender Assessment
+The assistant drafts the **procurement review report** a tendering authority's Tender Assessment
 Panel (TAP) produces when evaluating a tender: it ingests one tender document set plus
 one offer (bid) per tenderer (20–60 in production), and outputs three editable Word
 deliverables — the Price Summary table, the Stage I/II summary list, and a detailed

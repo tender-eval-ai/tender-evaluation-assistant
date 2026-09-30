@@ -839,7 +839,7 @@ def _is_heading(text: str, x0: float, class_name: str, subitem_stack, nodes_by_i
     The layout model's `section-header` class, less three things it also
     covers: a label ending in a colon ("Glossary:") introduces what follows
     inside the current node; a line indented past the open list's marker column
-    is part of the item (an address block's "the Authority"
+    is part of the item (an address block's "Procurement Department"
     inside an item of the Appendix's contact list); and the first heading after
     a Part heading that has no title of its own ("Part I" over "Method of
     providing the Contract Deposit") is that Part's title.

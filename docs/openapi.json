@@ -47,7 +47,7 @@
             "title": "Currency",
             "type": "string"
           },
-          "fx_to_hkd": {
+          "fx_to_base": {
             "anyOf": [
               {
                 "type": "number"
@@ -56,8 +56,8 @@
                 "type": "null"
               }
             ],
-            "description": "Conversion rate to HKD if quoted in a foreign currency",
-            "title": "Fx To Hkd"
+            "description": "Conversion rate to the base currency if quoted in a foreign currency",
+            "title": "Fx To Base"
           },
           "optimal_dosage": {
             "anyOf": [
@@ -1508,9 +1508,63 @@
             "description": "[x0, y0, x1, y1] of the marker, PDF points",
             "title": "Box"
           },
+          "char_end": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "end offset of the text; the layout parser gives the text's length",
+            "title": "Char End"
+          },
+          "char_start": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "offset of the text; the layout parser always gives 0",
+            "title": "Char Start"
+          },
+          "doc_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the document name from the page footer",
+            "title": "Doc Name"
+          },
+          "is_coarse": {
+            "default": false,
+            "description": "a clause or subclause, not a finer item",
+            "title": "Is Coarse",
+            "type": "boolean"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "a subitem's marker as the parser labels it, e.g. (a)",
+            "title": "Label"
           },
           "node_id": {
             "title": "Node Id",
@@ -1549,6 +1603,48 @@
               }
             ],
             "title": "Parent Id"
+          },
+          "part": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the printed scope the node sits in, e.g. Part 4 or Table 2",
+            "title": "Part"
+          },
+          "ref_no": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the tender reference number from the page footer",
+            "title": "Ref No"
+          },
+          "rule_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "the dated edition of the rules named in the footer",
+            "title": "Rule Version"
+          },
+          "text": {
+            "default": "",
+            "description": "the node's own text as parsed",
+            "title": "Text",
+            "type": "string"
           },
           "title": {
             "anyOf": [

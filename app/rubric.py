@@ -15,7 +15,7 @@ from .retrieval import RUBRIC_KEYWORDS, excerpt_all
 from .schemas import Rubric
 
 SYSTEM = (
-    "You support a public Tender Assessment Panel (TAP). From the tender documents "
+    "You support a tendering authority's Tender Assessment Panel (TAP). From the tender documents "
     "provided, derive the evaluation rubric:\n"
     "1. stage1_checklist — every form, schedule or certificate a tenderer MUST submit "
     "(completeness check): tender form / offer to be bound, price schedule, particulars "
