@@ -36,7 +36,7 @@ from app.checks.verify import agree, normalise
 from app.engine.core import evaluate_item
 from app.engine.field_result import FieldResult, overall_status, status_counts, worst_status
 from app.engine.normalize import round_to_significant_figures
-from app.rulesets.library import load_templates
+from app.rulesets.library import load_templates, template_of
 from app.rulesets.schema import CheckType, RuleSet, RuleSetItem, Template, TemplateRule
 
 _SLOT_REF = re.compile(r"^\{([a-z][a-z0-9_]*)\}$")
@@ -494,8 +494,7 @@ def decide(fields: dict, spec: dict) -> dict:
     templates = load_templates()
     items = {}
     for item in ruleset.items:
-        template = templates.get(item.template) if item.template else None
-        items[item.letter] = evaluate(item, fields, template)
+        items[item.letter] = evaluate(item, fields, template_of(item, templates))
     stage1, stage2 = stage_summary(items, "I"), stage_summary(items, "II")
     return {"ruleset_version": ruleset.version, "outcome": stage1["outcome"], "items": items,
             "stage1": stage1, "stage2": stage2 if stage2["items"] else None}

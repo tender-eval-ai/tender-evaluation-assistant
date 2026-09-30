@@ -10,7 +10,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from app.rulesets.schema import Template
+from app.rulesets.schema import RuleSetItem, Template
 
 DEFAULT_DIR = Path(__file__).resolve().parent / "templates"
 EMPTY = ("the template library is empty, so every schedule item is drafted from its clauses (L3) "
@@ -47,3 +47,15 @@ def library_status(directory: Path | None = None) -> dict:
         return {"count": len(load_templates(directory)), "valid": True, "error": None}
     except (ValueError, OSError) as exc:
         return {"count": 0, "valid": False, "error": str(exc)}
+
+
+def template_of(item: RuleSetItem, library: dict[str, Template]) -> Template | None:
+    """The template an item is judged by: its own copy when it has one (#89), so a later
+    change to the library never alters an item already built; the library's otherwise (an
+    item stored before the copy existed). The copy has no rules: the item carries its own."""
+    if item.template is None:
+        return None
+    if item.template_copy is not None:
+        return Template(id=item.template, form_name=item.title, slots=item.template_copy.slots,
+                        consequences=item.template_copy.consequences, rules=[])
+    return library.get(item.template)

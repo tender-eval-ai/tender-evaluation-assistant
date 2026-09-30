@@ -171,7 +171,7 @@ def patch_item(pid: str, letter: str, body: ItemPatch, user: str = Depends(deps.
     version, ruleset = _open_draft(store, pid, user)
     try:
         before = ed.find_item(ruleset, letter)
-        after = ed.apply_patch(before, body, user, _now())
+        after = ed.apply_patch(before, body, user, _now(), load_templates())
     except ed.EditError as err:
         raise _edit_error(err)
     saved = _save(store, pid, version, ed.replace_item(ruleset, after), user, "ruleset.item_patched",
