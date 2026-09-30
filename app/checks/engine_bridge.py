@@ -24,7 +24,12 @@ bound that is not a date is a reviewer's call, never skipped.
 For the production templates (J12): a rule naming a tier its template does not define
 makes the item a reviewer's call, like a missing template, never a silent pass; a rule
 whose params use an optional slot the tender left empty does not apply; and a rule's
-`blank_if` param lists answers that mean "nothing" ("Nil", "None"), read as a blank."""
+`blank_if` param lists answers that mean "nothing" ("Nil", "None"), read as a blank.
+
+#117: a `blank_if` answer is compared without case or marks ("N/A." is "n/a", a dash is
+nothing), one that opens with such a word but says more is a reviewer's call, and a person's
+corrected value is taken at its word; a rule is turned off only when every slot it reads is
+an empty optional one, and the verdict's reasons say so."""
 from __future__ import annotations
 
 import datetime as dt
@@ -82,14 +87,17 @@ def _contains(text: Any, phrase: Any) -> bool:
 
 def _decimal_places(text: Any) -> list[int]:
     """The decimal places of every figure written in `text`, as written: "2.50%" has two.
-    A single comma inside a percentage is a decimal comma ("2,505%" has three); anywhere
-    else a comma groups thousands."""
-    text = str(text or "")
+    A comma is a decimal comma only in a figure right before a % ("2,505%" has three); anywhere
+    else it groups thousands ("over 12,000" has none). A date ("30.06.2026") is not a figure."""
+    text = "" if text is None else str(text)
     out = []
-    for token in re.findall(r"\d+(?:[.,]\d+)*", text):
+    for m in re.finditer(r"\d+(?:[.,]\d+)*", text):
+        token, percent = m.group(0), re.match(r"\s*%", text[m.end():]) is not None
+        if token.count(".") > 1 or re.fullmatch(r"\d{1,2}[.,]\d{1,2}[.,]\d{2,4}", token):
+            continue
         if "." in token:
             out.append(len(token.rsplit(".", 1)[1]))
-        elif token.count(",") == 1 and "%" in text:
+        elif token.count(",") == 1 and percent:
             out.append(len(token.split(",")[1]))
         else:
             out.append(0)
@@ -285,6 +293,13 @@ def rules_doc(item: RuleSetItem, template: Template | None = None, overrides: di
             "consequence_tiers": tiers, "rules": rules}
 
 
+def _blank_key(value: Any) -> str:
+    """An answer as `blank_if` compares it: lower case, every mark but letters, digits and
+    spaces dropped, spaces collapsed. "N/A." and "NA" are one answer, "(Nil)" and "Nil;" are
+    "nil", and "-" is nothing at all. Letters of any script count."""
+    return " ".join(re.sub(r"[^\w\s]|_", "", str(value).lower()).split())
+
+
 _RANGE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*(?:-|–|—|to)\s*(\d[\d,]*(?:\.\d+)?)")
 
 
@@ -309,24 +324,33 @@ def normalised(item: RuleSetItem, fields: dict) -> tuple[dict, list[dict], dict[
     out, adjustments, failed = dict(fields), [], {}
     for rule in item.rules:
         empty = rule.params.get("blank_if")
-        if not isinstance(empty, list):
+        raw = out.get(rule.field)
+        if not isinstance(empty, list) or raw is None:
             continue
-        said = str(out.get(rule.field) or "").strip().rstrip(".").lower()
-        words = [str(w).lower() for w in empty]
-        if said in words:
-            out[rule.field] = None             # "Nil" under non-compliances declares none
-        elif opened := next((w for w in words if re.match(rf"{re.escape(w)}(?![a-z0-9])", said)), None):
+        said = _blank_key(raw)
+        words = {_blank_key(w): str(w) for w in empty if _blank_key(w)}
+        if not said or said in words:
+            out[rule.field] = None             # "Nil" (or a dash) under non-compliances declares none
+        elif fields.get(f"{rule.field}_corrected"):
+            continue                           # a person's value is taken at its word
+        elif opened := next((w for k, w in words.items() if re.match(rf"{re.escape(k)}(?!\w)", said)), None):
             # "None noted", "Nil (none)", "No deviation from the specification": most likely
             # nothing declared, but not in so many words. A reviewer decides; it is neither a
             # blank (a pass) nor a declaration (which can disqualify) on the wording alone.
-            failed[rule.id] = ("unstated", f"{rule.field} reads {out.get(rule.field)!r}, which opens with "
-                                           f"{opened!r} but says more: a reviewer decides whether anything is declared")
+            failed[rule.id] = ("unstated", f"{raw!r} opens with {opened!r} but says more; correct it to Nil if "
+                                           "nothing is declared, or to what is declared")
     for rule in item.rules:
         value = out.get(rule.field)
         if not rule.normalise or value is None:
             continue
+        printed = out.get(f"{rule.field}_printed")
+        if rule.normalise[0].op == "resolve_range_to_lower_bound" and isinstance(value, (int, float)) \
+                and isinstance(printed, str) and not fields.get(f"{rule.field}_corrected"):
+            source = printed                   # 5.1 read from "5.1 - 4.36 kg/t": the range is in the text
+        else:
+            source = value
         try:
-            new = value
+            new = source
             for step in rule.normalise:
                 new = _step(step.op, step.params, new)
         except (ValueError, KeyError, ArithmeticError) as exc:
@@ -380,16 +404,22 @@ def apply_unextracted(checked: list[FieldResult], fields: dict) -> None:
             f.note = f"unextracted: no form reads {f.field}; a reviewer decides"
 
 
-def without_unset_optional_slots(item: RuleSetItem, template: Template | None) -> RuleSetItem:
-    """The item without the rules that read an optional slot the tender left empty: the
-    tender does not set that limit, so the check does not apply (#99 review), rather than
-    sending every bid to review for want of a bound."""
+def unset_optional_slot_rules(item: RuleSetItem, template: Template | None) -> dict[str, list[str]]:
+    """{rule id: its slots} for the rules every slot of which is optional and left empty by the
+    tender: the tender sets none of those limits, so the check does not apply (#99 review),
+    rather than sending every bid to review for want of a bound. A rule with one of its slots
+    set still runs: a range with only its minimum set checks the minimum (#117)."""
     if template is None:
-        return item
+        return {}
     optional = {s.name for s in template.slots if not s.required}
     unset = {name for name in optional if (item.slots.get(name) is None or item.slots[name].value in (None, "", []))}
-    kept = [r for r in item.rules if not (r.slot_refs() & unset)]
-    return item if len(kept) == len(item.rules) else item.model_copy(update={"rules": kept})
+    return {r.id: sorted(r.slot_refs()) for r in item.rules if r.slot_refs() and r.slot_refs() <= unset}
+
+
+def without_unset_optional_slots(item: RuleSetItem, template: Template | None) -> RuleSetItem:
+    """The item without the rules `unset_optional_slot_rules` names."""
+    off = unset_optional_slot_rules(item, template)
+    return item if not off else item.model_copy(update={"rules": [r for r in item.rules if r.id not in off]})
 
 
 def by_reviewer(key: str) -> bool:
@@ -441,9 +471,14 @@ def evaluate(item: RuleSetItem, fields: dict, template: Template | None = None) 
     if blocked:
         return {"item": item.letter, "part": item.part.value, "outcome": "needs_review", "worst": "needs_review",
                 "counts": status_counts([]), "rule_ids": [r.id for r in item.rules], "fields": [], "reasons": [blocked]}
+    off = unset_optional_slot_rules(item, template)
     item = without_unset_optional_slots(item, template)
     prepared, overrides, adjustments = prepare(item, fields)
     result = evaluate_item([rules_doc(item, template, overrides)], prepared, item.letter)
+    for f in result.fields:
+        if (f.note or "").startswith("Could not be automatically determined"):
+            # The engine's own wording names its internal key ("…__outcome"); a reviewer reads this.
+            f.note = f"{f.field} reads {f.value!r}, an answer this rule has no outcome for; a reviewer decides"
     apply_verification(result.fields, fields)
     apply_unextracted(result.fields, fields)
     apply_reviewer_fields(item, result.fields, fields)
@@ -462,7 +497,8 @@ def evaluate(item: RuleSetItem, fields: dict, template: Template | None = None) 
         "counts": status_counts(result.fields),
         "rule_ids": [r.id for r in item.rules],
         "fields": checked,
-        "reasons": [f["note"] for f in checked if f["status"] != "pass" and f["note"]],
+        "reasons": [f["note"] for f in checked if f["status"] != "pass" and f["note"]]
+                   + [f"rule {rule_id} not checked: the tender sets no {', '.join(slots)}" for rule_id, slots in off.items()],
     }
     if adjustments:
         # Only when something changed: a stored verdict without the key must still compare
