@@ -54,3 +54,18 @@ def test_the_scripts_say_where_they_stopped_and_setup_prepares_a_new_subscriptio
     for provider in ("Microsoft.App", "Microsoft.OperationalInsights", "Microsoft.DBforPostgreSQL", "Microsoft.CognitiveServices",
                      "Microsoft.KeyVault", "Microsoft.Storage", "Microsoft.ManagedIdentity"):
         assert provider in setup, provider
+
+
+def test_the_model_can_live_in_another_region_and_every_deploy_says_which():
+    """canadacentral listed gpt-4.1-mini as GlobalStandard and then refused to deploy it
+    (2026-09-30): the OpenAI resource alone moves, and the region setup.sh chose reaches every
+    later deploy, or the workflow would try to move the resource back."""
+    setup = (ROOT / "deploy/azure/setup.sh").read_text()
+    deploy = (ROOT / "deploy/azure/deploy.sh").read_text()
+    workflow = (ROOT / ".github/workflows/deploy-azure.yml").read_text()
+    assert "param openAiLocation string = location" in MAIN and "location: openAiLocation" in MAIN
+    assert 'openAiLocation="$OPENAI_LOCATION"' in setup
+    for name in ("AZURE_OPENAI_LOCATION", "AZURE_OPENAI_MODEL", "AZURE_OPENAI_MODEL_VERSION"):
+        assert f'"{name}=' in setup, name
+        assert f"optional {name}" in deploy, name
+        assert f"{name}: ${{{{ vars.{name} }}}}" in workflow, name

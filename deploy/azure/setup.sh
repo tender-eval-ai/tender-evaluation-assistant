@@ -3,7 +3,8 @@
 #
 #   az login                       # the account that owns the subscription
 #   gh auth login                  # to set the repository variables the deploy workflow reads
-#   export GHCR_TOKEN=...          # a classic GitHub token with read:packages only
+#   export GHCR_TOKEN=...          # a classic GitHub token with read:packages only (a rerun
+#                                  # doesn't need it once the key vault holds it)
 #   bash deploy/azure/setup.sh
 #
 # In resource group $RG it creates:
@@ -26,9 +27,10 @@ cd "$(dirname "$0")/../.."
 REPO=${REPO:-tender-eval-ai/tender-evaluation-assistant}
 RG=${RG:-tender-demo}
 LOCATION=${LOCATION:-centralus}   # a Free Trial can't create Postgres in eastus2, eastus or westus2
+# The Azure OpenAI resource alone can go elsewhere: a region may list a model it won't deploy.
+OPENAI_LOCATION=${OPENAI_LOCATION:-$LOCATION}
 PREFIX=${PREFIX:-tender}
 GHCR_USER=${GHCR_USER:-chenyufang-data}   # the account GHCR_TOKEN belongs to
-: "${GHCR_TOKEN:?export GHCR_TOKEN: a classic GitHub token with the read:packages scope only}"
 
 SUBSCRIPTION=$(az account show --query id -o tsv)
 TENANT=$(az account show --query tenantId -o tsv)
@@ -58,13 +60,18 @@ if [ "$PG_OFFER" != ok ]; then
     exit 1
 fi
 
-# The suffix makes the global names unique; the repository variable keeps it stable.
+# The suffix makes the global names unique; the repository variable keeps it stable. It is
+# stored only at the end, so a run that stopped halfway takes it from the key vault it made.
 SUFFIX=$(gh variable get AZURE_NAME_SUFFIX -R "$REPO" 2>/dev/null || true)
+[ -n "$SUFFIX" ] || SUFFIX=$(az keyvault list -g "$RG" --query "[?starts_with(name, '${PREFIX}-kv-')].name | [0]" \
+    -o tsv 2>/dev/null | sed "s/^${PREFIX}-kv-//" || true)
 # openssl, not `tr </dev/urandom | head`: under pipefail, tr's broken pipe stopped the script.
 [ -n "$SUFFIX" ] || SUFFIX=$(openssl rand -hex 3)
 KV="${PREFIX}-kv-${SUFFIX}"
 PG="${PREFIX}-pg-${SUFFIX}"
 ID="${PREFIX}-id"
+[ -n "${GHCR_TOKEN:-}" ] || az keyvault secret show --vault-name "$KV" -n ghcr-token -o none 2>/dev/null || {
+    echo "export GHCR_TOKEN: a classic GitHub token with the read:packages scope only" >&2; exit 1; }
 
 retry() { for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do "$@" && return 0; sleep 10; done; return 1; }
 assign() {  # object id, role, scope, principal type
@@ -106,11 +113,14 @@ else
 fi
 put_secret database-url "postgresql://tender:${PG_PASSWORD}@${PG}.postgres.database.azure.com:5432/tender?sslmode=require"
 has_secret api-key || put_secret api-key "$(openssl rand -hex 24)"
-put_secret ghcr-token "$GHCR_TOKEN"
+[ -z "${GHCR_TOKEN:-}" ] || put_secret ghcr-token "$GHCR_TOKEN"
 
-echo "== first pass: everything but the app"
+echo "== first pass: everything but the app (Azure OpenAI in $OPENAI_LOCATION)"
+MODEL=(openAiLocation="$OPENAI_LOCATION")
+[ -z "${OPENAI_MODEL:-}" ] || MODEL+=(openAiModel="$OPENAI_MODEL")
+[ -z "${OPENAI_MODEL_VERSION:-}" ] || MODEL+=(openAiModelVersion="$OPENAI_MODEL_VERSION")
 OUTPUTS=$(az deployment group create -g "$RG" -n infra -f deploy/azure/main.bicep \
-    -p suffix="$SUFFIX" prefix="$PREFIX" imageTag=none ghcrUser="$GHCR_USER" deployApp=false \
+    -p suffix="$SUFFIX" prefix="$PREFIX" imageTag=none ghcrUser="$GHCR_USER" deployApp=false "${MODEL[@]}" \
     --query properties.outputs -o json)
 output() { printf '%s' "$OUTPUTS" | python3 -c "import json,sys; print(json.load(sys.stdin)['$1']['value'])"; }
 APP_URL="https://${PREFIX}-demo.$(output environmentDomain)"
@@ -156,7 +166,7 @@ AZURE_STORAGE_KEY=$(az storage account keys list -g "$RG" -n "$STORAGE" --query 
 export AZURE_STORAGE_KEY
 for case in test/data/synthetic_tender; do
     az storage file upload-batch --destination data --destination-path "inbox/$(basename "$case")" \
-        --source "$case" --no-progress -o none
+        --source "$case" --no-progress --only-show-errors -o none   # not a warning per file
 done
 unset AZURE_STORAGE_KEY
 
@@ -164,8 +174,14 @@ echo "== repository variables and the azure-demo environment (ids, not secrets)"
 gh api -X PUT "repos/$REPO/environments/azure-demo" >/dev/null
 for pair in "AZURE_CLIENT_ID=$GH_APP" "AZURE_TENANT_ID=$TENANT" "AZURE_SUBSCRIPTION_ID=$SUBSCRIPTION" \
             "AZURE_RESOURCE_GROUP=$RG" "AZURE_NAME_SUFFIX=$SUFFIX" "AZURE_PREFIX=$PREFIX" \
-            "AZURE_SIGNIN_CLIENT_ID=$SIGNIN_ID" "AZURE_GHCR_USER=$GHCR_USER"; do
-    gh variable set "${pair%%=*}" -R "$REPO" --body "${pair#*=}"
+            "AZURE_SIGNIN_CLIENT_ID=$SIGNIN_ID" "AZURE_GHCR_USER=$GHCR_USER" \
+            "AZURE_OPENAI_LOCATION=$OPENAI_LOCATION" "AZURE_OPENAI_MODEL=${OPENAI_MODEL:-}" \
+            "AZURE_OPENAI_MODEL_VERSION=${OPENAI_MODEL_VERSION:-}"; do
+    if [ -n "${pair#*=}" ]; then
+        gh variable set "${pair%%=*}" -R "$REPO" --body "${pair#*=}"
+    else   # the template's default, so the deploy doesn't pass a stale one
+        gh variable delete "${pair%%=*}" -R "$REPO" 2>/dev/null || true
+    fi
 done
 
 echo

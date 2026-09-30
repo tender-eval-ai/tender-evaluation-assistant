@@ -114,9 +114,9 @@ az cognitiveservices account purge -g tender-demo -n <tender-oai-…> -l <old re
 LOCATION=<another region> bash deploy/azure/setup.sh
 ```
 
-The rerun makes a new name suffix, since the repository variable that keeps it is only set at the end.
+The rerun makes a new name suffix. A rerun into a group that still exists reuses the names of the key vault it finds there, so it needs no `GHCR_TOKEN` either.
 
-**If the first pass stops at the Azure OpenAI resource:** trial subscriptions have had limits on Azure OpenAI. Either upgrade to pay-as-you-go (the unused credit carries over), or pick a model the region offers (`az cognitiveservices model list -l <region>`) and rerun with `OPENAI_MODEL=… OPENAI_MODEL_VERSION=…`.
+**If the first pass stops at the Azure OpenAI resource** ("The specified SKU 'GlobalStandard' for model … is not supported in this region"): a region can list a model and still refuse to deploy it to your subscription. canadacentral did for `gpt-4.1-mini` on 2026-09-30, while canadaeast, westus3, northcentralus and centralus accepted it. Nothing was created, so rerun with the OpenAI resource alone in another region, keeping the rest where it is: `LOCATION=canadacentral OPENAI_LOCATION=canadaeast bash deploy/azure/setup.sh`. To check a region first, validate a deployment without creating it (`az deployment group validate`). `OPENAI_MODEL=… OPENAI_MODEL_VERSION=…` pick another model the same way. `setup.sh` stores all three as repository variables, and the deploy workflow passes them on.
 
 ## What it costs
 The trial credit covers the first 30 days. To keep the demo after that, upgrade to pay-as-you-go:
