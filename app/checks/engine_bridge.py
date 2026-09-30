@@ -41,7 +41,7 @@ from app.checks.verify import agree, normalise
 from app.engine.core import evaluate_item
 from app.engine.field_result import FieldResult, overall_status, status_counts, worst_status
 from app.engine.normalize import round_to_significant_figures
-from app.rulesets.library import load_templates
+from app.rulesets.library import load_templates, template_of
 from app.rulesets.schema import CheckType, RuleSet, RuleSetItem, Template, TemplateRule
 
 _SLOT_REF = re.compile(r"^\{([a-z][a-z0-9_]*)\}$")
@@ -344,9 +344,13 @@ def normalised(item: RuleSetItem, fields: dict) -> tuple[dict, list[dict], dict[
         if not rule.normalise or value is None:
             continue
         printed = out.get(f"{rule.field}_printed")
-        if rule.normalise[0].op == "resolve_range_to_lower_bound" and isinstance(value, (int, float)) \
-                and isinstance(printed, str) and not fields.get(f"{rule.field}_corrected"):
-            source = printed                   # 5.1 read from "5.1 - 4.36 kg/t": the range is in the text
+        span = _RANGE.search(printed) if isinstance(printed, str) else None
+        # 5.1 read from "5.1 - 4.36 kg/t": the range is in the text. Only a range with the
+        # figure read at one end, so "5.1 kg/t (tested 2023-2024)" isn't read as 2023 (#135 review).
+        if rule.normalise[0].op == "resolve_range_to_lower_bound" and isinstance(value, (int, float)) and span \
+                and not fields.get(f"{rule.field}_corrected") \
+                and value in (float(span.group(1).replace(",", "")), float(span.group(2).replace(",", ""))):
+            source = printed
         else:
             source = value
         try:
@@ -530,8 +534,7 @@ def decide(fields: dict, spec: dict) -> dict:
     templates = load_templates()
     items = {}
     for item in ruleset.items:
-        template = templates.get(item.template) if item.template else None
-        items[item.letter] = evaluate(item, fields, template)
+        items[item.letter] = evaluate(item, fields, template_of(item, templates))
     stage1, stage2 = stage_summary(items, "I"), stage_summary(items, "II")
     return {"ruleset_version": ruleset.version, "outcome": stage1["outcome"], "items": items,
             "stage1": stage1, "stage2": stage2 if stage2["items"] else None}

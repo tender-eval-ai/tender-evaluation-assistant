@@ -328,6 +328,33 @@
         "title": "Consequence",
         "type": "string"
       },
+      "ConsequenceDefaults": {
+        "description": "A template's default outcomes for one consequence tier.",
+        "properties": {
+          "follow_up_deadline": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowUpDeadline"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "outcomes": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/Outcome"
+            },
+            "title": "Outcomes",
+            "type": "object"
+          }
+        },
+        "required": [
+          "outcomes"
+        ],
+        "title": "ConsequenceDefaults",
+        "type": "object"
+      },
       "Correction": {
         "properties": {
           "by": {
@@ -837,6 +864,30 @@
           "if_deadline_missed"
         ],
         "title": "FollowUp",
+        "type": "object"
+      },
+      "FollowUpDeadline": {
+        "description": "How the engine turns a dormant outcome's prose deadline into a date, from the\nrequest date it is given at check time.",
+        "properties": {
+          "offset": {
+            "minimum": 1.0,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "op": {
+            "enum": [
+              "add_working_days",
+              "add_calendar_days"
+            ],
+            "title": "Op",
+            "type": "string"
+          }
+        },
+        "required": [
+          "op",
+          "offset"
+        ],
+        "title": "FollowUpDeadline",
         "type": "object"
       },
       "Gap": {
@@ -2435,6 +2486,17 @@
             "description": "template id; None for a novel item",
             "title": "Template"
           },
+          "template_copy": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemplateCopy"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "what the item took from its template when matched (#89); null before, or for a novel item"
+          },
           "title": {
             "minLength": 1,
             "title": "Title",
@@ -2580,6 +2642,17 @@
         "title": "Settings",
         "type": "object"
       },
+      "SlotKind": {
+        "enum": [
+          "number",
+          "text",
+          "list",
+          "date",
+          "money"
+        ],
+        "title": "SlotKind",
+        "type": "string"
+      },
       "SlotPatch": {
         "properties": {
           "name": {
@@ -2594,6 +2667,49 @@
           "name"
         ],
         "title": "SlotPatch",
+        "type": "object"
+      },
+      "SlotSpec": {
+        "description": "A parameter a template needs from the tender, e.g. the estimated quantity.",
+        "properties": {
+          "description": {
+            "description": "what to look for, one sentence the LLM reads",
+            "minLength": 1,
+            "title": "Description",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/SlotKind"
+          },
+          "name": {
+            "description": "identifier used as {name} in TemplateRule.params",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "title": "Name",
+            "type": "string"
+          },
+          "required": {
+            "default": true,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "name",
+          "kind",
+          "description"
+        ],
+        "title": "SlotSpec",
         "type": "object"
       },
       "SlotValue": {
@@ -2680,6 +2796,39 @@
           "items"
         ],
         "title": "StageSummary",
+        "type": "object"
+      },
+      "TemplateCopy": {
+        "description": "What an item took from its template when it was matched (#89): the slot specs, the\ntemplate's consequence tiers, and its content hash. Evaluation, the slot\nfill (L2) and confirmation read this copy, so a later change to the template never alters\nan item already built; an item stored before the copy existed reads the library, as before.",
+        "properties": {
+          "consequences": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ConsequenceDefaults"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/Consequence"
+            },
+            "title": "Consequences",
+            "type": "object"
+          },
+          "slots": {
+            "items": {
+              "$ref": "#/components/schemas/SlotSpec"
+            },
+            "title": "Slots",
+            "type": "array"
+          },
+          "version": {
+            "description": "Template.content_hash() when the item was matched",
+            "pattern": "^[0-9a-f]{12}$",
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "TemplateCopy",
         "type": "object"
       },
       "TemplateRule": {

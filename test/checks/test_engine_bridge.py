@@ -424,3 +424,5 @@ def test_a_range_printed_beside_a_number_is_read_from_the_text_unless_a_person_c
     read = {"p.dosage": 5.1, "p.dosage_printed": "5.1 - 4.36 kg/t"}
     assert normalised(item, read)[0]["p.dosage"] == 4.4, "the lower bound of the printed range, to 2 figures"
     assert normalised(item, {**read, "p.dosage_corrected": True})[0]["p.dosage"] == 5.1, "a person's figure stands"
+    unrelated = {"p.dosage": 5.1, "p.dosage_printed": "5.1 kg/t (trials 2023-2024)"}
+    assert normalised(item, unrelated)[0]["p.dosage"] == 5.1, "a span without the figure read is not its range"

@@ -90,7 +90,7 @@ def match_item(item: RuleSetItem, templates: dict[str, Template], index: NodeInd
     for note in [*(n.model_copy(deep=True) for n in template.notes), *tier_notes]:
         if note not in notes:
             notes.append(note)
-    return item.model_copy(update={"template": chosen, "rules": rules,
+    return item.model_copy(update={"template": chosen, "rules": rules, "template_copy": template.copy_for(),
                                    "slots": {s.name: SlotValue() for s in template.slots},
                                    "notes": notes,
                                    "condition": item.condition or template.condition,
