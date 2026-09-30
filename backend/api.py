@@ -1,6 +1,7 @@
 """FastAPI backend: the routes of docs/api_contract.md.
 
-    POST/GET /projects, GET/DELETE /projects/{pid}      projects (routes/projects.py)
+    GET /settings                                       a hosted demo or not (routes/projects.py)
+    POST/GET /projects, GET/DELETE /projects/{pid}      projects
     POST /projects/{pid}/tender, /bids/{tenderer}       uploads; POST /import, GET /inbox
     GET/PUT/PATCH/POST /projects/{pid}/ruleset...      the rule set: build, edit, versions, confirm
     POST /projects/{pid}/checks, GET .../jobs           one vendor_check job per tenderer on the worker
@@ -49,9 +50,14 @@ app = FastAPI(title="Tender Evaluation Assistant API", version="0.1.0")
 async def upload_limit(request, call_next):
     """An upload's size is checked before its body is read: FastAPI parses a multipart body,
     spooling every file to disk, before the route runs, so a check inside the route would
-    come after the disk was already used. A body without a length is refused. Added before
-    CORS, so CORS stays the outer layer and a refusal still carries its headers."""
+    come after the disk was already used. A body without a length is refused, and a hosted
+    demo refuses every upload. Added before CORS, so CORS stays the outer layer and a refusal
+    still carries its headers."""
     if request.method == "POST" and deps.UPLOAD_PATH.match(request.url.path):
+        if deps.HOSTED_DEMO:
+            return errors.error_response(403, "uploads_disabled", "this hosted demo takes no uploads: start from a "
+                                         "synthetic case, or run it on your own machine for real documents",
+                                         {"source_url": deps.SOURCE_URL or None})
         length, limit = request.headers.get("content-length"), deps.max_upload_bytes()
         if length is None:
             return errors.error_response(411, "length_required", "an upload must say its length (Content-Length)")
