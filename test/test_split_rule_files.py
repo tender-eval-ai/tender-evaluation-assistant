@@ -78,3 +78,11 @@ def test_the_params_hold_the_rule_files_tender_values_under_slot_names(tmp_path)
         ' "value": {"default_days": 30, "must_be_less_than": 30}}]}')
     assert split.params_of(tmp_path) == {"price_schedule": {"estimated_quantity": 500},
                                          "compliance_schedule": {"default_delivery_days": 30}}
+
+
+def test_a_path_inside_the_repository_is_refused_whatever_its_case(tmp_path):
+    """#117: on a Mac, /users/... gets past a case-sensitive check and lands in the repository."""
+    inside = split.ROOT / "params" / "tender_1.json"
+    assert split.inside_repo(inside)
+    assert split.inside_repo(Path(inside.as_posix().swapcase()))
+    assert not split.inside_repo(tmp_path / "params" / "tender_1.json")
