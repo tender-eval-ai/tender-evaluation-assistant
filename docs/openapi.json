@@ -2799,7 +2799,7 @@
         "type": "object"
       },
       "TemplateCopy": {
-        "description": "What an item took from its template when it was matched (#89): the slot specs, the\nconsequence tiers its rules name, and the template's content hash. Evaluation, the slot\nfill (L2) and confirmation read this copy, so a later change to the template never alters\nan item already built; an item stored before the copy existed reads the library, as before.",
+        "description": "What an item took from its template when it was matched (#89): the slot specs, the\ntemplate's consequence tiers, and its content hash. Evaluation, the slot\nfill (L2) and confirmation read this copy, so a later change to the template never alters\nan item already built; an item stored before the copy existed reads the library, as before.",
         "properties": {
           "consequences": {
             "additionalProperties": {

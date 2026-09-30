@@ -344,18 +344,19 @@ class Template(BaseModel):
         text = json.dumps(self.model_dump(mode="json"), sort_keys=True, ensure_ascii=False)
         return hashlib.sha256(text.encode()).hexdigest()[:12]
 
-    def copy_for(self, rules: list[TemplateRule]) -> TemplateCopy:
-        """What an item keeps of this template once L1 has matched it and re-tiered its rules:
-        the slot specs, the tiers those rules name (after the Part re-tier, not the file's
-        defaults), and the content hash."""
-        named = {r.consequence for r in rules if r.consequence is not None and r.outcomes is None}
+    def copy_for(self) -> TemplateCopy:
+        """What an item keeps of this template once L1 has matched it: the slot specs, every
+        tier the template defines, and the content hash. Every tier, not only those the rules
+        name: a reviewer may later move a rule to another tier, or add one, and the item must
+        still hold its outcomes (#136 review). The Part re-tier changes which tier a rule
+        names, not what the tiers say, so the copy holds it either way."""
         return TemplateCopy(version=self.content_hash(), slots=[s.model_copy(deep=True) for s in self.slots],
-                            consequences={t: d.model_copy(deep=True) for t, d in self.consequences.items() if t in named})
+                            consequences={t: d.model_copy(deep=True) for t, d in self.consequences.items()})
 
 
 class TemplateCopy(BaseModel):
     """What an item took from its template when it was matched (#89): the slot specs, the
-    consequence tiers its rules name, and the template's content hash. Evaluation, the slot
+    template's consequence tiers, and its content hash. Evaluation, the slot
     fill (L2) and confirmation read this copy, so a later change to the template never alters
     an item already built; an item stored before the copy existed reads the library, as before."""
 

@@ -43,8 +43,9 @@ def test_l1_writes_the_copy_with_the_tier_the_part_gave(located, index):
     copy = item.template_copy
     assert copy.version == PRODUCTION[CERT].content_hash() and len(copy.version) == 12
     assert copy.slots == PRODUCTION[CERT].slots
-    named = {r.consequence for r in item.rules if r.consequence is not None and r.outcomes is None}
-    assert set(copy.consequences) == named and Consequence.MANDATORY_ON_REQUEST in named, "the re-tiered tier, not the file's"
+    assert copy.consequences == PRODUCTION[CERT].consequences, "every tier the template defines"
+    submitted = next(r for r in item.rules if r.id == f"{CERT}.submitted")
+    assert submitted.consequence == Consequence.MANDATORY_ON_REQUEST, "the rule names the tier its Part gave"
 
 
 def test_a_template_changed_later_never_alters_an_item_already_built(located, index):
@@ -132,3 +133,26 @@ def test_a_fresh_build_stores_a_copy_on_every_templated_item_and_survives_a_libr
                    created_by="rule_builder", created_at="2026-09-30T00:00:00Z").model_dump(mode="json")
     monkeypatch.setattr(engine_bridge, "load_templates", weakened)
     assert engine_bridge.decide(read_offer("Tenderer_C"), spec)["items"]["l"]["outcome"] == "disqualified"
+
+
+@pytest.mark.parametrize("tid", sorted(PRODUCTION))
+def test_a_rule_moved_to_any_tier_of_its_template_still_confirms_and_decides(located, index, tid):
+    """#136 review: the first copy kept only the tiers the rules named at L1, so moving a rule to
+    another tier of the same template (or adding one there) failed confirmation with
+    unknown_tier and went to review at decide time. Every tier is kept now."""
+    template = PRODUCTION[tid]
+    item = matched(located, index, Part.A).model_copy(update={"template": tid, "template_copy": template.copy_for(),
+                                                              "rules": [r.model_copy(deep=True) for r in template.rules],
+                                                              "slots": {}, "status": ItemStatus.VERIFIED})
+    for tier in template.consequences:
+        moved = [r.model_copy(update={"consequence": tier}) if r.consequence is not None and r.outcomes is None else r
+                 for r in item.rules]
+        edited = item.model_copy(update={"rules": moved})
+        assert not [b for b in ed.confirm_blockers(ruleset_of([edited]), PRODUCTION) if b["kind"] == "unknown_tier"], (tid, tier)
+        assert "names tier" not in " ".join(evaluate(edited, {}, template_of(edited, PRODUCTION))["reasons"]), (tid, tier)
+
+
+def test_an_item_with_a_copy_never_takes_rules_from_the_library(located, index):
+    item = matched(located, index, Part.A).model_copy(update={"rules": []})
+    assert ed.rules_of(item, PRODUCTION) == []
+    assert ed.rules_of(item.model_copy(update={"template_copy": None}), PRODUCTION) == PRODUCTION[CERT].rules

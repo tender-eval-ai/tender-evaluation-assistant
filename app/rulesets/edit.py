@@ -50,7 +50,7 @@ def apply_patch(item: RuleSetItem, patch: BaseModel, user: str, now: datetime,
     if template is not None:
         update["template"] = template
         chosen = (templates or {}).get(template)
-        update["template_copy"] = chosen.copy_for(update.get("rules", item.rules)) if chosen else None
+        update["template_copy"] = chosen.copy_for() if chosen else None
     if note is not None:
         update["notes"] = [*item.notes, note]
     return item.model_copy(update={**update, "status": ItemStatus.EDITED, "edit": _edit(user, now, patch.reason)})
@@ -189,8 +189,9 @@ def confirm_blockers(ruleset: RuleSet, templates: dict[str, Template]) -> list[d
 
 
 def rules_of(item: RuleSetItem, templates: dict[str, Template]) -> list[TemplateRule]:
-    """The item's own rules, else its template's."""
-    if item.rules or item.template is None:
+    """The item's own rules, else its template's; an item with a copy of its template (#89)
+    has its own, even none, and never reads the library."""
+    if item.rules or item.template is None or item.template_copy is not None:
         return list(item.rules)
     template = templates.get(item.template)
     return list(template.rules) if template else []
