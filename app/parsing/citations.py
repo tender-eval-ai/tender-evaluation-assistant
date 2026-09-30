@@ -155,15 +155,44 @@ def normalise_name(name: str) -> str:
     return " ".join(_fold_word(word) for word in words)
 
 
+_ROMAN = ("i", "ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "xi", "xii", "xiii", "xiv", "xv")
+_ITEM_ONLY = re.compile(r"\(([a-z]{1,4})\)")
+# A number with its sub-item markers, split before its last marker: "24.4(b)(i)" ->
+# ("24.4(b)", "i"); "24.4" -> ("24.4", None).
+_NUMBERED = re.compile(r"(\d[\d.]*[A-Z]?(?:\([a-z]{1,4}\))*?)(?:\(([a-z]{1,4})\))?")
+
+
+def _item_series(first: str, last: str) -> list[str] | None:
+    """The markers after `first` up to `last`: ("a", "c") -> [b, c], ("i", "iii") ->
+    [ii, iii]. Roman when both are roman numerals, since "(i) to (iii)" is the form
+    that occurs; None when the two are not one series."""
+    if first in _ROMAN and last in _ROMAN and _ROMAN.index(first) < _ROMAN.index(last):
+        return list(_ROMAN[_ROMAN.index(first) + 1:_ROMAN.index(last) + 1])
+    if re.fullmatch(r"[a-z]", first) and re.fullmatch(r"[a-z]", last) and first < last:
+        return [chr(c) for c in range(ord(first) + 1, ord(last) + 1)]
+    return None
+
+
 def _expand(ids_text: str) -> list[str]:
-    """ "2, 3 and 5" -> [2, 3, 5]; "A to D" -> [A, B, C, D]; "2 to 4" -> [2, 3, 4]."""
+    """ "2, 3 and 5" -> [2, 3, 5]; "A to D" -> [A, B, C, D]; "2 to 4" -> [2, 3, 4];
+    "24.4(a) to (c)" -> [24.4(a), 24.4(b), 24.4(c)]."""
     ids_text = re.sub(r"\([a-z]+\s[^)]*\)", lambda m: " " * len(m.group(0)), ids_text)
     tokens = [(m.group(0), m.start(), m.end()) for m in _ID_TOKEN.finditer(ids_text)]
     out: list[str] = []
     for index, (token, start, _) in enumerate(tokens):
         between = ids_text[tokens[index - 1][2]:start] if index else ""
         previous = out[-1] if out else None
-        if previous is not None and re.fullmatch(r"\s+to\s+|\s*[-–]\s*", between):
+        is_range = bool(re.fullmatch(r"\s+to\s+|\s*[-–]\s*", between))
+        # A bare "(c)" after a number continues that number's items: "24.4(a) to (c)",
+        # "3.3(a), (b) and (d)". Read as a number of its own it has no digits.
+        item = _ITEM_ONLY.fullmatch(token)
+        numbered = _NUMBERED.fullmatch(previous) if item and previous else None
+        if numbered:
+            base, last = numbered.group(1), numbered.group(2)
+            series = _item_series(last, item.group(1)) if is_range and last else None
+            out.extend(f"{base}({marker})" for marker in (series or [item.group(1)]))
+            continue
+        if previous is not None and is_range:
             if previous.isdigit() and token.isdigit() and int(previous) < int(token) <= int(previous) + 50:
                 out.extend(str(n) for n in range(int(previous) + 1, int(token) + 1))
                 continue
@@ -184,8 +213,13 @@ def _level_targets(keyword: str, ids_text: str) -> list[tuple[str, str]]:
             targets.append(("part", ident))
         elif word.startswith("annex"):
             targets.append(("annex", ident))
-        else:
+        elif ident[0].isdigit():
             targets.append(("number", ident))
+        else:
+            # "Clause (b) of Part B": a lettered item is found by its label. Any other
+            # id with no number ("Paragraph A") is looked up the same way, and finds
+            # nothing rather than being read as a number.
+            targets.append(("label", ident))
     return targets
 
 
@@ -438,6 +472,10 @@ class CitationIndex:
                         if n["kind"] == "part" and (n.get("number") or "").upper() == ident.upper()]
             elif kind == "label":
                 hits = [n for n in self._under(prefixes) if n.get("label") == ident]
+                # "(b) of Part B" is Part B's own item (b); a (b) nested deeper inside
+                # one of its items is another item.
+                depth = min((n["node_id"].count(":") for n in hits), default=0)
+                hits = [n for n in hits if n["node_id"].count(":") == depth]
             else:
                 number = re.match(r"[\d.]+", ident).group(0).rstrip(".")
                 hits = self._numbered(prefixes, number, tuple(_ITEM_MARKER.findall(ident)))

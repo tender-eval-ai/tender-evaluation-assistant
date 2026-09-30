@@ -39,19 +39,22 @@ Measured on three real tenders (redacted samples kept outside the repository;
 only numbers are recorded here). The answer keys were built by reading the PDFs, never by
 running the parser that is scored against them.
 
-**Parser (L0)** — the four metrics are AI_camp's, defined once in `tools/benchmark.py`:
-a node the parser found of its own (recall), on the right page, with a real character
-length, and starting at its own marker rather than a same-page coincidence.
+**Parser (L0) and citations** — two separate scores (`tools/eval_parser.py`):
 
-| Tender | Nodes | recall | page | char | exact location |
-|---|---|---|---|---|---|
-| Tender 1 | 454 | 95.6% | 95.6% | 95.6% | 93.2% |
-| Tender 2 | 756 | 97.8% | 97.8% | 97.8% | 96.4% |
-| Tender 3 | 1582 | 95.2% | 95.2% | 95.2% | 92.9% |
+- *Parser recall*: of the answer key's nodes, how many the parser produced in the same
+  document, on the same page, at the same place in the clause tree.
+- *Citation resolution*: of the citations in the tender's own text ("Paragraph 20.2 of the
+  Terms of Tender"), how many the resolver takes to exactly one node of the parser's table.
 
-Tender 3 is 25 documents inside one 366-page PDF; the parser splits them with 100%
-recall and 100% precision. Two of the three tenders were held out when the parser was ported;
-fixes since then were driven by failures found on them, so they are no longer unseen.
+| Tender | Parser recall | Citation resolution |
+|---|---|---|
+| Tender 1 | 97.8% of 454 key nodes | 90.2% of 520 citations |
+| Tender 2 | 95.0% of 756 key nodes | 93.8% of 566 citations |
+| Tender 3 | 91.1% of 1582 key nodes | 87.0% of 801 citations |
+
+Tender 3 is 25 documents inside one 366-page PDF. Two of the three tenders were held out
+when the parser was ported; fixes since then were driven by failures found on them, so they
+are no longer unseen. The answer keys were built by agents and are not yet verified by a person.
 
 **Rule set (L0 layer)** — the Completeness Check Schedule's items located with their Part
 and page, scored against a separate key:
@@ -628,7 +631,7 @@ was constrained rather than free: `app/parsing/` depends on two Artifex packages
 
 So: anyone using this **commercially** needs commercial licences for both, or must
 replace `app/parsing/`. No application code outside `app/parsing/` imports either package
-(only the parser's own eval tool, `tools/eval_parser.py`), so that replacement stays a
+(only one parser test, `test/parsing/test_layout_parser_tables.py`), so that replacement stays a
 contained change. A hosted demo carries AGPL obligations — the
 running service must offer its source, which a public repository satisfies.
 

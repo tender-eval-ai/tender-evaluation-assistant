@@ -297,7 +297,8 @@ def _expected(tender: str, truth: Path) -> tuple[dict, dict]:
 @pytest.mark.realdata
 @pytest.mark.parametrize("tender", TENDERS)
 def test_real_tender_items_parts_and_clauses(tender):
-    from tools.eval_parser import Tender, _candidates, score_deep
+    from test.rulesets.checklist_key import candidates
+    from tools.eval_parser import match_deep_key
 
     truth = _env_dir("GROUND_TRUTH_DIR")
     pdfs = _tender_pdfs(tender)
@@ -310,11 +311,12 @@ def test_real_tender_items_parts_and_clauses(tender):
 
     # The reference nodes each key row should resolve to, found the way the parser
     # evaluator finds them (tools/eval_parser.py).
-    scored = Tender(nodes, pdfs)
+    single_file = len(pdfs) == 1
     deep_match = {}
     if any(kind == "deep" for rows in expected_refs.values() for kind, _ in rows):
         deep_key = json.loads((truth / "deep" / f"{tender}.json").read_text())
-        deep_match = {r["node_id"]: r.get("parser_node") for r in score_deep(deep_key, scored)["nodes"]}
+        deep_match = {k: (m["node"] or {}).get("node_id")
+                      for k, m in match_deep_key(deep_key["nodes"], nodes, single_file).items()}
     by_id = {n["node_id"]: n for n in nodes}
 
     def first_text_node(node_id):
@@ -332,8 +334,8 @@ def test_real_tender_items_parts_and_clauses(tender):
         return None
 
     def deep_hit(ref, clause_ids):
-        # The deep key locates its nodes by first words; when that finds nothing (a
-        # heading the parser split differently), fall back to the marker on the page.
+        # The evaluator finds a key node by its marker path, or by its marked ancestor
+        # and first words; when that finds nothing, fall back to the marker on the page.
         want = deep_match.get(ref["node_id"])
         segment = ref["node_id"].split(":")[-1]
         if segment == "title":
@@ -353,8 +355,8 @@ def test_real_tender_items_parts_and_clauses(tender):
     def hit(kind, ref, clause_ids):
         if kind == "deep":
             return deep_hit(ref, clause_ids)
-        want = {n["node_id"] for n, _, _ in _candidates(scored, ref, ref["pages"])
-                + _candidates(scored, ref, ref.get("alt_pages"))}
+        want = {n["node_id"] for n in candidates(nodes, ref, ref["pages"], single_file)
+                + candidates(nodes, ref, ref.get("alt_pages"), single_file)}
         return bool(want & clause_ids) or any(first_text_node(c) in want for c in clause_ids)
 
     refs_ok = refs_total = 0
@@ -382,7 +384,9 @@ def test_real_tender_items_parts_and_clauses(tender):
     assert part_ok == len(expected_items)
     assert page_ok == len(expected_items)
     # Measured 2026-09-17: 45/49, 41/43, 58/65; 2026-09-18, after the third parser
-    # pass: 45/49, 43/43, 63/65. The misses left are deep-key links the row does not
-    # write out and the Tender Form of the combined PDF, which no scope is named
-    # after; see docs/evals/parser_l0.md.
+    # pass: 45/49, 43/43, 63/65; 2026-09-29, matching deep keys by marker path: 45/49,
+    # 39/43, 56/65. The misses left are deep-key links the row does not write out,
+    # the Tender Form of the combined PDF, which no scope is named after, and the
+    # Particulars of Goods Schedule rows the parser nests under row 1; see
+    # docs/evals/parser_l0.md.
     assert refs_ok >= 0.85 * refs_total

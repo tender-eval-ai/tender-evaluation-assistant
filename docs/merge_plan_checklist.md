@@ -441,6 +441,10 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      whole document's parenting being wrong is one containment bug, and it breaks
      "everything under this schedule" queries.
 - Nasi (2026-09-21): proposed. 1 first - bounded, measurable, and user-visible.
+- Superseded (2026-09-29): the four-metric benchmark and `tools/benchmark.py` are retired. The parser is
+  now scored by recall alone (same document, same page, same marker path; unmarked nodes by their marked
+  ancestor and first words) and the resolver by how many of the tender's own citations resolve to exactly
+  one node. Items 3 and 4 no longer apply as metrics; see `docs/evals/parser_l0.md`.
 - Nasi (2026-09-26): done. 1 and 4 are fixed; 2 and 3 are closed without further parser
   work, since every tender clears the S3 recall gate. Tender 3's margin is 4 nodes
   (1506/1582), so its figure is quoted as measured, never rounded up.
@@ -603,7 +607,7 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      - move the four documents dated 2026-09-10 to `docs/archive/`.
   8. **During the S4 development-bid run:** record the pages, model calls and seconds per stage. That gives A5 its first measured number.
 - **Nasi** (her areas):
-  9. **README results.** Quote the parser's recall and exact location only. `page_correct` and `char_correct` equal recall by construction, and `tools/benchmark.py`'s docstring should say so.
+  9. **README results.** Quote the parser's recall and exact location only. `page_correct` and `char_correct` equal recall by construction, and `tools/benchmark.py`'s docstring should say so. Done differently (2026-09-29): the benchmark is retired; the README quotes parser recall and citation resolution (`docs/evals/parser_l0.md`). Final and accepted (Nasi, 2026-09-29): recall 97.8 / 95.0 / 91.1%, citations resolved 90.2 / 93.8 / 87.0%. We are happy with these, and no further parser or citation work is planned; the #104 review's findings are recorded as known limitations in `parser_l0.md`.
   10. **Parser keys.** A person spot-checks the agent-built parser keys before the parser numbers are quoted publicly, or they're labelled as agent-built.
   11. **`web/README.md`:** Scoring and Report are built, and Playwright is a dependency, where #78 doesn't already say so.
 - **Both decide:**

@@ -29,4 +29,4 @@ Option 1. The project is a non-commercial portfolio project, and the goal for th
 
 - Anyone who uses this repository commercially needs Artifex commercial licences for both packages, or must replace `app/parsing/`. The README says so before the repo is made public (checklist F4).
 - AGPL obligations apply to a hosted demo: the running service must offer its source, which a public repository satisfies.
-- In the application, nothing outside `app/parsing/` imports either package, so option 2 or 3 stays a contained change if the project's use changes. Two development files also import them: `tools/eval_parser.py` (the parser eval) and `test/parsing/test_layout_parser_tables.py`.
+- In the application, nothing outside `app/parsing/` imports either package, so option 2 or 3 stays a contained change if the project's use changes. One development file also imports them: `test/parsing/test_layout_parser_tables.py`. The parser eval, `tools/eval_parser.py`, reaches them only through `app/parsing/`.

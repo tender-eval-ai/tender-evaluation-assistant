@@ -23,12 +23,18 @@ NODES = [
     _node("S:01-Goods:PA:2", "clause", 4, number="2"),
     _node("S:01-Goods:PB", "part", 5, number="B"),
     _node("S:01-Goods:PB:2", "clause", 5, number="2"),
+    _node("S:01-Goods:PB:(b)", "subitem", 5, label="(b)"),
+    _node("S:01-Goods:PB:(b):(ii)", "subitem", 5, label="(ii)"),
+    _node("S:01-Goods:PB:(b):(ii):(b)", "subitem", 5, label="(b)"),
     # A standalone booklet whose Parts carry the document names.
     _node("T", "document", 1),
     _node("T:P1", "part", 2, number="1", title="SAMPLE TERMS"),
     _node("T:P1:7", "clause", 3, number="7"),
     _node("T:P1:7.2", "subclause", 3, number="7.2"),
+    _node("T:P1:7.2:(a)", "subitem", 3, label="(a)"),
     _node("T:P1:7.2:(b)", "subitem", 3, label="(b)"),
+    _node("T:P1:7.2:(c)", "subitem", 3, label="(c)"),
+    _node("T:P1:7.2:(d)", "subitem", 3, label="(d)"),
     _node("T:ANNEX-A", "annex", 9, number="A", text="Annex A to the Sample Terms\nUNDERTAKING"),
     # Standalone files named only by their footer.
     _node("C", "document", 1),
@@ -65,6 +71,28 @@ def test_lists_and_ranges_expand_to_one_citation_per_target():
         ["S:01-Goods:PA:2"], ["S:01-Goods:PB:2"]]
     assert _resolve("Items 1 to 2 in Part A of the Sample Price Schedule") == [
         ["S:00-Price:PA:1"], ["S:00-Price:PA:2"]]
+
+
+def test_items_listed_after_a_paragraph_number_belong_to_it():
+    """"Paragraphs 24.4(a) to (c)" names 24.4(a), 24.4(b) and 24.4(c). The "(c)" was
+    read as a paragraph number of its own and crashed the parse: 47 sentences of
+    this shape across the three sample tenders."""
+    assert _resolve("Paragraphs 7.2(a) to (c) of the Sample Terms") == [
+        ["T:P1:7.2:(a)"], ["T:P1:7.2:(b)"], ["T:P1:7.2:(c)"]]
+    assert _resolve("Paragraphs 7.2(a), (b) and (d) of the Sample Terms") == [
+        ["T:P1:7.2:(a)"], ["T:P1:7.2:(b)"], ["T:P1:7.2:(d)"]]
+    assert [c.items for c in parse_citations("Paragraphs 24.4(b)(i) to (iii) of the Sample Terms")] == [
+        ("b", "i"), ("b", "ii"), ("b", "iii")]
+
+
+def test_a_lettered_clause_of_a_part_is_the_parts_own_item():
+    """"Clause (b) of Part B" is Part B's item (b), not a (b) nested deeper inside it."""
+    assert _resolve("Clause (b) of Part B of the Sample Goods Schedule") == [["S:01-Goods:PB:(b)"]]
+    assert _resolve("paragraph (b) of Part B of the Sample Goods Schedule") == [["S:01-Goods:PB:(b)"]]
+
+
+def test_an_identifier_that_is_not_a_number_resolves_to_nothing_rather_than_crashing():
+    assert _resolve("Paragraph A of the Sample Terms") == [[]]
 
 
 def test_numbered_part_of_an_appendix_and_dash_named_part_of_an_annex():
