@@ -85,9 +85,9 @@ A fix for the first two was drafted and tested but not applied.
 
 Marked nodes, all parser structure rather than missing text:
 
-- **Particulars of Goods Schedule tables:** rows 2, 3, 4 of each table are nested under row 1 instead of beside it (Tender 2, Tender 3).
+- **Particulars of Goods Schedule tables:** rows 2, 3, 4 of each table are nested under row 1 instead of beside it (Tenders 2 and 3).
 - **Items under the wrong parent:** Terms of Tender 14.1(b)(i)–(iii) under (c); Special Conditions 16(h)(i)–(iv), 16(j), 16(k) under an earlier item (Tender 2).
-- **3.15 not split** into 3.15.1 and 3.15.2 (Tender 2, Tender 3), as in AI_camp.
+- **3.15 not split** into 3.15.1 and 3.15.2 (Tenders 2 and 3), as in AI_camp.
 - **Compliance Schedule Part B (b):** the per-location rows (Tender 2).
 - **Tender 3 Price Schedule:** its numbered tables (Table 1, 1A and its rows, Table 2, Part D Tables 1–3) have no nodes of their own (13); also Information Schedule rows (9) and items of Annex C to the Special Conditions (4).
 

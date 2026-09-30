@@ -2,7 +2,7 @@
 
     python tools/split_rule_files.py --source <AI_camp>/agent/src/procurement_agent/validator/rules \
         --report <private>/classification.json --templates app/rulesets/templates \
-        --params <private>/params/Tender 1.json
+        --params <private>/params/tender_1.json
 
 It classifies every rule and places its field; the report carries rule values, so it
 goes outside git. The field map (checklist J2) names each file's template by our form

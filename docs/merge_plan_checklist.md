@@ -42,7 +42,7 @@ Last updated: 2026-09-20 (Chenyu).
 | F3 | Files excluded from the port (commit `7e8e273`, see F5) | agreed | — (update the plan) |
 | F4 | Public-release audit at S5 | agreed | — (update the plan) |
 | F5 | Port source: pushed commit, no `aicamp-final` tag | agreed | — |
-| F6 | Public naming: an AI tender evaluation assistant, no tender numbers or public wording | agreed; amended 2026-09-30 | parts 1, 2, 3a in #97, #98, #109; 3b (README results, parser eval, tests) after #104 |
+| F6 | Public naming: an AI tender evaluation assistant, no tender numbers or public wording | done; amended 2026-09-30 | parts 1, 2, 3a in #97, #98, #109; 3b in #121 |
 | G1 | Two independent demos, same image | superseded by G4 | — |
 | G2 | No cloud named in code; configuration only | agreed | — (update the plan) |
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |

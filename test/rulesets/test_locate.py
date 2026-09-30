@@ -234,7 +234,13 @@ def test_generated_pdf_end_to_end(tmp_path):
 
 # ---------------------------------------------------------------- real tenders
 
-TENDERS = ["Tender 1", "Tender 2", "Tender 3"]
+def _tender(n: int) -> str:
+    """Tender n's folder name. The real tender numbers stay outside git (F6), so
+    TENDER_IDS lists them, comma-separated, Tender 1 first."""
+    ids = [t for t in os.environ.get("TENDER_IDS", "").split(",") if t]
+    if len(ids) < n:
+        pytest.skip("TENDER_IDS not set; real tender names stay outside git")
+    return ids[n - 1]
 
 
 def _env_dir(name: str) -> Path:
@@ -295,12 +301,13 @@ def _expected(tender: str, truth: Path) -> tuple[dict, dict]:
 
 
 @pytest.mark.realdata
-@pytest.mark.parametrize("tender", TENDERS)
-def test_real_tender_items_parts_and_clauses(tender):
+@pytest.mark.parametrize("n", [1, 2, 3])
+def test_real_tender_items_parts_and_clauses(n):
     from test.rulesets.checklist_key import candidates
     from tools.eval_parser import match_deep_key
 
     truth = _env_dir("GROUND_TRUTH_DIR")
+    tender = _tender(n)
     pdfs = _tender_pdfs(tender)
     pages, nodes = _parsed(tender, pdfs)
     expected_items, expected_refs = _expected(tender, truth)
