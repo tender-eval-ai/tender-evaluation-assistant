@@ -36,7 +36,7 @@ def api(tmp_path, monkeypatch):
     monkeypatch.delenv("API_KEY", raising=False)
     monkeypatch.setenv("VENDOR_CHECK_LLM_FACTORY", "test.checks.fake_factory:factory")
     monkeypatch.setenv("RULESET_TEMPLATES_DIR", str(TEMPLATES))
-    for k, v in {"JOBS_HEARTBEAT": "1", "JOBS_STALLED_AFTER": "3", "JOBS_SWEEP_EVERY": "1", "JOBS_POLL": "0.5"}.items():
+    for k, v in {"JOBS_HEARTBEAT": "1", "JOBS_STALLED_AFTER": "3", "JOBS_SWEEP_EVERY": "1", "JOBS_POLL": "0.5", "JOBS_RETRY_BASE": "0.5"}.items():
         monkeypatch.setenv(k, v)
     from app import db
     from app.jobs import queue as q, tasks
