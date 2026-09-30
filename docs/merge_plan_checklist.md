@@ -50,15 +50,16 @@ Last updated: 2026-09-20 (Chenyu).
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | done | 1 and 4 done; 2 and 3 closed without change: every tender clears the S3 gate (95.6 / 97.8 / 95.2) |
-| J2 | Where a form's own notes and trigger live | decided | option 1 (#59); next: template ids = form ids, the field map |
+| J2 | Where a form's own notes and trigger live | done | option 1 (#59); field map (#76); template ids = form ids and notes on templates (J12, #99) |
 | J3 | S4 windows: Scoring and Report | done | — |
 | J4 | S4 review: corrections and confirmation in the UI | done | — |
 | J5 | S4 review flow in a browser (Playwright) | done | — |
 | J6 | Re-evaluate against a confirmed rule-set version | done | — |
-| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); Chenyu: the fields with no home into `forms.py`; then Nasi: templates |
+| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); fields into `forms.py` (e2b3189); templates in review (J12: #100, #99); then both: the L1-L4 eval on the synthetic case and the three tenders |
 | J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
 | J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | agreed | — (removed in the S5 legacy-removal PR) |
-| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1–6 done (#90, #93, #94, #96; #95 open); 7, 8 Chenyu; 9–11 Nasi |
+| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1–6 done (#90, #93, #94, #95, #96); 7, 8 Chenyu; 9–11 Nasi |
+| J12 | The production templates: one per form, every rule-file rule placed; #76 points 2 and 3; two questions (tier by Part, conditions) | proposed | Chenyu: review #100 (contract, merge first) then #99; a position on points 2 and 3 and questions 1 and 2 |
 
 ## A. Corrections to the plan
 
@@ -595,6 +596,44 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Chenyu (2026-09-26): proposed. Items 1–8 are mine; item 1 comes first.
 - Nasi (2026-09-29): agree. 9–11 are mine; 9 now quotes the parser eval as it is being redone (recall and citation resolution only, the benchmark retired). 12: yes, per-user login with a role, after the S4 run. 13: agree with the list, stated in the README as limitations.
 - Decision: agreed (2026-09-29).
+
+### J12. The production templates (the last step before J7's L1-L4 eval)
+- Found by: writing the templates from the 13 rule files (Nasi, 2026-09-29).
+- Proposed in two PRs:
+  - **#100 (`contract`):** a home for every field the rule files check.
+    - `documentary_evidence` reads the documents a tender asks for as evidence (#76 point 2's one home).
+    - `particulars_of_goods.rows_left_blank` reports any product row left empty, in place of a per-tender row list (an alternative to point 3 that needs no extraction change).
+    - New: a field a reviewer enters (`FieldDef.by`), for tender samples and for test reports asked for after closing.
+    - The bridge gains `contains` with `phrases` and `absent`, and `range` with `max_decimals`.
+    - A fix: a rule's `normalise` steps were dropped; they now run in the bridge, in order, before the item's checks.
+  - **#99:** fourteen templates in `app/rulesets/templates/`, **one per form**, each with a `submitted` presence rule and the three tiers a schedule Part maps to. 114 rules, 16 slots and 42 notes, in our own words (J2 c) and neutral wording (F6).
+    - What one tender sets is a slot: quantities, currencies, default periods, pack weights, and the section lists a document must have.
+    - A rule that only some tenders need carries a `condition`. The person confirming a rule set removes the ones the tender does not ask for.
+    - The Offer to be Bound and the Method of Production Statement have no rule file, so their templates are new and say so.
+  - `tools/split_rule_files.py --templates` checks the library against the rule files. `--params` writes the rule files' tender values under the slot names, outside git (J2 d). The two long lists it writes (safety data sheet sections, evaluation report contents) need trimming to short headings before a `contains` can match them.
+  - Tests run every template through the engine.
+- **Coverage: all 126 rule-file rules have a place.**
+  - The 27 that are not checks are notes, conditions and rounding steps.
+  - Of the 99 checks, 95 are template rules. That includes the 10 a reviewer judges, which are `human_only` rules on the field they judge and wait for it. The Compliance Schedule's four Part tick boxes are stated more strictly, as "not marked as not complying".
+  - Left out, 4: three deadlines counted from the day the Authority asks (a laboratory appointed, a test report, a sample delivered), carried in words by the on-request follow-up, since the engine computes one deadline per tier and these three differ; and the plant address matched to the tenderer's, dropped as noise until conditions are evaluated (question 2).
+- One position taken, #76 point 2: each document is checked where the tender asks for it. The certificates, data sheet, specifications and reports are checked under documentary evidence, and the board resolution extract under its own item; the Information Schedule no longer asks for any of them.
+- What a reviewer will see: the Stage II checks only a person can make (the Authority's own satisfaction with the goods, a certificate's issuer, a plant trial) are always `needs_review` at Stage II. Stage I is unaffected, since the stage summaries roll up by rule stage.
+- **Question 1, the tier of a presence rule.** A template fixes each rule's tier, but whether a missing form disqualifies depends on the Part the tender puts it in. The certificate is Part B (mandatory on request) in the rule files' tender, and Part A in the synthetic one. Options:
+  1. When L1 copies a template's rules, it sets a presence rule's tier from the item's Part: A critical, B mandatory on request, C discretionary. This is what L3 already does with `outcomes_for`. A rule with its own outcomes, or a deemed tier, keeps them. The change is in `match.py`, with no contract change.
+  2. Keep the fixed tiers, and a person corrects them before confirming.
+- **Question 2, conditions.** `condition` is recorded on rules and items, but nothing acts on it; J11 item 13 lists it as a limitation. So a conditional rule fires on every bid. The templates guard against the worst case: a conditional rule never disqualifies on a blank, and a reviewer confirms instead. The cost is visible in the self-entry match: a tenderer that is not the manufacturer always sends its manufacturer's name to review. Options:
+  1. Keep it as a stated limitation.
+  2. A reviewer answers each condition once per bid in the Stage window, and the bridge drops the rules whose condition does not hold. The engine's `exclude_rules` already does the dropping.
+- Also: with these templates in compose, the synthetic case builds against them instead of the two test templates, so its L1-L4 numbers are rerun at the J7 eval.
+- Chenyu's review (2026-09-29): changes requested on both. Positions: point 2, one home, agreed; point 3, `rows_left_blank` only as a stop-gap, its "none empty" reading a reviewer's call; question 1, yes but narrower: only each form's presence rule, and never to a tier its template lacks (Chenyu does `match.py` once #99 lands); question 2, a stated limitation once the noise is cut.
+- Status (2026-09-30): every point of both reviews fixed and pushed; waiting on Chenyu's re-review, #100 first.
+  - #100: normalise in the bridge with checked params; `adjustments` only when non-empty; a blank reviewer field always dormant, with a row; `max_decimals` counts every figure and passes "Nil"; the nits; a normalised value keeps its printed text.
+  - #99: every template defines the three Part tiers and a `submitted` rule, and a rule naming a missing tier blocks confirmation (`unknown_tier`) and is a reviewer's call in a verdict, so the stored synthetic rule set disqualifies Tenderer C again (tested with the production library); reviewer checks key on a filled field; the Compliance Schedule's Parts must not be marked as not complying and "Nil" under non-compliances declares none; the plant-address match is dropped; a rule on an optional slot left empty does not apply; `params/` and classification reports are git-ignored and the tool refuses a path inside the repository; an opt-in test checks no value from a real params file is in a template.
+  - Still to do at the J7 eval: regenerate `ruleset_key.json` and `ruleset_all_items.json` against the production templates (after #98).
+  - The Tender 1 params file is outside git and still to be moved beside the answer keys.
+- Nasi (2026-09-29): proposed. #76 point 2: each document is checked where the tender asks for it. #76 point 3: `rows_left_blank` in place of a per-tender row list, since the list would need the rule set before extraction runs; if you prefer the list, the field goes. Question 1: option 1. Question 2: option 1 for S5; option 2 after, if there is time.
+- Chenyu:
+- Decision:
 
 ## Verified facts (no action needed)
 

@@ -1,0 +1,264 @@
+{
+  "id": "price_schedule",
+  "form_name": "Price Schedule",
+  "slots": [
+    {
+      "name": "estimated_quantity",
+      "kind": "number",
+      "required": true,
+      "description": "the estimated quantity of the goods the Price Schedule prints for the item, as a number"
+    },
+    {
+      "name": "allowed_currencies",
+      "kind": "list",
+      "required": false,
+      "description": "the currencies the Price Schedule allows prices to be quoted in, e.g. two currency symbols"
+    },
+    {
+      "name": "dosage_unit",
+      "kind": "text",
+      "required": false,
+      "description": "the unit the Price Schedule prints for the optimal dosage, when it asks for one"
+    }
+  ],
+  "consequences": {
+    "critical": {
+      "outcomes": {
+        "blank": {
+          "status": "disqualified",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "needs_review",
+          "note": "{field} is marked not applicable; a reviewer confirms it does not apply"
+        }
+      }
+    },
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
+      }
+    },
+    "discretionary": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank; the Authority may ask for it later"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "definition",
+      "text": "The estimated quantity is printed on the schedule by the Authority; the tenderer does not fill it in. The estimated total is that quantity times the tenderer's unit price."
+    },
+    {
+      "kind": "definition",
+      "text": "Where the schedule asks for an optimal dosage, it is one figure in the printed unit: a range is read as its lower end, and the figure is rounded to two significant figures."
+    }
+  ],
+  "rules": [
+    {
+      "id": "price_schedule.submitted",
+      "check": "document_present",
+      "field": "price_schedule.document",
+      "consequence": "critical"
+    },
+    {
+      "id": "price_schedule.quantity_as_printed",
+      "check": "value",
+      "field": "price_schedule.quantity",
+      "params": {
+        "expected": "{estimated_quantity}"
+      },
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} could not be read; the Authority prints it, so a blank is a reading problem"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "price_schedule.unit_price_quoted",
+      "check": "filled",
+      "field": "price_schedule.unit_price",
+      "consequence": "critical"
+    },
+    {
+      "id": "price_schedule.currency_allowed",
+      "check": "unit",
+      "field": "price_schedule.currency",
+      "params": {
+        "allowed": "{allowed_currencies}"
+      },
+      "stage": "II",
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is not stated, so the schedule's own currency applies"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "price_schedule.total_quoted",
+      "check": "filled",
+      "field": "price_schedule.total",
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "price_schedule.total_is_quantity_times_price",
+      "check": "math",
+      "field": "price_schedule.total",
+      "params": {
+        "inputs": [
+          "quantity",
+          "unit_price"
+        ],
+        "op": "product"
+      },
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "depends_on": [
+        "price_schedule.total_quoted"
+      ]
+    },
+    {
+      "id": "price_schedule.dosage_given",
+      "check": "filled",
+      "field": "price_schedule.optimal_dosage",
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} is missing; it is required only when the condition holds, which a reviewer confirms"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "condition": "the Price Schedule asks for an optimal dosage",
+      "normalise": [
+        {
+          "op": "resolve_range_to_lower_bound"
+        },
+        {
+          "op": "round_significant_figures",
+          "params": {
+            "max_sig_figs": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "price_schedule.dosage_unit_unchanged",
+      "check": "unit",
+      "field": "price_schedule.optimal_dosage",
+      "params": {
+        "expected": "{dosage_unit}"
+      },
+      "condition": "the Price Schedule asks for an optimal dosage",
+      "depends_on": [
+        "price_schedule.dosage_given"
+      ],
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    }
+  ]
+}

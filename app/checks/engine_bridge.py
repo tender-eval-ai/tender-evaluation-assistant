@@ -19,7 +19,12 @@ here, in order, on the field's value before any rule of the item reads it, and w
 changed is reported under `adjustments` (internal: not in the API's Verdict); and a blank
 field a reviewer enters (`FieldDef.by`) is dormant, with a row to enter it on, whatever the
 rule's outcomes say. A `human_only` check on a blank field waits for the field, and a date
-bound that is not a date is a reviewer's call, never skipped."""
+bound that is not a date is a reviewer's call, never skipped.
+
+For the production templates (J12): a rule naming a tier its template does not define
+makes the item a reviewer's call, like a missing template, never a silent pass; a rule
+whose params use an optional slot the tender left empty does not apply; and a rule's
+`blank_if` param lists answers that mean "nothing" ("Nil", "None"), read as a blank."""
 from __future__ import annotations
 
 import datetime as dt
@@ -298,6 +303,11 @@ def normalised(item: RuleSetItem, fields: dict) -> tuple[dict, list[dict], dict[
     text ("4.4 kg/t") and is read as its number first."""
     out, adjustments, failed = dict(fields), [], {}
     for rule in item.rules:
+        empty = rule.params.get("blank_if")
+        if isinstance(empty, list) and str(out.get(rule.field) or "").strip().rstrip(".").lower() in \
+                {str(w).lower() for w in empty}:
+            out[rule.field] = None             # "Nil" under non-compliances declares none
+    for rule in item.rules:
         value = out.get(rule.field)
         if not rule.normalise or value is None:
             continue
@@ -356,6 +366,18 @@ def apply_unextracted(checked: list[FieldResult], fields: dict) -> None:
             f.note = f"unextracted: no form reads {f.field}; a reviewer decides"
 
 
+def without_unset_optional_slots(item: RuleSetItem, template: Template | None) -> RuleSetItem:
+    """The item without the rules that read an optional slot the tender left empty: the
+    tender does not set that limit, so the check does not apply (#99 review), rather than
+    sending every bid to review for want of a bound."""
+    if template is None:
+        return item
+    optional = {s.name for s in template.slots if not s.required}
+    unset = {name for name in optional if (item.slots.get(name) is None or item.slots[name].value in (None, "", []))}
+    kept = [r for r in item.rules if not (r.slot_refs() & unset)]
+    return item if len(kept) == len(item.rules) else item.model_copy(update={"rules": kept})
+
+
 def by_reviewer(key: str) -> bool:
     """Whether `key` is a field a person enters after closing, never read off the offer."""
     form = form_of_key(key)
@@ -393,13 +415,19 @@ def evaluate(item: RuleSetItem, fields: dict, template: Template | None = None) 
     the worst status including dormant, every checked field with its status, stage and
     note, and the reasons a reviewer reads."""
     blocked = None
+    tierless = [r for r in item.rules if r.consequence is not None and r.outcomes is None
+                and template is not None and r.consequence not in template.consequences]
     if not item.rules:
         blocked = f"item ({item.letter}) has no rules; a reviewer decides"
     elif item.template and template is None and any(r.consequence is not None and r.outcomes is None for r in item.rules):
         blocked = f"item ({item.letter}): template {item.template!r} is not in the library, so its rules have no outcomes; a reviewer decides"
+    elif tierless:
+        blocked = (f"item ({item.letter}): rule {tierless[0].id} names tier {tierless[0].consequence.value!r}, which template "
+                   f"{template.id!r} does not define, so it would never be checked; a reviewer decides")
     if blocked:
         return {"item": item.letter, "part": item.part.value, "outcome": "needs_review", "worst": "needs_review",
                 "counts": status_counts([]), "rule_ids": [r.id for r in item.rules], "fields": [], "reasons": [blocked]}
+    item = without_unset_optional_slots(item, template)
     prepared, overrides, adjustments = prepare(item, fields)
     result = evaluate_item([rules_doc(item, template, overrides)], prepared, item.letter)
     apply_verification(result.fields, fields)

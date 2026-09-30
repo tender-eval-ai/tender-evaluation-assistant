@@ -1,0 +1,326 @@
+{
+  "id": "tender_sample_declaration",
+  "form_name": "Tender Sample Declaration",
+  "slots": [
+    {
+      "name": "sample_min_kg",
+      "kind": "number",
+      "unit": "kg",
+      "required": false,
+      "description": "the smallest total quantity of tender sample the tender asks for"
+    },
+    {
+      "name": "sample_pack_min_kg",
+      "kind": "number",
+      "unit": "kg",
+      "required": false,
+      "description": "the smallest net weight per pack the tender allows for the sample"
+    },
+    {
+      "name": "sample_pack_max_kg",
+      "kind": "number",
+      "unit": "kg",
+      "required": false,
+      "description": "the largest net weight per pack the tender allows for the sample"
+    },
+    {
+      "name": "sample_label_particulars",
+      "kind": "list",
+      "required": false,
+      "description": "the particulars the tender requires on the sample's label"
+    }
+  ],
+  "consequences": {
+    "on_request_only": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is needed only if the Authority asks for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it",
+            "deadline": "the period the request gives",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      }
+    },
+    "critical": {
+      "outcomes": {
+        "blank": {
+          "status": "disqualified",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "needs_review",
+          "note": "{field} is marked not applicable; a reviewer confirms it does not apply"
+        }
+      }
+    },
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
+      }
+    },
+    "discretionary": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank; the Authority may ask for it later"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "trigger",
+      "text": "The tenderer does not send a sample with the tender. The Authority may invite samples for a conformance test or a plant trial, usually in order of ranking, and may invite none."
+    },
+    {
+      "kind": "definition",
+      "text": "A reviewer records each sample as it arrives: the date on the Authority's receipt, its weight, its label and its condition."
+    },
+    {
+      "kind": "consequence",
+      "text": "A sample is delivered within the period the invitation gives; missing it excludes the tender."
+    },
+    {
+      "kind": "trigger",
+      "text": "A plant trial runs only for tenders whose samples passed the conformance test and that meet every certification requirement; the Authority alone decides whether and when it runs."
+    }
+  ],
+  "rules": [
+    {
+      "id": "tender_sample_declaration.submitted",
+      "check": "document_present",
+      "field": "tender_sample_declaration.document",
+      "consequence": "on_request_only"
+    },
+    {
+      "id": "tender_sample_declaration.sample_delivered",
+      "check": "filled",
+      "field": "tender_sample_declaration.sample_received_date",
+      "consequence": "on_request_only"
+    },
+    {
+      "id": "tender_sample_declaration.sample_quantity_enough",
+      "check": "range",
+      "field": "tender_sample_declaration.sample_net_weight_kg",
+      "params": {
+        "min": "{sample_min_kg}"
+      },
+      "stage": "II",
+      "depends_on": [
+        "tender_sample_declaration.sample_delivered"
+      ],
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} not recorded"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "tender_sample_declaration.sample_pack_size_in_range",
+      "check": "range",
+      "field": "tender_sample_declaration.sample_pack_net_weight_kg",
+      "stage": "II",
+      "depends_on": [
+        "tender_sample_declaration.sample_delivered"
+      ],
+      "params": {
+        "min": "{sample_pack_min_kg}",
+        "max": "{sample_pack_max_kg}"
+      },
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} not recorded"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "tender_sample_declaration.sample_in_original_packing",
+      "check": "human_only",
+      "field": "tender_sample_declaration.sample_condition",
+      "depends_on": [
+        "tender_sample_declaration.sample_delivered"
+      ],
+      "outcomes": {
+        "filled": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "note": "in the manufacturer's original packing"
+    },
+    {
+      "id": "tender_sample_declaration.sample_sealed",
+      "check": "human_only",
+      "field": "tender_sample_declaration.sample_condition",
+      "depends_on": [
+        "tender_sample_declaration.sample_delivered"
+      ],
+      "outcomes": {
+        "filled": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "note": "sealed so that it cannot come loose or be swapped without breaking the seal"
+    },
+    {
+      "id": "tender_sample_declaration.sample_labelled",
+      "check": "contains",
+      "field": "tender_sample_declaration.sample_label",
+      "params": {
+        "phrases": "{sample_label_particulars}"
+      },
+      "depends_on": [
+        "tender_sample_declaration.sample_delivered"
+      ],
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "{field} not recorded"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "tender_sample_declaration.sample_free_of_charge",
+      "check": "filled",
+      "field": "tender_sample_declaration.sample_charges",
+      "depends_on": [
+        "tender_sample_declaration.sample_delivered"
+      ],
+      "outcomes": {
+        "blank": {
+          "status": "pass"
+        },
+        "filled": {
+          "status": "needs_review",
+          "note": "the tenderer asks a charge for the sample: {field}"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "tender_sample_declaration.plant_trial_effective",
+      "check": "human_only",
+      "field": "tender_sample_declaration.plant_trial_result",
+      "stage": "II",
+      "depends_on": [
+        "tender_sample_declaration.sample_delivered"
+      ],
+      "outcomes": {
+        "filled": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      },
+      "note": "the goods proved effective in the plant trial at the dosage quoted, and the trial was not aborted"
+    },
+    {
+      "id": "tender_sample_declaration.additional_sample_delivered",
+      "check": "filled",
+      "field": "tender_sample_declaration.additional_sample_received_date",
+      "consequence": "on_request_only",
+      "depends_on": [
+        "tender_sample_declaration.plant_trial_effective"
+      ]
+    }
+  ]
+}

@@ -166,6 +166,11 @@ def confirm_blockers(ruleset: RuleSet, templates: dict[str, Template]) -> list[d
                 value = item.slots.get(spec.name)
                 if spec.required and (value is None or value.value is None):
                     out.append({"kind": "empty_required_slot", "letter": item.letter, "slot": spec.name})
+            # A rule naming a tier its template does not define would never be checked (#99 review).
+            for rule in item.rules:
+                if rule.consequence is not None and rule.outcomes is None and rule.consequence not in template.consequences:
+                    out.append({"kind": "unknown_tier", "letter": item.letter, "rule": rule.id,
+                                "tier": rule.consequence.value})
     for gap in ruleset.gaps:
         if not gap.reason:
             out.append({"kind": "gap_without_reason", "node_id": gap.node_id})
@@ -188,4 +193,6 @@ def describe_blocker(blocker: dict) -> str:
         return f"item ({blocker['letter']}): required slot {blocker['slot']} is empty"
     if kind == "unknown_template":
         return f"item ({blocker['letter']}): template {blocker['template']} is not in the library"
+    if kind == "unknown_tier":
+        return f"item ({blocker['letter']}): rule {blocker['rule']} names tier {blocker['tier']}, which its template does not define"
     return f"gap {blocker['node_id']} has no reason"

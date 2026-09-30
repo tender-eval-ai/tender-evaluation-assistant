@@ -1,0 +1,247 @@
+{
+  "id": "particulars_of_goods",
+  "form_name": "Particulars of Goods Schedule",
+  "slots": [
+    {
+      "name": "net_weight_min_kg",
+      "kind": "number",
+      "unit": "kg",
+      "required": false,
+      "description": "the smallest net weight per pack the tender allows, when it sets a packing requirement"
+    },
+    {
+      "name": "net_weight_max_kg",
+      "kind": "number",
+      "unit": "kg",
+      "required": false,
+      "description": "the largest net weight per pack the tender allows, when it sets a packing requirement"
+    }
+  ],
+  "consequences": {
+    "critical": {
+      "outcomes": {
+        "blank": {
+          "status": "disqualified",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "needs_review",
+          "note": "{field} is marked not applicable; excused only if the Authority, after asking the tenderer, agrees it does not apply"
+        }
+      }
+    },
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
+      }
+    },
+    "discretionary": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank; the Authority may ask for it later"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "definition",
+      "text": "The place of origin, the manufacturer and the brand or product name are the schedule's essential rows: a tender that leaves one blank is not considered further."
+    },
+    {
+      "kind": "consequence",
+      "text": "A blank essential row is excused only if the Authority, after asking the tenderer, is satisfied it does not apply to the goods offered."
+    },
+    {
+      "kind": "trigger",
+      "text": "When the tenderer is itself the manufacturer, it enters its own name and address as the manufacturer's."
+    },
+    {
+      "kind": "definition",
+      "text": "A row that does not apply to the goods is marked N/A rather than left blank, and separate sheets may be attached when a row's space is too small."
+    },
+    {
+      "kind": "reference",
+      "text": "The rows that describe the product itself differ from tender to tender; any left empty are reported together. The person confirming the rule set removes a row rule the tender's schedule does not have."
+    },
+    {
+      "kind": "reference",
+      "text": "Packing requirements for the goods are set in the tender's conditions of contract."
+    }
+  ],
+  "rules": [
+    {
+      "id": "particulars_of_goods.submitted",
+      "check": "document_present",
+      "field": "particulars_of_goods.document",
+      "consequence": "critical"
+    },
+    {
+      "id": "particulars_of_goods.country_of_origin_given",
+      "check": "filled",
+      "field": "particulars_of_goods.country_of_origin",
+      "consequence": "critical"
+    },
+    {
+      "id": "particulars_of_goods.manufacturer_given",
+      "check": "filled",
+      "field": "particulars_of_goods.manufacturer",
+      "consequence": "critical"
+    },
+    {
+      "id": "particulars_of_goods.product_name_given",
+      "check": "filled",
+      "field": "particulars_of_goods.product_name",
+      "consequence": "critical"
+    },
+    {
+      "id": "particulars_of_goods.manufacturer_is_tenderer",
+      "check": "cross_document_match",
+      "field": "particulars_of_goods.manufacturer",
+      "condition": "the tenderer is itself the manufacturer",
+      "params": {
+        "other": "offer_to_be_bound.tenderer_name"
+      },
+      "depends_on": [
+        "particulars_of_goods.manufacturer_given"
+      ],
+      "outcomes": {
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "particulars_of_goods.plant_address_given",
+      "check": "filled",
+      "field": "particulars_of_goods.manufacturing_plant_address",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "particulars_of_goods.product_code_given",
+      "check": "filled",
+      "field": "particulars_of_goods.product_code",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "particulars_of_goods.no_row_left_blank",
+      "check": "filled",
+      "field": "particulars_of_goods.rows_left_blank",
+      "outcomes": {
+        "blank": {
+          "status": "needs_review",
+          "note": "no row read as empty; a reviewer confirms every row is filled in, since a missed empty row cannot be checked"
+        },
+        "filled": {
+          "status": "dormant",
+          "note": "some rows are left empty; the Authority may ask for them",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    },
+    {
+      "id": "particulars_of_goods.active_content_given",
+      "check": "filled",
+      "field": "particulars_of_goods.active_ingredient_pct",
+      "consequence": "mandatory_on_request",
+      "condition": "the schedule has a row for the active content"
+    },
+    {
+      "id": "particulars_of_goods.bulk_density_given",
+      "check": "filled",
+      "field": "particulars_of_goods.bulk_density",
+      "consequence": "mandatory_on_request",
+      "condition": "the schedule has a row for the bulk density"
+    },
+    {
+      "id": "particulars_of_goods.packing_given",
+      "check": "filled",
+      "field": "particulars_of_goods.packaging",
+      "consequence": "mandatory_on_request",
+      "condition": "the tender sets a packing requirement for the goods offered"
+    },
+    {
+      "id": "particulars_of_goods.pack_net_weight_in_range",
+      "check": "range",
+      "field": "particulars_of_goods.net_weight_kg",
+      "stage": "II",
+      "params": {
+        "min": "{net_weight_min_kg}",
+        "max": "{net_weight_max_kg}"
+      },
+      "condition": "the tender sets a packing requirement for the goods offered",
+      "outcomes": {
+        "blank": {
+          "status": "pass"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
+    }
+  ]
+}

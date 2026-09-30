@@ -12,7 +12,7 @@ from pydantic import ValidationError
 
 from app.rulesets import edit as ed
 from app.rulesets.library import load_templates
-from app.rulesets.schema import (Citation, DataClass, Gap, ItemNote, ItemStatus, Outcome, Part, RuleSet, RuleSetItem,
+from app.rulesets.schema import (Citation, Consequence, DataClass, Gap, ItemNote, ItemStatus, Outcome, Part, RuleSet, RuleSetItem,
                                  SlotValue, TemplateRule)
 from backend.schemas_api import ItemPatch, NewItem, SlotPatch
 from test.checks.conftest import RULESET
@@ -161,3 +161,13 @@ def test_the_template_library_reads_one_template_per_file_named_by_id(tmp_path):
         load_templates(tmp_path)
     assert ed.rules_of(ruleset().items[0], TEMPLATES) == ruleset().items[0].rules
     assert [r.id for r in ed.rules_of(price_item(rules=[]), TEMPLATES)] == ["price_schedule.unit_price_present", "price_schedule.quantity_matches"]
+
+
+def test_a_rule_naming_a_tier_its_template_lacks_blocks_confirmation():
+    """Such a rule would never be checked: the engine finds no outcomes for it (#99 review)."""
+    rules = [r.model_copy(deep=True) for r in TEMPLATES["price_schedule"].rules]
+    lost = rules[0].model_copy(update={"consequence": Consequence.DISCRETIONARY, "outcomes": None})
+    rs = ruleset(items=[price_item(rules=[lost, *rules[1:]])])
+    [blocker] = ed.confirm_blockers(rs, TEMPLATES)
+    assert blocker == {"kind": "unknown_tier", "letter": "b", "rule": lost.id, "tier": "discretionary"}
+    assert ed.describe_blocker(blocker) == f"item (b): rule {lost.id} names tier discretionary, which its template does not define"

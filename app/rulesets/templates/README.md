@@ -5,4 +5,7 @@ The rule builder's template library: one JSON file per form. `app/rulesets/libra
 - **One file per form,** named `<template id>.json`. The id is the form's id in `app/checks/forms.py` (J2).
 - **The format** is `Template` in `app/rulesets/schema.py`. Every rule's `field` is a `<form>.<field>` key from `app/checks/forms.py` (J2).
 - **In our own words:** no text copied from a rule file or a tender (J2).
+- **Every form has one, and every rule-file check has a place** (J12): a value a tender sets (a quantity, a default delivery period) is a slot, and a rule that only some tenders need carries a `condition`; the person confirming a rule set removes the rules its tender does not ask for. `tools/split_rule_files.py --templates` checks the library against the rule files.
+- **A condition is recorded, not yet enforced** (J12, question 2): a rule that applies only when its condition holds never disqualifies on a blank; a reviewer confirms.
+- **A field a reviewer enters** (`FieldDef.by`, a tender sample, a test report asked for after closing) is blank until someone records it, so its rules stay dormant until then.
 - **It ships with the image.** The backend Dockerfile copies `app/`, this folder included. `/health` reports how many templates load, a worker that builds rule sets prints the count (or a warning) when it starts, and a build with an empty library says so in its `ruleset.built` event.
