@@ -89,7 +89,8 @@ block above is its source.
 | 28–29 | Scoring and reports | `api` | Postgres; Azure Files (the `.docx` files) |
 
 Throughout: the containers read their secrets from **Key Vault** through the managed identity (the API key, the
-database URL, the sign-in secret), and write their logs to **Log Analytics**.
+database URL, the sign-in secret, the image-pull token), and write their logs to **Log Analytics**. The Azure OpenAI
+key is the exception: a Container Apps secret that the template reads from the resource (`listKeys`).
 
 **This demo runs synthetic projects only.** The gateway sends a project's text to Azure OpenAI only as its data
 class allows, and a real bid is `confidential`, so it stays on local models (the client-site deployment).
