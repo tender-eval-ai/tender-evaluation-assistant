@@ -1666,7 +1666,7 @@
         "type": "object"
       },
       "Normalise": {
-        "description": "A step applied to the field's value before the check, by the engine's own name.",
+        "description": "A step applied to the field's value before the rule's checks, by the engine's own\nname; a rule's steps run in order. `round_significant_figures` takes `max_sig_figs`, a\nwhole number from 1; `resolve_range_to_lower_bound` takes nothing.",
         "properties": {
           "op": {
             "enum": [

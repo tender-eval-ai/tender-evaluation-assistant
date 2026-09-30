@@ -67,7 +67,7 @@ def test_the_build_job_drafts_the_rule_set_from_the_tender(api, build_worker):
 
     rs = client.get(f"/projects/{pid}/ruleset").json()
     assert rs["version"] == 1 and rs["status"] == "draft" and rs["created_by"] == "rule_builder"
-    assert rs["prompt_version"] == "match-v1+slots-v2+novel-v3+additions-v2" and rs["updated_by"] == "rule_builder"
+    assert rs["prompt_version"] == "match-v1+slots-v2+novel-v4+additions-v3" and rs["updated_by"] == "rule_builder"
     by = {i["letter"]: i for i in rs["items"]}
     assert sorted(by) == list("abcdefghijklmno") and [p["part"] for p in rs["parts"]] == ["A", "B", "C"]
     assert by["l"]["template"] == "noncollusive_certificate" and by["l"]["status"] == "verified" and len(by["l"]["rules"]) == 4
