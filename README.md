@@ -579,6 +579,29 @@ within `AGENT_OCR_PAGES`), local OCR speed (measured 48.7 s per page on `qwen3-v
 on the laptop; 3.8 s on Gemini), and no Stage III–V yet (technical marking / combined score —
 phase 2).
 
+## Next: tenders in other formats
+
+The project stays on procurement, but tenders don't all look alike. The parser was tuned on one authority's
+digital PDFs, with numbered clauses and a lettered Completeness Check Schedule. Today:
+- only PDFs are read;
+- a scanned page, which has no text layer, is skipped without a warning;
+- every new layout adds special cases to one parser.
+
+The plan, proposed in [decision 0003](docs/decisions/0003-tender-format-router.md):
+
+1. **A router identifies each document's structure first.** It looks at the file type, whether pages have a text
+   layer, one document or several in one file, language, numbering style and tables, and records a format label
+   with its confidence. When it's unsure, a person is told rather than a guess being made.
+2. **One parser per format**, each with its own answer keys and eval. Today's parser becomes the first, for
+   digital PDFs with numbered clauses. Scanned PDFs, Word files and table-first schedules are the likely next ones.
+3. **One node-table contract.** Every parser produces the same nodes, checked by one validator, so locating the
+   schedule, the rule-set layers L1–L4 and the UI don't change when a format is added.
+4. **One shared template library,** keyed by form, not by file layout, and extended with every tender. A form seen
+   before reuses its template. A new one is drafted by L3, confirmed by a person, and saved as a template.
+
+The first step changes no behaviour: put today's parser behind a parser interface, write down the node-table
+contract as a validator, and keep the Tender 1–3 numbers identical.
+
 ## Licence, before you reuse this
 
 The repository is licensed under the **GNU AGPL-3.0** ([LICENSE](LICENSE)). The choice
