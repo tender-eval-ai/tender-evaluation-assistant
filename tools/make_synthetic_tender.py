@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Synthetic tender case: the document *structure* of a Hong Kong public
+"""Synthetic tender case: the document *structure* of a Hong Kong
 goods tender (17 sub-documents, PART headings, numbered clauses with sub-clauses and
 lettered sub-items, "Tender Ref." page headers, "<Document> Page N of M" footers, and a
 three-page Completeness Check Schedule inside the Schedules file) with entirely invented

@@ -84,6 +84,8 @@ def test_the_build_job_drafts_the_rule_set_from_the_tender(api, build_worker):
     assert nodes and all(n["node_id"].startswith("01-Tender-Form") for n in nodes)
     clause = next(n for n in nodes if n["node_id"] == "01-Tender-Form:P4:3")
     assert clause["kind"] == "clause" and clause["number"] == "3" and clause["page"] == 3 and len(clause["box"]) == 4
+    assert clause["part"] == "Part 4" and clause["text"] and clause["is_coarse"] is True, "the parser's fields come through"
+    assert {"label", "char_start", "char_end", "doc_name", "ref_no", "rule_version"} <= clause.keys()
     kinds = [e["kind"] for e in client.get(f"/projects/{pid}/events").json()["items"]]
     assert kinds[-2:] == ["ruleset.build_started", "ruleset.built"] or kinds[-1] == "ruleset.built"
 

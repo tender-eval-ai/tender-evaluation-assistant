@@ -62,9 +62,9 @@ and page, scored against a separate key:
 | Tender 2 | 13/13 | 13/13 | 13/13 | none |
 | Tender 3 | 21/21 | 21/21 | 21/21 | none |
 
-**Tests** — 534 Python (517 unit, 17 against Postgres), 72 browser-component (Vitest), 4
-end-to-end (Playwright), run by
-CI on every push: lint, unit, Postgres integration, web, e2e and a security scan.
+**Tests** — 623 Python (606 offline, 17 against Postgres), 74 browser-component (Vitest), 4
+end-to-end (Playwright), run by CI on every pull request: lint and a secrets and dependency
+scan, the offline suite, Postgres integration, web and e2e.
 
 Full method and per-document numbers: [`docs/evals/parser_l0.md`](docs/evals/parser_l0.md)
 and [`docs/evals/ruleset_l1_l4.md`](docs/evals/ruleset_l1_l4.md).
@@ -258,7 +258,14 @@ UPDATE_OPENAPI=1 python -m pytest test/test_api_contract.py
 DATABASE_URL=postgresql://postgres:dev@localhost:55432/harness python -m pytest -m postgres -q
 ```
 
-CI on every pull request: `lint` (pre-commit: ruff, gitleaks, large files, merge markers, PDF placement), `test` (the offline suite, installed from `requirements.lock`), `security` (gitleaks over the full history, pip-audit over the lockfile). On `main`, `main-guard` fails when a commit did not arrive through a merged pull request. Opt-in test levels are the pytest markers `orchestrator`, `realdata` and `live`; the default run excludes them and needs no network, tokens or client data. Dependabot watches only the GitHub Actions versions; Python versions are fixed by `requirements.lock`, refreshed by hand at each stop point or when pip-audit fails.
+CI on every pull request (`.github/workflows/ci.yml`), with each heavy job running only when a change touches what it tests:
+- `checks`: pre-commit (ruff, gitleaks, large files, merge markers, PDF placement), gitleaks over the full history, pip-audit over the lockfile, and on `main` the guard that fails a commit not merged through a pull request;
+- `test`: the offline suite, installed from `requirements.lock`;
+- `integration`: the Postgres-backed tests;
+- `web`: Vitest, lint and the build;
+- `e2e`: Playwright on the mock.
+
+Every action is pinned by commit, and the workflow token is read-only unless a job asks for more. `deploy-azure.yml` validates the Bicep on pull requests and deploys by hand. Opt-in test levels are the pytest markers `orchestrator`, `realdata` and `live`; the default run excludes them and needs no network, tokens or client data. Dependabot watches only the GitHub Actions versions; Python versions are fixed by `requirements.lock`, refreshed by hand at each stop point or when pip-audit fails.
 
 ## Repository layout
 
@@ -280,27 +287,38 @@ app/                the pipeline library (shared by CLI and backend)
   usage.py          per-bid token / call / $ accounting, price table, run summaries
   graph.py          LangGraph orchestration: state, checkpoints, interrupts, Send fan-out
   pipeline.py       bidder discovery, offline (fixture) run, console summary
-  checks/           the vendor check for one schedule item, layer by layer: V0 page rendering, V1 triage,
-                    V2 resolve, V3 extract (item (l)), V6 engine bridge, the `vendor_check` pipeline
+  parsing/          the tender parser (L0): PDF loading, the layout-model node tree, the document
+                    split, and the citation resolver; the only code that imports PyMuPDF
+  checks/           the vendor check for every form of a bid, layer by layer: V0 page rendering, V1 triage,
+                    V2 resolve, V3 extract (the form menu in forms.py), V4 verify, V5 the bounded search
+                    agent, the engine bridge; reviewer corrections, pricing in the tender's currency, the
+                    Word reports; the `vendor_check` pipeline
   gateway.py        the LLM gateway every pipeline call goes through: endpoint policy by data class,
                     cache, per-project daily budget, shared rate limiter (gateway_pg.py: the Postgres backends)
   jobs/             the run queue and check worker (Procrastinate on Postgres): step pipelines with
                     per-step checkpoints, pause/resume, results + corrections, `python -m app.jobs.worker`
   db.py             plain-SQL migrations (migrations/NNN_name.sql, up and down sections)
-  rulesets/         the shared rule-set contract (schema.py), changed only by a `contract` PR
+  rulesets/         the rule-set builder (the `ruleset_build` pipeline): locate (L0), match to a template
+                    (L1), fill its slots (L2), draft novel rules and additions (L3), coverage gaps (L4);
+                    the template library (templates/), editing, versions and diffs; the shared contract
+                    in schema.py, changed only by a `contract` PR
   engine/           Nasi's rule engine, ported unchanged from Bidding-AI-expert@7e8e273
 backend/            FastAPI service (projects, uploads, jobs, reports API) + Dockerfile
 web/                the review UI (React, Vite): Rules, Stage I/II, Scoring, Report; nginx image for compose
-mcp_server/         MCP server over the read-only tools + local-model MCP client
-docs/               plan (dated experiment log), detailed specification, interview prep, project report (audit)
+mcp_server/         MCP server over the prototype's read-only tools + local-model MCP client (retired at S5, J10)
+docs/               the API contract and its OpenAPI snapshot, decisions/ (orchestrator, PDF licences), evals/
+                    (parser, rule set, vendor check, verification, bid keys), the merge-plan checklist, plan,
+                    specification, interview prep, project report; images/ for this README
 migrations/         SQL migrations applied by app.db.migrate (the worker runs it at start)
 docker-compose.yml  Postgres, the API, the check worker (same image) and the UI together
 deploy/azure/       the shared demo on Azure: Bicep, setup/deploy scripts (workflow: .github/workflows/deploy-azure.yml)
 run_demo.py         CLI (offline demo + orchestrated run over real folders)
-test/               105 offline tests incl. API, graph, agent, MCP, cost ledger, Cloud Run scratch sync (no network, no client data)
-tools/              case generator (incl. --buried benchmark case, ground truth), PDF
-                    generator, stress driver, evidence-search benchmark, case scorer,
-                    OCR comparison, results tables
+test/               606 offline tests and 17 against Postgres: parser, rule sets, checks, engine, jobs,
+                    gateway, API and its contract (no network, no client data)
+tools/              synthetic case generators (tender and bids, with ground truth), the demo case, PDF
+                    generator; the evals (parser, rule set, bid key scoring) and end-to-end checks
+                    through the API; stress driver, evidence-search benchmark, OCR comparison
+LICENSE             GNU AGPL-3.0
 ```
 
 ## Service mode — frontend + backend
@@ -329,19 +347,33 @@ python tools/check_synthetic_case.py             # add --key when API_KEY is set
 docker run -d --name tea-pg -e POSTGRES_PASSWORD=dev -e POSTGRES_DB=tender -p 55432:5432 postgres:16
 export DATABASE_URL=postgresql://postgres:dev@localhost:55432/tender
 .venv/bin/uvicorn backend.api:app --reload --port 8000
-.venv/bin/python -m app.jobs.worker --pipelines app.checks.vendor_check
+.venv/bin/python -m app.jobs.worker --pipelines app.checks.vendor_check,app.rulesets.build_job,app.jobs.evaluate_job
 cd web && VITE_API_BASE=http://localhost:8000 npm run dev   # the UI on :5173 (without VITE_API_BASE: the mock)
 ```
 
-**How a check runs (S2).** `POST /projects/{pid}/checks` queues one job per tenderer on Postgres; a worker renders every
-page of the offer, labels them six at a time, finds the item's pages, reads the certificate's fields with page
-citations, and hands them to the rule engine under the confirmed rule set. The worker checkpoints after every step
-(and every batch of pages), so a crash or a deploy resumes where it stopped; every model call goes through the
-gateway (endpoint policy by data class, cache, daily budget, one shared pace per provider). `GET /projects/{pid}/jobs`
-follows the jobs, `GET /projects/{pid}/bids/{t}/results` has the fields, the verdict and its evidence; page images
-open by signed links. The measurements behind the design are in `docs/decisions/0001-orchestrator.md`.
+**How a project runs.** The worker runs three jobs, each checkpointed after every step, so a crash or a deploy
+resumes where it stopped. Every model call goes through the gateway (endpoint policy by data class, cache, daily
+budget, one shared pace per provider).
 
-UI flow = **one orchestrated run with two human checkpoints** (`POST /run`,
+1. **`ruleset_build`** (`POST /projects/{pid}/ruleset/build`) drafts the tender's rule set: parse and locate the
+   Completeness Check Schedule, match each item to a template, fill its slots, draft what no template has, and list
+   the obligations no rule covers. A person edits the draft in the Rules window, and a second person confirms it.
+2. **`vendor_check`** (`POST /projects/{pid}/checks`, one job per tenderer) renders every page of the offer, labels
+   them by form, finds each form's pages, reads its fields with page citations, verifies them against the text or
+   by a second read of a scan, and sends the bounded search agent after any form still not found. Once a rule set
+   is confirmed, the rules engine decides each item.
+3. **`evaluate`** re-decides every stored result against a newly confirmed rule-set version, with no model call.
+
+A reviewer corrects any field in Stage I or II (the model's value is kept beside the correction, with who and why)
+and confirms the review. Scoring needs a confirmed rule set, and the Word reports also wait until every
+review is confirmed. `GET /projects/{pid}/jobs`
+follows the jobs, and `GET /projects/{pid}/bids/{t}/results` has the fields, the verdicts and their evidence. Page
+images open by signed links. An upload is capped from its declared length before any of it is received
+(`MAX_UPLOAD_MB`, default 512, per request). The measurements behind the design are in
+`docs/decisions/0001-orchestrator.md`.
+
+**The prototype's flow (legacy routes, removed at S5, J11-7).** The Streamlit UI that drove it is gone; the routes
+remain until the legacy removal. It was **one orchestrated run with two human checkpoints** (`POST /run`,
 `POST /resume`): upload documents → *Run* derives the rubric and pauses → review it
 (every item shows its source citation — file, page, quoted clause — next to a
 rendered tender-page preview; edit the JSON if needed) → *Confirm & continue*
@@ -388,6 +420,9 @@ offline test suite on every push (`.github/workflows/ci.yml`). The same read-onl
 tools are exposed as an MCP server — see the next section.
 
 ## MCP server — the tools as a product surface
+
+*Retired at S5 (checklist J10): these are the prototype's tools, and the server goes with the legacy stack.
+What it measured moves to `docs/archive/`.*
 
 The read-only tools the evidence-search agent uses are also exposed over the
 [Model Context Protocol](https://modelcontextprotocol.io) (`mcp_server/server.py`,

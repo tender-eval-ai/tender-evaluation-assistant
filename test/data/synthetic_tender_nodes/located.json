@@ -236,7 +236,7 @@
     {
      "file": "tender/09 Schedules.pdf",
      "page": 8,
-     "node_id": "09-Schedules:04-Information-Schedule:PA",
+     "node_id": "09-Schedules:04-Information-Schedule:TA",
      "candidates": null,
      "quote": "Table A - Track Record of Supply\nThe Authority Representative shall return the empty containers at its own cost without prejudice to any other remedy. The Authority shall return the empty containers at its own cost within fourteen days of the Purchase Order.\nContract  Client  Quantity  Year",
      "data_class": "synthetic"
@@ -244,7 +244,7 @@
     {
      "file": "tender/09 Schedules.pdf",
      "page": 8,
-     "node_id": "09-Schedules:04-Information-Schedule:PB",
+     "node_id": "09-Schedules:04-Information-Schedule:TB",
      "candidates": null,
      "quote": "Table B - Quality Certification\nThe Authority Representative shall maintain the insurance policy in force unless otherwise agreed in writing. The Authority Representative shall keep a record of every batch supplied subject to the Special Conditions of Contract.\nContract  Client  Quantity  Year",
      "data_class": "synthetic"
@@ -252,7 +252,7 @@
     {
      "file": "tender/09 Schedules.pdf",
      "page": 8,
-     "node_id": "09-Schedules:04-Information-Schedule:PC",
+     "node_id": "09-Schedules:04-Information-Schedule:TC",
      "candidates": null,
      "quote": "Table C - Production Capacity\nThe Tenderer shall label each container with the batch number and the date of manufacture unless otherwise agreed in writing. The nominated store keeper shall submit the monthly delivery programme within fourteen days of the Purchase Order.\nContract  Client  Quantity  Year",
      "data_class": "synthetic"
@@ -420,7 +420,7 @@
      "page": 8,
      "node_id": "04-Terms-of-Tender-Supplement:17",
      "candidates": null,
-     "quote": "17.\nContact Details\nThe Supplier shall maintain the insurance policy in force in the form set out in the Schedules. The Authority shall maintain the insurance policy in force where the Goods are supplied in bulk.",
+     "quote": "17.\nCont act Details\nThe Supplier shall maintain the insurance policy in force in the form set out in the Schedules. The Authority shall maintain the insurance policy in force where the Goods are supplied in bulk.",
      "data_class": "synthetic"
     },
     {
@@ -574,7 +574,7 @@
      "page": 6,
      "node_id": "02-Interpretation-Terms-of-Tender-and-Ge:P2:7",
      "candidates": null,
-     "quote": "7.\nCompliance Schedule\nThe Tenderer shall deliver the Goods to the nominated store on each occasion that a delivery is made. The Authority Representative shall provide a certificate of analysis for each batch before the delivery date stated in the Purchase Order. The\nSupplier shall bear the cost of replacement on each occasion that a delivery is made.",
+     "quote": "7.\nCompliance Schedule\nThe Tenderer shall deliver the Goods to the nominated store on each occasion that a delivery is made. The Authority Representative shall provide a certificate of analysis for each batch before the delivery date stated in the Purchase Order. The Supplier shall bear the cost of replacement on each occasion that a delivery is made.",
      "data_class": "synthetic"
     },
     {

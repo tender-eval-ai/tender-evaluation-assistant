@@ -85,4 +85,7 @@ def list_nodes(pid: str, doc_id: str) -> list[Node]:
     nodes = json.loads(path.read_text())
     mine = [n for n in nodes if n.get("source_file") in (d["rel"], d["file"])]
     return [Node(node_id=n["node_id"], parent_id=n.get("parent_id"), kind=n["kind"], number=n.get("number") or n.get("label"),
-                 title=n.get("title") or None, page=n.get("page"), box=n.get("bbox")) for n in mine]
+                 label=n.get("label"), part=n.get("part"), title=n.get("title") or None, page=n.get("page"), box=n.get("bbox"),
+                 text=n.get("text") or "", char_start=n.get("char_start"), char_end=n.get("char_end"),
+                 is_coarse=bool(n.get("is_coarse")), doc_name=n.get("doc_name"), ref_no=n.get("ref_no"),
+                 rule_version=n.get("rule_version")) for n in mine]
