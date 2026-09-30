@@ -19,6 +19,82 @@ browser ─ Entra ID sign-in ─ Container Apps app (scales to zero, one replica
 | `add_user.sh` | Lets one more person sign in, and with `--contributor` deploy. |
 | `../../.github/workflows/deploy-azure.yml` | Run by hand: builds `backend` and `web`, pushes them to the GitHub Container Registry, and deploys through OIDC. |
 
+## How a bid moves through the deployment
+
+From the raw PDF a tenderer submitted to a verdict per schedule item under the confirmed rule set. Every step
+names the Azure service it uses. The API and the worker are two containers of the same Container Apps app. Every
+model call goes through the gateway (`app/gateway.py`) inside the worker, never straight to Azure OpenAI.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor R as Reviewer
+    participant E as Entra ID
+    participant W as web (nginx)
+    participant A as api (FastAPI)
+    participant F as Azure Files /data
+    participant P as Postgres Flexible Server
+    participant K as worker
+    participant G as gateway (in worker)
+    participant O as Azure OpenAI
+
+    R->>E: sign in (assigned users only)
+    R->>W: upload the bid's PDFs
+    W->>A: POST /projects/{pid}/bids/{t} (adds the API key)
+    A->>A: size cap from Content-Length, names, PDF bytes
+    A->>F: save the PDFs (all or nothing)
+    R->>A: Run check · POST /projects/{pid}/checks
+    A->>P: queue one vendor_check job (Procrastinate)
+    P-->>K: the worker takes the job
+    K->>F: V0 render every page to PNG, read the text layer
+    K->>G: V1 triage: label pages by form, six per call
+    G->>P: data class allowed? cached? within today's budget?
+    G->>O: vision call (only on a cache miss)
+    O-->>G: page labels
+    G->>P: cache the answer, record the cost
+    Note over G,O: every model call below goes through the same gateway checks and cache as V1
+    K->>G: V2 resolve: which pages hold each form
+    K->>G: V3 extract: each form's fields, page-cited
+    K->>G: V4 verify: second read of scanned pages (text pages are checked in code)
+    K->>P: checkpoint after every step
+    K->>P: await the confirmed rule set
+    K->>G: V5 search agent: a Part A form no page was labelled
+    K->>K: rules engine decides each item (code, no model)
+    K->>P: results, evidence, audit events
+    Note over R,A: after sign-in, every request goes through web (nginx), which adds the API key
+    R->>A: open Stage I / II
+    A->>P: results
+    A->>F: page image, by a signed short-lived link
+    R->>A: correct a field, confirm the review
+    A->>P: correction beside the model's value, who and why
+    R->>A: Scoring, then the Word reports
+    A->>F: write the three .docx files
+```
+
+The same diagram as an image: [`docs/images/azure-bid-flow.png`](../../docs/images/azure-bid-flow.png). The Mermaid
+block above is its source.
+
+| # | Step | Where it runs | Services it uses |
+|---|---|---|---|
+| 1 | Sign in | Entra ID in front of the app | Entra ID |
+| 2–5 | Upload the bid | `web` → `api` | Container Apps, Azure Files (`/data/projects/{pid}/bids/{t}/`) |
+| 6–8 | Queue the check | `api` → `worker` | Postgres (the Procrastinate queue) |
+| 9 | V0 render pages | `worker` | Azure Files (PDFs in, PNGs out) |
+| 10–14 | V1 triage | `worker` → gateway | Azure OpenAI (vision), Postgres (gateway cache, daily budget, rate limit) |
+| 15–17 | V2 resolve, V3 extract, V4 verify | `worker` → gateway | Azure OpenAI; Azure Files (page images) |
+| 18–19 | Checkpoint, wait for the rule set | `worker` | Postgres |
+| 20 | V5 search agent | `worker` → gateway | Azure OpenAI; Azure Files |
+| 21–22 | Decide and store | `worker` (rules engine, code) | Postgres (results, evidence, events) |
+| 23–27 | Review and correct | `web` → `api` | Postgres; Azure Files (signed page images) |
+| 28–29 | Scoring and reports | `api` | Postgres; Azure Files (the `.docx` files) |
+
+Throughout: the containers read their secrets from **Key Vault** through the managed identity (the API key, the
+database URL, the sign-in secret, the image-pull token), and write their logs to **Log Analytics**. The Azure OpenAI
+key is the exception: a Container Apps secret that the template reads from the resource (`listKeys`).
+
+**This demo runs synthetic projects only.** The gateway sends a project's text to Azure OpenAI only as its data
+class allows, and a real bid is `confidential`, so it stays on local models (the client-site deployment).
+
 ## First time
 1. **A subscription.** A Free Trial, made with a personal Microsoft account rather than a university one, so the demo outlives the university account. Start it when you're ready to deploy: the trial credit lasts 30 days.
 2. **Tools:** `brew install azure-cli`, then `az login` and `gh auth login`.
