@@ -55,11 +55,11 @@ Last updated: 2026-09-20 (Chenyu).
 | J4 | S4 review: corrections and confirmation in the UI | done | — |
 | J5 | S4 review flow in a browser (Playwright) | done | — |
 | J6 | Re-evaluate against a confirmed rule-set version | done | — |
-| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); fields into `forms.py` (e2b3189); templates merged (J12: #100, #99); next, both: the L1-L4 eval on the synthetic case and the three tenders |
+| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); fields into `forms.py` (e2b3189); templates merged (J12: #100, #99); synthetic L1-L4 on the production templates done (#122); left: `ruleset_all_items.json` regenerated after #120, and the three tenders (both) |
 | J8 | S5: README results, who built what, CITATION.cff | part done | licence (#103), diagram (#105), GIF and screens (#107) done; the demo (G4) open |
 | J9 | S4 check: the checker scored against one answer key per bid (issue #69) | agreed | Tender 3 undecided; optional blind spot check by Nasi |
 | J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | agreed | — (removed in the S5 legacy-removal PR) |
-| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1, 3–6 and 9–11 done (#90, #96, #94, #95, #93; #104, 6a19319); 2, 7, 8 Chenyu |
+| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1, 3–6, 9–11 and 13 done (#90, #96, #94, #95, #93; #104, 6a19319; README Limitations); 2, 7, 8 Chenyu; 12 after S4 |
 | J12 | The production templates: one per form, every rule-file rule placed; #76 points 2 and 3; two questions (tier by Part, conditions) | done (#100, #99); questions agreed | Chenyu: question 1 in #114 |
 
 ## A. Corrections to the plan
