@@ -589,6 +589,43 @@ digital PDFs, with numbered clauses and a lettered Completeness Check Schedule. 
 
 The plan, proposed in [decision 0003](docs/decisions/0003-tender-format-router.md):
 
+```mermaid
+flowchart LR
+    F["📄 Tender files<br/>PDF · scans · Word ·<br/>spreadsheets"]
+    R{"<b>router</b><br/>which structure?<br/>format + confidence"}
+    U["✋ unsure:<br/>a person decides"]
+
+    subgraph PARSERS["one parser per format · each with its own eval"]
+        direction TB
+        P1["digital PDF,<br/>numbered clauses<br/><i>(today's parser)</i>"]
+        P2["scanned PDF<br/>(OCR first)"]
+        P3["Word (DOCX)"]
+        P4["table-first<br/>schedules"]
+    end
+
+    N["<b>node table</b><br/>one contract,<br/>one validator"]
+    L["<b>locate + L1–L4</b><br/>schedule items,<br/>template match, slots,<br/>novel rules, gaps"]
+    T[("<b>shared template library</b><br/>keyed by form,<br/>grows with every tender")]
+    RS["<b>rule set</b><br/>per tender"]
+
+    F --> R
+    R --> P1 & P2 & P3 & P4
+    R -. low confidence .-> U
+    P1 & P2 & P3 & P4 --> N --> L --> RS
+    T --> L
+    RS -. "a new form, confirmed:<br/>saved as a template" .-> T
+
+    classDef llm fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef code fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef human fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef docs fill:#f3f4f6,stroke:#9ca3af,color:#374151
+    class F docs
+    class R,P1,P2,P3,P4,N code
+    class L,RS llm
+    class U human
+    class T docs
+```
+
 1. **A router identifies each document's structure first.** It looks at the file type, whether pages have a text
    layer, one document or several in one file, language, numbering style and tables, and records a format label
    with its confidence. When it's unsure, a person is told rather than a guess being made.
