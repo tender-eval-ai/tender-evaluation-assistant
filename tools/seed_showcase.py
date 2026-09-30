@@ -26,6 +26,9 @@ BUILDER, APPROVER, REVIEWER = "showcase-builder", "showcase-approver", "showcase
 FROM_KEY = "from the synthetic case's answer key"
 GAP_REASON = ("reviewed for the showcase: obligations on the Authority or during the contract, "
               "not requirements on what the tenderer submits")
+# A value a template needs that the case's tender doesn't state: the builder sets it, and says so.
+CASE_VALUES = {"synthetic_tender": {"tender_closing_date": ("2026-09-30", "the synthetic tender states no closing date; "
+                                                                           "set for the showcase")}}
 
 
 class Api:
@@ -73,6 +76,28 @@ def review(check: dict, value: dict | None, letter: str, truth: dict) -> tuple[s
     return "decide", {"decision": "dormant", "reason": "left for the Authority to follow up (showcase)"}
 
 
+def settle_inputs(api: Api, pid: str, case: str, truth: dict, log) -> None:
+    """What confirmation still waits for, settled by the builder: a required value the model
+    didn't find is set from the case (CASE_VALUES, or the answer key's estimated quantity), and a
+    value it found but code couldn't verify on the page is confirmed as read. Each with a reason."""
+    known = {**{k: v for k, v in CASE_VALUES.get(case, {}).items()},
+             "estimated_quantity": (truth.get("estimated_quantity_kg"), FROM_KEY)}
+    ruleset = api.call("GET", f"/projects/{pid}/ruleset")
+    for item in ruleset["items"]:
+        if item["status"] != "needs_input":
+            continue
+        for name, slot in item["slots"].items():
+            if slot.get("value") in (None, "", []) and known.get(name, (None,))[0] is not None:
+                value, why = known[name]
+            elif slot.get("value") not in (None, "", []) and not slot.get("verified"):
+                value, why = slot["value"], "confirmed as the model read it (showcase)"
+            else:
+                continue
+            api.call("PATCH", f"/projects/{pid}/ruleset/items/{quote(item['letter'])}", user=BUILDER,
+                     json={"slot": {"name": name, "value": value}, "reason": why})
+            log(f"  ({item['letter']}) {name} = {value!r}: {why}")
+
+
 def seed(api: Api, case: str, name: str, truth: dict, timeout: float = 1800.0, log=print) -> str:
     project = api.call("POST", "/projects", json={"name": name, "data_class": "synthetic"})
     pid = project["id"]
@@ -89,6 +114,7 @@ def seed(api: Api, case: str, name: str, truth: dict, timeout: float = 1800.0, l
         body = {k: v for k, v in draft.items() if k not in ("status", "confirmed_by", "confirmed_at", "version", "project_id")}
         api.call("PUT", f"/projects/{pid}/ruleset/draft", user=BUILDER, json=body)
     log(f"rule set drafted: {len(draft['items'])} items; {len(open_gaps)} gaps given one reason")
+    settle_inputs(api, pid, case, truth, log)
     confirmed = api.call("POST", f"/projects/{pid}/ruleset/confirm", user=APPROVER, json={})
     log(f"rule set v{confirmed['version']} confirmed by {confirmed['confirmed_by']}")
 
