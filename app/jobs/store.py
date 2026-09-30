@@ -314,7 +314,9 @@ def _apply(fields: dict, corrections: dict) -> dict:
     text goes only when the person typed text of their own ("4.4 kg/t", "2.5%"). A bare
     number corrects the figure, not the unit or currency printed beside it, so a unit check
     still finds "HK$" in the printed text (#100 re-review: a corrected 7.5 failed it)."""
-    out = {**fields, **{k: v["value"] for k, v in corrections.items()}}
+    # A reviewer's decision on a check reaches the bridge with who made it and why.
+    out = {**fields, **{k: ({"status": v["value"], "by": v.get("by"), "reason": v.get("reason")}
+                            if k.endswith("_decision") else v["value"]) for k, v in corrections.items()}}
     for k, correction in corrections.items():
         if is_meta(k):
             continue

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Badge from "./Badge.jsx";
 import CollapsibleSection from "./CollapsibleSection.jsx";
+import DecisionForm from "./DecisionForm.jsx";
 import FieldCorrection from "./FieldCorrection.jsx";
 import { fieldName, stageRollup, uniqueCitations } from "../verdicts.js";
 
@@ -27,6 +28,7 @@ function FieldMicroLabel({ children }) {
 function FieldRow({ check, value, onViewCitation, letter, onCorrect }) {
   const page = value?.page;
   const [correcting, setCorrecting] = useState(false);
+  const [deciding, setDeciding] = useState(false);
   // The field's key inside BidResult.fields. `check.field` carries it when the rule
   // and the field are named differently; otherwise it is the last segment of the id.
   const fieldKey = check.field ?? check.field_id.split(".").pop();
@@ -79,6 +81,14 @@ function FieldRow({ check, value, onViewCitation, letter, onCorrect }) {
           </p>
         </div>
       )}
+      {check.decision && (
+        <div className="mb-2 pl-2 border-l-2 border-accent" data-testid={`decided-${check.field_id}`}>
+          <FieldMicroLabel>Decided</FieldMicroLabel>
+          <p className="text-xs leading-5 text-ink-2">
+            {check.decision.status} · {check.decision.by} · {check.decision.reason}
+          </p>
+        </div>
+      )}
       {page && (
         <button
           type="button"
@@ -88,11 +98,27 @@ function FieldRow({ check, value, onViewCitation, letter, onCorrect }) {
           read on {page.file}, p.{page.page} →
         </button>
       )}
-      {onCorrect && !correcting && (
+      {onCorrect && !correcting && !deciding && (
         <button type="button" onClick={() => setCorrecting(true)}
                 className="font-mono text-xs text-accent hover:underline cursor-pointer">
           correct this field
         </button>
+      )}
+      {onCorrect && check.status === "needs_review" && !correcting && !deciding && (
+        <button type="button" onClick={() => setDeciding(true)}
+                className="font-mono text-xs text-accent hover:underline cursor-pointer ml-3">
+          decide this check
+        </button>
+      )}
+      {onCorrect && deciding && (
+        <DecisionForm
+          fieldId={check.field_id}
+          onCancel={() => setDeciding(false)}
+          onSubmit={async (body) => {
+            await onCorrect(letter, fieldKey, body);
+            setDeciding(false);
+          }}
+        />
       )}
       {onCorrect && correcting && (
         <FieldCorrection

@@ -190,6 +190,19 @@
       },
       "CheckedField": {
         "properties": {
+          "decision": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "a reviewer's decision that settled this check: {status, by, reason}",
+            "title": "Decision"
+          },
           "field": {
             "anyOf": [
               {
@@ -380,8 +393,25 @@
         "type": "object"
       },
       "CorrectionRequest": {
-        "description": "The body of `PATCH /bids/{t}/fields/{letter}/{field}` (S4): correct a value, mark a\ndocument present or absent, or point at another page. `Correction` is the stored record.",
+        "description": "The body of `PATCH /bids/{t}/fields/{letter}/{field}` (S4): correct a value, mark a\ndocument present or absent, or point at another page; or, alone, decide a check that\nneeds review. `Correction` is the stored record.",
         "properties": {
+          "decision": {
+            "anyOf": [
+              {
+                "enum": [
+                  "pass",
+                  "dormant",
+                  "disqualified"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "settles a check that needs review; given alone",
+            "title": "Decision"
+          },
           "page": {
             "anyOf": [
               {
@@ -3508,7 +3538,7 @@
     },
     "/projects/{pid}/bids/{tenderer}/fields/{letter}/{field}": {
       "patch": {
-        "description": "Correct a value, mark a document present or absent, or point at another page. The\nmodel's value is kept beside the person's; the engine re-decides at once, no model\ncall; a review confirmation on this tenderer is withdrawn.",
+        "description": "Correct a value, mark a document present or absent, or point at another page; or\ndecide a check that needs review (pass, dormant or disqualified). The model's value is\nkept beside the person's; the engine re-decides at once, no model call; a review\nconfirmation on this tenderer is withdrawn.",
         "operationId": "correct_field_projects__pid__bids__tenderer__fields__letter___field__patch",
         "parameters": [
           {

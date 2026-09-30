@@ -541,17 +541,25 @@ function redecide(check, fields, letter) {
   return { ...check, status: filled ? "pass" : check.status, note: filled ? null : check.note };
 }
 
-export function correctedResult(t, corrections, confirmedBy) {
+// A reviewer's decision settles a check that needs review, as the bridge does
+// (engine_bridge.apply_decisions); on any other check it is set aside.
+function decide(check, letter, decisions) {
+  const d = decisions?.get(`${letter}.${check.field_id.split(".").pop()}`);
+  if (!d || check.status !== "needs_review") return check;
+  return { ...check, status: d.status, note: `decided by ${d.by}: ${d.reason}`, follow_up: null, decision: d };
+}
+
+export function correctedResult(t, corrections, confirmedBy, decisions) {
   const result = bidResult(t);
   if (!result) return null;
-  if (corrections?.size) {
-    for (const [key, correction] of corrections) {
+  if (corrections?.size || decisions?.size) {
+    for (const [key, correction] of corrections ?? []) {
       const [letter, field] = [key.slice(0, key.indexOf(".")), key.slice(key.indexOf(".") + 1)];
       const group = result.fields[letter];
       if (group && field in group) group[field] = applyCorrection(group[field], correction);
     }
     for (const [letter, verdict] of Object.entries(result.verdicts)) {
-      verdict.checks = verdict.checks.map((c) => redecide(c, result.fields, letter));
+      verdict.checks = verdict.checks.map((c) => decide(redecide(c, result.fields, letter), letter, decisions));
       const active = verdict.checks.filter((c) => c.status !== "dormant").map((c) => c.status);
       verdict.outcome = worstOf(active.length ? active : ["pass"]);
       verdict.worst = worstOf(verdict.checks.map((c) => c.status));

@@ -55,7 +55,8 @@ def test_a_correction_keeps_the_models_value_and_redecides_at_once(api, worker):
     assert r.status_code == 200, r.text
     doc = r.json()["fields"]["l"]["document"]
     assert doc["value"] == "present" and doc["correction"] == {"value": "present", "by": "chenyu", "reason": "found it stapled to the offer", "model_value": None}
-    assert r.json()["verdicts"]["l"]["outcome"] == "disqualified", "still unsigned"
+    assert r.json()["verdicts"]["l"]["outcome"] == "needs_review", \
+        "the model read no signature on a form that is there: a reviewer confirms before it disqualifies"
 
     for field, value in [("signature", "authorised signatory of Tenderer C"), ("tenderer_name", "Tenderer C"), ("date", "1 September 2026")]:
         r = client.patch(f"{url}/{field}", json={"value": value, "reason": "read from the stapled copy"}, headers=NASI)

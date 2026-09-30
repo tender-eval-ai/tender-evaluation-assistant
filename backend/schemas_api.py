@@ -102,6 +102,7 @@ class CheckedField(BaseModel):
     redacted: bool = False
     stage: str = "I"
     follow_up: dict | None = None
+    decision: dict | None = Field(default=None, description="a reviewer's decision that settled this check: {status, by, reason}")
 
 
 class Verdict(BaseModel):
@@ -226,11 +227,14 @@ class Settings(BaseModel):
 
 class CorrectionRequest(BaseModel):
     """The body of `PATCH /bids/{t}/fields/{letter}/{field}` (S4): correct a value, mark a
-    document present or absent, or point at another page. `Correction` is the stored record."""
+    document present or absent, or point at another page; or, alone, decide a check that
+    needs review. `Correction` is the stored record."""
 
     value: Any = None
     present: bool | None = None
     page: int | None = None
+    decision: Literal["pass", "dormant", "disqualified"] | None = Field(
+        default=None, description="settles a check that needs review; given alone")
     reason: str = Field(min_length=1)
 
 
