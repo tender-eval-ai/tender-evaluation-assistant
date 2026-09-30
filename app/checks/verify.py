@@ -22,7 +22,7 @@ from pydantic import BaseModel, Field
 from app.checks.fields import short_name
 from app.checks.pages import read_png
 
-PROMPT_VERSION = "second-read-v1"
+PROMPT_VERSION = "second-read-v2"
 
 SYSTEM = (
     "You transcribe named fields from the page images of ONE tenderer's offer to a tendering authority's goods tender. "

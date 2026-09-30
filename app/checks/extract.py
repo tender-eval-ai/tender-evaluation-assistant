@@ -13,7 +13,7 @@ from app.checks.pages import read_png
 from app.rulesets.schema import SlotKind
 from app.rulesets.slots import coerce
 
-PROMPT_VERSION = "extract-v3"
+PROMPT_VERSION = "extract-v4"
 
 SYSTEM = (
     "You read ONE form in ONE tenderer's offer to a tendering authority's goods tender from the page images given: "

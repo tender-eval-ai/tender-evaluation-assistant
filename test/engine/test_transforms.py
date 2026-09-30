@@ -116,6 +116,12 @@ class TestAddWorkingDays:
         result = run_transform("add_working_days", item, rule, {"offset_value": 5, "offset_unit": "working_days"})
         assert result.computed_date == "2026-02-13"
 
+    def test_reads_the_request_date_under_its_name_before_f6(self):
+        rule = _rule(id="some_rule")
+        item = {"authority_request_date": "2026-02-06"}
+        result = run_transform("add_working_days", item, rule, {"offset_value": 5, "offset_unit": "working_days"})
+        assert result.computed_date == "2026-02-13"
+
     def test_no_base_date_available_returns_none(self):
         rule = _rule(id="some_rule")
         result = run_transform("add_working_days", {}, rule, {"offset_value": 5, "offset_unit": "working_days"})

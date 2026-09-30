@@ -2,7 +2,7 @@
 import pytest
 
 from app.pricing import compute_price_rows, round_2sf
-from app.schemas import BidExtraction, BidPrice, PriceScheme
+from app.schemas import BidExtraction, BidPrice, PriceRow, PriceScheme
 
 
 def bid(name, unit_price=None, dosage=None, quoted_total=None, currency="HKD", fx=None):
@@ -96,3 +96,11 @@ class TestUnitPriceTimesQuantity:
         rows, _ = compute_price_rows(self.scheme, bids, conforming={"Y"})
         assert rows[0].arithmetic_ok is True
         assert "error" not in rows[0].remark
+
+
+def test_a_price_stored_before_f6_keeps_its_rate_and_base_price():
+    # `fx_to_hkd` and `unit_price_hkd` were the names before F6. Read as unknown keys,
+    # the rate would be None and a US$ bid would be priced at 1.0.
+    assert BidPrice.model_validate({"unit_price": 3.0, "fx_to_hkd": 7.8}).fx_to_base == 7.8
+    assert PriceRow.model_validate({"tenderer": "T", "conforming": True, "unit_price_hkd": 23.4}).unit_price_base == 23.4
+    assert "fx_to_base" in BidPrice(unit_price=3.0, fx_to_base=7.8).model_dump()

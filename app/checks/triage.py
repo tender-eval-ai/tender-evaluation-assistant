@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 from app.checks.labels import PAGE_LABELS, normalise
 from app.checks.pages import read_png
 
-PROMPT_VERSION = "triage-v1"
+PROMPT_VERSION = "triage-v2"
 # Six page images per call is the design number (a 300-page offer is 50 calls); a model
 # with a small context window takes fewer through TRIAGE_PAGES_PER_CALL.
 PAGES_PER_CALL = max(1, int(os.environ.get("TRIAGE_PAGES_PER_CALL", "6")))

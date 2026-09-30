@@ -41,7 +41,8 @@ def _base_date(item: dict, rule: dict) -> str | None:
     explicit = item.get(f"{rule['id']}__base_date")
     if explicit is not None:
         return explicit
-    return item.get("authority_request_date")
+    date = item.get("authority_request_date")
+    return date if date is not None else item.get("authority_request_date")  # its name before F6
 
 
 def _offset_days(params: dict) -> int | None:
