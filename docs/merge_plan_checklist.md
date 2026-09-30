@@ -42,7 +42,7 @@ Last updated: 2026-09-20 (Chenyu).
 | F3 | Files excluded from the port (commit `7e8e273`, see F5) | agreed | — (update the plan) |
 | F4 | Public-release audit at S5 | agreed | — (update the plan) |
 | F5 | Port source: pushed commit, no `aicamp-final` tag | agreed | — |
-| F6 | Public naming: an AI tender evaluation assistant, no tender numbers or Hong Kong wording | agreed | — (description set 2026-09-26; clean-up PR at S5) |
+| F6 | Public naming: an AI tender evaluation assistant, no tender numbers or public wording | agreed; amended 2026-09-30 | parts 1, 2, 3a in #97, #98, #109; 3b (README results, parser eval, tests) after #104 |
 | G1 | Two independent demos, same image | superseded by G4 | — |
 | G2 | No cloud named in code; configuration only | agreed | — (update the plan) |
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
@@ -56,9 +56,10 @@ Last updated: 2026-09-20 (Chenyu).
 | J5 | S4 review flow in a browser (Playwright) | done | — |
 | J6 | Re-evaluate against a confirmed rule-set version | done | — |
 | J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); Chenyu: the fields with no home into `forms.py`; then Nasi: templates |
-| J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
+| J8 | S5: README results, who built what, CITATION.cff | part done | licence (#103), diagram (#105), GIF and screens (#107) done; the demo (G4) open |
+| J9 | S4 check: the checker scored against one answer key per bid (issue #69) | agreed | Tender 3 undecided; optional blind spot check by Nasi |
 | J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | agreed | — (removed in the S5 legacy-removal PR) |
-| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1–6 done (#90, #93, #94, #96; #95 open); 7, 8 Chenyu; 9–11 Nasi |
+| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1, 3, 4, 6 done (#90, #96, #94, #93); 5 in #95; 2, 7, 8 Chenyu; 9–11 Nasi |
 
 ## A. Corrections to the plan
 
@@ -314,6 +315,7 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Chenyu (2026-09-25): proposed. Chenyu's old personal repository, `tender-evaluation-assistant`, gets a new name before it is ever made public.
 - Nasi (2026-09-26): agree to 1–4, including the proposed repository description, which is set once this merges.
 - Decision: agreed (2026-09-26).
+- Amended (2026-09-30), Nasi proposing on #97 and Chenyu agreeing: **Hong Kong wording may stay** where it describes the setting. The tender numbers and the public wording still go ("the Authority" became "the Authority" in #97 and #98; the numbers became Tender 1, 2 and 3 in #109, with part 3b after #104). `HK$` stays, as in 3.
 
 ## G. Deployment and demo
 
@@ -553,6 +555,20 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 - Still open in H1: the architecture diagram, the 30-second GIF of the three-column
   review (the Playwright review flow already walks exactly that sequence, so it can
   record it), the two live demos (G1), and settling the licence itself.
+
+### J9. The S4 check: one answer key per bid (issue #69)
+- Found by: the plan's S4 check compares Tender 1's bid with "the historical Summary List and Price Summary". The camp brief calls those three PDFs examples, and they name no tender. We also have one bid per tender. So there is no historical result to compare against (Chenyu, 2026-09-23, #69).
+- Proposal (Chenyu, #69):
+  - An answer key per bid records facts, not verdicts. For each schedule item it records present, absent or not applicable; its pages and form; the signed, dated, chop and blacked-out flags; and the values as printed.
+  - Tender 1 is the development bid. Tenders 2 and 3 are held out: the prompts, templates and form menu are frozen before they run, and every fix made after seeing them is logged.
+  - The three example PDFs only check the Word reports' format.
+  - The bids run as confidential (local models only), because two of them leave a company name unmasked.
+- Change (Nasi, 2026-09-30, #69): **one key per bid, Chenyu's**, instead of two independent keys compared field by field.
+  - The checker is scored against Chenyu's frozen keys for Tender 1 and Tender 2, with `tools/score_bid_key.py`, so no comparison script is needed.
+  - The README and `docs/evals/bid_keys.md` say plainly that the numbers are measured against a single key, drafted by Claude from the page images and checked item by item by the person who froze it.
+  - Where the checker and the key disagree, we look at the page before counting it as a checker error. With one key, that look is the only check on the key itself.
+- Chenyu (2026-09-30): agree. Optional: Nasi checks about 15 random items per bid against the key without looking at its values first, which gives an agreement figure to quote beside the single-key numbers. Tender 3: out of the S4 numbers for now; its schedule-item pages are keyed later if there is time.
+- Decision: agreed (2026-09-30), one key per bid. Tender 3 is still to decide.
 
 ### J10. The MCP server at S5: retire it with the legacy stack
 - Found by: planning what the S5 legacy removal takes with it (2026-09-25).

@@ -128,7 +128,8 @@ text never leaves the local network), a cache, a daily budget and a rate limit.
 | `web` | the React review UI (Rules, Stage I, Stage II, Scoring, Report), on :8080 |
 | `backend` | FastAPI (`backend/`), the routes of [`docs/api_contract.md`](docs/api_contract.md), on :8000 |
 | `worker` | Procrastinate workers running the three jobs: `ruleset_build`, `vendor_check`, `evaluate`. Checkpointed after every step, so a killed job resumes; `--scale worker=N` adds more |
-| `postgres` | projects, versioned rule sets, results, the audit events, the job queue, and the gateway's cache and budget |
+| `postgres` | versioned rule sets, results, the audit events, runs and their steps, the job queue, and the gateway's cache, budget and rate limit |
+| `/data` volume | the projects: `meta.json`, the uploaded PDFs, rendered pages, node tables and the Word reports |
 
 ## Pipeline (mirrors the TAP workflow)
 
