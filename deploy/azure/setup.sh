@@ -24,7 +24,7 @@ cd "$(dirname "$0")/../.."
 
 REPO=${REPO:-tender-eval-ai/tender-evaluation-assistant}
 RG=${RG:-tender-demo}
-LOCATION=${LOCATION:-eastus2}
+LOCATION=${LOCATION:-centralus}   # a Free Trial can't create Postgres in eastus2, eastus or westus2
 PREFIX=${PREFIX:-tender}
 GHCR_USER=${GHCR_USER:-chenyufang-data}   # the account GHCR_TOKEN belongs to
 : "${GHCR_TOKEN:?export GHCR_TOKEN: a classic GitHub token with the read:packages scope only}"
@@ -39,6 +39,23 @@ for p in Microsoft.App Microsoft.OperationalInsights Microsoft.DBforPostgreSQL M
     [ "$(az provider show -n "$p" --query registrationState -o tsv)" = Registered ] ||
         az provider register -n "$p" --wait -o none
 done
+
+echo "== is Postgres Flexible Server (B1ms) offered to this subscription in $LOCATION?"
+# Free Trial subscriptions are refused in several popular regions, and the deployment then
+# fails deep inside with "The value of the 'Version' should be in: []". Ask first.
+PG_OFFER=$(az postgres flexible-server list-skus --location "$LOCATION" -o json | python3 -c '
+import json, sys
+caps = json.load(sys.stdin) or [{}]
+cap = caps[0]
+b1ms = any(s.get("name") == "Standard_B1ms" for e in cap.get("supportedServerEditions") or []
+           if e.get("name") == "Burstable" for s in e.get("supportedServerSkus") or [])
+print("ok" if b1ms and cap.get("supportedServerVersions") else (cap.get("reason") or "not offered"))')
+if [ "$PG_OFFER" != ok ]; then
+    echo "Postgres isn't offered here: $PG_OFFER" >&2
+    echo "Delete the group if this run made it (az group delete -n $RG --yes), then rerun with another" >&2
+    echo "region, e.g. LOCATION=centralus (or westus3, northcentralus, canadacentral)." >&2
+    exit 1
+fi
 
 # The suffix makes the global names unique; the repository variable keeps it stable.
 SUFFIX=$(gh variable get AZURE_NAME_SUFFIX -R "$REPO" 2>/dev/null || true)
