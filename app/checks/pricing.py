@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from dataclasses import dataclass, field, replace
 from typing import Any
 
@@ -52,7 +53,22 @@ def _slot(ruleset: RuleSet, name: str) -> tuple[Any, str]:
     return None, ""
 
 
+_PAIR = re.compile(r"^\s*(.+?)\s*[=:]?\s*(\d+(?:\.\d+)?)\s*$")
+
+
 def _rates(value: Any, where: str) -> dict[str, float]:
+    """{ISO code: rate} from a mapping ({"USD": 7.8}) or, as the price schedule's
+    `exchange_rates` slot holds them, a list of "currency rate" entries ("US$ 7.8")."""
+    if isinstance(value, str):
+        value = [v for v in re.split(r"[;\n]", value) if v.strip()]
+    if isinstance(value, list):
+        pairs = {}
+        for entry in value:
+            m = _PAIR.match(str(entry))
+            if not m:
+                raise ValueError(f"{where}: {entry!r} is not a currency and a rate, e.g. \"US$ 7.8\"")
+            pairs[m.group(1)] = float(m.group(2))
+        value = pairs
     if not isinstance(value, dict):
         raise ValueError(f"{where} must map a currency to its rate, e.g. {{\"USD\": 7.8}}")
     rates = {}
@@ -70,6 +86,13 @@ def currency_settings(ruleset: RuleSet) -> tuple[str | None, dict[str, float], s
     first; PRICING_BASE_CURRENCY and PRICING_FX_RATES are the deployment's fallback."""
     value, where = _slot(ruleset, "currency")
     base = currency.code_of(value) if value is not None else None
+    if base is None:
+        # One currency allowed is the one prices are compared in (the production price_schedule
+        # template lists them, #99); several need the tender to name its own.
+        allowed, allowed_where = _slot(ruleset, "allowed_currencies")
+        codes = {currency.code_of(a) for a in (allowed if isinstance(allowed, list) else [allowed])} - {None} if allowed else set()
+        if len(codes) == 1:
+            base, where = codes.pop(), allowed_where
     if base is None and os.environ.get("PRICING_BASE_CURRENCY"):
         base, where = currency.code_of(os.environ["PRICING_BASE_CURRENCY"]), "PRICING_BASE_CURRENCY"
     rates: dict[str, float] = {}
