@@ -70,12 +70,57 @@ tender files ──► router ──► format-specific parser ──► node ta
    time is drafted by L3 ("novel"), confirmed by a person, and saved as a new template (#89), so the library grows
    with every tender, whatever its format. The form menu (`forms.py`) is extended the same way.
 
+## Two axes: file format and layout
+
+Two tenders can share a file format and still differ in layout, because authorities name and number their
+structure differently:
+- `PART 1` vs `Part A` vs `Section I` vs `Chapter 3`;
+- clauses as `12.` vs `Clause 12` vs `Article 12`;
+- a schedule split into Part A/B/C, or into Part 1/2/3, or into "Mandatory / Optional".
+
+A layout like that needs a change to the parser today:
+
+- **Every heading style is a hand-written alternative in a regular expression.** `_PART_LAYOUT` in
+  `layout_document_index.py` alone has four, each added when a tender needed it:
+  - `PART 4 — …`
+  - `Part A` / `Part IA`
+  - `Table A`
+  - `第 4 部分`
+
+  The parser and `locate` hold 33 compiled patterns between them.
+- **The schedule's Part letters carry their meaning in the schema.** `app/rulesets/schema.py` defines
+  `Part` as A/B/C, with "A: missing means the tender is not considered further" built in. A schedule whose Parts
+  are numbered, or named by consequence, has nowhere to map.
+
+So the router decides two things per document: the **file format**, which picks the parser, and the
+**layout profile**, which tells that parser what the structure is called.
+
+- **A layout profile is data, not code:** a small file under `app/parsing/profiles/`, one per tender family. It
+  declares:
+  - the heading keywords and numbering for each level: Part (`PART {n}`, `Part {A}`, `Section {I}`, `第 {n} 部分`),
+    clause (`{n}.`, `Clause {n}`, `Article {n}`), sub-clause (`{n}.{m}`), sub-item (`(a)`, `(i)`);
+  - what repeats on every page (running headers and footers, reference lines);
+  - how the checklist is found (its title or page footer), what its Parts are called, and **what each Part means**
+    (Part 1 → "missing: not considered further", and so on).
+- **Today's patterns become the first profile.** The parser reads the profile where it now reads its regular
+  expressions, and Tender 1–3 keep their numbers.
+- **The router picks a profile** by scoring each one against the document's first headings and its checklist.
+  The best match wins. A weak match goes to a person, who can pick a profile or start a new one.
+- **A new tender layout is then a new profile, not a parser change:** write the profile, add answer keys for one
+  tender, and run the eval. Code changes only when a tender brings a structure no profile can describe, such as a
+  checklist inside a table instead of a list.
+- **The schema separates a Part's label from its meaning.** Part keeps the label the tender prints, and a
+  consequence tier (already in the schema as `Consequence`) carries what a missing item means, mapped by the
+  profile. This is a `contract` change, for both of us.
+
 ## Evaluation
 
 - **Router:**
   - a labelled set of tender files, with the format a person assigns to each;
   - scored as a confusion matrix;
   - the cost of an error is judged by what the wrong parser would produce, measured by running it.
+- **Each layout profile:** answer keys for at least one tender in that layout. A new profile must leave every other
+  profile's numbers unchanged, since profiles share the parser code.
 - **Each parser:**
   - its own answer keys, built the way the current ones were (from the PDFs, never from the parser);
   - scored with the parser eval: recall, and citation resolution;
@@ -87,21 +132,25 @@ tender files ──► router ──► format-specific parser ──► node ta
 
 ## Steps
 
-1. **Collect the formats that actually occur.** Gather tender sets from other authorities or other years and
-   record what differs: file types, scans, numbering, schedule layout, language. The next parser is chosen from
-   this evidence.
+1. **Collect the formats and layouts that actually occur.** Gather tender sets from other authorities or other
+   years and record what differs: file types, scans, heading names and numbering, schedule layout, language. The
+   next parser or profile is chosen from this evidence.
 2. **Extract the interface, with no behaviour change.**
    - Put a parser registry behind `parse_tender`.
    - Move today's parser behind it as the "digital PDF, numbered clauses" format.
    - Write down the node-table contract as a validator.
    - Tender 1–3 numbers must stay identical.
-3. **Add the router** with the signals above, and make its decision visible: in the audit log and in the Rules
+3. **Move the heading vocabulary into a layout profile, with no behaviour change.** Today's regular expressions
+   become the first profile, and the parser reads it. Tender 1–3 numbers must stay identical.
+4. **Separate a Part's label from its meaning** in the schema (a `contract` PR): the label as printed, and the
+   consequence tier mapped by the profile.
+5. **Add the router** with the signals above, and make its decision visible: in the audit log and in the Rules
    window's source panel.
-4. **Stop dropping scanned pages quietly.** Until an OCR parser exists, the router flags a file with no text layer,
+6. **Stop dropping scanned pages quietly.** Until an OCR parser exists, the router flags a file with no text layer,
    so a person knows the clause tree is missing.
-5. **Build the second parser** for the format step 1 finds most often, with answer keys for at least one real
+7. **Build the second parser, or the second profile,** for the format step 1 finds most often, with answer keys for at least one real
    tender in it.
-6. **Grow the template library** from the confirmed rule sets of the new tenders (#89), and extend the form menu
+8. **Grow the template library** from the confirmed rule sets of the new tenders (#89), and extend the form menu
    where a new tender brings a new form.
 
 ## Options considered
@@ -133,4 +182,6 @@ tender files ──► router ──► format-specific parser ──► node ta
 - Which formats occur in the tenders we can realistically get (step 1)?
 - Is the router's unit the file or the document? Tender 3 is one file holding 25 documents. The sub-document split
   may belong before the router, so each document can be routed on its own.
+- Is a layout profile per issuing authority enough, or do documents within one tender need different profiles?
+  Tender 3 mixes an English and a Chinese Tender Form.
 - Should the router's decision be editable in the UI, so a reviewer can re-route a file and re-parse it?

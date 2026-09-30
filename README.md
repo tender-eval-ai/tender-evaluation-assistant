@@ -585,14 +585,16 @@ The project stays on procurement, but tenders don't all look alike. The parser w
 digital PDFs, with numbered clauses and a lettered Completeness Check Schedule. Today:
 - only PDFs are read;
 - a scanned page, which has no text layer, is skipped without a warning;
-- every new layout adds special cases to one parser.
+- every new layout adds special cases to one parser: "PART 1", "Part A", "Table A" and "第 4 部分" are each a
+  hand-written pattern, and a tender that says "Section I" or numbers its checklist "Part 1/2/3" needs another.
 
 The plan, proposed in [decision 0003](docs/decisions/0003-tender-format-router.md):
 
 ```mermaid
 flowchart LR
     F["📄 Tender files<br/>PDF · scans · Word ·<br/>spreadsheets"]
-    R{"<b>router</b><br/>which structure?<br/>format + confidence"}
+    R{"<b>router</b><br/>format + layout profile<br/>+ confidence"}
+    LP[("<b>layout profiles</b><br/>PART 1 · Part A · Section I<br/>Clause 12 · Article 12 · (a)<br/>what each checklist Part means")]
     U["✋ unsure:<br/>a person decides"]
 
     subgraph PARSERS["one parser per format · each with its own eval"]
@@ -612,6 +614,7 @@ flowchart LR
     R --> P1 & P2 & P3 & P4
     R -. low confidence .-> U
     P1 & P2 & P3 & P4 --> N --> L --> RS
+    LP -. names the headings .-> PARSERS
     T --> L
     RS -. "a new form, confirmed:<br/>saved as a template" .-> T
 
@@ -623,7 +626,7 @@ flowchart LR
     class R,P1,P2,P3,P4,N code
     class L,RS llm
     class U human
-    class T docs
+    class T,LP docs
 ```
 
 1. **A router identifies each document's structure first.** It looks at the file type, whether pages have a text
@@ -631,6 +634,10 @@ flowchart LR
    with its confidence. When it's unsure, a person is told rather than a guess being made.
 2. **One parser per format**, each with its own answer keys and eval. Today's parser becomes the first, for
    digital PDFs with numbered clauses. Scanned PDFs, Word files and table-first schedules are the likely next ones.
+   **A layout profile tells a parser what the structure is called.** It is a small data file per tender family:
+   heading names and numbering (`PART 1`, `Part A`, `Section I`, `Clause 12`, `Article 12`, `(a)`), running headers,
+   and how the checklist is found and what each of its Parts means. A tender that names its sections differently
+   then needs a new profile, not a parser change. Today's hand-written patterns become the first profile.
 3. **One node-table contract.** Every parser produces the same nodes, checked by one validator, so locating the
    schedule, the rule-set layers L1–L4 and the UI don't change when a format is added.
 4. **One shared template library,** keyed by form, not by file layout, and extended with every tender. A form seen
