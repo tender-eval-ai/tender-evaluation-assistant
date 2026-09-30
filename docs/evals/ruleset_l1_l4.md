@@ -1,6 +1,6 @@
 # Rule builder (L0 to L4) evaluation
 
-How well `app/rulesets` turns a tender's documents into a rule set, scored with `tools/eval_ruleset.py` against an answer key. This file records numbers only. The synthetic key is `test/data/synthetic_tender_nodes/ruleset_key.json`; the keys for the three real tenders stay outside git, like the parser's.
+How well `app/rulesets` turns a tender's documents into a rule set, scored with `tools/eval_ruleset.py` against an answer key. This file records numbers only. The synthetic key is `test/data/synthetic_tender_nodes/ruleset_key.json`, written for the two test templates; `ruleset_key_production.json` beside it is the same key for the production library (one template per form), for the J7 run; the keys for the three real tenders stay outside git, like the parser's.
 
 ## What is scored
 
