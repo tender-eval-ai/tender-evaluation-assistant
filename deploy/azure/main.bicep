@@ -44,8 +44,8 @@ param openAiModelVersion string = '2025-04-14'
 @description('Pay-per-token deployment type. Never a provisioned (reserved) one.')
 @allowed(['GlobalStandard', 'Standard', 'DataZoneStandard'])
 param openAiSku string = 'GlobalStandard'
-@description('Thousands of tokens per minute.')
-param openAiCapacity int = 10
+@description('Thousands of tokens per minute. 10 was too few: four checks at once, each triage call six page images, went past it within a minute (2026-09-30). Pay-per-token, so a higher limit costs nothing idle; the region\'s quota was 200.')
+param openAiCapacity int = 100
 
 @description('Where the demo sends anyone who wants to run it on real documents (the UI\'s banner, GET /settings).')
 param sourceUrl string = 'https://github.com/tender-eval-ai/tender-evaluation-assistant'

@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-FAST = {"JOBS_HEARTBEAT": "1", "JOBS_STALLED_AFTER": "3", "JOBS_SWEEP_EVERY": "1", "JOBS_POLL": "0.5"}
+FAST = {"JOBS_HEARTBEAT": "1", "JOBS_STALLED_AFTER": "3", "JOBS_SWEEP_EVERY": "1", "JOBS_POLL": "0.5", "JOBS_RETRY_BASE": "0.5"}
 os.environ.update(FAST)                       # before Settings.from_env() and before any worker is spawned
 
 from app import db                                          # noqa: E402

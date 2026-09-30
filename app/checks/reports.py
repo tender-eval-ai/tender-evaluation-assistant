@@ -98,6 +98,10 @@ def _corrections(doc: Docx, b: Bundle, only_price: bool = False) -> None:
         for key, c in sorted(o.corrections.items()):
             if only_price and not key.startswith("price_schedule."):
                 continue
+            if key.endswith("_decision"):
+                lines.append(f"{o.tenderer}: {key.removesuffix('_decision')} decided {c.get('value')} by {c.get('by', '-')}: "
+                             f"{c.get('reason', '')}")
+                continue
             lines.append(f"{o.tenderer}: {key} corrected by {c.get('by', '-')} to {c.get('value')!r} "
                          f"(the model read {c.get('model_value')!r}): {c.get('reason', '')}")
     if lines:
@@ -201,10 +205,12 @@ def evaluation_record_docx(b: Bundle) -> bytes:
         _header_row(table, ["Item", "Part", "Outcome", "Reasons", "Corrections"])
         for letter, v in item_verdicts(o.verdict).items():
             item = titles.get(letter)
-            corrected = [k for k in o.corrections if any(f["field_id"] == k or f["field_id"] + "_page" == k for f in v.get("fields", []))]
+            corrected = [k for k in o.corrections if any(k in (f["field_id"], f["field_id"] + "_page", f["field_id"] + "_decision")
+                                                          for f in v.get("fields", []))]
             _fill_row(table, [f"({letter}) {item.title if item else ''}", v.get("part", "-"), v.get("outcome", "-"),
                               "; ".join(v.get("reasons", [])) or "-",
-                              "; ".join(f"{k.rsplit('.', 1)[-1]} by {o.corrections[k].get('by', '-')}" for k in corrected) or "-"])
+                              "; ".join(f"{k.rsplit('.', 1)[-1].replace('_decision', ' decided')} by {o.corrections[k].get('by', '-')}"
+                                        for k in corrected) or "-"])
         doc.add_paragraph()
     _corrections(doc, b)
     _edited_rules(doc, b)

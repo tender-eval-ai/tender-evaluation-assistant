@@ -25,6 +25,8 @@ added items, and the template file format with its per-template consequence defa
 """
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 from datetime import datetime
 from enum import StrEnum
@@ -336,6 +338,33 @@ class Template(BaseModel):
         return self
 
 
+    def content_hash(self) -> str:
+        """The first 12 hex digits of the SHA-256 of the template's content: which template, as
+        it was, an item came from (#89). A copy of it is what gets evaluated."""
+        text = json.dumps(self.model_dump(mode="json"), sort_keys=True, ensure_ascii=False)
+        return hashlib.sha256(text.encode()).hexdigest()[:12]
+
+    def copy_for(self) -> TemplateCopy:
+        """What an item keeps of this template once L1 has matched it: the slot specs, every
+        tier the template defines, and the content hash. Every tier, not only those the rules
+        name: a reviewer may later move a rule to another tier, or add one, and the item must
+        still hold its outcomes (#136 review). The Part re-tier changes which tier a rule
+        names, not what the tiers say, so the copy holds it either way."""
+        return TemplateCopy(version=self.content_hash(), slots=[s.model_copy(deep=True) for s in self.slots],
+                            consequences={t: d.model_copy(deep=True) for t, d in self.consequences.items()})
+
+
+class TemplateCopy(BaseModel):
+    """What an item took from its template when it was matched (#89): the slot specs, the
+    template's consequence tiers, and its content hash. Evaluation, the slot
+    fill (L2) and confirmation read this copy, so a later change to the template never alters
+    an item already built; an item stored before the copy existed reads the library, as before."""
+
+    version: str = Field(pattern=r"^[0-9a-f]{12}$", description="Template.content_hash() when the item was matched")
+    slots: list[SlotSpec] = Field(default_factory=list)
+    consequences: dict[Consequence, ConsequenceDefaults] = Field(default_factory=dict)
+
+
 class Gap(BaseModel):
     """A clause the schedule points to, or a 'shall/must' sentence, that no rule covers.
     A gap blocks confirmation until a person gives a reason."""
@@ -365,6 +394,8 @@ class RuleSetItem(BaseModel):
     title: str = Field(min_length=1)
     part: Part
     template: str | None = Field(default=None, description="template id; None for a novel item")
+    template_copy: TemplateCopy | None = Field(
+        default=None, description="what the item took from its template when matched (#89); null before, or for a novel item")
     citation: Citation = Field(description="the schedule row")
     clauses: list[Citation] = Field(default_factory=list, description="the clauses the row points to")
     condition: str | None = Field(default=None, description="the item applies only when this holds")
@@ -383,6 +414,8 @@ class RuleSetItem(BaseModel):
             without = [r.id for r in self.rules if r.outcomes is None]
             if without:
                 raise ValueError(f"item ({self.letter}) has no template, so its rules need their own outcomes: {without}")
+            if self.template_copy is not None:
+                raise ValueError(f"item ({self.letter}) has no template, so it keeps no copy of one")
         return self
 
 

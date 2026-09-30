@@ -53,11 +53,12 @@ export const ROUTES = [
 // (202 -> poll the job -> results) has something to do.
 let state;
 export function resetMockState() {
-  // corrections: tenderer -> {"<letter>.<field>": CorrectionRequest}; confirmed: tenderer -> user
+  // corrections: tenderer -> {"<letter>.<field>": CorrectionRequest}; decisions: tenderer ->
+  // {"<letter>.<field>": {status, by, reason}}; confirmed: tenderer -> user
   // created: projects made through the front door; the mock answers for them with the
   // synthetic tender's own data, as an import of that case would give.
   state = { checked: new Set(["Tenderer_A", "Tenderer_C", "Tenderer_D"]), jobs: new Map(), nextJob: 1,
-            corrections: new Map(), confirmed: new Map(), created: new Map() };
+            corrections: new Map(), decisions: new Map(), confirmed: new Map(), created: new Map() };
   rs.resetRulesetStore();
 }
 resetMockState();
@@ -266,11 +267,12 @@ export const handlers = [
     if (version && Number(version) !== fx.RULESET_VERSION) {
       return error(404, "not_found", `${t}'s result is at rule-set version ${fx.RULESET_VERSION}, not ${version}`);
     }
-    return HttpResponse.json(fx.correctedResult(t, state.corrections.get(t), state.confirmed.get(t)));
+    return HttpResponse.json(fx.correctedResult(t, state.corrections.get(t), state.confirmed.get(t), state.decisions.get(t)));
   }),
 
   // A correction: the person's value beside the model's, the verdict re-decided by
-  // the engine at once (no model call), and any review confirmation withdrawn.
+  // the engine at once (no model call), and any review confirmation withdrawn. Or a
+  // decision, alone, on a check that needs review.
   http.patch("*/projects/:pid/bids/:tenderer/fields/:letter/:field", async ({ params, request }) => {
     const missing = projectOr404(params.pid);
     if (missing) return missing;
@@ -278,10 +280,26 @@ export const handlers = [
     if (!fx.TENDERERS[t] || !state.checked.has(t)) return error(404, "not_found", `no finished check for ${t}`);
     const body = await request.json().catch(() => ({}));
     if (!body.reason) return error(400, "bad_request", "reason is required");
+    const key = `${params.letter}.${params.field}`;
+    if (body.decision !== undefined && body.decision !== null) {
+      if (body.value !== undefined || body.present !== undefined || body.page !== undefined) {
+        return error(400, "bad_request", "a decision stands alone: give it without a value, present or a page");
+      }
+      const now = fx.correctedResult(t, state.corrections.get(t), undefined, state.decisions.get(t));
+      const check = now.verdicts[params.letter]?.checks.find((c) => c.field_id.split(".").pop() === params.field);
+      if (!check) return error(404, "not_found", `${t} has no check on ${key}`);
+      if (check.status !== "needs_review") {
+        return error(409, "conflict", `${params.field} does not need review; correct its value instead`, { status: check.status });
+      }
+      const decisions = new Map(state.decisions.get(t) ?? []);
+      decisions.set(key, { status: body.decision, by: actingUser(request), reason: body.reason });
+      state.decisions.set(t, decisions);
+      state.confirmed.delete(t);
+      return HttpResponse.json(fx.correctedResult(t, state.corrections.get(t), undefined, decisions));
+    }
     if (body.value === undefined && body.present === undefined && body.page === undefined) {
       return error(400, "bad_request", "a correction must set value, present or page");
     }
-    const key = `${params.letter}.${params.field}`;
     if (!fx.hasField(t, params.letter, params.field)) {
       return error(404, "not_found", `${t} has no field ${key}`);
     }
@@ -289,7 +307,7 @@ export const handlers = [
     all.set(key, { ...body, by: actingUser(request), at: new Date().toISOString() });
     state.corrections.set(t, all);
     state.confirmed.delete(t);           // a correction withdraws a confirmation
-    return HttpResponse.json(fx.correctedResult(t, all, undefined));
+    return HttpResponse.json(fx.correctedResult(t, all, undefined, state.decisions.get(t)));
   }),
 
   http.post("*/projects/:pid/bids/:tenderer/review/confirm", ({ params, request }) => {
@@ -297,11 +315,11 @@ export const handlers = [
     if (missing) return missing;
     const t = params.tenderer;
     if (!fx.TENDERERS[t] || !state.checked.has(t)) return error(404, "not_found", `no finished check for ${t}`);
-    const result = fx.correctedResult(t, state.corrections.get(t), undefined);
+    const result = fx.correctedResult(t, state.corrections.get(t), undefined, state.decisions.get(t));
     const open = fx.needsReviewFields(result);
     if (open.length) return error(409, "conflict", "fields still need review", { fields: open });
     state.confirmed.set(t, actingUser(request));
-    return HttpResponse.json(fx.correctedResult(t, state.corrections.get(t), state.confirmed.get(t)));
+    return HttpResponse.json(fx.correctedResult(t, state.corrections.get(t), state.confirmed.get(t), state.decisions.get(t)));
   }),
 
   // Re-evaluate every checked tenderer against a confirmed version: a job of kind

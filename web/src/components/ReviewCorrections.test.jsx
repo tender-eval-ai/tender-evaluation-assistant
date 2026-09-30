@@ -96,3 +96,31 @@ describe("confirming a review", () => {
       expect(screen.getByTestId("review-confirm")).toHaveTextContent(/review confirmed by anonymous/));
   });
 });
+
+describe("deciding a check that needs review", () => {
+  it("settles it with who and why, and lets the review be confirmed", async () => {
+    const user = renderStageI("Tenderer_B");
+    await openAfterCheck(user, "k");
+
+    const row = screen.getByTestId("check-contact_details.contact_person");
+    await user.click(within(row).getByText("decide this check"));
+    const form = screen.getByRole("form", { name: /Decide contact_details.contact_person/ });
+    await user.click(within(form).getByRole("button", { name: "Save decision" }));
+    expect(await screen.findByRole("alert")).toHaveTextContent("Choose a decision.");
+
+    await user.selectOptions(within(form).getByLabelText("Decision"), "pass");
+    await user.type(within(form).getByLabelText("Reason"), "the contact is named on page 12");
+    await user.click(within(form).getByRole("button", { name: "Save decision" }));
+
+    const decided = await screen.findByTestId("decided-contact_details.contact_person");
+    expect(decided).toHaveTextContent("pass");
+    expect(decided).toHaveTextContent("the contact is named on page 12");
+    expect(within(screen.getByTestId("check-contact_details.contact_person")).queryByText("decide this check")).toBeNull();
+  });
+
+  it("isn't offered on a check that passed", async () => {
+    const user = renderStageI();
+    await openItem(user, "a");
+    expect(within(screen.getByTestId("check-offer_to_be_bound.document")).queryByText("decide this check")).toBeNull();
+  });
+});

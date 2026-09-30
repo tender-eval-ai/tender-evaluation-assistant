@@ -5,7 +5,7 @@ found on the page's text layer) `_verification` (V4's record), beside a number `
 `_corrected` once a person has corrected the value (the store sets it when deciding)."""
 from __future__ import annotations
 
-META_SUFFIXES = ("_redacted", "_confidence", "_page", "_quote", "_verification", "_printed", "_corrected")
+META_SUFFIXES = ("_redacted", "_confidence", "_page", "_quote", "_verification", "_printed", "_corrected", "_decision")
 
 
 def is_meta(key: str) -> bool:

@@ -10,6 +10,7 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
+from app.rulesets.library import template_of
 from app.rulesets.schema import Edit, Gap, ItemNote, ItemStatus, RuleSet, RuleSetItem, SlotValue, Template, TemplateRule
 
 X_LETTER = "x"
@@ -30,9 +31,11 @@ def _edit(user: str, now: datetime, reason: str) -> Edit:
 
 # ---------------------------------------------------------------- items
 
-def apply_patch(item: RuleSetItem, patch: BaseModel, user: str, now: datetime) -> RuleSetItem:
+def apply_patch(item: RuleSetItem, patch: BaseModel, user: str, now: datetime,
+                templates: dict[str, Template] | None = None) -> RuleSetItem:
     """`ItemPatch`: a slot value, a rule (replaced by id or appended), the template, or
-    a note appended. At least one must be given."""
+    a note appended. At least one must be given. A new template brings its copy (#89) from
+    `templates`, so confirmation judges the item by the template it now names."""
     slot, rule, template, note = (getattr(patch, name, None) for name in ("slot", "rule", "template", "note"))
     if slot is None and rule is None and template is None and note is None:
         raise EditError("bad_request", "the patch changes nothing: give a slot, a rule, a template or a note")
@@ -46,6 +49,8 @@ def apply_patch(item: RuleSetItem, patch: BaseModel, user: str, now: datetime) -
         update["rules"] = rules
     if template is not None:
         update["template"] = template
+        chosen = (templates or {}).get(template)
+        update["template_copy"] = chosen.copy_for() if chosen else None
     if note is not None:
         update["notes"] = [*item.notes, note]
     return item.model_copy(update={**update, "status": ItemStatus.EDITED, "edit": _edit(user, now, patch.reason)})
@@ -158,7 +163,7 @@ def confirm_blockers(ruleset: RuleSet, templates: dict[str, Template]) -> list[d
         if item.status in (ItemStatus.NEEDS_INPUT, ItemStatus.GAP):
             out.append({"kind": "item_status", "letter": item.letter, "status": item.status.value})
         if item.template is not None:
-            template = templates.get(item.template)
+            template = template_of(item, templates)
             if template is None:
                 out.append({"kind": "unknown_template", "letter": item.letter, "template": item.template})
                 continue
@@ -171,6 +176,12 @@ def confirm_blockers(ruleset: RuleSet, templates: dict[str, Template]) -> list[d
                 if rule.consequence is not None and rule.outcomes is None and rule.consequence not in template.consequences:
                     out.append({"kind": "unknown_tier", "letter": item.letter, "rule": rule.id,
                                 "tier": rule.consequence.value})
+        # A "{slot}" the item doesn't declare renders as nothing, and a date check with no bound
+        # passes (#89): the template's slots, or for a novel item its own.
+        declared = {s.name for s in template.slots} if item.template is not None else set(item.slots)
+        for rule in item.rules:
+            if missing := sorted(rule.slot_refs() - declared):
+                out.append({"kind": "undeclared_slot", "letter": item.letter, "rule": rule.id, "slots": missing})
     for gap in ruleset.gaps:
         if not gap.reason:
             out.append({"kind": "gap_without_reason", "node_id": gap.node_id})
@@ -178,8 +189,9 @@ def confirm_blockers(ruleset: RuleSet, templates: dict[str, Template]) -> list[d
 
 
 def rules_of(item: RuleSetItem, templates: dict[str, Template]) -> list[TemplateRule]:
-    """The item's own rules, else its template's."""
-    if item.rules or item.template is None:
+    """The item's own rules, else its template's; an item with a copy of its template (#89)
+    has its own, even none, and never reads the library."""
+    if item.rules or item.template is None or item.template_copy is not None:
         return list(item.rules)
     template = templates.get(item.template)
     return list(template.rules) if template else []
@@ -193,6 +205,8 @@ def describe_blocker(blocker: dict) -> str:
         return f"item ({blocker['letter']}): required slot {blocker['slot']} is empty"
     if kind == "unknown_template":
         return f"item ({blocker['letter']}): template {blocker['template']} is not in the library"
+    if kind == "undeclared_slot":
+        return f"item ({blocker['letter']}): rule {blocker['rule']} reads {', '.join(blocker['slots'])}, which the item does not declare"
     if kind == "unknown_tier":
         return f"item ({blocker['letter']}): rule {blocker['rule']} names tier {blocker['tier']}, which its template does not define"
     return f"gap {blocker['node_id']} has no reason"

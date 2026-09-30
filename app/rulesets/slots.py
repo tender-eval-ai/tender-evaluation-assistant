@@ -15,6 +15,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from app.rulesets.library import template_of
 from app.rulesets.nodes import NodeIndex
 from app.rulesets.schema import Citation, DataClass, ItemNote, ItemStatus, RuleSetItem, SlotKind, SlotValue, Template
 
@@ -181,5 +182,5 @@ def fill_item(item: RuleSetItem, template: Template, index: NodeIndex, llm, data
 
 def fill_items(items: list[RuleSetItem], templates: dict[str, Template], index: NodeIndex, llm,
                data_class: DataClass) -> list[RuleSetItem]:
-    return [fill_item(item, templates[item.template], index, llm, data_class) if item.template in templates else item
+    return [fill_item(item, template, index, llm, data_class) if (template := template_of(item, templates)) else item
             for item in items]

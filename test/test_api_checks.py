@@ -36,7 +36,7 @@ def api(tmp_path, monkeypatch):
     monkeypatch.delenv("API_KEY", raising=False)
     monkeypatch.setenv("VENDOR_CHECK_LLM_FACTORY", "test.checks.fake_factory:factory")
     monkeypatch.setenv("RULESET_TEMPLATES_DIR", str(TEMPLATES))
-    for k, v in {"JOBS_HEARTBEAT": "1", "JOBS_STALLED_AFTER": "3", "JOBS_SWEEP_EVERY": "1", "JOBS_POLL": "0.5"}.items():
+    for k, v in {"JOBS_HEARTBEAT": "1", "JOBS_STALLED_AFTER": "3", "JOBS_SWEEP_EVERY": "1", "JOBS_POLL": "0.5", "JOBS_RETRY_BASE": "0.5"}.items():
         monkeypatch.setenv(k, v)
     from app import db
     from app.jobs import queue as q, tasks
@@ -247,3 +247,34 @@ def test_a_reviewer_value_on_a_result_from_before_the_form_had_the_field_is_show
     assert r.status_code == 200, r.json()
     assert r.json()["fields"]["g"]["sample_received_date"]["value"] == "3 July 2026"
     assert client.get(f"/projects/{pid}/bids/Tenderer_D/results").json()["fields"]["g"]["sample_received_date"]["correction"]["by"] == "nasi"
+
+
+def test_a_reviewer_decides_the_checks_that_need_review_then_confirms(api, worker):
+    """Checks written to hand the decision to a person (a condition the engine can't evaluate,
+    a human-only check) used to block the confirmation for good (2026-09-30). A decision settles
+    each one, with who and why; it stands alone, and only a check that needs review takes one."""
+    client, pid = api
+    body = {k: copy.deepcopy(v) for k, v in RULESET_ALL.items() if k not in ("status", "confirmed_by", "confirmed_at", "version", "project_id")}
+    assert client.put(f"/projects/{pid}/ruleset/draft", json=body, headers=CHENYU).status_code == 200
+    assert client.post(f"/projects/{pid}/ruleset/confirm", headers=NASI).status_code == 200
+    job_id = client.post(f"/projects/{pid}/checks", json={"tenderers": ["Tenderer_D"]}).json()["job_ids"]["Tenderer_D"]
+    assert _wait_done(client, pid, job_id)["state"] == "done"
+    R = f"/projects/{pid}/bids/Tenderer_D"
+    first = client.patch(f"{R}/fields/b/unit_price", json={"value": 7.5, "reason": "misread 7.22"}, headers=NASI)
+    assert first.status_code == 200
+    open_ = [(letter, c["field"]) for letter, v in first.json()["verdicts"].items() for c in v["checks"] if c["status"] == "needs_review"]
+    assert open_, "the corrected total now needs review"
+    letter, field = open_[0]
+    assert client.patch(f"{R}/fields/{letter}/{field}", json={"decision": "pass", "value": 1, "reason": "x"},
+                        headers=NASI).status_code == 400, "a decision stands alone"
+    passing = next((lt, c["field"]) for lt, v in first.json()["verdicts"].items() for c in v["checks"] if c["status"] == "pass")
+    refused = client.patch(f"{R}/fields/{passing[0]}/{passing[1]}", json={"decision": "pass", "reason": "x"}, headers=NASI)
+    assert refused.status_code == 409 and refused.json()["error"]["details"] == {"status": "pass"}
+    for letter, field in open_:
+        r = client.patch(f"{R}/fields/{letter}/{field}", json={"decision": "pass", "reason": "the total tallies with 7.5"}, headers=NASI)
+        assert r.status_code == 200, r.json()
+    after = r.json()
+    decided = [c for v in after["verdicts"].values() for c in v["checks"] if c.get("decision")]
+    assert decided and all(c["status"] == "pass" and c["decision"]["by"] == "nasi" for c in decided)
+    confirm = client.post(f"{R}/review/confirm", headers=NASI)
+    assert confirm.status_code == 200 and confirm.json()["review_confirmed_by"] == "nasi"
