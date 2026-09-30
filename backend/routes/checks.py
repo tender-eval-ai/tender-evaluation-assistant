@@ -142,7 +142,8 @@ def _bid_result(pid: str, pdir, run: dict, result, steps: dict, spec: dict | Non
         # contract's `field` is the key into BidResult.fields[letter], built above from the same
         # field_id, so derive it the same way rather than from the engine.
         checks = [CheckedField(field_id=f["field_id"], field=f["field_id"].rsplit(".", 1)[-1], status=f["status"], note=f.get("note"),
-                               redacted=bool(f.get("redacted")), stage=f.get("stage", "I"), follow_up=f.get("follow_up"))
+                               redacted=bool(f.get("redacted")), stage=f.get("stage", "I"), follow_up=f.get("follow_up"),
+                               decision=f.get("decision"))
                   for f in v.get("fields", [])]
         evidence = [c for c in (cite(f.get("page"), f.get("value")) for f in v.get("fields", [])) if c]
         verdicts[letter] = Verdict(outcome=v["outcome"], worst=v.get("worst", v["outcome"]), part=v["part"], rule_ids=v["rule_ids"],

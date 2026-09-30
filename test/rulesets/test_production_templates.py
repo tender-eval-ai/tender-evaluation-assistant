@@ -104,7 +104,7 @@ def stage_i(result) -> str:
     return stage_summary({"x": result}, "I")["outcome"]
 
 
-def test_a_complete_price_schedule_passes_and_a_missing_unit_price_disqualifies():
+def test_a_complete_price_schedule_passes_and_a_missing_unit_price_disqualifies_once_confirmed():
     slots = {"estimated_quantity": 875000, "allowed_currencies": ["HK$", "US$"], "dosage_unit": "kg per tonne"}
     good = bid("price_schedule", document="Price Schedule", unit_price="HK$ 12.50", currency="HK$",
                quantity="875,000 kg", total="HK$ 10,937,500", optimal_dosage="4.3 kg per tonne")
@@ -120,7 +120,9 @@ def test_a_complete_price_schedule_passes_and_a_missing_unit_price_disqualifies(
     assert s["quantity"] == "needs_review" and s["total"] == "needs_review", "a comparison never disqualifies"
 
     blank = bid("price_schedule", document="Price Schedule", currency="HK$", quantity="875,000 kg", total="HK$ 1")
-    assert verdict("price_schedule", blank, **slots)["outcome"] == "disqualified"
+    assert verdict("price_schedule", blank, **slots)["outcome"] == "needs_review", "the model's blank goes to review"
+    confirmed = {**blank, "price_schedule.unit_price_corrected": True}
+    assert verdict("price_schedule", confirmed, **slots)["outcome"] == "disqualified", "a person's blank disqualifies"
 
 
 def test_a_missing_certificate_is_dormant_until_requested():

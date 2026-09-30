@@ -49,12 +49,38 @@ def test_a_missing_certificate_disqualifies_and_skips_the_dependent_checks():
     assert "missing" in v["reasons"][0]
 
 
-def test_an_unsigned_certificate_disqualifies_but_the_name_is_still_checked():
+def test_an_unsigned_certificate_goes_to_review_and_disqualifies_once_a_person_confirms():
+    """The model can miss a signature on a signed page (Tenderer C, 2026-09-30): its blank on a
+    form that is there goes to review, and disqualifies once a person marks it absent or decides."""
     v = evaluate(ITEM, fields(signature=None, date=None))
-    assert v["outcome"] == "disqualified"
+    assert v["outcome"] == "needs_review"
     statuses = {f["field_id"]: f["status"] for f in v["fields"]}
-    assert statuses[f"{PREFIX}.signature"] == "disqualified" and statuses[f"{PREFIX}.tenderer_name"] == "pass"
+    assert statuses[f"{PREFIX}.signature"] == "needs_review" and statuses[f"{PREFIX}.tenderer_name"] == "pass"
     assert f"{PREFIX}.date" not in statuses, "dated depends on signed"
+    assert "the model read nothing here" in v["reasons"][0]
+    marked = evaluate(ITEM, {**fields(signature=None, date=None), f"{PREFIX}.signature_corrected": True})
+    assert marked["outcome"] == "disqualified", "a person's blank stands"
+    decided = evaluate(ITEM, {**fields(signature=None, date=None),
+                              f"{PREFIX}.signature_decision": {"status": "disqualified", "by": "nasi", "reason": "not signed, p.11"}})
+    row = next(f for f in decided["fields"] if f["field_id"] == f"{PREFIX}.signature")
+    assert decided["outcome"] == "disqualified" and row["note"] == "decided by nasi: not signed, p.11"
+    assert row["decision"] == {"status": "disqualified", "by": "nasi", "reason": "not signed, p.11"}
+
+
+def test_a_missing_form_still_disqualifies_at_once():
+    v = evaluate(ITEM, fields(document=None, signature=None, name=None, date=None))
+    assert v["outcome"] == "disqualified"
+
+
+@pytest.mark.parametrize("status", ["pass", "dormant", "disqualified"])
+def test_a_decision_settles_only_a_check_that_needs_review(status):
+    decision = {"status": status, "by": "chenyu", "reason": "checked the original"}
+    redacted = {**fields(redacted=("signature",)), f"{PREFIX}.signature_decision": decision}
+    row = next(f for f in evaluate(ITEM, redacted)["fields"] if f["field_id"] == f"{PREFIX}.signature")
+    assert row["status"] == status and row["decision"] == decision
+    passing = {**fields(), f"{PREFIX}.signature_decision": decision}
+    row = next(f for f in evaluate(ITEM, passing)["fields"] if f["field_id"] == f"{PREFIX}.signature")
+    assert row["status"] == "pass" and "decision" not in row, "a check that doesn't need review keeps its result"
 
 
 def test_a_redacted_signature_needs_review_rather_than_disqualifying():

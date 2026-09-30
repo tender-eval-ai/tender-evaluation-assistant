@@ -429,6 +429,37 @@ def by_reviewer(key: str) -> bool:
 
 
 REVIEWER_NOTE = "{field} is entered by a reviewer once it arrives; not recorded yet"
+DECISIONS = ("pass", "dormant", "disqualified")
+
+
+def apply_unread_blanks(checked: list[FieldResult], fields: dict) -> None:
+    """A blank the model read on a form that is there never disqualifies on its own: the model
+    can miss a signature on a signed page (Tenderer C's offer, 2026-09-30), and a false
+    disqualification is the costliest mistake the check can make. The row goes to review; a
+    person who marks the field absent, or decides the check, makes it stand. A missing form
+    (its `document` blank) still disqualifies at once."""
+    for f in checked:
+        prefix, _, name = f.field_id.rpartition(".")
+        if (f.status == "disqualified" and name != "document" and fields.get(f.field_id) is None
+                and fields.get(f"{prefix}.document") not in (None, False) and not fields.get(f"{f.field_id}_corrected")
+                and not fields.get(f"{f.field_id}_redacted")):
+            f.status = "needs_review"
+            f.note = f"{f.field}: the model read nothing here on a form that is there; a reviewer confirms before it disqualifies"
+
+
+def apply_decisions(checked: list[FieldResult], fields: dict) -> dict[str, dict]:
+    """A reviewer's decision settles a check that needs review: pass, dormant (the Authority
+    may ask for it later) or disqualified, with who and why. A decision on a check that no
+    longer needs review (the value was corrected since, the rule set changed) is set aside.
+    Returns {field_id: decision} for the checks it settled."""
+    settled = {}
+    for f in checked:
+        decision = fields.get(f"{f.field_id}_decision")
+        if f.status == "needs_review" and isinstance(decision, dict) and decision.get("status") in DECISIONS:
+            f.status, f.follow_up = decision["status"], None
+            f.note = f"decided by {decision.get('by') or 'a reviewer'}: {decision.get('reason') or 'no reason given'}"
+            settled[f.field_id] = decision
+    return settled
 
 
 def apply_reviewer_fields(item: RuleSetItem, checked: list[FieldResult], fields: dict) -> None:
@@ -482,10 +513,14 @@ def evaluate(item: RuleSetItem, fields: dict, template: Template | None = None) 
     apply_verification(result.fields, fields)
     apply_unextracted(result.fields, fields)
     apply_reviewer_fields(item, result.fields, fields)
+    apply_unread_blanks(result.fields, fields)
+    decided = apply_decisions(result.fields, fields)
     checked = [{"field_id": f.field_id, "field": f.field, "status": f.status, "note": f.note, "value": f.value,
                 "redacted": f.redacted, "stage": f.stage,
                 "follow_up": None if f.follow_up is None else vars(f.follow_up),
-                "page": fields.get(f"{f.field_id}_page")} for f in result.fields]
+                "page": fields.get(f"{f.field_id}_page"),
+                # Only when there is one: a stored verdict without the key must compare equal.
+                **({"decision": decided[f.field_id]} if f.field_id in decided else {})} for f in result.fields]
     outcome = overall_status(result.fields)
     if result.fields and all(f.status == "dormant" for f in result.fields):
         outcome = "dormant"

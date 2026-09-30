@@ -40,9 +40,10 @@ def _key_of(spec: dict | None, letter: str, field: str) -> str | None:
 @router.patch("/projects/{pid}/bids/{tenderer}/fields/{letter}/{field}")
 def correct_field(pid: str, tenderer: str, letter: str, field: str, body: CorrectionRequest,
                   user: str = Depends(deps.acting_user)) -> BidResult:
-    """Correct a value, mark a document present or absent, or point at another page. The
-    model's value is kept beside the person's; the engine re-decides at once, no model
-    call; a review confirmation on this tenderer is withdrawn."""
+    """Correct a value, mark a document present or absent, or point at another page; or
+    decide a check that needs review (pass, dormant or disqualified). The model's value is
+    kept beside the person's; the engine re-decides at once, no model call; a review
+    confirmation on this tenderer is withdrawn."""
     pdir = deps._project_dir(pid)
     runner = deps.runner()
     run, result, spec = _checked(runner, pid, tenderer)
@@ -51,7 +52,16 @@ def correct_field(pid: str, tenderer: str, letter: str, field: str, body: Correc
     # the item's form's field all the same, and entering it needs no new reading.
     if key is None or (key not in result.fields and not by_reviewer(key)):
         raise ApiError(404, "not_found", f"item ({letter}) has no field {field!r} in {tenderer}'s result")
-    entries = correction_entries(result.fields, key, body.value, body.present, body.page)
+    if body.decision is not None:
+        if body.value is not None or body.present is not None or body.page is not None:
+            raise ApiError(400, "bad_request", "a decision stands alone: give it without a value, present or a page")
+        row = next((f for f in item_verdicts(result.verdict).get(letter, {}).get("fields", []) if f["field_id"] == key), None)
+        if row is None or row["status"] != "needs_review":
+            raise ApiError(409, "conflict", f"{field!r} of item ({letter}) does not need review; correct its value instead",
+                           {"status": row["status"] if row else None})
+        entries = {f"{key}_decision": body.decision}
+    else:
+        entries = correction_entries(result.fields, key, body.value, body.present, body.page)
     if not entries:
         raise ApiError(400, "bad_request", "the correction changes nothing: give a value, present or a page")
 

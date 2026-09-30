@@ -281,8 +281,9 @@ budget, one shared pace per provider).
    form no page was labelled as, and the rules engine decides each item.
 3. **`evaluate`** re-decides every stored result against a newly confirmed rule-set version, with no model call.
 
-A reviewer corrects any field in Stage I or II (the model's value is kept beside the correction, with who and why)
-and confirms the review. Scoring needs a confirmed rule set, and the Word reports also wait until every
+A reviewer corrects any field in Stage I or II (the model's value is kept beside the correction, with who and why),
+decides any check the engine left to a person (pass, the Authority may ask later, or disqualified, with a reason), and
+confirms the review. A blank the model read on a form that is there never disqualifies until a person confirms it. Scoring needs a confirmed rule set, and the Word reports also wait until every
 review is confirmed. `GET /projects/{pid}/jobs`
 follows the jobs, and `GET /projects/{pid}/bids/{t}/results` has the fields, the verdicts and their evidence. Page
 images open by signed links. An upload is capped from its declared length before any of it is received
