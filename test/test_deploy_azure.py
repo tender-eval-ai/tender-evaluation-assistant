@@ -40,3 +40,16 @@ def test_secrets_come_from_the_key_vault_not_the_template():
         assert f"keyVaultUrl: '${{vaultSecret}}/{name}', identity: identity.id" in MAIN, name
     assert "vault.getSecret('postgres-password')" in MAIN
     assert "@secure()" in POSTGRES
+
+
+def test_the_scripts_say_where_they_stopped_and_setup_prepares_a_new_subscription():
+    """setup.sh once stopped without a word: under pipefail, `tr </dev/urandom | head` fails
+    with a broken pipe inside $(...). Every script now reports the line it stopped at, and
+    setup.sh registers the resource providers a new subscription lacks."""
+    setup = (ROOT / "deploy/azure/setup.sh").read_text()
+    for name in ("setup.sh", "deploy.sh", "add_user.sh"):
+        assert "trap 'echo \"$(basename \"$0\") stopped at line $LINENO" in (ROOT / "deploy/azure" / name).read_text(), name
+    assert "/dev/urandom" not in setup and "openssl rand -hex 3" in setup
+    for provider in ("Microsoft.App", "Microsoft.OperationalInsights", "Microsoft.DBforPostgreSQL", "Microsoft.CognitiveServices",
+                     "Microsoft.KeyVault", "Microsoft.Storage", "Microsoft.ManagedIdentity"):
+        assert provider in setup, provider
