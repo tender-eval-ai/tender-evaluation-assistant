@@ -618,6 +618,18 @@ within `AGENT_OCR_PAGES`), local OCR speed (measured 48.7 s per page on `qwen3-v
 on the laptop; 3.8 s on Gemini), and no Stage III–V yet (technical marking / combined score —
 phase 2).
 
+## Limitations
+
+Stated, not fixed (checklist J11, item 13):
+
+- **Sign-in.** There is no single sign-on with a client's own identity provider (OIDC). The demo signs people in with Azure in front of the app, and the API trusts one shared key. There are no per-user roles yet; they come after the S4 run (J11, item 12).
+- **The model budget.** The gateway checks the daily budget before a call and adds the cost after it, so workers running at once can go slightly over it. A failed provider call is not retried with a growing wait.
+- **Type checking.** Ruff and the tests run in CI, but no type checker does.
+- **Metrics and alerts.** The Azure demo writes its logs to Log Analytics. There are no dashboards or alerts.
+- **Stages III to V.** Technical marking and the combined score aren't built.
+- **PyMuPDF.** The parser depends on PyMuPDF and `pymupdf-layout`, whose licences limit reuse (see [Licence](#licence-before-you-reuse-this)). Replacing them is not planned.
+- **Conditions.** A rule's `condition` ("where the tenderer is not the manufacturer") is recorded but not evaluated. Such a rule never disqualifies on a blank; a reviewer confirms instead.
+
 ## Next: tenders in other formats
 
 The project stays on procurement, but tenders don't all look alike. The parser was tuned on one authority's
