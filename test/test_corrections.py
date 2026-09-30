@@ -47,9 +47,20 @@ def test_open_reviews_walks_every_item_and_still_reads_a_single_item_verdict():
     assert open_reviews(single) == ["x.b"] and open_reviews({}) == []
 
 
-def test_a_corrected_number_drops_the_models_printed_text():
-    """A check that counts decimals as printed must count the person's value (#100 review)."""
-    key = "price_schedule_parts_c_d.discount_7day"
-    fields = {key: 2.505, f"{key}_printed": "2.505%", f"{key}_verification": {"verified": True}}
-    out = _apply(fields, {key: {"value": "2.5%", "by": "nasi", "reason": "misread"}})
-    assert out[key] == "2.5%" and f"{key}_printed" not in out and out[f"{key}_verification"] is None
+def test_a_correction_typed_as_text_replaces_the_printed_text():
+    """A person's text is what is shown and counted (#100 review)."""
+    field = "price_schedule_parts_c_d.discount_7day"
+    fields = {field: 2.505, f"{field}_printed": "2.505%", f"{field}_verification": {"verified": True}}
+    out = _apply(fields, {field: {"value": "2.5%", "by": "nasi", "reason": "misread"}})
+    assert out[field] == "2.5%" and f"{field}_printed" not in out and out[f"{field}_verification"] is None
+    assert out[f"{field}_corrected"] is True
+
+
+def test_a_bare_number_correction_keeps_the_printed_unit():
+    """A corrected 7.5 corrects the figure, not the "HK$" printed beside it (#100 re-review)."""
+    field = "price_schedule.unit_price"
+    fields = {field: 7.8, f"{field}_printed": "HK$ 7.80 per kg", f"{field}_verification": {"verified": False}}
+    for value in (7.5, "7.5", " 7,500.00 "):
+        out = _apply(fields, {field: {"value": value, "by": "chenyu", "reason": "misread"}})
+        assert out[field] == value and out[f"{field}_printed"] == "HK$ 7.80 per kg" and out[f"{field}_corrected"] is True
+    assert _apply(fields, {field: {"value": None, "by": "chenyu", "reason": "not there"}}).get(f"{field}_printed") is None

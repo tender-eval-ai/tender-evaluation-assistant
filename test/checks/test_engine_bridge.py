@@ -224,6 +224,21 @@ def test_decimals_count_every_figure_as_written_and_nil_has_none():
     assert on("Nil", max_decimals=2, max=5)[0] == "mismatch", "with bounds, a figure is still needed"
 
 
+def test_a_bare_number_correction_keeps_the_unit_and_counts_the_persons_figure():
+    """#100 re-review: a reviewer's 7.5 corrects the figure. The unit check still finds the
+    currency printed beside it, and the decimal count and the message show the person's value."""
+    from app.jobs.store import _apply
+    corrected = _apply(PRICE, {"price_schedule.unit_price": {"value": 7.5, "by": "chenyu", "reason": "misread"}})
+    unit = rule("unit", "price_schedule.unit_price", allowed=["HK$", "US$"])
+    assert compare(unit, unit.params, corrected) == ("match", "read 'HK$ 4.40 per kg', allowed HK$, US$")
+    places = rule("range", "price_schedule.unit_price", max_decimals=2, max=10)
+    assert compare(places, places.params, corrected) == ("match", "read 7.5, allowed at most 10")
+    three = _apply(PRICE, {"price_schedule.unit_price": {"value": "7.505", "by": "chenyu", "reason": "misread"}})
+    assert compare(places, places.params, three)[0] == "mismatch", "the person's three places, not the printed two"
+    typed = _apply(PRICE, {"price_schedule.unit_price": {"value": "7.5 per kg", "by": "chenyu", "reason": "misread"}})
+    assert compare(unit, unit.params, typed)[0] == "mismatch", "a person's own text replaces the printed text"
+
+
 def test_absent_is_a_yes_or_no_and_an_empty_phrase_is_ignored():
     fields = {"c.address": "P.O. Box 12"}
     def on(**params):
