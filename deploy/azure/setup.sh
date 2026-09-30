@@ -19,7 +19,8 @@
 set -euo pipefail
 # A failed command stops the script (set -e); this says where, since a failure inside
 # $(...) can otherwise stop it without a word.
-trap 'echo "$(basename "$0") stopped at line $LINENO (exit $?)" >&2' ERR
+# $? is read first: the $(basename) below would reset it to 0.
+trap 'rc=$?; echo "$(basename "$0") stopped at line $LINENO (exit $rc)" >&2' ERR
 cd "$(dirname "$0")/../.."
 
 REPO=${REPO:-tender-eval-ai/tender-evaluation-assistant}
@@ -43,7 +44,7 @@ done
 echo "== is Postgres Flexible Server (B1ms) offered to this subscription in $LOCATION?"
 # Free Trial subscriptions are refused in several popular regions, and the deployment then
 # fails deep inside with "The value of the 'Version' should be in: []". Ask first.
-PG_OFFER=$(az postgres flexible-server list-skus --location "$LOCATION" -o json | python3 -c '
+PG_OFFER=$(az postgres flexible-server list-skus --location "$LOCATION" --only-show-errors -o json | python3 -c '
 import json, sys
 caps = json.load(sys.stdin) or [{}]
 cap = caps[0]
@@ -71,6 +72,7 @@ assign() {  # object id, role, scope, principal type
         az role assignment create --assignee-object-id "$1" --assignee-principal-type "$4" \
             --role "$2" --scope "$3" -o none
 }
+quiet() { "$@" 2>/dev/null; }
 has_secret() { az keyvault secret show --vault-name "$KV" -n "$1" -o none 2>/dev/null; }
 put_secret() { printf '%s' "$2" | az keyvault secret set --vault-name "$KV" -n "$1" --file /dev/stdin -o none; }
 
@@ -89,13 +91,18 @@ az keyvault show -n "$KV" -o none 2>/dev/null ||
 KV_ID=$(az keyvault show -n "$KV" --query id -o tsv)
 assign "$ME" "Key Vault Secrets Officer" "$KV_ID" User
 retry assign "$ID_PRINCIPAL" "Key Vault Secrets User" "$KV_ID" ServicePrincipal
+# A new role takes a minute or two to apply. Until then every read is refused, so
+# has_secret below would take an existing password for a missing one.
+echo "   waiting for your Key Vault role to apply (up to 2 minutes)"
+retry quiet az keyvault secret list --vault-name "$KV" -o none ||
+    { echo "The Key Vault Secrets Officer role hasn't applied yet; rerun setup.sh in a few minutes." >&2; exit 1; }
 
 echo "== secrets (generated here, never printed)"
 if has_secret postgres-password; then
     PG_PASSWORD=$(az keyvault secret show --vault-name "$KV" -n postgres-password --query value -o tsv)
 else
     PG_PASSWORD=$(openssl rand -hex 24)
-    retry put_secret postgres-password "$PG_PASSWORD"   # the first write waits for the role to apply
+    put_secret postgres-password "$PG_PASSWORD"
 fi
 put_secret database-url "postgresql://tender:${PG_PASSWORD}@${PG}.postgres.database.azure.com:5432/tender?sslmode=require"
 has_secret api-key || put_secret api-key "$(openssl rand -hex 24)"
