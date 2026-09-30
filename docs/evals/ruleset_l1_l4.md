@@ -71,6 +71,46 @@ written <scratch>/live_eval.json
 
 Reading: L0 to L2 are full marks on this tender; L3 drafted rules for six items and found nothing it could quote verbatim for four of the eight keyed checks, three of which it proposed but could not ground (the unverified notes on (i), (j), (o)), and one it did not propose ((n)). Item (m) matched the price schedule but its slots are not stated under Parts C and D, so it waits for a person, which is the intended outcome. The 40 gaps are the synthetic Terms' obligation sentences under the unmatched items' clauses; the synthetic generator writes one such sentence into nearly every clause.
 
+### Synthetic tender SYN-2026-001, live build with the production templates (2026-09-30)
+
+Compose stack at `main` (after #99, #100 and #92), `deepseek-chat` for L1 to L3 and the additions step, the 14 production templates as the library, `python tools/build_synthetic_ruleset.py` then `tools/eval_ruleset.py --key test/data/synthetic_tender_nodes/ruleset_key_production.json`. 37 model calls, $0.020.
+
+| item | status | Part | page | template | slots | checks | rules | unverified |
+|---|---|---|---|---|---|---|---|---|
+| (a) | verified | yes | yes | yes | - | 1/1 | 4 | 0 |
+| (b) | verified | yes | yes | yes | estimated_quantity: ok | - | 11 | 0 |
+| (c) | verified | yes | yes | yes | estimated_quantity: ok | - | 9 | 0 |
+| (d) | verified | yes | yes | yes | - | - | 13 | 0 |
+| (e) | verified | yes | yes | yes | - | - | 13 | 0 |
+| (f) | verified | yes | yes | yes | - | 1/1 | 24 | 0 |
+| (g) | verified | yes | yes | yes | - | - | 10 | 0 |
+| (h) | verified | yes | yes | yes | - | 1/1 | 23 | 0 |
+| (i) | verified | yes | yes | yes | - | 1/1 | 1 | 0 |
+| (j) | verified | yes | yes | yes | - | 1/1 | 1 | 0 |
+| (k) | verified | yes | yes | yes | - | 1/1 | 8 | 0 |
+| (l) | verified | yes | yes | yes | - | - | 4 | 0 |
+| (m) | verified | yes | yes | yes | - | - | 6 | 0 |
+| (n) | verified | yes | yes | yes | - | 1/1 | 9 | 0 |
+| (o) | verified | yes | yes | yes | - | 1/1 | 2 | 0 |
+
+| metric | value |
+|---|---|
+| items_found | 15/15 (100.0%) |
+| part_right | 15/15 (100.0%) |
+| page_right | 15/15 (100.0%) |
+| template_right | 15/15 (100.0%) |
+| slots_right | 2/2 (100.0%) |
+| checks_recall | 8/8 (100.0%) |
+| statuses | verified 15 |
+| rules_total / unverified_notes | 138 / 0 |
+| gaps (reasoned) | 66 (0) |
+
+Reading:
+- **L1 is at full marks.** L1 matched every item to its form's template, so no item falls to novel rules any more. The four checks L3 could not ground on 2026-09-20 now come from the templates.
+- **Slots.** The key scores only (b) and (c)'s quantity. The other templates' slots on (d), (e), (g), (h) and (n), 15 in all, were left unfilled: the synthetic clauses don't state their values, so a person sets them before confirming.
+- **Gaps.** They rose from 40 to 66, because L4 now walks templated items too (#92).
+- **Not yet counted:** the presence rule's tier by Part (#114). Until it lands, a template's presence rule keeps the template's tier.
+
 ### The three real tenders — L0 (2026-09-22)
 
 `locate` is deterministic: the parser's node table and a regex scan over the
