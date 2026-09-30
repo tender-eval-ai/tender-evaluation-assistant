@@ -3,8 +3,9 @@
 #
 # The deploy-azure workflow runs this after pushing the images, with the names in its
 # environment. From a laptop (az and gh logged in) it reads them from the repository
-# variables setup.sh stored. OPENAI_MODEL / OPENAI_MODEL_VERSION pick another model when
-# the region doesn't offer the default.
+# variables setup.sh stored. The Azure OpenAI region, model and version are optional: the
+# template's defaults unless setup.sh stored others (or OPENAI_MODEL / OPENAI_MODEL_VERSION
+# are set here).
 set -euo pipefail
 # A failed command stops the script (set -e); this says where, since a failure inside
 # $(...) can otherwise stop it without a word.
@@ -19,11 +20,20 @@ setting() {  # the environment's value, else the repository variable
     [ -n "$value" ] || value=$(gh variable get "$1" -R "$REPO")
     printf '%s' "$value"
 }
+optional() {  # the same, but empty when neither is set
+    local value=${!1:-}
+    [ -n "$value" ] || value=$(gh variable get "$1" -R "$REPO" 2>/dev/null || true)
+    printf '%s' "$value"
+}
 RG=$(setting AZURE_RESOURCE_GROUP)
 PARAMS=(suffix="$(setting AZURE_NAME_SUFFIX)" prefix="$(setting AZURE_PREFIX)" imageTag="$TAG"
         ghcrUser="$(setting AZURE_GHCR_USER)" signInClientId="$(setting AZURE_SIGNIN_CLIENT_ID)")
-[ -z "${OPENAI_MODEL:-}" ] || PARAMS+=(openAiModel="$OPENAI_MODEL")
-[ -z "${OPENAI_MODEL_VERSION:-}" ] || PARAMS+=(openAiModelVersion="$OPENAI_MODEL_VERSION")
+OAI_LOCATION=$(optional AZURE_OPENAI_LOCATION)
+OAI_MODEL=${OPENAI_MODEL:-$(optional AZURE_OPENAI_MODEL)}
+OAI_VERSION=${OPENAI_MODEL_VERSION:-$(optional AZURE_OPENAI_MODEL_VERSION)}
+[ -z "$OAI_LOCATION" ] || PARAMS+=(openAiLocation="$OAI_LOCATION")
+[ -z "$OAI_MODEL" ] || PARAMS+=(openAiModel="$OAI_MODEL")
+[ -z "$OAI_VERSION" ] || PARAMS+=(openAiModelVersion="$OAI_VERSION")
 
 URL=$(az deployment group create -g "$RG" -n "app-${TAG:0:12}" -f deploy/azure/main.bicep \
     -p "${PARAMS[@]}" --query properties.outputs.appUrl.value -o tsv)
