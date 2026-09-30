@@ -11,7 +11,7 @@
     {
       "name": "tender_closing_date",
       "kind": "date",
-      "required": false,
+      "required": true,
       "description": "the tender closing date, at which the quality certificate must still be valid"
     },
     {
