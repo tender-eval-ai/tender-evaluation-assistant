@@ -452,3 +452,20 @@ def test_a_range_printed_beside_a_number_is_read_from_the_text_unless_a_person_c
     assert normalised(item, {**read, "p.dosage_corrected": True})[0]["p.dosage"] == 5.1, "a person's figure stands"
     unrelated = {"p.dosage": 5.1, "p.dosage_printed": "5.1 kg/t (trials 2023-2024)"}
     assert normalised(item, unrelated)[0]["p.dosage"] == 5.1, "a span without the figure read is not its range"
+
+
+def test_a_decision_settles_the_check_that_needs_review_on_a_field_with_two():
+    """The Compliance Schedule's document has a presence check that passes and a reviewer's
+    judgement that needs review, on the same field (found seeding the Showcase, 2026-09-30)."""
+    from app.rulesets.library import load_templates
+    from app.rulesets.schema import RuleSetItem
+    template = load_templates()["compliance_schedule"]
+    rules = [r for r in template.rules if r.id in ("compliance_schedule.submitted", "compliance_schedule.authority_satisfied")]
+    item = RuleSetItem(letter="n", title="Compliance Schedule", part="A", template=template.id, citation=ITEM.citation,
+                       rules=rules, status="verified")
+    fields = {"compliance_schedule.document": "Compliance Schedule"}
+    rows = [f["status"] for f in evaluate(item, fields, template)["fields"] if f["field_id"] == "compliance_schedule.document"]
+    assert sorted(rows) == ["needs_review", "pass"]
+    decided = {**fields, "compliance_schedule.document_decision": {"status": "pass", "by": "r", "reason": "all complied"}}
+    v = evaluate(item, decided, template)
+    assert v["outcome"] == "pass" and all(f["status"] == "pass" for f in v["fields"])
