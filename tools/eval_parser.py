@@ -28,7 +28,7 @@ Two evaluations, reported separately so a miss points at the layer to fix:
 The keys and the tender PDFs are redacted sample documents and stay outside git.
 Usage:
 
-    python tools/eval_parser.py --deep-key <dir>/deep/Tender 2.json --pdfs <tender folder or PDF> \\
+    python tools/eval_parser.py --deep-key <dir>/deep/tender_2.json --pdfs <tender folder or PDF> \\
         [--nodes cache.json] [--out report.json]
 
 Results are recorded in docs/evals/parser_l0.md.
