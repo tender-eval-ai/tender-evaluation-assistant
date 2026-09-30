@@ -34,12 +34,10 @@ So a new format needs a new way to *produce* that node table, not a new pipeline
 
 ## Proposal
 
-```
-tender files ──► router ──► format-specific parser ──► node table (one contract) ──► locate ──► L1–L4 ──► rule set
-                  │              │                                                        ▲
-                  │              └─ its own answer keys and eval                           │
-                  └─ its own eval (right format?)                   one shared template library, extended per format
-```
+![Tender files go to a router, which picks a file format and a layout profile. One parser per format, each with its own eval, produces the node table. Locate and L1–L4 draw on the shared template library to build the tender's rule set, and a newly confirmed form is saved back as a template.](../images/format-router.png)
+
+*The diagram's source is the Mermaid block in the README's "Next: tenders in other formats" section. Regenerate this
+image from it when the plan changes.*
 
 1. **A router identifies each document's structure before any parsing.**
    - **Signals it can use:** the file type; the share of pages with a text layer; page count and whether one
