@@ -21,7 +21,7 @@ from app.rulesets.schema import (Citation, CheckType, DataClass, FollowUp, ItemN
                                  RuleSetItem, TemplateRule)
 from app.rulesets.slots import _file_of, clause_context, cut_notes, roots_of
 
-PROMPT_VERSION = "novel-v4"   # v4: the field menu marks fields a reviewer enters
+PROMPT_VERSION = "novel-v5"   # v5: the buyer's other names are neutral; v4: the field menu marks fields a reviewer enters
 ADDITION = " (added for this tender: not in the template)"
 
 SYSTEM = (

@@ -23,7 +23,7 @@ from app.rulesets.novel import Requirement, field_menu, rules_from
 from app.rulesets.schema import CheckType, DataClass, RuleSetItem
 from app.rulesets.slots import clause_context, cut_notes, roots_of
 
-PROMPT_VERSION = "additions-v3"   # v3: the field menu marks fields a reviewer enters
+PROMPT_VERSION = "additions-v4"   # v4: the buyer's other names are neutral; v3: the field menu marks fields a reviewer enters
 _SLOT_REF = re.compile(r"^\{([a-z][a-z0-9_]*)\}$")
 
 SYSTEM = (

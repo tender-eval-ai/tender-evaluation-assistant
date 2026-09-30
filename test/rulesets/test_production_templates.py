@@ -40,14 +40,18 @@ def test_a_rule_depends_only_on_rules_of_its_own_template(tid):
 
 
 def test_the_wording_is_our_own_and_neutral():
-    """No tender number, jurisdiction, body's name, currency or clause reference (F6): a
-    tender's own values live in its params file, outside git."""
+    """No tender number, jurisdiction, currency or clause reference (F6): a tender's own values
+    live in its params file, outside git. The names of the bodies behind the real tenders are
+    kept outside git too: F6_TERMS_FILE, one per line, is checked when it is set."""
     banned = re.compile(
-        r"[A-Z]{1,2}\d{9,10}|Hong Kong|\bHK\b|\bAUTH\b|\bDSD\b|the plant|Authority"
+        r"\b[A-Z]{1,2}\d{9,10}\b|Hong Kong|\bHK\b"
         r"|HK\$|US\$|€|£|¥|\b(?:HKD|USD|EUR|GBP|RMB|CNY|dollars?|pounds? sterling|euros?)\b"
         r"|\b(?:Paragraph|Clause|Section|Note)\s+\d", re.IGNORECASE)
+    terms = [t.strip() for t in Path(os.environ["F6_TERMS_FILE"]).read_text().splitlines() if t.strip()] \
+        if os.environ.get("F6_TERMS_FILE") else []
     for path in sorted(DEFAULT_DIR.glob("*.json")):
-        found = banned.findall(path.read_text())
+        text = path.read_text()
+        found = banned.findall(text) + [t for t in terms if re.search(rf"\b{re.escape(t)}\b", text, re.IGNORECASE)]
         assert not found, f"{path.name}: {found}"
 
 
