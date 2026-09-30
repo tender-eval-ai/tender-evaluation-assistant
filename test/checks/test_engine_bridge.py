@@ -314,3 +314,24 @@ def test_decide_judges_every_item_of_the_rule_set_with_the_templates_tiers(monke
     v = decide(read_offer("Tenderer_D"), RULESET_ALL)
     assert v["items"]["l"]["outcome"] == "needs_review" and v["items"]["b"]["outcome"] == "needs_review", "no templates, no silent pass"
     assert v["items"]["a"]["outcome"] == "pass", "novel rules carry their own outcomes"
+
+
+@pytest.mark.parametrize("answer, status", [
+    ("Nil", "pass"),                                        # nothing declared, in so many words
+    ("None.", "pass"),
+    ("None noted", "needs_review"),                         # opens with a blank_if word but says more (#117)
+    ("Nil (none)", "needs_review"),
+    ("No deviation from the specification", "needs_review"),
+    ("Item 3: delivery in 45 days", "disqualified"),        # a declaration still disqualifies
+    ("Nonetheless item 3 is late", "disqualified"),         # a whole word only: "none" is not "nonetheless"
+])
+def test_a_nothing_answer_that_says_more_goes_to_review_not_to_disqualification(answer, status):
+    from app.rulesets.library import load_templates
+    from app.rulesets.schema import RuleSetItem
+    template = load_templates()["compliance_schedule"]
+    rules = [r for r in template.rules if r.id in ("compliance_schedule.submitted", "compliance_schedule.no_part_marked_not_complying")]
+    item = RuleSetItem(letter="n", title="Compliance Schedule", part="A", template=template.id, citation=ITEM.citation,
+                       rules=rules, status="verified")
+    fields = {"compliance_schedule.document": "Compliance Schedule", "compliance_schedule.non_compliances": answer}
+    rows = [f for f in evaluate(item, fields, template)["fields"] if f["field_id"] == "compliance_schedule.non_compliances"]
+    assert [c["status"] for c in rows] == [status], rows
