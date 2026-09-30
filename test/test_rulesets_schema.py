@@ -74,9 +74,14 @@ def test_params_take_literals_of_four_kinds_and_normalise_is_a_closed_list():
     assert r.slot_refs() == {"estimated_quantity"}
     with pytest.raises(ValidationError):
         rule(params={"nested": {"a": 1}})
-    assert Normalise(op="round_significant_figures", params={"digits": 2}).op == "round_significant_figures"
+    assert Normalise(op="round_significant_figures", params={"max_sig_figs": 2}).op == "round_significant_figures"
     with pytest.raises(ValidationError):
         Normalise(op="round_to_nearest")
+    for bad in ({"digits": 2}, {"max_sig_figs": 0}, {"max_sig_figs": "2"}, {}):
+        with pytest.raises(ValidationError, match="max_sig_figs"):
+            Normalise(op="round_significant_figures", params=bad)
+    with pytest.raises(ValidationError, match="takes no params"):
+        Normalise(op="resolve_range_to_lower_bound", params={"to": "lower"})
     assert rule(stage="II").stage == "II"
     with pytest.raises(ValidationError):
         rule(stage="III")

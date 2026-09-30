@@ -68,6 +68,32 @@ def test_v4_specs_follow_the_menu_and_signatures_agree_on_presence():
     assert all(not s.presence for s in specs if not s.key.endswith(".signature"))
 
 
+def test_a_field_a_reviewer_enters_is_never_asked_for_or_verified_but_is_always_reported():
+    from app.checks.extract import fields_from, reading_model
+
+    form = FORMS["tender_sample_declaration"]
+    reviewer_only = {f.name for f in form.all_fields if f.by == "reviewer"}
+    assert "sample_net_weight_kg" in reviewer_only and "declaration" not in reviewer_only
+    assert not reviewer_only & set(reading_model(form).model_fields), "V3 never asks the model for it"
+    assert not {s.key for s in form.specs()} & {form.key(n) for n in reviewer_only}, "V4 never checks it"
+    reading = reading_model(form)(present=True, page=4, document="Tender Sample Declaration", declaration="we agree")
+    out = fields_from(form, reading, [{"seq": 4, "doc": "offer.pdf", "page": 4}])
+    assert out["tender_sample_declaration.sample_net_weight_kg"] is None, "blank until a person enters it"
+    assert out["tender_sample_declaration.sample_net_weight_kg_page"] is None
+    assert out["tender_sample_declaration.declaration"] == "we agree"
+    assert out["tender_sample_declaration.sample_net_weight_kg_confidence"] is None, "no reading, no confidence"
+
+
+def test_the_l3_field_menu_marks_what_a_reviewer_enters():
+    from types import SimpleNamespace
+
+    from app.rulesets.novel import field_menu
+
+    menu = field_menu(SimpleNamespace(template="tender_sample_declaration", title="", citation=None))
+    assert "sample_net_weight_kg (number, entered by a reviewer after the tender closes)" in menu
+    assert "declaration (text)," in menu
+
+
 def test_the_contract_lists_every_form_and_field():
     """docs/api_contract.md's Forms and fields table is what Nasi's templates are written against."""
     from pathlib import Path
@@ -80,3 +106,4 @@ def test_the_contract_lists_every_form_and_field():
         assert f"`{form.label}`" in row
         for field in form.all_fields:
             assert f"`{field.name}` ({field.kind})" in row, (form.id, field.name)
+            assert (f"`{field.name}` ({field.kind}) by a reviewer" in row) == (field.by == "reviewer"), (form.id, field.name)

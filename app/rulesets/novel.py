@@ -21,7 +21,7 @@ from app.rulesets.schema import (Citation, CheckType, DataClass, FollowUp, ItemN
                                  RuleSetItem, TemplateRule)
 from app.rulesets.slots import _file_of, clause_context, cut_notes, roots_of
 
-PROMPT_VERSION = "novel-v3"
+PROMPT_VERSION = "novel-v4"   # v4: the field menu marks fields a reviewer enters
 ADDITION = " (added for this tender: not in the template)"
 
 SYSTEM = (
@@ -78,7 +78,10 @@ def field_menu(item: RuleSetItem) -> str:
     form = form_for(item)
     if form is None:
         return ""
-    names = ", ".join(f"{f.name} ({f.kind})" for f in form.all_fields)
+    # A field a reviewer enters is never in the offer: a rule on it waits, dormant, until
+    # someone records it (tender samples, a test report asked for after closing).
+    names = ", ".join(f"{f.name} ({f.kind}{', entered by a reviewer after the tender closes' if f.by == 'reviewer' else ''})"
+                      for f in form.all_fields)
     return (f"\n\nFields of this form ({form.title}): {names}. Name one of these as `field` when it is what the clause "
             f"is about; a short snake_case name otherwise.")
 

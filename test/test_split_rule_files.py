@@ -14,16 +14,20 @@ def test_every_template_is_one_of_our_forms():
 
 
 def test_every_mapped_field_is_a_field_of_its_form():
-    for template, fields in split.FIELD_OF.items():
-        for name in fields.values():
-            assert name in FORMS[template].names, f"{template}.{name}"
-    by_rule = {"appendix_tenderer_address_not_postal_box": "contact_details",
-               "noncollusive_certificate_filled": "noncollusive_certificate",
-               "noncollusive_certificate_tenderer_identified": "noncollusive_certificate",
-               "noncollusive_certificate_signed": "noncollusive_certificate"}
-    assert set(by_rule) == set(split.FIELD_OF_RULE)
-    for rule_id, template in by_rule.items():
-        assert split.FIELD_OF_RULE[rule_id] in FORMS[template].names
+    keys = [split.resolve(t, n) for t, fields in split.FIELD_OF.items() for n in fields.values()]
+    for key in keys + list(split.FIELD_OF_RULE.values()):
+        form, _, name = key.partition(".")
+        assert form in FORMS and name in FORMS[form].names, key
+    assert split.resolve("information_schedule", "documentary_evidence.quality_certificate") == \
+        "documentary_evidence.quality_certificate", "a document lives in the form that asks for it (#76 point 2)"
+
+
+def test_a_reviewers_check_is_placed_on_the_field_it_judges():
+    rule = {"id": "tender_sample_sealed", "check": "content_criterion", "field_id": "tender_sample"}
+    kind, _ = split.kind_of(rule)
+    assert kind == "human_only"
+    assert split.field_of("tender_sample_declaration", rule, kind) == \
+        ("tender_sample_declaration.sample_condition", "mapped")
 
 
 def test_template_id_drops_the_suffix_and_joins_stage_two():
@@ -34,7 +38,7 @@ def test_template_id_drops_the_suffix_and_joins_stage_two():
 
 
 def test_a_field_the_form_lacks_is_reported_not_guessed():
-    rule = {"id": "particle_size_filled", "check": "filled", "field_id": "particle_size"}
+    rule = {"id": "colour_filled", "check": "filled", "field_id": "colour"}
     assert split.field_of("particulars_of_goods", rule, "filled") == (None, "no_home")
 
 
@@ -50,3 +54,27 @@ def test_the_rule_decides_when_one_field_id_holds_several_fields():
     assert split.field_of("noncollusive_certificate", signed, kind) == ("noncollusive_certificate.signature", "mapped")
     price = {"id": "unit_price_filled", "check": "filled", "field_id": "one_time_unit_price"}
     assert split.field_of("price_schedule", price, "filled") == ("price_schedule.unit_price", "mapped")
+
+
+def test_a_check_no_template_carries_is_listed_as_left_out():
+    from app.rulesets.library import load_templates
+    report = [
+        {"id": "certificate_filled", "template": "noncollusive_certificate", "field_status": "mapped",
+         "field": "noncollusive_certificate.document", "kind": "filled"},
+        {"id": "dosage_unit", "template": "price_schedule", "field_status": "mapped",
+         "field": "price_schedule.optimal_dosage", "kind": "unit"},
+        {"id": "a_note", "template": "price_schedule", "field_status": "not_needed", "field": None, "kind": None},
+    ]
+    templates = load_templates(Path(__file__).resolve().parent / "data" / "templates")
+    assert split.left_out(report, templates) == {"price_schedule": ["dosage_unit"]}, \
+        "a rule file's 'filled' on a document is the template's 'document_present'; the unit check is missing"
+
+
+def test_the_params_hold_the_rule_files_tender_values_under_slot_names(tmp_path):
+    (tmp_path / "price_schedule_rules.json").write_text(
+        '{"rules": [{"id": "estimated_quantity_value", "check": "value", "value": 500}]}')
+    (tmp_path / "compliance_schedule_rules.json").write_text(
+        '{"rules": [{"id": "compliance_part_b_earlier_delivery_proposal", "check": "conditional_value",'
+        ' "value": {"default_days": 30, "must_be_less_than": 30}}]}')
+    assert split.params_of(tmp_path) == {"price_schedule": {"estimated_quantity": 500},
+                                         "compliance_schedule": {"default_delivery_days": 30}}

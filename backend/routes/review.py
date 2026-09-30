@@ -6,6 +6,7 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends
 
 from app.checks.corrections import correction_entries, item_verdicts, open_reviews
+from app.checks.engine_bridge import by_reviewer
 from app.checks.forms import form_for
 from app.jobs.models import EVALUATE
 from backend import deps
@@ -46,7 +47,9 @@ def correct_field(pid: str, tenderer: str, letter: str, field: str, body: Correc
     runner = deps.runner()
     run, result, spec = _checked(runner, pid, tenderer)
     key = _key_of(spec, letter, field)
-    if key is None or key not in result.fields:
+    # A field a reviewer enters may be missing from a result stored before it existed; it is
+    # the item's form's field all the same, and entering it needs no new reading.
+    if key is None or (key not in result.fields and not by_reviewer(key)):
         raise ApiError(404, "not_found", f"item ({letter}) has no field {field!r} in {tenderer}'s result")
     entries = correction_entries(result.fields, key, body.value, body.present, body.page)
     if not entries:

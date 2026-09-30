@@ -212,10 +212,23 @@ def _check_outcome_keys(outcomes: dict[str, Outcome], where: str) -> None:
 
 
 class Normalise(BaseModel):
-    """A step applied to the field's value before the check, by the engine's own name."""
+    """A step applied to the field's value before the rule's checks, by the engine's own
+    name; a rule's steps run in order. `round_significant_figures` takes `max_sig_figs`, a
+    whole number from 1; `resolve_range_to_lower_bound` takes nothing."""
 
     op: Literal["round_significant_figures", "resolve_range_to_lower_bound"]
     params: dict[str, str | int | float] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _params_fit_the_op(self) -> Normalise:
+        if self.op == "round_significant_figures":
+            figures = self.params.get("max_sig_figs")
+            if set(self.params) != {"max_sig_figs"} or not isinstance(figures, int) or isinstance(figures, bool) \
+                    or figures < 1:
+                raise ValueError("round_significant_figures takes one param, max_sig_figs: a whole number from 1")
+        elif self.params:
+            raise ValueError(f"{self.op} takes no params")
+        return self
 
 
 class TemplateRule(BaseModel):

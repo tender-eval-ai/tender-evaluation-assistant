@@ -1,0 +1,113 @@
+{
+  "id": "offer_to_be_bound",
+  "form_name": "Tender Form, Offer to be Bound",
+  "consequences": {
+    "critical": {
+      "outcomes": {
+        "blank": {
+          "status": "disqualified",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "needs_review",
+          "note": "{field} is marked not applicable; a reviewer confirms it does not apply"
+        }
+      }
+    },
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
+      }
+    },
+    "discretionary": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank; the Authority may ask for it later"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      }
+    }
+  },
+  "notes": [
+    {
+      "kind": "definition",
+      "text": "The tenderer's offer to be bound by its tender, signed by the tenderer or someone authorised to sign for it. Not from the rule files: written for the joint project (J12)."
+    }
+  ],
+  "rules": [
+    {
+      "id": "offer_to_be_bound.submitted",
+      "check": "document_present",
+      "field": "offer_to_be_bound.document",
+      "consequence": "critical"
+    },
+    {
+      "id": "offer_to_be_bound.tenderer_named",
+      "check": "filled",
+      "field": "offer_to_be_bound.tenderer_name",
+      "consequence": "critical",
+      "depends_on": [
+        "offer_to_be_bound.submitted"
+      ]
+    },
+    {
+      "id": "offer_to_be_bound.signed",
+      "check": "signature",
+      "field": "offer_to_be_bound.signature",
+      "consequence": "critical",
+      "depends_on": [
+        "offer_to_be_bound.submitted"
+      ]
+    },
+    {
+      "id": "offer_to_be_bound.dated",
+      "check": "filled",
+      "field": "offer_to_be_bound.date",
+      "consequence": "critical",
+      "depends_on": [
+        "offer_to_be_bound.submitted"
+      ]
+    }
+  ]
+}

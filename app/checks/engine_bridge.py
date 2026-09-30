@@ -11,16 +11,31 @@ closed CheckType menu (value, range, unit, date, math, cross-document match, con
 computed here in code and handed to the engine as explicit outcomes; `{slot}` references
 in a rule's params are rendered from the item's slots; a rule on a field no form reads is a
 reviewer's call, never a blank; V4's unverified values are `needs_review`; and the Stage I
-and II summaries roll up from the rules' stages."""
+and II summaries roll up from the rules' stages.
+
+Since J12: `contains` takes `phrases` (all must be there) and `absent` (none may be);
+`range` takes `max_decimals` (every figure as written); a rule's `normalise` steps run
+here, in order, on the field's value before any rule of the item reads it, and what they
+changed is reported under `adjustments` (internal: not in the API's Verdict); and a blank
+field a reviewer enters (`FieldDef.by`) is dormant, with a row to enter it on, whatever the
+rule's outcomes say. A `human_only` check on a blank field waits for the field, and a date
+bound that is not a date is a reviewer's call, never skipped.
+
+For the production templates (J12): a rule naming a tier its template does not define
+makes the item a reviewer's call, like a missing template, never a silent pass; a rule
+whose params use an optional slot the tender left empty does not apply; and a rule's
+`blank_if` param lists answers that mean "nothing" ("Nil", "None"), read as a blank."""
 from __future__ import annotations
 
 import datetime as dt
 import re
 from typing import Any
 
+from app.checks.forms import form_of_key
 from app.checks.verify import agree, normalise
 from app.engine.core import evaluate_item
 from app.engine.field_result import FieldResult, overall_status, status_counts, worst_status
+from app.engine.normalize import round_to_significant_figures
 from app.rulesets.library import load_templates
 from app.rulesets.schema import CheckType, RuleSet, RuleSetItem, Template, TemplateRule
 
@@ -65,6 +80,27 @@ def _contains(text: Any, phrase: Any) -> bool:
     return bool(a) and f" {a} " in f" {b} "
 
 
+def _decimal_places(text: Any) -> list[int]:
+    """The decimal places of every figure written in `text`, as written: "2.50%" has two.
+    A single comma inside a percentage is a decimal comma ("2,505%" has three); anywhere
+    else a comma groups thousands."""
+    text = str(text or "")
+    out = []
+    for token in re.findall(r"\d+(?:[.,]\d+)*", text):
+        if "." in token:
+            out.append(len(token.rsplit(".", 1)[1]))
+        elif token.count(",") == 1 and "%" in text:
+            out.append(len(token.split(",")[1]))
+        else:
+            out.append(0)
+    return out
+
+
+def _flag(value: Any) -> bool:
+    """A yes/no param: True, "true", "yes" or 1; "false" is no."""
+    return str(value).strip().lower() in ("true", "yes", "1")
+
+
 def _qualify(name: str, prefix: str) -> str:
     return name if "." in name else f"{prefix}.{name}"
 
@@ -85,11 +121,12 @@ def compare(rule: TemplateRule, params: dict, fields: dict) -> tuple[str, str] |
     """The code check behind a comparison kind: ("match" | "mismatch" | "unstated", detail).
     None for a presence kind or a blank field, where the presence outcomes apply."""
     kind = rule.check
+    value = fields.get(rule.field)
     if kind == CheckType.HUMAN_ONLY:
-        return "unstated", "a reviewer decides; no automated check"
+        # Nothing submitted, nothing to judge: the presence outcomes apply (#99 review).
+        return None if value is None else ("unstated", "a reviewer decides; no automated check")
     if kind not in COMPARISONS:
         return None
-    value = fields.get(rule.field)
     if value is None:
         return None
     printed = fields.get(f"{rule.field}_printed")
@@ -101,7 +138,20 @@ def compare(rule: TemplateRule, params: dict, fields: dict) -> tuple[str, str] |
             return "unstated", "no expected value to compare with"
         return ("match" if _equal(value, expected) else "mismatch", f"read {shown!r}, expected {expected!r}")
     if kind == CheckType.RANGE:
-        number, lo, hi = _number(value), _number(params.get("min")), _number(params.get("max"))
+        lo, hi = _number(params.get("min")), _number(params.get("max"))
+        places = _number(params.get("max_decimals"))
+        if places is not None:
+            # As written, every figure: "2.50%" has two places though it is the number 2.5,
+            # and "7-day: 2.505%" is judged by its 2.505. A person's correction drops the
+            # printed text (store._apply), so the corrected value is what is counted.
+            written = _decimal_places(shown)
+            if written and max(written) > places:
+                return "mismatch", f"read {shown!r}, {max(written)} decimal places, at most {places:g}"
+            if lo is None and hi is None:
+                # "Nil" has no figure to count, and is an answer the form allows.
+                return "match", (f"read {shown!r}, at most {places:g} decimal places" if written
+                                 else f"read {shown!r}, no figure")
+        number = _number(value)
         if number is None:
             return "mismatch", f"{shown!r} is not a number"
         if lo is None and hi is None:
@@ -117,15 +167,32 @@ def compare(rule: TemplateRule, params: dict, fields: dict) -> tuple[str, str] |
         ok = any(_contains(shown, u) for u in allowed)
         return ("match" if ok else "mismatch", f"read {shown!r}, allowed {', '.join(str(u) for u in allowed)}")
     if kind == CheckType.CONTAINS:
+        # `phrases`: every one must be there; with `absent`, none may be (an address is not a P.O. Box).
         phrase = params.get("phrase") or params.get("text") or params.get("expected")
-        if not phrase:
+        phrases = params.get("phrases") or ([phrase] if phrase else [])
+        if isinstance(phrases, str):
+            phrases = [phrases]
+        phrases = [p for p in phrases if str(p).strip()]
+        if not phrases:
             return "unstated", "no phrase to look for"
-        return ("match" if _contains(shown, phrase) else "mismatch", f"read {shown!r}, looked for {phrase!r}")
+        found = [p for p in phrases if _contains(shown, p)]
+        if _flag(params.get("absent")):
+            return ("mismatch", f"read {shown!r}, which should not contain {found[0]!r}") if found else \
+                ("match", f"read {shown!r}, none of {', '.join(map(repr, phrases))}")
+        missing = [p for p in phrases if p not in found]
+        if missing:
+            return "mismatch", f"read {shown!r}, missing {', '.join(map(repr, missing))}"
+        return "match", f"read {shown!r}, looked for {', '.join(map(repr, phrases))}"
     if kind == CheckType.DATE:
         date = parse_date(shown)
         if date is None:
             return "mismatch", f"{shown!r} is not a date"
         after, before = parse_date(params.get("after")), parse_date(params.get("before"))
+        # A bound given but unreadable ("noon on 30 June") is never skipped: skipped, an
+        # expired certificate would pass (#99 review).
+        for name, bound, parsed in (("after", params.get("after"), after), ("before", params.get("before"), before)):
+            if bound not in (None, "") and parsed is None:
+                return "unstated", f"the bound {name} {bound!r} is not a date a person has confirmed"
         if after and date < after:
             return "mismatch", f"{date.isoformat()} is before {after.isoformat()}"
         if before and date > before:
@@ -213,15 +280,68 @@ def rules_doc(item: RuleSetItem, template: Template | None = None, overrides: di
             "consequence_tiers": tiers, "rules": rules}
 
 
-def prepare(item: RuleSetItem, fields: dict) -> tuple[dict, dict[str, tuple[str, str]]]:
-    """The fields with an explicit outcome for every comparison rule, and what was decided."""
-    prepared, overrides = dict(fields), {}
+_RANGE = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*(?:-|–|—|to)\s*(\d[\d,]*(?:\.\d+)?)")
+
+
+def _step(op: str, params: dict, value: Any) -> float:
+    """One normalise step on a value, as a number. Raises ValueError when there is none."""
+    if op == "resolve_range_to_lower_bound" and not isinstance(value, (int, float)):
+        m = _RANGE.search(str(value))
+        if m:
+            return min(float(m.group(1).replace(",", "")), float(m.group(2).replace(",", "")))
+    number = _number(value)
+    if number is None:
+        raise ValueError(f"{value!r} is not a number")
+    if op == "round_significant_figures":
+        return round_to_significant_figures(number, int(params["max_sig_figs"]))
+    return number
+
+
+def normalised(item: RuleSetItem, fields: dict) -> tuple[dict, list[dict], dict[str, tuple[str, str]]]:
+    """(the fields with each rule's `normalise` steps applied in order, what changed, and a
+    reviewer's note for each rule whose steps could not run). A corrected value arrives as
+    text ("4.4 kg/t") and is read as its number first."""
+    out, adjustments, failed = dict(fields), [], {}
     for rule in item.rules:
-        decided = compare(rule, render_params(rule, item), fields)
+        empty = rule.params.get("blank_if")
+        if isinstance(empty, list) and str(out.get(rule.field) or "").strip().rstrip(".").lower() in \
+                {str(w).lower() for w in empty}:
+            out[rule.field] = None             # "Nil" under non-compliances declares none
+    for rule in item.rules:
+        value = out.get(rule.field)
+        if not rule.normalise or value is None:
+            continue
+        try:
+            new = value
+            for step in rule.normalise:
+                new = _step(step.op, step.params, new)
+        except (ValueError, KeyError, ArithmeticError) as exc:
+            failed[rule.id] = ("unstated", f"could not normalise: {exc}")
+            continue
+        if new != value:
+            if isinstance(value, str) and out.get(f"{rule.field}_printed") is None:
+                # The text stays what a person reads and what a unit check looks in: "4.4 kg/t"
+                # is the number 4.4 to the checks that compare, and still in kg/t.
+                out[f"{rule.field}_printed"] = value
+            out[rule.field] = new
+            adjustments.append({"rule_id": rule.id, "field_id": rule.field,
+                                "operations": [s.op for s in rule.normalise], "from": value, "value": new})
+    return out, adjustments, failed
+
+
+def prepare(item: RuleSetItem, fields: dict) -> tuple[dict, dict[str, tuple[str, str]], list[dict]]:
+    """The fields (normalised) with an explicit outcome for every comparison rule, what was
+    decided, and what normalising changed."""
+    prepared, adjustments, overrides = normalised(item, fields)
+    for rule in item.rules:
+        if rule.id in overrides:
+            prepared[f"{rule.id}__outcome"] = overrides[rule.id][0]
+            continue
+        decided = compare(rule, render_params(rule, item), prepared)
         if decided is not None:
             overrides[rule.id] = decided
             prepared[f"{rule.id}__outcome"] = decided[0]
-    return prepared, overrides
+    return prepared, overrides, adjustments
 
 
 # ---------------------------------------------------------------- code's rules after the engine
@@ -246,23 +366,73 @@ def apply_unextracted(checked: list[FieldResult], fields: dict) -> None:
             f.note = f"unextracted: no form reads {f.field}; a reviewer decides"
 
 
+def without_unset_optional_slots(item: RuleSetItem, template: Template | None) -> RuleSetItem:
+    """The item without the rules that read an optional slot the tender left empty: the
+    tender does not set that limit, so the check does not apply (#99 review), rather than
+    sending every bid to review for want of a bound."""
+    if template is None:
+        return item
+    optional = {s.name for s in template.slots if not s.required}
+    unset = {name for name in optional if (item.slots.get(name) is None or item.slots[name].value in (None, "", []))}
+    kept = [r for r in item.rules if not (r.slot_refs() & unset)]
+    return item if len(kept) == len(item.rules) else item.model_copy(update={"rules": kept})
+
+
+def by_reviewer(key: str) -> bool:
+    """Whether `key` is a field a person enters after closing, never read off the offer."""
+    form = form_of_key(key)
+    return form is not None and any(form.key(f.name) == key and f.by == "reviewer" for f in form.all_fields)
+
+
+REVIEWER_NOTE = "{field} is entered by a reviewer once it arrives; not recorded yet"
+
+
+def apply_reviewer_fields(item: RuleSetItem, checked: list[FieldResult], fields: dict) -> None:
+    """A blank field a reviewer enters is dormant, whatever the rule's outcomes say: nobody
+    could have entered it yet, so it never disqualifies (an L3 rule with Part A outcomes
+    would). A rule the engine made no row for (no blank outcome) gets one, so there is
+    somewhere to enter the value; unless the rule it depends on blocked it."""
+    rows = {f.field_id: f for f in checked}
+    for f in checked:
+        if by_reviewer(f.field_id) and fields.get(f.field_id) is None:
+            f.status, f.note, f.follow_up = "dormant", REVIEWER_NOTE.format(field=f.field), None
+    by_id = {r.id: r for r in item.rules}
+    for rule in item.rules:
+        if rule.field in rows or not by_reviewer(rule.field) or fields.get(rule.field) is not None:
+            continue
+        parent = by_id.get(rule.depends_on[0]) if rule.depends_on else None
+        if parent is not None and (rows.get(parent.field) is None or rows[parent.field].status in ("dormant", "disqualified")):
+            continue
+        name = rule.field.rsplit(".", 1)[-1].replace("_", " ")
+        rows[rule.field] = FieldResult(field_id=rule.field, field=name, value=None, status="dormant", confidence=None,
+                                       source=None, note=REVIEWER_NOTE.format(field=name), stage=rule.stage)
+        checked.append(rows[rule.field])
+
+
 def evaluate(item: RuleSetItem, fields: dict, template: Template | None = None) -> dict:
     """The verdict for one item: the engine's overall status (dormant fields do not count
     against a tender as submitted today; an item whose every field is dormant is dormant),
     the worst status including dormant, every checked field with its status, stage and
     note, and the reasons a reviewer reads."""
     blocked = None
+    tierless = [r for r in item.rules if r.consequence is not None and r.outcomes is None
+                and template is not None and r.consequence not in template.consequences]
     if not item.rules:
         blocked = f"item ({item.letter}) has no rules; a reviewer decides"
     elif item.template and template is None and any(r.consequence is not None and r.outcomes is None for r in item.rules):
         blocked = f"item ({item.letter}): template {item.template!r} is not in the library, so its rules have no outcomes; a reviewer decides"
+    elif tierless:
+        blocked = (f"item ({item.letter}): rule {tierless[0].id} names tier {tierless[0].consequence.value!r}, which template "
+                   f"{template.id!r} does not define, so it would never be checked; a reviewer decides")
     if blocked:
         return {"item": item.letter, "part": item.part.value, "outcome": "needs_review", "worst": "needs_review",
                 "counts": status_counts([]), "rule_ids": [r.id for r in item.rules], "fields": [], "reasons": [blocked]}
-    prepared, overrides = prepare(item, fields)
+    item = without_unset_optional_slots(item, template)
+    prepared, overrides, adjustments = prepare(item, fields)
     result = evaluate_item([rules_doc(item, template, overrides)], prepared, item.letter)
     apply_verification(result.fields, fields)
     apply_unextracted(result.fields, fields)
+    apply_reviewer_fields(item, result.fields, fields)
     checked = [{"field_id": f.field_id, "field": f.field, "status": f.status, "note": f.note, "value": f.value,
                 "redacted": f.redacted, "stage": f.stage,
                 "follow_up": None if f.follow_up is None else vars(f.follow_up),
@@ -270,7 +440,7 @@ def evaluate(item: RuleSetItem, fields: dict, template: Template | None = None) 
     outcome = overall_status(result.fields)
     if result.fields and all(f.status == "dormant" for f in result.fields):
         outcome = "dormant"
-    return {
+    verdict = {
         "item": item.letter,
         "part": item.part.value,
         "outcome": outcome,
@@ -280,6 +450,11 @@ def evaluate(item: RuleSetItem, fields: dict, template: Template | None = None) 
         "fields": checked,
         "reasons": [f["note"] for f in checked if f["status"] != "pass" and f["note"]],
     }
+    if adjustments:
+        # Only when something changed: a stored verdict without the key must still compare
+        # equal (store._same_verdict), or every confirmed review would be withdrawn.
+        verdict["adjustments"] = adjustments
+    return verdict
 
 
 def stage_summary(items: dict[str, dict], stage: str) -> dict:
