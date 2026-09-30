@@ -219,6 +219,12 @@ export default function RulesWindow({ projectId, tierFilter = "all", onCountsCha
       gaps: latest.gaps.map((g) => (g.node_id === nodeId ? { ...g, reason } : g)),
     }).then(after(`Reason saved for gap ${nodeId}.`));
 
+  const saveGapReasons = (nodeIds, reason) =>
+    putRulesetDraft(projectId, {
+      ...latest,
+      gaps: latest.gaps.map((g) => (nodeIds.includes(g.node_id) ? { ...g, reason } : g)),
+    }).then(after(`Reason saved for ${nodeIds.length} gaps.`));
+
   const saveDraft = (draft) => putRulesetDraft(projectId, draft).then(after("Draft saved."));
 
   // Re-deciding every checked tenderer against a confirmed version. Offered rather
@@ -446,7 +452,8 @@ export default function RulesWindow({ projectId, tierFilter = "all", onCountsCha
           </div>
         )}
 
-        {tab === "gaps" && <GapsPanel gaps={editable ? gaps : shown.gaps} editable={editable} onSaveReason={saveGapReason} />}
+        {tab === "gaps" && <GapsPanel gaps={editable ? gaps : shown.gaps} editable={editable} onSaveReason={saveGapReason}
+                                     onSaveReasons={saveGapReasons} />}
 
         {tab === "diff" && (
           <DiffPanel

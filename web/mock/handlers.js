@@ -38,6 +38,14 @@ export const ROUTES = [
   ["post", "/projects/{pid}/ruleset/items"],
   ["patch", "/projects/{pid}/ruleset/items/{letter}"],
   ["delete", "/projects/{pid}/ruleset/items/{letter}"],
+  // The front door (#132): settings, the prepared cases, a new project and its first draft.
+  ["get", "/settings"],
+  ["get", "/inbox"],
+  ["post", "/projects"],
+  ["post", "/projects/{pid}/import"],
+  ["post", "/projects/{pid}/tender"],
+  ["post", "/projects/{pid}/bids/{tenderer}"],
+  ["post", "/projects/{pid}/ruleset/build"],
 ];
 
 // Mutable state: which tenderers have a finished check, and the jobs started
@@ -46,8 +54,10 @@ export const ROUTES = [
 let state;
 export function resetMockState() {
   // corrections: tenderer -> {"<letter>.<field>": CorrectionRequest}; confirmed: tenderer -> user
+  // created: projects made through the front door; the mock answers for them with the
+  // synthetic tender's own data, as an import of that case would give.
   state = { checked: new Set(["Tenderer_A", "Tenderer_C", "Tenderer_D"]), jobs: new Map(), nextJob: 1,
-            corrections: new Map(), confirmed: new Map() };
+            corrections: new Map(), confirmed: new Map(), created: new Map() };
   rs.resetRulesetStore();
 }
 resetMockState();
@@ -72,7 +82,7 @@ function reply(result) {
 const body = (request) => request.json().catch(() => null);
 
 function projectOr404(pid) {
-  return pid === fx.PID ? null : error(404, "not_found", `project '${pid}' not found`);
+  return pid === fx.PID || state.created.has(pid) ? null : error(404, "not_found", `project '${pid}' not found`);
 }
 
 function escapeXml(s) {
@@ -116,9 +126,54 @@ export function pageSvg(docId, page, highlight) {
 }
 
 export const handlers = [
-  http.get("*/projects", () => HttpResponse.json([fx.project])),
+  http.get("*/projects", () => HttpResponse.json([fx.project, ...state.created.values()])),
 
-  http.get("*/projects/:pid", ({ params }) => projectOr404(params.pid) ?? HttpResponse.json(fx.projectDetail())),
+  http.get("*/projects/:pid", ({ params }) => projectOr404(params.pid)
+    ?? HttpResponse.json({ ...fx.projectDetail(), ...(state.created.get(params.pid) ?? {}) })),
+
+  http.get("*/settings", () => HttpResponse.json(fx.settings)),
+
+  http.get("*/inbox", () => HttpResponse.json(fx.inbox)),
+
+  http.post("*/projects", async ({ request }) => {
+    const b = (await body(request)) ?? {};
+    if (!b.name) return error(422, "validation_failed", "the request did not validate", { errors: [{ loc: ["body", "name"] }] });
+    const dataClass = b.data_class ?? (b.synthetic ? "synthetic" : "confidential");
+    const slug = b.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 40) || "project";
+    const id = `${slug}-${String(state.created.size + 1).padStart(6, "0")}`;
+    const project = { id, name: b.name, created: fx.T0, synthetic: dataClass === "synthetic", data_class: dataClass };
+    state.created.set(id, project);
+    return HttpResponse.json(project);
+  }),
+
+  http.post("*/projects/:pid/import", async ({ params, request }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    const b = (await body(request)) ?? {};
+    const found = fx.inbox.find((c) => c.name === b.path);
+    if (!found) return error(404, "not_found", `inbox folder '${b.path}' not found`);
+    return HttpResponse.json({ tender_pdfs: found.tender_pdfs, bidders: Object.fromEntries(found.bidders.map((t) => [t, 1])) });
+  }),
+
+  ...["*/projects/:pid/tender", "*/projects/:pid/bids/:tenderer"].map((path) =>
+    http.post(path, async ({ params, request }) => {
+      const missing = projectOr404(params.pid);
+      if (missing) return missing;
+      const form = await request.formData();
+      const names = form.getAll("files").map((f) => f.name);
+      if (!names.length || names.some((n) => !n.toLowerCase().endsWith(".pdf"))) {
+        return error(400, "bad_request", "only PDF files are accepted");
+      }
+      return HttpResponse.json({ saved: names });
+    })),
+
+  http.post("*/projects/:pid/ruleset/build", ({ params }) => {
+    const missing = projectOr404(params.pid);
+    if (missing) return missing;
+    const job_id = `job-${String(state.nextJob++).padStart(4, "0")}`;
+    state.jobs.set(job_id, { job_id, kind: "ruleset_build", tenderer: null, state: "running" });
+    return HttpResponse.json({ job_id }, { status: 202 });
+  }),
 
   http.get("*/projects/:pid/ruleset", ({ params, request }) => {
     const missing = projectOr404(params.pid);
@@ -195,7 +250,7 @@ export const handlers = [
     const body = fx.job({ ...j, done: j.state === "done" ? 3 : 1 });
     if (j.state === "running") {
       j.state = "done";
-      state.checked.add(j.tenderer);
+      if (j.tenderer) state.checked.add(j.tenderer);
     }
     return HttpResponse.json(body);
   }),

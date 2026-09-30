@@ -14,11 +14,11 @@ afterAll(() => server.close());
 
 // jsdom has no layout: DocumentViewer scrolls to the cited page and watches
 // which page is visible.
-if (!window.IntersectionObserver) {
+if (typeof window !== "undefined" && !window.IntersectionObserver) {
   window.IntersectionObserver = class {
     observe() {}
     unobserve() {}
     disconnect() {}
   };
 }
-if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = function () {};
+if (typeof Element !== "undefined" && !Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = function () {};

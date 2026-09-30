@@ -1,14 +1,21 @@
 import { useEffect, useState } from "react";
-import { listProjects } from "../api.js";
+import { getSettings, listProjects } from "../api.js";
+import NewProject from "./NewProject.jsx";
 
-export default function ProjectPicker({ onSelect }) {
+export default function ProjectPicker({ onSelect, pollMs }) {
   const [projects, setProjects] = useState(null);
+  const [settings, setSettings] = useState(null);
   const [error, setError] = useState(null);
+  const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     listProjects()
       .then(setProjects)
       .catch((err) => setError(err.message));
+    // An older API without /settings is a local stack that takes uploads.
+    getSettings()
+      .then(setSettings)
+      .catch(() => setSettings({ hosted_demo: false, uploads: true, data_classes: ["synthetic", "redacted_sample", "confidential"] }));
   }, []);
 
   if (error) {
@@ -20,10 +27,33 @@ export default function ProjectPicker({ onSelect }) {
 
   return (
     <div className="project-picker">
-      <h1>Select a project</h1>
-      <p className="project-picker-subtitle">
-        Each project holds the tender documents and the tenderers' offers.
-      </p>
+      {settings?.hosted_demo && (
+        <p className="demo-banner" role="note" data-testid="demo-banner">
+          A demo on synthetic tenders. To use your own documents, run it on a machine you control
+          {settings.source_url && (
+            <>
+              : <a href={`${settings.source_url}#quickstart`} target="_blank" rel="noreferrer">{settings.source_url.replace(/^https?:\/\//, "")}</a>
+            </>
+          )}
+          .
+        </p>
+      )}
+      <div className="project-picker-head">
+        <div>
+          <h1>Select a project</h1>
+          <p className="project-picker-subtitle">
+            Each project holds the tender documents and the tenderers' offers.
+          </p>
+        </div>
+        {!creating && (
+          <button type="button" className="project-picker-new" onClick={() => setCreating(true)}>
+            + New project
+          </button>
+        )}
+      </div>
+      {creating && settings && (
+        <NewProject settings={settings} onCreated={onSelect} onCancel={() => setCreating(false)} pollMs={pollMs} />
+      )}
       <div className="project-grid">
         {projects.map((project) => (
           <button type="button" className="project-card" key={project.id} onClick={() => onSelect(project.id)}>

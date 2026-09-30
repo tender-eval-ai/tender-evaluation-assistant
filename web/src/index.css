@@ -312,6 +312,189 @@
   color: var(--ink-secondary);
 }
 
+.project-picker-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.project-picker-new,
+.new-project .actions button[type="submit"] {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.demo-banner {
+  background: var(--accent-wash);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: var(--ink-secondary);
+  margin: 0 0 20px;
+}
+
+.new-project {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  margin: 0 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.new-project h2 {
+  font-size: 16px;
+  margin: 0;
+  color: var(--ink);
+}
+
+.new-project-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--ink-secondary);
+}
+
+.new-project-field input[type="text"],
+.new-project-field select,
+.new-project-bidder input[type="text"] {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.new-project-source {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.new-project-source legend {
+  color: var(--ink-secondary);
+  margin-bottom: 4px;
+}
+
+.new-project-source > label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.new-project .actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.new-project .actions button[type="button"] {
+  background: none;
+  border: none;
+  color: var(--ink-muted);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.new-project-disabled {
+  color: var(--ink-faint);
+}
+
+.new-project-note {
+  font-size: 12px;
+  color: var(--ink-muted);
+  margin: 0 0 0 22px;
+}
+
+.new-project-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: 22px;
+}
+
+.new-project-bidder {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.new-project-quiet {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 0;
+  text-align: left;
+  font-size: 12px;
+}
+
+.case-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+  margin-left: 22px;
+}
+
+.case-card {
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--surface-faint);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  color: var(--ink);
+}
+
+.case-card-picked {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-wash);
+}
+
+.case-card-title {
+  font-weight: 600;
+  font-size: 13.5px;
+}
+
+.case-card-meta {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.case-card-summary {
+  font-size: 12px;
+  color: var(--ink-secondary);
+  line-height: 1.45;
+}
+
+.case-card-look {
+  margin: 0;
+  list-style: disc;
+  padding-left: 16px;
+  font-size: 12px;
+  color: var(--ink-secondary);
+  line-height: 1.45;
+}
+
 /* ---- Pipeline stepper ---- */
 .pipeline-stepper {
   display: flex;
