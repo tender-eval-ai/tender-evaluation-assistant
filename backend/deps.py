@@ -183,22 +183,76 @@ def _make_cfg(pdir: Path) -> Config:
 
 
 def _safe_name(name: str) -> str:
+    """One path segment made of safe characters. "." and ".." are refused: as a tenderer or
+    file name they would point at the folder itself or its parent."""
     cleaned = re.sub(r"[^A-Za-z0-9._ -]+", "_", Path(name).name).strip()
-    if not cleaned:
+    if not cleaned.strip(". "):
         raise HTTPException(400, f"unusable filename: {name!r}")
     return cleaned
 
 
+PDF_MAGIC = b"%PDF-"
+MAGIC_WITHIN = 1024          # the PDF header may follow up to 1 KB of junk (ISO 32000, 7.5.2)
+CHUNK = 1 << 20
+UPLOAD_PATH = re.compile(r"^/projects/[^/]+/(tender|bids/[^/]+)$")
+
+
+def max_upload_bytes() -> int:
+    """MAX_UPLOAD_MB for one upload request, all its files together; default 512, as nginx's
+    client_max_body_size. The largest real folder seen is one offer of 70 files, 171 MB.
+    `backend.api` enforces it from Content-Length before the body is read: by the time a
+    route runs, Starlette has already spooled every file to disk."""
+    return round(float(os.environ.get("MAX_UPLOAD_MB", "512")) * 1024 * 1024)
+
+
+def _created_dirs(dest: Path) -> list[Path]:
+    """The folders `dest.mkdir(parents=True)` would create, deepest first."""
+    out = []
+    while not dest.exists():
+        out.append(dest)
+        dest = dest.parent
+    return out
+
+
 async def _save_pdfs(files: list[UploadFile], dest: Path) -> list[str]:
-    dest.mkdir(parents=True, exist_ok=True)
-    saved = []
-    for f in files:
-        name = _safe_name(f.filename or "")
+    """All or nothing. Every name is checked before anything is written; each file is then
+    copied in chunks to a `.part` file, and one that does not start as a PDF (its bytes, not
+    its name) is refused (400). Only when every file passed are the `.part` files renamed
+    into place; a refusal removes them, and any folder this upload created, so a refused
+    upload for a new tenderer leaves no empty `bids/<tenderer>/` to be counted as a bidder."""
+    names = [_safe_name(f.filename or "") for f in files]
+    for name in names:
         if not name.lower().endswith(".pdf"):
             raise HTTPException(400, f"only PDF uploads are accepted, got: {name}")
-        (dest / name).write_bytes(await f.read())
-        saved.append(name)
-    return saved
+    created = _created_dirs(dest)
+    dest.mkdir(parents=True, exist_ok=True)
+    staged: list[Path] = []
+    try:
+        for f, name in zip(files, names):
+            partial = dest / f"{name}.part"
+            staged.append(partial)
+            head = b""
+            with partial.open("wb") as out:
+                while chunk := await f.read(CHUNK):
+                    if len(head) < MAGIC_WITHIN:
+                        head += chunk[: MAGIC_WITHIN - len(head)]
+                        if len(head) >= MAGIC_WITHIN and PDF_MAGIC not in head:
+                            break
+                    out.write(chunk)
+            if PDF_MAGIC not in head:
+                raise HTTPException(400, f"{name} is not a PDF: it does not start with {PDF_MAGIC.decode()}")
+    except BaseException:
+        for partial in staged:
+            partial.unlink(missing_ok=True)
+        for folder in created:
+            try:
+                folder.rmdir()
+            except OSError:          # not empty: something else wrote there meanwhile
+                break
+        raise
+    for partial, name in zip(staged, names):
+        partial.replace(dest / name)
+    return names
 
 
 def _bidder_names(pdir: Path) -> set[str]:

@@ -68,7 +68,7 @@ The React UI is built against this file through `web/mock/`, which answers exact
 
 ## Projects and uploads (today's routes, kept)
 
-`POST/GET /projects`, `GET/DELETE /projects/{pid}`, `POST /projects/{pid}/tender`, `POST /projects/{pid}/bids/{t}`, `POST /projects/{pid}/import`, `GET /inbox`, `GET /projects/{pid}/status`, `GET /projects/{pid}/usage` stay as they are. `POST /projects` gains a required `data_class`.
+`POST/GET /projects`, `GET/DELETE /projects/{pid}`, `POST /projects/{pid}/tender`, `POST /projects/{pid}/bids/{t}`, `POST /projects/{pid}/import`, `GET /inbox`, `GET /projects/{pid}/status`, `GET /projects/{pid}/usage` stay as they are. `POST /projects` gains a required `data_class`. An upload is refused whole, before anything is written, when a name is unusable (`.` and `..` included) or not a `.pdf` (`400 bad_request`); a file that does not start as a PDF (`%PDF-` in its first kilobyte) is `400 bad_request`. A request over `MAX_UPLOAD_MB` (default 512, all files together) is `413 too_large` and one without a `Content-Length` is `411 length_required`, both before the body is read. Any refusal leaves none of the request's files, and no folder it created, behind.
 
 ## Routes removed at S5
 
