@@ -103,6 +103,19 @@ class allows, and a real bid is `confidential`, so it stays on local models (the
 5. Actions tab → **deploy-azure** → **Run workflow**. Then open the address `setup.sh` printed and sign in.
 6. Let Nasi in: `bash deploy/azure/add_user.sh <email> --contributor`.
 
+**If the first pass stops at `tender-env` with `ManagedEnvironmentCapacityHeavyUsageError`:** the region has no room for a new Container Apps environment at the moment (centralus refused ours on 2026-09-30). Nothing can be moved, so start again in another region: delete the group, purge the two soft-deleted resources (their names and the region's model quota stay held otherwise), and rerun with another `LOCATION`:
+
+```bash
+az group delete -n tender-demo --yes
+az keyvault list-deleted --query "[].name" -o tsv                   # then, for each tender-kv-…:
+az keyvault purge -n <tender-kv-…> -l <old region>
+az cognitiveservices account list-deleted --query "[].name" -o tsv  # then, for each tender-oai-…:
+az cognitiveservices account purge -g tender-demo -n <tender-oai-…> -l <old region>
+LOCATION=<another region> bash deploy/azure/setup.sh
+```
+
+The rerun makes a new name suffix, since the repository variable that keeps it is only set at the end.
+
 **If the first pass stops at the Azure OpenAI resource:** trial subscriptions have had limits on Azure OpenAI. Either upgrade to pay-as-you-go (the unused credit carries over), or pick a model the region offers (`az cognitiveservices model list -l <region>`) and rerun with `OPENAI_MODEL=… OPENAI_MODEL_VERSION=…`.
 
 ## What it costs

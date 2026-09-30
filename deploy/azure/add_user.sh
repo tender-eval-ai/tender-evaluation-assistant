@@ -8,7 +8,8 @@
 set -euo pipefail
 # A failed command stops the script (set -e); this says where, since a failure inside
 # $(...) can otherwise stop it without a word.
-trap 'echo "$(basename "$0") stopped at line $LINENO (exit $?)" >&2' ERR
+# $? is read first: the $(basename) below would reset it to 0.
+trap 'rc=$?; echo "$(basename "$0") stopped at line $LINENO (exit $rc)" >&2' ERR
 EMAIL=${1:?usage: add_user.sh <email> [--contributor]}
 REPO=${REPO:-tender-eval-ai/tender-evaluation-assistant}
 RG=$(gh variable get AZURE_RESOURCE_GROUP -R "$REPO")
