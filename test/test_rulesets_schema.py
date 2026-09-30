@@ -175,3 +175,16 @@ def test_a_gap_reason_is_attributed_and_updated_by_is_read_back_from_the_server(
     rs = ruleset([item()], gaps=[gap], updated_by="chenyu")
     assert rs.gaps[0].edit.by == "nasi" and rs.updated_by == "chenyu"
     assert RuleSet.model_validate_json(rs.model_dump_json()) == rs
+
+
+@pytest.mark.parametrize("blank_if", ["nil", [], ["nil", ""], ["nil", 3]])
+def test_blank_if_is_a_list_of_answers(blank_if):
+    """A string or an empty entry would be ignored without a word (#117)."""
+    with pytest.raises(ValidationError, match="blank_if"):
+        TemplateRule(id="a.b", check="filled", field="a.b", consequence="critical", params={"blank_if": blank_if})
+    TemplateRule(id="a.b", check="filled", field="a.b", consequence="critical", params={"blank_if": ["nil", "none"]})
+
+
+def test_max_sig_figs_true_is_refused_not_read_as_one():
+    with pytest.raises(ValidationError, match="max_sig_figs"):
+        Normalise(op="round_significant_figures", params={"max_sig_figs": True})

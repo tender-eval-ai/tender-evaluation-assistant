@@ -335,3 +335,92 @@ def test_a_nothing_answer_that_says_more_goes_to_review_not_to_disqualification(
     fields = {"compliance_schedule.document": "Compliance Schedule", "compliance_schedule.non_compliances": answer}
     rows = [f for f in evaluate(item, fields, template)["fields"] if f["field_id"] == "compliance_schedule.non_compliances"]
     assert [c["status"] for c in rows] == [status], rows
+
+
+# ---------------------------------------------------------------- #117: blank_if, slots, decimals
+def _non_compliances(answer, **extra):
+    """The Compliance Schedule's non-compliance rule on one answer, through the real template."""
+    from app.rulesets.library import load_templates
+    from app.rulesets.schema import RuleSetItem
+    template = load_templates()["compliance_schedule"]
+    rules = [r for r in template.rules if r.id in ("compliance_schedule.submitted", "compliance_schedule.no_part_marked_not_complying")]
+    item = RuleSetItem(letter="n", title="Compliance Schedule", part="A", template=template.id, citation=ITEM.citation,
+                       rules=rules, status="verified")
+    fields = {"compliance_schedule.document": "Compliance Schedule", "compliance_schedule.non_compliances": answer, **extra}
+    rows = [f for f in evaluate(item, fields, template)["fields"] if f["field_id"] == "compliance_schedule.non_compliances"]
+    assert len(rows) == 1, rows
+    return rows[0]
+
+
+@pytest.mark.parametrize("answer", ["(Nil)", '"None"', "Nil;", "None,", "-", "—", "N/A.", "NA", "n.a.", "NOT APPLICABLE"])
+def test_a_nothing_answer_is_blank_whatever_its_case_and_marks(answer):
+    assert _non_compliances(answer)["status"] == "pass", answer
+
+
+@pytest.mark.parametrize("answer", ["Item 3: delivery in 45 days", "Nonetheless item 3 is late", "第3項不符合"])
+def test_a_declaration_still_disqualifies_in_any_script(answer):
+    assert _non_compliances(answer)["status"] == "disqualified", "letters of any script are an answer, not a blank"
+
+
+def test_an_answer_that_opens_with_nothing_but_says_more_tells_the_reviewer_how_to_clear_it():
+    row = _non_compliances("(None) noted")
+    assert row["status"] == "needs_review"
+    assert "correct it to Nil if nothing is declared" in row["note"] and "compliance_schedule." not in row["note"]
+
+
+def test_a_persons_corrected_value_is_taken_at_its_word():
+    corrected = {"compliance_schedule.non_compliances_corrected": True}
+    assert _non_compliances("No deviation except item 3", **corrected)["status"] == "disqualified"
+    assert _non_compliances("Nil", **corrected)["status"] == "pass"
+    assert _non_compliances("No deviation except item 3")["status"] == "needs_review", "the model's reading still goes to review"
+
+
+def test_the_engines_internal_wording_never_reaches_a_reviewer():
+    """"NA" on a rule with no not-applicable outcome made the engine say "…needs an explicit
+    <rule>__outcome" (#128 review)."""
+    from app.rulesets.schema import RuleSetItem, TemplateRule
+    rule = TemplateRule(id="x.y_present", check="filled", field="compliance_schedule.delivery_days",
+                        outcomes={"blank": {"status": "disqualified"}, "filled": {"status": "pass"}})
+    item = RuleSetItem(letter="n", title="Compliance Schedule", part="A", citation=ITEM.citation, rules=[rule], status="verified")
+    v = evaluate(item, {"compliance_schedule.delivery_days": "NA"})
+    assert v["fields"][0]["status"] == "needs_review"
+    assert "__outcome" not in v["fields"][0]["note"] and "'NA'" in v["fields"][0]["note"]
+
+
+def test_a_rule_runs_on_the_one_bound_the_tender_sets_and_says_when_it_runs_on_none():
+    """pack_net_weight_in_range reads two optional slots. With only the minimum set, a 100 kg pack
+    used to get no row at all (#117); with neither set the rule is off, and the reasons say so."""
+    from test.rulesets.test_production_templates import bid, verdict
+    base = dict(document="Particulars of Goods Schedule", net_weight_kg="100")
+    fields = {**bid("particulars_of_goods", **base), "offer_to_be_bound.tenderer_name": "Bidder A Ltd"}
+    row = lambda v: next(f for f in v["fields"] if f["field_id"] == "particulars_of_goods.net_weight_kg")  # noqa: E731
+    one_bound = verdict("particulars_of_goods", fields, net_weight_min_kg=500)
+    assert row(one_bound)["status"] == "needs_review" and "at least 500" in row(one_bound)["note"]
+    assert not any("not checked" in r for r in one_bound["reasons"])
+    none_set = verdict("particulars_of_goods", fields)
+    assert "particulars_of_goods.pack_net_weight_in_range" not in none_set["rule_ids"]
+    assert "rule particulars_of_goods.pack_net_weight_in_range not checked: the tender sets no net_weight_max_kg, " \
+           "net_weight_min_kg" in none_set["reasons"]
+
+
+@pytest.mark.parametrize("text, places", [
+    ("2.50%", [2]), ("2,505%", [3]), ("2,505 %", [3]),
+    ("2% on invoices over 12,000", [0, 0]),          # a thousands comma, not a decimal one
+    ("valid to 30.06.2026", []),                     # a date is no figure
+    (0, [0]), ("Nil", []),
+])
+def test_decimal_places_are_counted_as_written(text, places):
+    from app.checks.engine_bridge import _decimal_places
+    assert _decimal_places(text) == places
+
+
+def test_a_range_printed_beside_a_number_is_read_from_the_text_unless_a_person_corrected_it():
+    from app.checks.engine_bridge import normalised
+    from app.rulesets.schema import Normalise, RuleSetItem, TemplateRule
+    steps = [Normalise(op="resolve_range_to_lower_bound"), Normalise(op="round_significant_figures", params={"max_sig_figs": 2})]
+    rule = TemplateRule(id="p.dosage", check="range", field="p.dosage", params={"max": 9}, normalise=steps,
+                        outcomes={"match": {"status": "pass"}, "mismatch": {"status": "needs_review"}})
+    item = RuleSetItem(letter="m", title="Price Schedule", part="C", citation=ITEM.citation, rules=[rule], status="verified")
+    read = {"p.dosage": 5.1, "p.dosage_printed": "5.1 - 4.36 kg/t"}
+    assert normalised(item, read)[0]["p.dosage"] == 4.4, "the lower bound of the printed range, to 2 figures"
+    assert normalised(item, {**read, "p.dosage_corrected": True})[0]["p.dosage"] == 5.1, "a person's figure stands"
