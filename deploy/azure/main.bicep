@@ -50,8 +50,8 @@ param openAiCapacity int = 10
 @description('The gateway stops model calls for a project past this many US dollars a day.')
 param dailyBudgetUsd string = '2'
 
-@description('Optional MODEL_PRICES JSON, so the cost ledger prices the Azure model.')
-param modelPricesJson string = ''
+@description('MODEL_PRICES JSON (USD per 1M tokens), so the cost ledger prices the Azure model. Without it every call costs $0 and the daily budget never stops anything. The default is gpt-4.1-mini on Global Standard, from the Azure Retail Prices API on 2026-09-30; another OPENAI_MODEL needs its own.')
+param modelPricesJson string = '{"gpt-4.1-mini": {"in": 0.40, "cached_in": 0.10, "out": 1.60}}'
 
 var names = {
   identity: '${prefix}-id'

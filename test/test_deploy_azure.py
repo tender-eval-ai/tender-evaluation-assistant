@@ -69,3 +69,12 @@ def test_the_model_can_live_in_another_region_and_every_deploy_says_which():
         assert f'"{name}=' in setup, name
         assert f"optional {name}" in deploy, name
         assert f"{name}: ${{{{ vars.{name} }}}}" in workflow, name
+
+
+def test_the_default_model_has_a_price_so_the_budget_can_stop_it():
+    """app.llm.usage has no Azure prices: without MODEL_PRICES every call cost $0 and
+    LLM_DAILY_BUDGET_USD could never trip (found with a live call, 2026-09-30)."""
+    import json
+    model = re.search(r"param openAiModel string = '([^']+)'", MAIN).group(1)
+    prices = json.loads(re.search(r"param modelPricesJson string = '(.+)'", MAIN).group(1))
+    assert {"in", "out"} <= set(prices[model]), model
