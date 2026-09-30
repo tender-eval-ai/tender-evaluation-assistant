@@ -27,8 +27,12 @@ FROM_KEY = "from the synthetic case's answer key"
 GAP_REASON = ("reviewed for the showcase: obligations on the Authority or during the contract, "
               "not requirements on what the tenderer submits")
 # A value a template needs that the case's tender doesn't state: the builder sets it, and says so.
-CASE_VALUES = {"synthetic_tender": {"tender_closing_date": ("2026-09-30", "the synthetic tender states no closing date; "
-                                                                           "set for the showcase")}}
+CASE_VALUES = {"synthetic_tender": {
+    "tender_closing_date": ("2026-09-30", "the synthetic tender states no closing date; set for the showcase"),
+    "currency": ("HK$", "the synthetic tender takes prices in HK$ or US$ and names no currency to compare them "
+                        "in; set for the showcase"),
+    "exchange_rates": (["US$ 7.8"], "the synthetic tender gives no rate for US$; set for the showcase"),
+}}
 
 
 class Api:
@@ -77,19 +81,18 @@ def review(check: dict, value: dict | None, letter: str, truth: dict) -> tuple[s
 
 
 def settle_inputs(api: Api, pid: str, case: str, truth: dict, log) -> None:
-    """What confirmation still waits for, settled by the builder: a required value the model
-    didn't find is set from the case (CASE_VALUES, or the answer key's estimated quantity), and a
-    value it found but code couldn't verify on the page is confirmed as read. Each with a reason."""
+    """What confirmation and pricing still wait for, settled by the builder: a value the case's
+    tender doesn't state is set from CASE_VALUES on every item that has that slot (the answer
+    key's estimated quantity too, where the model found none), and on an item that still needs
+    input, a value the model read but code couldn't verify is confirmed as read. Each with a reason."""
     known = {**{k: v for k, v in CASE_VALUES.get(case, {}).items()},
              "estimated_quantity": (truth.get("estimated_quantity_kg"), FROM_KEY)}
     ruleset = api.call("GET", f"/projects/{pid}/ruleset")
     for item in ruleset["items"]:
-        if item["status"] != "needs_input":
-            continue
         for name, slot in item["slots"].items():
             if slot.get("value") in (None, "", []) and known.get(name, (None,))[0] is not None:
                 value, why = known[name]
-            elif slot.get("value") not in (None, "", []) and not slot.get("verified"):
+            elif item["status"] == "needs_input" and slot.get("value") not in (None, "", []) and not slot.get("verified"):
                 value, why = slot["value"], "confirmed as the model read it (showcase)"
             else:
                 continue
