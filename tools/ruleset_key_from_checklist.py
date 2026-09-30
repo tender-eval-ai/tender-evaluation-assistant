@@ -1,7 +1,7 @@
 """Convert a checklist answer key into a rule-set answer key's L0 half.
 
-    python tools/ruleset_key_from_checklist.py --checklist <private>/Tender 2.json \
-        --out <private>/Tender 2.ruleset_key.json
+    python tools/ruleset_key_from_checklist.py --checklist <private>/tender_2.json \
+        --out <private>/tender_2.ruleset_key.json
 
 `docs/evals/ruleset_l1_l4.md`: "part and page are enough to score L0 (a checklist key
 can be converted)". This does exactly that conversion and no more - it writes `part`
