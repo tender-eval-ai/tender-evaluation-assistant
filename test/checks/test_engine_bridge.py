@@ -174,6 +174,11 @@ def test_a_rules_normalise_steps_run_in_order_on_a_number_and_are_reported():
          "value": 4.4}], "the range's lower end, then rounded"
     corrected = evaluate(item, {"price_schedule.optimal_dosage": "4.4 kg/t"})
     assert corrected["outcome"] == "pass", "a person's correction arrives as text and is read as its number"
+    unit = TemplateRule(id="price_schedule.dosage_unit", check="unit", field="price_schedule.optimal_dosage",
+                        params={"expected": "kg/t"}, outcomes={"match": {"status": "pass"}, "mismatch": {"status": "needs_review"}})
+    both = item.model_copy(update={"rules": [r, unit]})
+    assert evaluate(both, {"price_schedule.optimal_dosage": "4.36 kg/t"})["outcome"] == "pass", \
+        "rounded to a number, the value keeps its printed unit for the unit check"
     unreadable = evaluate(item, {"price_schedule.optimal_dosage": "see attached"})
     assert unreadable["outcome"] == "needs_review" and "could not normalise" in unreadable["reasons"][0]
     assert "adjustments" not in evaluate(item, {"price_schedule.optimal_dosage": 4.4}), \
