@@ -903,6 +903,74 @@
         "title": "ImportRequest",
         "type": "object"
       },
+      "InboxCase": {
+        "description": "A case folder `POST /projects/{pid}/import` can copy in. `title`, `summary` and `look_for`\ncome from the folder's `case.json` (the synthetic cases carry one), null without it.",
+        "properties": {
+          "bidders": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Bidders",
+            "type": "array"
+          },
+          "look_for": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Look For"
+          },
+          "loose_pdfs": {
+            "title": "Loose Pdfs",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "tender_pdfs": {
+            "title": "Tender Pdfs",
+            "type": "integer"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "name",
+          "tender_pdfs",
+          "bidders",
+          "loose_pdfs"
+        ],
+        "title": "InboxCase",
+        "type": "object"
+      },
       "ItemNote": {
         "description": "Prose attached to an item that is not a check: a definition, what triggers a\nrequirement, a consequence stated in the clause, or a cross-reference.",
         "properties": {
@@ -2064,10 +2132,6 @@
             "title": "Name",
             "type": "string"
           },
-          "status": {
-            "$ref": "#/components/schemas/ProjectStatus",
-            "description": "an object, not a string: read status.state"
-          },
           "synthetic": {
             "default": false,
             "title": "Synthetic",
@@ -2093,48 +2157,6 @@
           "name"
         ],
         "title": "Project",
-        "type": "object"
-      },
-      "ProjectStatus": {
-        "description": "The project's state file. Only the prototype's pipeline moved it past `idle`, and it went at\nS5; the jobs carry the state now (`GET /projects/{pid}/jobs`).",
-        "properties": {
-          "detail": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Detail"
-          },
-          "state": {
-            "default": "idle",
-            "enum": [
-              "idle",
-              "running",
-              "waiting",
-              "done",
-              "error"
-            ],
-            "title": "State",
-            "type": "string"
-          },
-          "updated": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Updated"
-          }
-        },
-        "title": "ProjectStatus",
         "type": "object"
       },
       "ReasonBody": {
@@ -2518,6 +2540,44 @@
           "status"
         ],
         "title": "RuleSetVersion",
+        "type": "object"
+      },
+      "Settings": {
+        "description": "What the UI needs to know about this deployment. On a hosted demo (`hosted_demo`) a\nproject is synthetic and starts from an inbox case: `data_classes` is `[\"synthetic\"]`,\n`uploads` is false, and `source_url` is where to get the code to run it on real documents.",
+        "properties": {
+          "data_classes": {
+            "items": {
+              "$ref": "#/components/schemas/DataClass"
+            },
+            "title": "Data Classes",
+            "type": "array"
+          },
+          "hosted_demo": {
+            "title": "Hosted Demo",
+            "type": "boolean"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "uploads": {
+            "title": "Uploads",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "hosted_demo",
+          "data_classes",
+          "uploads"
+        ],
+        "title": "Settings",
         "type": "object"
       },
       "SlotPatch": {
@@ -2958,7 +3018,7 @@
     },
     "/inbox": {
       "get": {
-        "description": "Case folders available for one-click import (host ./inbox; compose mounts the\nsynthetic tender there too). Convention: <case>/tender/*.pdf + <case>/bids/<tenderer>/.",
+        "description": "Case folders available for one-click import (host ./inbox; compose mounts the\nsynthetic tender there too). Convention: <case>/tender/*.pdf + <case>/bids/<tenderer>/,\nand optionally a case.json with the card the UI shows.",
         "operationId": "list_inbox_inbox_get",
         "parameters": [
           {
@@ -2984,8 +3044,7 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/components/schemas/InboxCase"
                   },
                   "title": "Response List Inbox Inbox Get",
                   "type": "array"
@@ -5863,6 +5922,52 @@
           }
         },
         "summary": "Upload Tender"
+      }
+    },
+    "/settings": {
+      "get": {
+        "operationId": "settings_settings_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settings"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Settings"
       }
     }
   }

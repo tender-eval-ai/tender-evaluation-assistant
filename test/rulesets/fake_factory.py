@@ -3,7 +3,7 @@ RULESET_BUILD_LLM_FACTORY=test.rulesets.fake_factory:factory. Scripted for the s
 tender: (l) is the certificate, (b) the price schedule with its quantity and one addition
 the template lacks (a certificate of analysis), (a) gets one drafted rule, the rest
 nothing."""
-from app.gateway import Gateway
+from app.llm.gateway import Gateway
 from app.rulesets import additions as l3b, match as l1, novel as l3, slots as l2
 from test.fakes import FakeLLM, Rule
 from test.rulesets.test_match import by_item

@@ -14,5 +14,5 @@ by layer:
     pricing.py, currency.py, reports.py   the price summary and the Word reports (S4)
     vendor_check.py     the pipeline of kind "vendor_check" the worker runs
 
-Every model call goes through app.gateway; the FakeLLM stands in for tests.
+Every model call goes through app.llm.gateway; the FakeLLM stands in for tests.
 """

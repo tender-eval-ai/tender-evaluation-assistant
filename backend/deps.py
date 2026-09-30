@@ -13,7 +13,6 @@ import os
 import re
 import secrets
 import threading
-import time
 from pathlib import Path
 
 from fastapi import Header, HTTPException, UploadFile
@@ -22,6 +21,8 @@ DATA_DIR = Path("data")
 PROJECTS = DATA_DIR / "projects"
 API_KEY = ""
 INBOX_DIR = Path("inbox")
+HOSTED_DEMO = False
+SOURCE_URL = ""
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 DEFAULT_USER = "anonymous"
@@ -30,13 +31,18 @@ _runner = None
 
 def configure() -> None:
     """(Re)read the environment into the module's settings."""
-    global DATA_DIR, PROJECTS, API_KEY, INBOX_DIR
+    global DATA_DIR, PROJECTS, API_KEY, INBOX_DIR, HOSTED_DEMO, SOURCE_URL
     DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
     PROJECTS = DATA_DIR / "projects"
     API_KEY = os.environ.get("API_KEY", "")
     # Server-side folder imports: case folders placed here (host ./inbox, mounted
     # read-only in Docker) can be imported into a project with one click.
     INBOX_DIR = Path(os.environ.get("INBOX_DIR", "inbox"))
+    # A hosted demo (the Azure deployment) shows the workflow on synthetic cases only: it
+    # creates synthetic projects and takes no uploads. Real documents are for a machine
+    # the client controls, set up from SOURCE_URL.
+    HOSTED_DEMO = os.environ.get("HOSTED_DEMO", "").strip().lower() in ("1", "true", "yes")
+    SOURCE_URL = os.environ.get("SOURCE_URL", "").strip()
 
 
 configure()
@@ -111,15 +117,6 @@ def _project_dir(pid: str) -> Path:
     if not PID_RE.fullmatch(pid) or not pdir.is_dir():
         raise HTTPException(404, f"project '{pid}' not found")
     return pdir
-
-
-def _set_status(pdir: Path, state: str, detail: str = "") -> None:
-    _write_json(pdir / "status.json", {"state": state, "detail": detail, "updated": time.time()})
-
-
-def _get_status(pdir: Path) -> dict:
-    path = pdir / "status.json"
-    return _read_json(path) if path.is_file() else {"state": "idle", "detail": ""}
 
 
 def data_class_of(pdir: Path) -> str:

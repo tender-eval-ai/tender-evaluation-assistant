@@ -16,7 +16,7 @@ from typing import Type, TypeVar
 from openai import APIConnectionError, APIStatusError, BadRequestError, OpenAI, OpenAIError
 from pydantic import BaseModel, ValidationError
 
-from .config import Config
+from app.config import Config
 from .gcp import ADCToken, is_vertex
 from .usage import UsageLedger, load_prices
 
