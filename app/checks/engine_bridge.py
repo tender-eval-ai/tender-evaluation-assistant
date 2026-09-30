@@ -309,9 +309,18 @@ def normalised(item: RuleSetItem, fields: dict) -> tuple[dict, list[dict], dict[
     out, adjustments, failed = dict(fields), [], {}
     for rule in item.rules:
         empty = rule.params.get("blank_if")
-        if isinstance(empty, list) and str(out.get(rule.field) or "").strip().rstrip(".").lower() in \
-                {str(w).lower() for w in empty}:
+        if not isinstance(empty, list):
+            continue
+        said = str(out.get(rule.field) or "").strip().rstrip(".").lower()
+        words = [str(w).lower() for w in empty]
+        if said in words:
             out[rule.field] = None             # "Nil" under non-compliances declares none
+        elif opened := next((w for w in words if re.match(rf"{re.escape(w)}(?![a-z0-9])", said)), None):
+            # "None noted", "Nil (none)", "No deviation from the specification": most likely
+            # nothing declared, but not in so many words. A reviewer decides; it is neither a
+            # blank (a pass) nor a declaration (which can disqualify) on the wording alone.
+            failed[rule.id] = ("unstated", f"{rule.field} reads {out.get(rule.field)!r}, which opens with "
+                                           f"{opened!r} but says more: a reviewer decides whether anything is declared")
     for rule in item.rules:
         value = out.get(rule.field)
         if not rule.normalise or value is None:
