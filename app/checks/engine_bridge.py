@@ -309,6 +309,10 @@ def normalised(item: RuleSetItem, fields: dict) -> tuple[dict, list[dict], dict[
             failed[rule.id] = ("unstated", f"could not normalise: {exc}")
             continue
         if new != value:
+            if isinstance(value, str) and out.get(f"{rule.field}_printed") is None:
+                # The text stays what a person reads and what a unit check looks in: "4.4 kg/t"
+                # is the number 4.4 to the checks that compare, and still in kg/t.
+                out[f"{rule.field}_printed"] = value
             out[rule.field] = new
             adjustments.append({"rule_id": rule.id, "field_id": rule.field,
                                 "operations": [s.op for s in rule.normalise], "from": value, "value": new})
