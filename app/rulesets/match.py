@@ -3,14 +3,16 @@
 One call per item, with the library's templates as a closed menu; code checks that the
 answer is a menu entry, so the model cannot invent a template. A match copies the
 template's rules onto the item (the rule set stays self-contained when a template later
-changes) and opens one slot per SlotSpec for L2 to fill. No templates: no call, the item
+changes) and opens one slot per SlotSpec for L2 to fill. The form's presence rule takes its
+tier from the item's Part (`tiered_by_part`). No templates: no call, the item
 stays as L0 left it (L3 drafts its rules)."""
 from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
 from app.rulesets.nodes import NodeIndex
-from app.rulesets.schema import ItemStatus, RuleSetItem, SlotValue, Template
+from app.rulesets.novel import outcomes_for
+from app.rulesets.schema import Consequence, ItemNote, ItemStatus, Part, RuleSetItem, SlotValue, Template, TemplateRule
 
 PROMPT_VERSION = "match-v1"
 CLAUSE_CHARS = 600
@@ -43,6 +45,33 @@ def describe(item: RuleSetItem, index: NodeIndex) -> str:
     return "\n".join(lines)
 
 
+# What a missing form means is the schedule's to say, by the Part the tender puts it in.
+PART_TIER = {Part.A: Consequence.CRITICAL, Part.B: Consequence.MANDATORY_ON_REQUEST, Part.C: Consequence.DISCRETIONARY}
+
+
+def tiered_by_part(rules: list[TemplateRule], template: Template, part: Part) -> tuple[list[TemplateRule], list[ItemNote]]:
+    """J12 question 1 (#114): the form's presence rule, `<form>.submitted`, takes its tier
+    from the item's Part (A critical, B mandatory on request, C discretionary). The same
+    certificate is Part A in one tender and Part B in another, so the template can't fix it.
+    Only that rule, and only when it has no condition and no outcomes of its own: every
+    other rule keeps the template's tier, so a blank fax number in a Part A item doesn't
+    disqualify. A tier the template lacks is never named (it would silently drop the rule);
+    the rule gets the Part's outcomes as its own instead, as a novel rule does."""
+    out, notes = [], []
+    for rule in rules:
+        if rule.id == f"{template.id}.submitted" and rule.condition is None and rule.outcomes is None:
+            tier = PART_TIER[part]
+            if tier in template.consequences:
+                rule = rule.model_copy(update={"consequence": tier})
+                said = tier.value.replace("_", " ")
+            else:
+                rule = rule.model_copy(update={"consequence": None, "outcomes": outcomes_for(part)})
+                said = f"Part {part.value}'s own outcomes, since the template has no such tier"
+            notes.append(ItemNote(kind="consequence", text=f"{rule.id}: a missing form is judged as Part {part.value} says ({said})"))
+        out.append(rule)
+    return out, notes
+
+
 def match_item(item: RuleSetItem, templates: dict[str, Template], index: NodeIndex, llm) -> RuleSetItem:
     if not templates:
         return item
@@ -56,10 +85,14 @@ def match_item(item: RuleSetItem, templates: dict[str, Template], index: NodeInd
     # not about this tender. An item keeps a condition it already has (locate may have
     # read a tender-specific one off the schedule row); otherwise it takes the form's.
     # A note the item already carries is not added twice, so matching again is harmless.
-    return item.model_copy(update={"template": chosen, "rules": [r.model_copy(deep=True) for r in template.rules],
+    rules, tier_notes = tiered_by_part([r.model_copy(deep=True) for r in template.rules], template, item.part)
+    notes = list(item.notes)
+    for note in [*(n.model_copy(deep=True) for n in template.notes), *tier_notes]:
+        if note not in notes:
+            notes.append(note)
+    return item.model_copy(update={"template": chosen, "rules": rules,
                                    "slots": {s.name: SlotValue() for s in template.slots},
-                                   "notes": list(item.notes) + [n.model_copy(deep=True) for n in template.notes
-                                                                if n not in item.notes],
+                                   "notes": notes,
                                    "condition": item.condition or template.condition,
                                    "status": status})
 
