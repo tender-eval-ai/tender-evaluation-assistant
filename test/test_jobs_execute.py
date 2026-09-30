@@ -89,6 +89,12 @@ def test_only_transient_errors_are_retried_and_only_up_to_the_limit():
     assert policy.get_retry_decision(exception=RuntimeError("permanent"), job=SimpleNamespace(attempts=0)) is None
 
 
+def test_a_transient_error_waits_longer_each_time_past_a_providers_minute():
+    """A 429 on a token-per-minute limit clears only when the minute rolls over."""
+    waits = [TransientRetry(base=10).wait(n) for n in range(MAX_ATTEMPTS)]
+    assert waits == [10, 20, 40, 80, 120] and sum(waits[:3]) > 60
+
+
 def test_every_migration_has_an_up_and_a_down_section():
     paths = db.files()
     assert [p.name for p in paths][:3] == ["001_jobs.sql", "002_gateway.sql", "003_api.sql"]

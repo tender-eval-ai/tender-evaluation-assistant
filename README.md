@@ -339,7 +339,7 @@ offer once, at triage.
 Stated, not fixed (checklist J11, item 13):
 
 - **Sign-in.** There is no single sign-on with a client's own identity provider (OIDC). The demo signs people in with Azure in front of the app, and the API trusts one shared key. There are no per-user roles yet; they come after the S4 run (J11, item 12).
-- **The model budget.** The gateway checks the daily budget before a call and adds the cost after it, so workers running at once can go slightly over it. A failed provider call is not retried with a growing wait.
+- **The model budget.** The gateway checks the daily budget before a call and adds the cost after it, so workers running at once can go slightly over it. A rate-limited job is retried with a growing wait, but a single call is not.
 - **Type checking.** Ruff and the tests run in CI, but no type checker does.
 - **Metrics and alerts.** The Azure demo writes its logs to Log Analytics. There are no dashboards or alerts.
 - **Stages III to V.** Technical marking and the combined score aren't built.

@@ -37,12 +37,22 @@ def make_app(dsn: str | None = None) -> App:
 
 
 class TransientRetry(BaseRetryStrategy):
-    """Retry only errors marked transient (a provider 429 or a timeout), up to
-    MAX_ATTEMPTS, half a second apart. Anything else ends the job, visible as failed."""
+    """Retry only errors marked transient (a provider 429 or a timeout), up to MAX_ATTEMPTS,
+    with a growing wait: JOBS_RETRY_BASE seconds (default 10), doubled each time, at most two
+    minutes, so the retries outlast a provider's one-minute token window. Half a second apart,
+    four checks against a 10K-token-a-minute deployment all died inside the same minute
+    (2026-09-30). Anything else ends the job, visible as failed."""
+
+    def __init__(self, base: float | None = None):
+        self.base = float(os.environ.get("JOBS_RETRY_BASE", 10.0)) if base is None else base
+
+    def wait(self, attempts: int) -> float:
+        """Seconds before the next try, after `attempts` tries so far."""
+        return min(120.0, self.base * 2 ** attempts)
 
     def get_retry_decision(self, *, exception: BaseException, job) -> RetryDecision | None:
         if getattr(exception, "transient", False) and job.attempts < MAX_ATTEMPTS:
-            return RetryDecision(retry_in={"seconds": 0.5})
+            return RetryDecision(retry_in={"seconds": self.wait(job.attempts)})
         return None
 
 
