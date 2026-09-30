@@ -123,7 +123,7 @@ flowchart LR
 
 🔵 a model reads &nbsp;·&nbsp; 🟢 code decides &nbsp;·&nbsp; 🟡 a person decides. The parser, the
 rules engine, pricing and the reports make no model call. Every model call goes through
-one gateway (`app/gateway.py`), which applies the project's data class (confidential
+one gateway (`app/llm/gateway.py`), which applies the project's data class (confidential
 text never leaves the local network), a cache, a daily budget and a rate limit.
 
 | Runs as | What it is |
@@ -202,28 +202,25 @@ Every action is pinned by commit, and the workflow token is read-only unless a j
 ```
 app/                the library the API and the worker share
   config.py         env + model configuration (the cloud ⇄ local vLLM swap point)
-  llm.py            OpenAI-compatible client: fallback chains, JSON-validated chat, OCR
+  db.py             plain-SQL migrations (migrations/NNN_name.sql, up and down sections)
   ingest.py         PDF classification (text vs scan), text extraction, VLM OCR + cache
-  schemas.py        pydantic models shared by pricing and the reports
-  pricing.py        deterministic price engine (both Price Summary formats)
-  gcp.py            Vertex AI auth: OAuth token provider over Application Default Credentials
-  usage.py          token / call / $ accounting per model call, the price table
+  llm/              every model call: the OpenAI-compatible client (fallback chains, JSON-validated chat,
+                    OCR), the gateway every pipeline call goes through (endpoint policy by data class,
+                    cache, per-project daily budget, shared rate limiter; its Postgres backends), token
+                    and $ accounting with the price table, Vertex AI auth
   parsing/          the tender parser (L0): PDF loading, the layout-model node tree, the document
                     split, and the citation resolver; the only code that imports PyMuPDF
-  checks/           the vendor check for every form of a bid, layer by layer: V0 page rendering, V1 triage,
-                    V2 resolve, V3 extract (the form menu in forms.py), V4 verify, V5 the bounded search
-                    agent, the engine bridge; reviewer corrections, pricing in the tender's currency, the
-                    Word reports; the `vendor_check` pipeline
-  gateway.py        the LLM gateway every pipeline call goes through: endpoint policy by data class,
-                    cache, per-project daily budget, shared rate limiter (gateway_pg.py: the Postgres backends)
-  jobs/             the run queue and check worker (Procrastinate on Postgres): step pipelines with
-                    per-step checkpoints, pause/resume, results + corrections, `python -m app.jobs.worker`
-  db.py             plain-SQL migrations (migrations/NNN_name.sql, up and down sections)
   rulesets/         the rule-set builder (the `ruleset_build` pipeline): locate (L0), match to a template
                     (L1), fill its slots (L2), draft novel rules and additions (L3), coverage gaps (L4);
                     the template library (templates/), editing, versions and diffs; the shared contract
                     in schema.py, changed only by a `contract` PR
+  checks/           the vendor check for every form of a bid, layer by layer: V0 page rendering, V1 triage,
+                    V2 resolve, V3 extract (the form menu in forms.py), V4 verify, V5 the bounded search
+                    agent, the engine bridge; reviewer corrections, pricing in the tender's currency (over
+                    the deterministic price engine), the Word reports; the `vendor_check` pipeline
   engine/           Nasi's rule engine, ported unchanged from Bidding-AI-expert@7e8e273
+  jobs/             the run queue and check worker (Procrastinate on Postgres): step pipelines with
+                    per-step checkpoints, pause/resume, results + corrections, `python -m app.jobs.worker`
 backend/            FastAPI service: the routes of docs/api_contract.md, + Dockerfile
 web/                the review UI (React, Vite): Rules, Stage I/II, Scoring, Report; nginx image for compose
 docs/               the API contract and its OpenAPI snapshot, decisions/ (orchestrator, PDF licences, tender

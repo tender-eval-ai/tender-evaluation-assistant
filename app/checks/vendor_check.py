@@ -19,7 +19,7 @@ from app.checks.forms import FORMS, form_for
 from app.checks.resolve import resolve_form
 from app.checks.verify import text_reader, verify_fields
 from app.config import Config
-from app.gateway import Gateway, GatewaySettings, MemoryCache
+from app.llm.gateway import Gateway, GatewaySettings, MemoryCache
 from app.jobs import registry
 from app.jobs.models import Context, Pause, Pipeline, Step
 from app.rulesets.schema import Part, RuleSet
@@ -38,14 +38,14 @@ def data_class_of(pdir: Path) -> str:
 
 
 def make_llm(pdir: Path, project: str, tenderer: str) -> Gateway:
-    """The real thing: app.llm.LLM behind the gateway, with the shared Postgres
+    """The real thing: app.llm.client.LLM behind the gateway, with the shared Postgres
     backends when DATABASE_URL is set and in-memory ones otherwise."""
-    from app.llm import LLM
+    from app.llm.client import LLM
     cfg = Config()
     cfg.cache_dir = pdir / "work" / "cache"
     dsn = os.environ.get("DATABASE_URL")
     if dsn:
-        from app.gateway_pg import PgBudget, PgCache, PgRateLimiter
+        from app.llm.gateway_pg import PgBudget, PgCache, PgRateLimiter
         cache, limiter, budget = PgCache(dsn), PgRateLimiter(dsn), PgBudget(dsn)
     else:
         cache, limiter, budget = MemoryCache(), None, None

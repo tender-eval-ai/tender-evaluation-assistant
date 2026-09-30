@@ -16,7 +16,7 @@ from pathlib import Path
 from pypdf import PdfReader
 
 from .config import Config
-from .llm import LLM
+from .llm.client import LLM
 
 # Average extractable chars/page below which a PDF is treated as scanned.
 SCAN_THRESHOLD = 100

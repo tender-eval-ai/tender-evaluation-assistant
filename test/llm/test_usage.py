@@ -1,4 +1,4 @@
-"""Token/cost accounting (app/usage.py), Vertex auth (app/gcp.py) and the case
+"""Token/cost accounting (app/llm/usage.py), Vertex auth (app/llm/gcp.py) and the case
 scorer: prices applied per served model, Gemini thinking tokens billed as output,
 DeepSeek cache hits priced separately, per-bid scopes across threads, fallbacks
 counted, files summarised into $ per bid — all offline."""
@@ -8,8 +8,8 @@ import threading
 from types import SimpleNamespace
 
 from app.config import Config
-from app.gcp import ADCToken, is_vertex
-from app.usage import UsageLedger, cost_usd, load_prices, tokens_of
+from app.llm.gcp import ADCToken, is_vertex
+from app.llm.usage import UsageLedger, cost_usd, load_prices, tokens_of
 
 VERTEX = "https://us-central1-aiplatform.googleapis.com/v1/projects/p/locations/us-central1/endpoints/openapi"
 
@@ -41,7 +41,7 @@ def test_model_prices_env_override():
     assert cost_usd("mine", {"prompt_tokens": 1_000_000, "cached_tokens": 0, "output_tokens": 0}, prices) == 1.0
     cfg = Config()
     cfg.model_prices_json = json.dumps({"x": {"in": 5, "out": 5}})
-    from app.llm import LLM
+    from app.llm.client import LLM
     assert LLM(cfg).usage.prices["x"] == {"in": 5, "out": 5}
 
 
@@ -93,8 +93,8 @@ def test_vertex_entries_take_no_key_but_a_fresh_token_per_call(monkeypatch):
     assert cfg.key_for(VERTEX) is None                                  # never the AI Studio key
     assert cfg.key_for("https://generativelanguage.googleapis.com/v1beta/openai") == "ai-studio-key"
 
-    from test.test_llm import Out, RecordingClients
-    from app.llm import LLM
+    from test.llm.test_client import Out, RecordingClients
+    from app.llm.client import LLM
     cfg.text_model, cfg.text_fallbacks = "google/gemini-2.5-flash@" + VERTEX, []
     creds = FakeCreds(expiry=None)
     llm = LLM(cfg, token_provider=ADCToken(creds))

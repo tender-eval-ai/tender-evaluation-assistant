@@ -23,7 +23,7 @@ browser ─ Entra ID sign-in ─ Container Apps app (scales to zero, one replica
 
 From the raw PDF a tenderer submitted to a verdict per schedule item under the confirmed rule set. Every step
 names the Azure service it uses. The API and the worker are two containers of the same Container Apps app. Every
-model call goes through the gateway (`app/gateway.py`) inside the worker, never straight to Azure OpenAI.
+model call goes through the gateway (`app/llm/gateway.py`) inside the worker, never straight to Azure OpenAI.
 
 ```mermaid
 sequenceDiagram
