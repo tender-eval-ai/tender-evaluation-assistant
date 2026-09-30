@@ -17,6 +17,9 @@
 # Then it sets the repository variables and the azure-demo environment the workflow uses.
 # No secret is printed or passed on a command line.
 set -euo pipefail
+# A failed command stops the script (set -e); this says where, since a failure inside
+# $(...) can otherwise stop it without a word.
+trap 'echo "$(basename "$0") stopped at line $LINENO (exit $?)" >&2' ERR
 cd "$(dirname "$0")/../.."
 
 REPO=${REPO:-tender-eval-ai/tender-evaluation-assistant}
@@ -30,16 +33,24 @@ SUBSCRIPTION=$(az account show --query id -o tsv)
 TENANT=$(az account show --query tenantId -o tsv)
 ME=$(az ad signed-in-user show --query id -o tsv)
 
+echo "== resource providers (a new subscription has none of these registered)"
+for p in Microsoft.App Microsoft.OperationalInsights Microsoft.DBforPostgreSQL Microsoft.CognitiveServices \
+         Microsoft.KeyVault Microsoft.Storage Microsoft.ManagedIdentity; do
+    [ "$(az provider show -n "$p" --query registrationState -o tsv)" = Registered ] ||
+        az provider register -n "$p" --wait -o none
+done
+
 # The suffix makes the global names unique; the repository variable keeps it stable.
 SUFFIX=$(gh variable get AZURE_NAME_SUFFIX -R "$REPO" 2>/dev/null || true)
-[ -n "$SUFFIX" ] || SUFFIX=$(LC_ALL=C tr -dc 'a-z0-9' </dev/urandom | head -c 6)
+# openssl, not `tr </dev/urandom | head`: under pipefail, tr's broken pipe stopped the script.
+[ -n "$SUFFIX" ] || SUFFIX=$(openssl rand -hex 3)
 KV="${PREFIX}-kv-${SUFFIX}"
 PG="${PREFIX}-pg-${SUFFIX}"
 ID="${PREFIX}-id"
 
 retry() { for _ in 1 2 3 4 5 6 7 8 9 10 11 12; do "$@" && return 0; sleep 10; done; return 1; }
 assign() {  # object id, role, scope, principal type
-    az role assignment list --assignee "$1" --role "$2" --scope "$3" --query "[0].id" -o tsv | grep -q . ||
+    [ -n "$(az role assignment list --assignee "$1" --role "$2" --scope "$3" --query "[0].id" -o tsv)" ] ||
         az role assignment create --assignee-object-id "$1" --assignee-principal-type "$4" \
             --role "$2" --scope "$3" -o none
 }
@@ -92,13 +103,13 @@ az ad sp show --id "$SIGNIN_ID" -o none 2>/dev/null || az ad sp create --id "$SI
 SIGNIN_SP=$(az ad sp show --id "$SIGNIN_ID" --query id -o tsv)
 az ad sp update --id "$SIGNIN_SP" --set appRoleAssignmentRequired=true
 GRAPH=https://graph.microsoft.com/v1.0
-az rest --method GET --uri "$GRAPH/servicePrincipals/$SIGNIN_SP/appRoleAssignedTo" \
-    --query "value[?principalId=='$ME'].id" -o tsv | grep -q . ||
+[ -n "$(az rest --method GET --uri "$GRAPH/servicePrincipals/$SIGNIN_SP/appRoleAssignedTo" \
+    --query "value[?principalId=='$ME'].id" -o tsv)" ] ||
     az rest --method POST --uri "$GRAPH/servicePrincipals/$SIGNIN_SP/appRoleAssignedTo" -o none --body \
         "{\"principalId\":\"$ME\",\"resourceId\":\"$SIGNIN_SP\",\"appRoleId\":\"00000000-0000-0000-0000-000000000000\"}"
 if ! has_secret sign-in-secret; then
     SIGNIN_SECRET=$(az ad app credential reset --id "$SIGNIN_ID" --append --display-name container-apps \
-        --years 1 --query password -o tsv 2>/dev/null)
+        --years 1 --query password -o tsv 2>/dev/null) || { echo "could not create the sign-in secret" >&2; exit 1; }
     put_secret sign-in-secret "$SIGNIN_SECRET"
     unset SIGNIN_SECRET
 fi
@@ -110,7 +121,7 @@ GH_APP=$(az ad app list --display-name "$GH_NAME" --query "[0].appId" -o tsv)
 az ad sp show --id "$GH_APP" -o none 2>/dev/null || az ad sp create --id "$GH_APP" -o none
 GH_SP=$(az ad sp show --id "$GH_APP" --query id -o tsv)
 SUBJECT="repo:${REPO}:environment:azure-demo"
-az ad app federated-credential list --id "$GH_APP" --query "[?subject=='$SUBJECT'].name" -o tsv | grep -q . ||
+[ -n "$(az ad app federated-credential list --id "$GH_APP" --query "[?subject=='$SUBJECT'].name" -o tsv)" ] ||
     az ad app federated-credential create --id "$GH_APP" -o none --parameters \
         "{\"name\":\"azure-demo\",\"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"$SUBJECT\",\"audiences\":[\"api://AzureADTokenExchange\"]}"
 retry assign "$GH_SP" Contributor "$RG_ID" ServicePrincipal

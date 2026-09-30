@@ -1,10 +1,11 @@
 """The flat-key vocabulary of an extracted item, shared by extraction (V3), verification
 (V4), the engine bridge, the store and the results route: a value under `<prefix>.<name>`
 and, beside it, `_redacted`, `_confidence`, `_page` (the citation), `_quote` (the text as
-found on the page's text layer) `_verification` (V4's record) and, beside a number, `_printed` (the value as printed)."""
+found on the page's text layer) `_verification` (V4's record), beside a number `_printed` (the value as printed), and
+`_corrected` once a person has corrected the value (the store sets it when deciding)."""
 from __future__ import annotations
 
-META_SUFFIXES = ("_redacted", "_confidence", "_page", "_quote", "_verification", "_printed")
+META_SUFFIXES = ("_redacted", "_confidence", "_page", "_quote", "_verification", "_printed", "_corrected")
 
 
 def is_meta(key: str) -> bool:

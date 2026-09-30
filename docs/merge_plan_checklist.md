@@ -55,12 +55,12 @@ Last updated: 2026-09-20 (Chenyu).
 | J4 | S4 review: corrections and confirmation in the UI | done | — |
 | J5 | S4 review flow in a browser (Playwright) | done | — |
 | J6 | Re-evaluate against a confirmed rule-set version | done | — |
-| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); fields into `forms.py` (e2b3189); templates in review (J12: #100, #99); then both: the L1-L4 eval on the synthetic case and the three tenders |
+| J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); fields into `forms.py` (e2b3189); templates merged (J12: #100, #99); next, both: the L1-L4 eval on the synthetic case and the three tenders |
 | J8 | S5: README results, who built what, CITATION.cff | part done | licence (#103), diagram (#105), GIF and screens (#107) done; the demo (G4) open |
 | J9 | S4 check: the checker scored against one answer key per bid (issue #69) | agreed | Tender 3 undecided; optional blind spot check by Nasi |
 | J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | agreed | — (removed in the S5 legacy-removal PR) |
-| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1, 3, 4, 5, 6 done (#90, #96, #94, #95, #93); 2, 7, 8 Chenyu; 9–11 Nasi |
-| J12 | The production templates: one per form, every rule-file rule placed; #76 points 2 and 3; two questions (tier by Part, conditions) | proposed | Chenyu: review #100 (contract, merge first) then #99; a position on points 2 and 3 and questions 1 and 2 |
+| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1, 3–6 and 9–11 done (#90, #96, #94, #95, #93; #104, 6a19319); 2, 7, 8 Chenyu |
+| J12 | The production templates: one per form, every rule-file rule placed; #76 points 2 and 3; two questions (tier by Part, conditions) | done (#100, #99); questions agreed | Chenyu: question 1 in #114 |
 
 ## A. Corrections to the plan
 
@@ -646,14 +646,14 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   2. A reviewer answers each condition once per bid in the Stage window, and the bridge drops the rules whose condition does not hold. The engine's `exclude_rules` already does the dropping.
 - Also: with these templates in compose, the synthetic case builds against them instead of the two test templates, so its L1-L4 numbers are rerun at the J7 eval.
 - Chenyu's review (2026-09-29): changes requested on both. Positions: point 2, one home, agreed; point 3, `rows_left_blank` only as a stop-gap, its "none empty" reading a reviewer's call; question 1, yes but narrower: only each form's presence rule, and never to a tier its template lacks (Chenyu does `match.py` once #99 lands); question 2, a stated limitation once the noise is cut.
-- Status (2026-09-30): every point of both reviews fixed and pushed; waiting on Chenyu's re-review, #100 first.
+- Status (2026-09-30): every point of both reviews fixed and pushed; #100 and then #99 merged (2026-09-30).
   - #100: normalise in the bridge with checked params; `adjustments` only when non-empty; a blank reviewer field always dormant, with a row; `max_decimals` counts every figure and passes "Nil"; the nits; a normalised value keeps its printed text.
   - #99: every template defines the three Part tiers and a `submitted` rule, and a rule naming a missing tier blocks confirmation (`unknown_tier`) and is a reviewer's call in a verdict, so the stored synthetic rule set disqualifies Tenderer C again (tested with the production library); reviewer checks key on a filled field; the Compliance Schedule's Parts must not be marked as not complying and "Nil" under non-compliances declares none; the plant-address match is dropped; a rule on an optional slot left empty does not apply; `params/` and classification reports are git-ignored and the tool refuses a path inside the repository; an opt-in test checks no value from a real params file is in a template.
   - Still to do at the J7 eval: regenerate `ruleset_key.json` and `ruleset_all_items.json` against the production templates (after #98).
   - The Tender 1 params file is outside git and still to be moved beside the answer keys.
 - Nasi (2026-09-29): proposed. #76 point 2: each document is checked where the tender asks for it. #76 point 3: `rows_left_blank` in place of a per-tender row list, since the list would need the rule set before extraction runs; if you prefer the list, the field goes. Question 1: option 1. Question 2: option 1 for S5; option 2 after, if there is time.
 - Chenyu:
-- Decision:
+- Decision: agreed (2026-09-30), from the two positions above: point 2, one home per document; point 3, `rows_left_blank` as a stop-gap, its "none empty" reading a reviewer's call; question 1, the narrower version, only each form's presence rule and never to a tier its template lacks (#114, Chenyu); question 2, a stated limitation for S5 (J11 item 13), a reviewer answering each condition after S5 if there is time.
 
 ## Verified facts (no action needed)
 
