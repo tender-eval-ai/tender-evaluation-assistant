@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import os
 
-from app.gateway import Gateway, GatewaySettings
-from app.gateway_pg import PgRateLimiter
+from app.llm.gateway import Gateway, GatewaySettings
+from app.llm.gateway_pg import PgRateLimiter
 from app.jobs import registry
 from app.jobs.models import Context, Pause, Pipeline, Step
 from test.jobs import knobs

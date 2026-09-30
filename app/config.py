@@ -77,14 +77,14 @@ class Config:
     # being truncated silently (what Ollama does by default — wrong answers, no signal).
     context_tokens: int | None = field(
         default_factory=lambda: int(os.environ["LLM_CONTEXT_TOKENS"]) if os.environ.get("LLM_CONTEXT_TOKENS") else None)
-    # USD per 1M tokens, overriding app.usage.DEFAULT_PRICES: MODEL_PRICES='{"m": {"in":
+    # USD per 1M tokens, overriding app.llm.usage.DEFAULT_PRICES: MODEL_PRICES='{"m": {"in":
     # 0.3, "out": 2.5, "cached_in": 0.01}}'. Recorded next to every published cost.
     model_prices_json: str | None = field(default_factory=lambda: os.environ.get("MODEL_PRICES"))
 
     def key_for(self, base_url: str) -> str | None:
         """API key for an endpoint, selected by hostname — lets fallback-chain entries
         span providers with different credentials. Vertex AI (aiplatform.googleapis.com)
-        takes no key at all: the client fetches OAuth tokens through app.gcp.ADCToken —
+        takes no key at all: the client fetches OAuth tokens through app.llm.gcp.ADCToken —
         so it must not fall through to the GEMINI_API_KEY (AI Studio) rule below. Any
         other host — local Ollama, the client's vLLM — gets a non-empty placeholder and
         never a real credential."""

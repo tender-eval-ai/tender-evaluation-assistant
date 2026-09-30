@@ -1,4 +1,4 @@
-"""FakeLLM: a scripted stand-in for `app.llm.LLM`, used by every layer test and by the
+"""FakeLLM: a scripted stand-in for `app.llm.client.LLM`, used by every layer test and by the
 orchestrator harness.
 
 Why a fake. A test on the real class costs money, takes seconds per call, needs a key,
@@ -42,7 +42,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from app.usage import UsageLedger
+from app.llm.usage import UsageLedger
 
 
 class UnexpectedCall(AssertionError):
@@ -113,7 +113,7 @@ class FakeLLM:
         self.calls: list[Call] = []
         self._lock = threading.Lock()
 
-    # ---------------------------------------------------------------- same surface as app.llm.LLM
+    # ---------------------------------------------------------------- same surface as app.llm.client.LLM
     def scope(self, name: str):
         return self.usage.scoped(name)
 

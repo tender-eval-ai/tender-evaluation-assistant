@@ -54,7 +54,7 @@ def facts_for(truth: dict | None) -> list[tuple[str, str]]:
 
 
 def run_chain(label: str, entry: str, pdfs: list[Path], out: Path) -> dict:
-    from app.llm import LLM
+    from app.llm.client import LLM
     cfg = Config()
     cfg.vision_model, cfg.vision_fallbacks = entry, []
     cfg.cache_dir = out / "cache" / label

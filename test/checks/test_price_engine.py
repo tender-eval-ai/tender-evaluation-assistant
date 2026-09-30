@@ -1,8 +1,7 @@
 """The price engine is the part that must never be wrong — pure deterministic math."""
 import pytest
 
-from app.pricing import compute_price_rows, round_2sf
-from app.schemas import BidExtraction, BidPrice, PriceRow, PriceScheme
+from app.checks.price_engine import BidExtraction, BidPrice, PriceRow, PriceScheme, compute_price_rows, round_2sf
 
 
 def bid(name, unit_price=None, dosage=None, quoted_total=None, currency="HKD", fx=None):

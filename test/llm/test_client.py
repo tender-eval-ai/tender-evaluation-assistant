@@ -7,7 +7,7 @@ from openai import APIConnectionError, BadRequestError
 from pydantic import BaseModel
 
 from app.config import Config
-from app.llm import LLM, estimate_tokens
+from app.llm.client import LLM, estimate_tokens
 
 
 class Out(BaseModel):

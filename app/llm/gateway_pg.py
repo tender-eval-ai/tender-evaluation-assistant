@@ -8,7 +8,7 @@ import time
 import psycopg
 from psycopg.types.json import Json
 
-from app.gateway import spacing
+from app.llm.gateway import spacing
 
 
 class PgCache:

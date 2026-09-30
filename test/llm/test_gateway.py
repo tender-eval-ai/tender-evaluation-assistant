@@ -1,4 +1,4 @@
-"""The LLM gateway (app/gateway.py): policy by data class, cache, budget, rate limiter,
+"""The LLM gateway (app/llm/gateway.py): policy by data class, cache, budget, rate limiter,
 typed provider errors, and images through the real client's message shape."""
 from __future__ import annotations
 
@@ -10,10 +10,10 @@ from openai import APITimeoutError, BadRequestError, InternalServerError, RateLi
 from pydantic import BaseModel
 
 from app.config import Config
-from app.gateway import (BudgetExceeded, DataClassForbidden, EndpointPolicy, Gateway, GatewaySettings, MemoryBudget,
+from app.llm.gateway import (BudgetExceeded, DataClassForbidden, EndpointPolicy, Gateway, GatewaySettings, MemoryBudget,
                          MemoryCache, MemoryLimiter, endpoint_class, spacing)
-from app.llm import LLM, LLMError, is_transient
-from app.usage import UsageLedger
+from app.llm.client import LLM, LLMError, is_transient
+from app.llm.usage import UsageLedger
 from test.fakes import FakeLLM, Rule
 
 
@@ -88,7 +88,7 @@ def test_confidential_text_never_reaches_a_cloud_only_chain():
 # ---------------------------------------------------------------- budget
 
 class BillingBackend:
-    """Records a paid DeepSeek call in its ledger on every chat, like app.llm.LLM does."""
+    """Records a paid DeepSeek call in its ledger on every chat, like app.llm.client.LLM does."""
 
     text_chain, vision_chain = ["deepseek-chat"], ["deepseek-chat"]
 
