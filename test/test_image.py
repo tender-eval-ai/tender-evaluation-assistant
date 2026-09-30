@@ -26,7 +26,7 @@ def test_the_image_ships_the_versions_ci_tests():
     assert len(shipped) > 50 and "--hash=sha256:" in (ROOT / "backend" / "requirements.lock").read_text()
     assert {k: (v, tested.get(k)) for k, v in shipped.items() if tested.get(k) != v} == {}, \
         "recompile backend/requirements.lock with -c requirements.lock"
-    assert "pytest" not in shipped and "mcp" not in shipped, "test and MCP packages stay out of the image"
+    assert "pytest" not in shipped, "test packages stay out of the image"
 
 
 def test_the_api_and_the_worker_report_their_health_and_the_ui_waits_for_the_api():

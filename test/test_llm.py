@@ -187,10 +187,3 @@ def test_unknown_hosts_only_ever_get_a_placeholder_key(monkeypatch):
     monkeypatch.setenv("AZURE_OPENAI_API_KEY", "az-secret")
     assert cfg.key_for("https://tender-oai-abc123.openai.azure.com/openai/v1") == "az-secret"
     assert cfg.key_for("https://tender-oai-abc123.cognitiveservices.azure.com/openai/v1") == "az-secret"
-
-
-def test_prompt_budgets_are_configurable(monkeypatch):
-    monkeypatch.setenv("MAX_DOC_CHARS", "1000")
-    monkeypatch.setenv("MAX_TOTAL_CHARS", "3000")
-    cfg = Config()
-    assert (cfg.max_doc_chars, cfg.max_total_chars) == (1000, 3000)

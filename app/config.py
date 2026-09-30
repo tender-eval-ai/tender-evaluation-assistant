@@ -16,10 +16,8 @@ DEFAULT_BASE_URL = "http://localhost:11434/v1"
 DEFAULT_TEXT_MODEL = "qwen3:8b"
 DEFAULT_VISION_MODEL = "qwen3-vl:8b"
 DEFAULT_FALLBACKS = ""
-# One step budget for every tool-using loop: the check's form search (V5, per missing Part A
-# form; docs/api_contract.md), the legacy pipeline's evidence search (per unresolved finding)
-# and the MCP local client (per reviewer question). AGENT_MAX_STEPS overrides all three.
-# (Until 2026-09 V5 defaulted to 6 and the other two to 8; V5 is the one that stays.)
+# The step budget of V5, the check's bounded form search (per missing Part A form;
+# docs/api_contract.md). AGENT_MAX_STEPS overrides it.
 DEFAULT_AGENT_STEPS = 6
 
 
@@ -56,26 +54,6 @@ class Config:
     cache_dir: Path = Path("cache")
     # Free-tier friendliness: cap how much of each document is OCR'd / prompted.
     max_ocr_pages: int = 8
-    # Prompt budgets: characters per document excerpt and per prompt (targeted page
-    # selection fills them — app/retrieval.py); lower them for a small context window.
-    max_doc_chars: int = field(default_factory=lambda: int(os.environ.get("MAX_DOC_CHARS", "15000")))
-    max_total_chars: int = field(default_factory=lambda: int(os.environ.get("MAX_TOTAL_CHARS", "45000")))
-    # Concurrent bid extractions (graph fan-out / backend thread pool).
-    max_parallel_bids: int = field(
-        default_factory=lambda: max(1, int(os.environ.get("MAX_PARALLEL_BIDS", "4"))))
-    # Evidence-search agent for findings still missing/unclear after verification
-    # (AGENT_SEARCH=0 disables): per-finding step budget, per-bid on-demand OCR budget.
-    agent_enabled: bool = field(
-        default_factory=lambda: os.environ.get("AGENT_SEARCH", "1").lower()
-        not in ("0", "false", "no"))
-    agent_max_steps: int = field(
-        default_factory=lambda: int(os.environ.get("AGENT_MAX_STEPS", str(DEFAULT_AGENT_STEPS))))
-    agent_ocr_pages: int = field(
-        default_factory=lambda: int(os.environ.get("AGENT_OCR_PAGES", "6")))
-    # Adversarial re-check of negative findings (set VERIFY_FINDINGS=0 to disable).
-    verify_findings: bool = field(
-        default_factory=lambda: os.environ.get("VERIFY_FINDINGS", "1").lower()
-        not in ("0", "false", "no"))
 
     # Per-request timeout for model calls. The OpenAI client's default (600 s) is
     # plenty for cloud endpoints; a local vision model under load (several bids in

@@ -58,10 +58,6 @@ export function projectDetail() {
     ...project,
     tender_files: TENDER_DOCS.map(([, file]) => file),
     bidders: Object.keys(TENDERERS),
-    extracted: [],
-    has_rubric: false,
-    has_evaluation: false,
-    reports: [],
   };
 }
 

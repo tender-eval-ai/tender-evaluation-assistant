@@ -11,8 +11,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from backend import deps, jobs
-from backend.routes.runs import _graph_db_scratch
+from backend import deps
 from backend.schemas_api import Project
 from backend.times import when
 
@@ -21,9 +20,7 @@ router = APIRouter(dependencies=[Depends(deps.require_key)])
 
 class NewProject(BaseModel):
     name: str
-    # Fully synthetic / sanitized documents. The MCP server (mcp_server/) serves a
-    # project to cloud-driven clients ONLY when this is set — real documents never
-    # leave the machine.
+    # Kept for older clients: `data_class` below is what the gateway keys on.
     synthetic: bool = False
     # The class the LLM gateway keys its endpoint allowlist on (docs/api_contract.md).
     # Derived from `synthetic` when absent, so today's clients keep working.
@@ -46,7 +43,7 @@ def create_project(req: NewProject) -> Project:
     pdir = deps.PROJECTS / pid
     (pdir / "tender").mkdir(parents=True)
     (pdir / "bids").mkdir()
-    (pdir / "work" / "bids").mkdir(parents=True)
+    (pdir / "work").mkdir()
     data_class = req.data_class or ("synthetic" if req.synthetic else "confidential")
     synthetic = data_class == "synthetic"
     deps._write_json(pdir / "meta.json", {"id": pid, "name": req.name, "created": time.time(),
@@ -67,28 +64,17 @@ def list_projects() -> list[Project]:
 @router.get("/projects/{pid}")
 def get_project(pid: str) -> Project:
     pdir = deps._project_dir(pid)
-    work = pdir / "work"
     return _project(
         deps._read_json(pdir / "meta.json"),
         status=deps._get_status(pdir),
         tender_files=sorted(p.name for p in (pdir / "tender").glob("*.pdf")),
         bidders=sorted(p.name for p in (pdir / "bids").iterdir() if p.is_dir()),
-        extracted=sorted(p.stem for p in (work / "bids").glob("*.json")),
-        has_rubric=(work / "rubric.json").is_file(),
-        has_evaluation=(work / "evaluation.json").is_file(),
-        reports=sorted(p.name for p in (work / "reports").glob("*.docx")) if (work / "reports").is_dir() else [],
     )
 
 
 @router.delete("/projects/{pid}")
 def delete_project(pid: str) -> dict:
-    pdir = deps._project_dir(pid)
-    if jobs.is_running(pid):
-        raise HTTPException(409, "a job is running for this project; wait for it to finish")
-    shutil.rmtree(pdir)
-    scratch = _graph_db_scratch(pdir)
-    if scratch is not None:
-        shutil.rmtree(scratch.parent, ignore_errors=True)
+    shutil.rmtree(deps._project_dir(pid))
     return {"deleted": pid}
 
 
@@ -116,8 +102,8 @@ def _pdfs_in(folder: Path) -> list[Path]:
 
 @router.get("/inbox")
 def list_inbox() -> list[dict]:
-    """Case folders available for one-click import (host ./inbox; demo_case is
-    mounted there too). Convention: <case>/tender/*.pdf + <case>/bids/<tenderer>/."""
+    """Case folders available for one-click import (host ./inbox; compose mounts the
+    synthetic tender there too). Convention: <case>/tender/*.pdf + <case>/bids/<tenderer>/."""
     if not deps.INBOX_DIR.is_dir():
         return []
     out = []

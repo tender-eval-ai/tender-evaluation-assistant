@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from app.checks.engine_bridge import evaluate
 from app.checks.extract import fields_from, reading_model
-from app.checks.extract_item_l import FIELDS, FORM, PREFIX, VERIFY
+from test.checks.item_l import FIELDS, FORM, PREFIX, VERIFY
 from app.checks.verify import SecondRead, agree, find_on_text, normalise, second_read, text_reader, verify_fields
 from app.rulesets.schema import RuleSet
 from test.checks.conftest import CASE, RULESET, fake_llm

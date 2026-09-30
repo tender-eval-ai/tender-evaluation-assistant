@@ -1,7 +1,7 @@
-"""Data contracts for every pipeline stage.
+"""The price engine's models (`app/pricing.py`), from the prototype's pipeline.
 
-The LLM-facing models (Rubric, BidExtraction) double as the JSON schema sent to the
-model, so extraction output is validated at the boundary and retried on mismatch.
+The vendor check's pricing (`app/checks/pricing.py`) fills a `BidExtraction` with only the
+price; the prototype's rubric and evaluation models went with it at S5.
 """
 from __future__ import annotations
 
@@ -10,26 +10,7 @@ from typing import Literal, Optional
 from pydantic import AliasChoices, BaseModel, Field
 
 
-# ---------------------------------------------------------------- rubric (stage 2 of pipeline)
-
-class ChecklistItem(BaseModel):
-    """One Stage I completeness item (a form/schedule/certificate that must be present)."""
-    id: str = Field(description="Stable id, e.g. 'S1-01'")
-    item: str = Field(description="What must be submitted, e.g. 'Signed Tender Form (G.F.230)'")
-    source_clause: str = Field(default="", description="Quoted clause requiring it")
-    source_file: str = Field(default="", description="Tender file (### FILE header) stating it")
-    source_page: Optional[int] = Field(default=None, description="[Page N] marker where stated")
-    required: bool = True
-
-
-class EssentialRequirement(BaseModel):
-    """One Stage II essential requirement (non-compliance disqualifies the offer)."""
-    id: str = Field(description="Stable id, e.g. 'S2-01'")
-    requirement: str
-    source_clause: str = ""
-    source_file: str = Field(default="", description="Tender file (### FILE header) stating it")
-    source_page: Optional[int] = Field(default=None, description="[Page N] marker where stated")
-
+# ---------------------------------------------------------------- the tender's price scheme
 
 class PriceScheme(BaseModel):
     """How the tender says price must be assessed. Drives which Price Summary format is used."""
@@ -40,16 +21,6 @@ class PriceScheme(BaseModel):
     notes: str = ""
     source_file: str = Field(default="", description="Tender file (### FILE header) defining the scheme")
     source_page: Optional[int] = Field(default=None, description="[Page N] marker where defined")
-
-
-class Rubric(BaseModel):
-    """The evaluation rubric derived from one tender's documents. Saved as rubric.json
-    for human confirmation before evaluation runs."""
-    tender_ref: str
-    subject: str = ""
-    stage1_checklist: list[ChecklistItem]
-    stage2_requirements: list[EssentialRequirement]
-    price_scheme: PriceScheme
 
 
 # ---------------------------------------------------------------- per-bid extraction
@@ -91,22 +62,7 @@ class BidExtraction(BaseModel):
     source_file: str = ""
 
 
-# ---------------------------------------------------------------- evaluation results
-
-class Stage1Result(BaseModel):
-    tenderer: str
-    presence: dict[str, DocumentPresence]  # checklist_id -> finding
-    missing: list[str]                     # checklist ids of required items not present
-    passed: bool
-
-
-class Stage2Result(BaseModel):
-    tenderer: str
-    findings: dict[str, ComplianceFinding]  # requirement_id -> finding
-    non_compliant: list[str]                # requirement ids judged "no"
-    unclear: list[str]                      # requirement ids judged "unclear"
-    passed: bool
-
+# ---------------------------------------------------------------- the Price Summary
 
 class PriceRow(BaseModel):
     tenderer: str
@@ -122,13 +78,3 @@ class PriceRow(BaseModel):
     cost_effectiveness: Optional[float] = None
     ranking: Optional[int] = None
     remark: str = ""
-
-
-class EvaluationResult(BaseModel):
-    rubric: Rubric
-    stage1: list[Stage1Result]
-    stage2: list[Stage2Result]
-    price_rows: list[PriceRow]
-    recommended: Optional[str] = None       # best-ranked conforming tenderer
-    stage1_conclusion: str = ""
-    stage2_conclusion: str = ""

@@ -2,7 +2,7 @@
 
     {"error": {"code": "<snake_case>", "message": "<for a person>", "details": {...}}}
 
-`detail` is kept beside it until the Streamlit UI goes at S5, because that UI reads it."""
+(The Streamlit UI read a `detail` beside it; that went with the UI at S5.)"""
 from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Request
@@ -23,8 +23,8 @@ class ApiError(HTTPException):
 
 
 def _body(status: int, code: str, message: str, details=None) -> JSONResponse:
-    return JSONResponse({"error": {"code": code, "message": message, "details": jsonable_encoder(details or {})},
-                         "detail": message}, status_code=status)
+    return JSONResponse({"error": {"code": code, "message": message, "details": jsonable_encoder(details or {})}},
+                        status_code=status)
 
 
 def error_response(status: int, code: str, message: str, details=None) -> JSONResponse:

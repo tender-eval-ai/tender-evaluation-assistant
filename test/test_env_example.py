@@ -18,7 +18,7 @@ def _environ(node: ast.AST) -> bool:
 
 def names_read() -> dict[str, set[str]]:
     out: dict[str, set[str]] = {}
-    for path in [p for d in ("app", "backend", "mcp_server") for p in (ROOT / d).rglob("*.py")]:
+    for path in [p for d in ("app", "backend") for p in (ROOT / d).rglob("*.py")]:
         for node in ast.walk(ast.parse(path.read_text())):
             key = None
             if isinstance(node, ast.Call) and node.args and isinstance(node.args[0], ast.Constant):
@@ -36,7 +36,7 @@ def names_read() -> dict[str, set[str]]:
 
 def test_every_variable_the_code_reads_is_in_env_example():
     names = names_read()
-    assert len(names) > 40, "the scan found the reads"
+    assert len(names) > 30, "the scan found the reads"   # 38 after the S5 removal
     example = (ROOT / ".env.example").read_text()
     missing = {k: sorted(v) for k, v in names.items() if not re.search(rf"\b{k}\b", example)}
     assert not missing, f"read in code, not in .env.example: {missing}"
@@ -46,8 +46,7 @@ def test_the_agent_step_budget_has_one_default():
     """In a fresh interpreter, so the module constants are read without AGENT_MAX_STEPS
     (reloading the module here would give other tests a second AgentAction class)."""
     env = {k: v for k, v in os.environ.items() if k != "AGENT_MAX_STEPS"}
-    code = ("import app.checks.agent as a, app.config as c; "
-            "print(a.MAX_STEPS, c.Config().agent_max_steps, c.DEFAULT_AGENT_STEPS)")
+    code = "import app.checks.agent as a, app.config as c; print(a.MAX_STEPS, c.DEFAULT_AGENT_STEPS)"
     out = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=env, capture_output=True, text=True, check=True)
     assert len(set(out.stdout.split())) == 1, out.stdout
     assert "AGENT_MAX_STEPS=" not in re.sub(r"^#.*$", "", (ROOT / ".env.example").read_text(), flags=re.M), \

@@ -157,7 +157,7 @@ class LLM:
             raise RuntimeError(
                 f"prompt of ~{est} tokens exceeds LLM_CONTEXT_TOKENS={limit}; the server "
                 "would truncate it silently. Raise the model's context (Ollama num_ctx, "
-                "vLLM --max-model-len) or lower MAX_DOC_CHARS / MAX_TOTAL_CHARS.")
+                "vLLM --max-model-len).")
 
     def _complete(self, chain: list[str], messages: list, json_mode: bool = False,
                   schema: dict | None = None) -> str:

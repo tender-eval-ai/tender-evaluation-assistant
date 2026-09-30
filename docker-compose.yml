@@ -32,7 +32,6 @@ services:
     volumes:
       - ./data:/data
       - ./inbox:/inbox                            # drop case folders here, import via the UI or the API
-      - ./demo_case:/inbox/demo_case:ro           # the original demo case
       - ./test/data/synthetic_tender:/inbox/synthetic_tender:ro   # the synthetic tender case (17 tender documents, 4 offers)
     ports:
       - "${API_PORT:-8000}:8000"   # API_PORT moves it when 8000 is taken; remove if only the UI needs access

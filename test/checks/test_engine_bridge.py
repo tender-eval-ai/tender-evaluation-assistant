@@ -2,7 +2,7 @@
 import pytest
 
 from app.checks.engine_bridge import decide_item_l, evaluate, rules_doc
-from app.checks.extract_item_l import PREFIX
+from test.checks.item_l import PREFIX
 from app.rulesets.schema import RuleSet
 from test.checks.conftest import RULESET
 

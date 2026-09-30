@@ -6,12 +6,13 @@ from test.checks.conftest import CASE
 from test.test_api import make_client
 
 
-def test_errors_use_the_envelope_and_keep_detail_for_the_old_ui(tmp_path, monkeypatch):
+def test_errors_use_the_envelope(tmp_path, monkeypatch):
     client = make_client(tmp_path, monkeypatch)
     r = client.get("/projects/nope")
     assert r.status_code == 404
     body = r.json()
-    assert body["error"]["code"] == "not_found" and body["detail"] == body["error"]["message"] and body["error"]["details"] == {}
+    assert body["error"]["code"] == "not_found" and body["error"]["message"] and body["error"]["details"] == {}
+    assert "detail" not in body, "the Streamlit UI's copy went with it at S5"
     r = client.post("/projects", json={"nam": 1})
     assert r.status_code == 422 and r.json()["error"]["code"] == "validation_failed"
     assert r.json()["error"]["details"]["errors"][0]["loc"] == ["body", "name"]

@@ -15,7 +15,7 @@ Last updated: 2026-09-20 (Chenyu).
 | ID | Item | Status | Waiting on |
 |---|---|---|---|
 | A2 | Branch protection on a private repo | decided | — |
-| A3 | MinIO as file storage | decided | — |
+| A3 | MinIO as file storage | decided; amended 2026-09-30 (the AWS bucket is gone) | — |
 | A4 | "Redis queue" in AI_camp | agreed | — (update the plan) |
 | A5 | Capacity estimate (calls per minute) | agreed | — (update the plan) |
 | A6 | Real documents from day 4; live evals | agreed | — (update the plan) |
@@ -58,8 +58,8 @@ Last updated: 2026-09-20 (Chenyu).
 | J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); fields into `forms.py` (e2b3189); templates merged (J12: #100, #99); synthetic L1-L4 on the production templates done (#122); left: `ruleset_all_items.json` regenerated after #120, and the three tenders (both) |
 | J8 | S5: README results, who built what, CITATION.cff | part done | licence (#103), diagram (#105), GIF and screens (#107) done; the demo (G4) open |
 | J9 | S4 check: the checker scored against one answer key per bid (issue #69) | agreed | Tender 3 undecided; optional blind spot check by Nasi |
-| J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | agreed | — (removed in the S5 legacy-removal PR) |
-| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1, 3–6, 9–11 and 13 done (#90, #96, #94, #95, #93; #104, 6a19319; README Limitations); 2, 7, 8 Chenyu; 12 after S4 |
+| J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | done | removed in the S5 legacy-removal PR (2026-09-30); results in `docs/archive/mcp_2026-09.md` |
+| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1, 3–7, 9–11 and 13 done (#90, #96, #94, #95, #93, the S5 legacy-removal PR; #104, 6a19319; README Limitations); 2, 8 Chenyu; 12 after S4 |
 | J12 | The production templates: one per form, every rule-file rule placed; #76 points 2 and 3; two questions (tier by Part, conditions) | done (#100, #99); questions agreed | Chenyu: question 1 in #114 |
 
 ## A. Corrections to the plan
@@ -81,6 +81,7 @@ These are facts, checked against both repositories on 2026-09-15. They need a co
 - Nasi (2026-09-16): the shared bucket now lives in a new AWS account, because an access key on the old account was exposed; that key is revoked and the old account's resources are removed (done 2026-09-16). The new account is `tender-review-dev` in `us-east-1`, managed by Terraform in `infra/` (PR #21); each of us signs in through IAM Identity Center (`dev-admin` to run Terraform, `dev-synthetic` for the bucket), so there are no long-lived access keys. Chenyu has been given both (done 2026-09-16). Proposal (PR #21): the bucket holds synthetic data only, and the redacted cases stay in each person's private local data folder.
 - Chenyu (2026-09-17): agree: the shared bucket holds synthetic data only; the redacted cases stay in each person's local data folder. Signed in through Identity Center on 2026-09-17; both profiles verified, no keys on disk.
 - Decision: decided (2026-09-15), amended 2026-09-17: the `tender-review-dev` bucket is the shared development store and holds synthetic data only; `storage.py` stays one S3-compatible client.
+- Amended 2026-09-30 (Nasi, #125): the `tender-review-dev` bucket is no longer the shared development store. Nasi closed the account on 2026-09-30 and deleted both buckets (the synthetic data and the Terraform state); `infra/` is removed in the S5 legacy-removal PR, and git history keeps the Terraform. The synthetic cases are in the repository (`test/data/`), and the Azure demo's file share has its own copy.
 
 ### A4. "Redis queue" in AI_camp
 - Plan: "AI_camp Flask API, Redis queue, per-page tasks, JSON caches: not ported".
@@ -341,7 +342,7 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
 ### G4. One shared demo, on Azure
 - Found by: after #78, `deploy/cloudrun/` can't build, because it still builds the Streamlit `frontend/Dockerfile`. Nasi's pricing of the AWS side in #83 adds that App Runner closed to new customers on 2026-04-30, an always-on EC2 host costs about $30 a month, and Fargate with RDS about $100.
 - Proposal: **one shared demo instead of two, on Azure.**
-  - **The AWS demo lapses**, and with it the AWS parts of G2; `infra/` keeps only the synthetic-data bucket. This part is Nasi's #83.
+  - **The AWS demo lapses**, and with it the AWS parts of G2; `infra/` keeps only the synthetic-data bucket. This part is Nasi's #83. Amended 2026-09-30 (Nasi, #125): `infra/` is removed instead, in the S5 legacy-removal PR; the AWS account is closed (A3).
   - **The GCP project is retired.**
   - **Why Azure rather than the existing Cloud Run project, #83's choice:**
     - Chenyu already has projects deployed on GCP and on AWS EC2, and many of the jobs Chenyu is applying for ask for Azure.
@@ -605,6 +606,7 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
      - delete the stale files and the empty tests: `app/checks/extract_item_l.py`, `app/rulesets/builder.py`, the `S3_ROUTES` contract test, `web/mock/openapi.s2.json`, and the CODEOWNERS entries for paths that don't exist;
      - fix where `docs/api_contract.md` no longer matches the code: events on create, delete and upload; the `?key=` note; the two lines on when the legacy routes go;
      - move the four documents dated 2026-09-10 to `docs/archive/`.
+     - Done (2026-09-30), except `app/rulesets/builder.py`: since #92 it chains L1 to L4 for the rule-set tests, so it stays.
   8. **During the S4 development-bid run:** record the pages, model calls and seconds per stage. That gives A5 its first measured number.
 - **Nasi** (her areas):
   9. **README results.** Quote the parser's recall and exact location only. `page_correct` and `char_correct` equal recall by construction, and `tools/benchmark.py`'s docstring should say so. Done differently (2026-09-29): the benchmark is retired; the README quotes parser recall and citation resolution (`docs/evals/parser_l0.md`). Final and accepted (Nasi, 2026-09-29): recall 97.8 / 95.0 / 91.1%, citations resolved 90.2 / 93.8 / 87.0%. We are happy with these, and no further parser or citation work is planned; the #104 review's findings are recorded as known limitations in `parser_l0.md`.

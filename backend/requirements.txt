@@ -1,7 +1,7 @@
 # The image installs backend/requirements.lock, compiled from this file at the root lock's versions:
 #   uv pip compile backend/requirements.txt --python-version 3.12 --universal --generate-hashes \
 #       -c requirements.lock -o backend/requirements.lock
-# Backend: FastAPI service wrapping the evaluation pipeline
+# Backend: the API and the worker (one image)
 fastapi>=0.111
 uvicorn[standard]>=0.30
 python-multipart>=0.0.9
@@ -14,10 +14,7 @@ pypdfium2>=4.30
 pillow>=10.0
 python-docx>=1.1
 
-# Orchestration (app/graph.py): state graph, checkpoints, human-in-the-loop
-langgraph==1.2.11
-langgraph-checkpoint-sqlite==3.1.1
-google-auth>=2.40      # Vertex AI OAuth tokens (Application Default Credentials)
+google-auth[requests]>=2.40   # Vertex AI OAuth tokens (ADC); app/gcp.py refreshes them over requests
 
 # The check worker and the API's job routes (app/jobs, app/gateway_pg): the Postgres queue.
 procrastinate>=3.9
