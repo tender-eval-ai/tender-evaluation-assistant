@@ -360,8 +360,8 @@ budget, one shared pace per provider).
    the obligations no rule covers. A person edits the draft in the Rules window, and a second person confirms it.
 2. **`vendor_check`** (`POST /projects/{pid}/checks`, one job per tenderer) renders every page of the offer, labels
    them by form, finds each form's pages, reads its fields with page citations, verifies them against the text or
-   by a second read of a scan, and sends the bounded search agent after any form still not found. Once a rule set
-   is confirmed, the rules engine decides each item.
+   by a second read of a scan. Once a rule set is confirmed, the bounded search agent looks again for any Part A
+   form no page was labelled as, and the rules engine decides each item.
 3. **`evaluate`** re-decides every stored result against a newly confirmed rule-set version, with no model call.
 
 A reviewer corrects any field in Stage I or II (the model's value is kept beside the correction, with who and why)
