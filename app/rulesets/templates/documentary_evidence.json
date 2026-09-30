@@ -104,6 +104,25 @@
           "note": "{field} is marked not applicable"
         }
       }
+    },
+    "discretionary": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank; the Authority may ask for it later"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      }
     }
   },
   "notes": [
@@ -129,6 +148,12 @@
     }
   ],
   "rules": [
+    {
+      "id": "documentary_evidence.submitted",
+      "check": "document_present",
+      "field": "documentary_evidence.document",
+      "consequence": "mandatory_on_request"
+    },
     {
       "id": "documentary_evidence.quality_certificate_attached",
       "check": "filled",
@@ -165,8 +190,12 @@
         "documentary_evidence.quality_certificate_attached"
       ],
       "outcomes": {
-        "unstated": {
+        "filled": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
       "note": "an original, or a copy certified by the issuer or a qualified lawyer; a plain copy may come first and the certified one on request"
@@ -188,6 +217,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -208,6 +241,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -228,6 +265,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -240,8 +281,12 @@
         "documentary_evidence.quality_certificate_attached"
       ],
       "outcomes": {
-        "unstated": {
+        "filled": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
       "note": "issued by a body accredited to certify quality management systems, or one a mutual recognition arrangement covers; the certificate bears the body's accreditation mark"
@@ -274,8 +319,12 @@
         "documentary_evidence.safety_data_sheet_attached"
       ],
       "outcomes": {
-        "unstated": {
+        "filled": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
       "note": "in every language the tender names, and the latest version at the closing date"
@@ -297,6 +346,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -336,6 +389,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -348,8 +405,12 @@
         "documentary_evidence.specifications_attached"
       ],
       "outcomes": {
-        "unstated": {
+        "filled": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
       "note": "where a stated maximum or minimum strays from its nominal value by more than the tender allows, the tenderer explains why and the Authority accepts it"
@@ -363,8 +424,12 @@
         "documentary_evidence.specifications_attached"
       ],
       "outcomes": {
-        "unstated": {
+        "filled": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
       "note": "the specifications show the goods within every limit the technical specifications set"
@@ -405,6 +470,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -428,8 +497,12 @@
         "documentary_evidence.test_report_received"
       ],
       "outcomes": {
-        "unstated": {
+        "filled": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
       "note": "an original, or a copy certified by the issuer or a qualified lawyer"
@@ -443,8 +516,12 @@
         "documentary_evidence.test_report_received"
       ],
       "outcomes": {
-        "unstated": {
+        "filled": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
       "note": "the results show the goods match the product specifications submitted"
@@ -466,8 +543,12 @@
         "documentary_evidence.test_report_received"
       ],
       "outcomes": {
-        "unstated": {
+        "filled": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
       "note": "the laboratory is neither the manufacturer nor the tenderer, nor associated with either"

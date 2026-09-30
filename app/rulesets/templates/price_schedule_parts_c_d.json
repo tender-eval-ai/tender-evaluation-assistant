@@ -39,6 +39,53 @@
           "note": "{field} is marked not applicable"
         }
       }
+    },
+    "critical": {
+      "outcomes": {
+        "blank": {
+          "status": "disqualified",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "needs_review",
+          "note": "{field} is marked not applicable; a reviewer confirms it does not apply"
+        }
+      }
+    },
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
+      }
     }
   },
   "notes": [
@@ -60,6 +107,12 @@
     }
   ],
   "rules": [
+    {
+      "id": "price_schedule_parts_c_d.submitted",
+      "check": "document_present",
+      "field": "price_schedule_parts_c_d.document",
+      "consequence": "discretionary"
+    },
     {
       "id": "price_schedule_parts_c_d.discount_7day_given",
       "check": "filled",
@@ -98,6 +151,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -120,6 +177,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     }

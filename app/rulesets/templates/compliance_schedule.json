@@ -36,6 +36,72 @@
           "note": "{field} is marked not applicable"
         }
       }
+    },
+    "critical": {
+      "outcomes": {
+        "blank": {
+          "status": "disqualified",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "needs_review",
+          "note": "{field} is marked not applicable; a reviewer confirms it does not apply"
+        }
+      }
+    },
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
+      }
+    },
+    "discretionary": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank; the Authority may ask for it later"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      }
     }
   },
   "notes": [
@@ -58,38 +124,162 @@
   ],
   "rules": [
     {
-      "id": "compliance_schedule.part_a_answered",
-      "check": "tick_box",
+      "id": "compliance_schedule.submitted",
+      "check": "document_present",
+      "field": "compliance_schedule.document",
+      "consequence": "mandatory_on_request"
+    },
+    {
+      "id": "compliance_schedule.part_a_not_marked_not_complying",
+      "check": "contains",
       "field": "compliance_schedule.part_a",
-      "consequence": "deemed_compliance",
-      "stage": "II"
+      "stage": "II",
+      "params": {
+        "phrases": [
+          "not comply",
+          "not complied",
+          "does not comply",
+          "non-compliance",
+          "non compliance",
+          "not in compliance",
+          "non-compliant"
+        ],
+        "absent": true
+      },
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank, which counts as complying"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
     },
     {
-      "id": "compliance_schedule.part_b_answered",
-      "check": "tick_box",
+      "id": "compliance_schedule.part_b_not_marked_not_complying",
+      "check": "contains",
       "field": "compliance_schedule.part_b",
-      "consequence": "deemed_compliance",
-      "stage": "II"
+      "stage": "II",
+      "params": {
+        "phrases": [
+          "not comply",
+          "not complied",
+          "does not comply",
+          "non-compliance",
+          "non compliance",
+          "not in compliance",
+          "non-compliant"
+        ],
+        "absent": true
+      },
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank, which counts as complying"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
     },
     {
-      "id": "compliance_schedule.part_c_answered",
-      "check": "tick_box",
+      "id": "compliance_schedule.part_c_not_marked_not_complying",
+      "check": "contains",
       "field": "compliance_schedule.part_c",
-      "consequence": "deemed_compliance",
-      "stage": "II"
+      "stage": "II",
+      "params": {
+        "phrases": [
+          "not comply",
+          "not complied",
+          "does not comply",
+          "non-compliance",
+          "non compliance",
+          "not in compliance",
+          "non-compliant"
+        ],
+        "absent": true
+      },
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank, which counts as complying"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
     },
     {
-      "id": "compliance_schedule.part_d_answered",
-      "check": "tick_box",
+      "id": "compliance_schedule.part_d_not_marked_not_complying",
+      "check": "contains",
       "field": "compliance_schedule.part_d",
-      "consequence": "deemed_compliance",
-      "stage": "II"
+      "stage": "II",
+      "params": {
+        "phrases": [
+          "not comply",
+          "not complied",
+          "does not comply",
+          "non-compliance",
+          "non compliance",
+          "not in compliance",
+          "non-compliant"
+        ],
+        "absent": true
+      },
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank, which counts as complying"
+        },
+        "match": {
+          "status": "pass"
+        },
+        "mismatch": {
+          "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        }
+      }
     },
     {
       "id": "compliance_schedule.no_part_marked_not_complying",
       "check": "tick_box",
       "field": "compliance_schedule.non_compliances",
       "stage": "II",
+      "params": {
+        "blank_if": [
+          "nil",
+          "none",
+          "n/a",
+          "not applicable",
+          "no deviation",
+          "no deviations"
+        ]
+      },
       "outcomes": {
         "blank": {
           "status": "pass"
@@ -123,6 +313,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -145,6 +339,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -156,6 +354,10 @@
       "outcomes": {
         "unstated": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
       "note": "whatever the tenderer declares, the Authority must itself be satisfied that the goods meet every mandatory feature"

@@ -64,6 +64,25 @@
         "op": "add_working_days",
         "offset": 5
       }
+    },
+    "discretionary": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank; the Authority may ask for it later"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      }
     }
   },
   "notes": [
@@ -93,6 +112,12 @@
     }
   ],
   "rules": [
+    {
+      "id": "particulars_of_goods.submitted",
+      "check": "document_present",
+      "field": "particulars_of_goods.document",
+      "consequence": "critical"
+    },
     {
       "id": "particulars_of_goods.country_of_origin_given",
       "check": "filled",
@@ -128,6 +153,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -136,26 +165,6 @@
       "check": "filled",
       "field": "particulars_of_goods.manufacturing_plant_address",
       "consequence": "mandatory_on_request"
-    },
-    {
-      "id": "particulars_of_goods.plant_address_is_tenderers",
-      "check": "cross_document_match",
-      "field": "particulars_of_goods.manufacturing_plant_address",
-      "condition": "the tenderer is itself the manufacturer",
-      "params": {
-        "other": "contact_details.address"
-      },
-      "depends_on": [
-        "particulars_of_goods.plant_address_given"
-      ],
-      "outcomes": {
-        "match": {
-          "status": "pass"
-        },
-        "mismatch": {
-          "status": "needs_review"
-        }
-      }
     },
     {
       "id": "particulars_of_goods.product_code_given",
@@ -169,11 +178,12 @@
       "field": "particulars_of_goods.rows_left_blank",
       "outcomes": {
         "blank": {
-          "status": "pass"
+          "status": "needs_review",
+          "note": "no row read as empty; a reviewer confirms every row is filled in, since a missed empty row cannot be checked"
         },
         "filled": {
           "status": "dormant",
-          "note": "rows left empty: {field}; the Authority may ask for them",
+          "note": "some rows are left empty; the Authority may ask for them",
           "follow_up": {
             "trigger": "the Authority asks for it in writing after the tender closes",
             "deadline": "within 5 working days of the request, unless the request gives another period",
@@ -226,6 +236,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     }

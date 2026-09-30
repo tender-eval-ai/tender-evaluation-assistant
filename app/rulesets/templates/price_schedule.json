@@ -40,6 +40,53 @@
           "note": "{field} is marked not applicable; a reviewer confirms it does not apply"
         }
       }
+    },
+    "mandatory_on_request": {
+      "outcomes": {
+        "blank": {
+          "status": "dormant",
+          "note": "{field} is missing; the Authority may ask for it",
+          "follow_up": {
+            "trigger": "the Authority asks for it in writing after the tender closes",
+            "deadline": "within 5 working days of the request, unless the request gives another period",
+            "if_deadline_missed": "disqualified"
+          }
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      },
+      "follow_up_deadline": {
+        "op": "add_working_days",
+        "offset": 5
+      }
+    },
+    "discretionary": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank; the Authority may ask for it later"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      }
     }
   },
   "notes": [
@@ -53,6 +100,12 @@
     }
   ],
   "rules": [
+    {
+      "id": "price_schedule.submitted",
+      "check": "document_present",
+      "field": "price_schedule.document",
+      "consequence": "critical"
+    },
     {
       "id": "price_schedule.quantity_as_printed",
       "check": "value",
@@ -70,6 +123,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -97,6 +154,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     },
@@ -135,6 +196,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
       "depends_on": [
@@ -188,6 +253,10 @@
         },
         "mismatch": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       }
     }

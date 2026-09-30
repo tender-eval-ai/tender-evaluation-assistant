@@ -56,6 +56,44 @@
     },
     "no_gate": {
       "outcomes": {}
+    },
+    "critical": {
+      "outcomes": {
+        "blank": {
+          "status": "disqualified",
+          "note": "{field} is missing"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "needs_review",
+          "note": "{field} is marked not applicable; a reviewer confirms it does not apply"
+        }
+      }
+    },
+    "discretionary": {
+      "outcomes": {
+        "blank": {
+          "status": "pass",
+          "note": "{field} is left blank; the Authority may ask for it later"
+        },
+        "filled": {
+          "status": "pass"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
+        },
+        "not_applicable": {
+          "status": "pass",
+          "note": "{field} is marked not applicable"
+        }
+      }
     }
   },
   "notes": [
@@ -81,6 +119,12 @@
     }
   ],
   "rules": [
+    {
+      "id": "information_schedule.submitted",
+      "check": "document_present",
+      "field": "information_schedule.document",
+      "consequence": "mandatory_on_request"
+    },
     {
       "id": "information_schedule.tenderer_name_given",
       "check": "filled",
@@ -214,6 +258,10 @@
       "outcomes": {
         "unstated": {
           "status": "needs_review"
+        },
+        "redacted": {
+          "status": "needs_review",
+          "note": "{field} is covered in this copy; a reviewer checks the original"
         }
       },
       "note": "each event ticked is described in full"

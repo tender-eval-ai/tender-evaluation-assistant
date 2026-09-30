@@ -3,7 +3,10 @@ loads, speaks our forms' vocabulary, stays neutral, and gives the verdicts the r
 meant when the engine runs it."""
 from __future__ import annotations
 
+import json
+import os
 import re
+from pathlib import Path
 
 import pytest
 
@@ -37,12 +40,30 @@ def test_a_rule_depends_only_on_rules_of_its_own_template(tid):
 
 
 def test_the_wording_is_our_own_and_neutral():
-    """No tender number, no jurisdiction, no body's name, no currency (F6): a tender's own
-    values live in its params file, outside git."""
-    banned = re.compile(r"[A-Z]{1,2}\d{9,10}|Hong Kong|\bHK\b|HK\$|US\$|\bAUTH\b|\bDSD\b|the plant|Authority", re.IGNORECASE)
+    """No tender number, jurisdiction, body's name, currency or clause reference (F6): a
+    tender's own values live in its params file, outside git."""
+    banned = re.compile(
+        r"[A-Z]{1,2}\d{9,10}|Hong Kong|\bHK\b|\bAUTH\b|\bDSD\b|the plant|Authority"
+        r"|HK\$|US\$|€|£|¥|\b(?:HKD|USD|EUR|GBP|RMB|CNY|dollars?|pounds? sterling|euros?)\b"
+        r"|\b(?:Paragraph|Clause|Section|Note)\s+\d", re.IGNORECASE)
     for path in sorted(DEFAULT_DIR.glob("*.json")):
         found = banned.findall(path.read_text())
         assert not found, f"{path.name}: {found}"
+
+
+@pytest.mark.skipif(not os.environ.get("TEMPLATE_PARAMS_FILE"), reason="a real tender's params file, outside git")
+def test_no_value_from_a_real_tenders_params_is_in_a_template():
+    """Opt-in: TEMPLATE_PARAMS_FILE=<private>/params/<tender>.json (tools/split_rule_files.py --params)."""
+    values = []
+    for slots in json.loads(Path(os.environ["TEMPLATE_PARAMS_FILE"]).read_text()).values():
+        for value in slots.values():
+            values += value if isinstance(value, list) else [value]
+    text = " ".join(path.read_text() for path in DEFAULT_DIR.glob("*.json")).lower()
+    # A figure, or a phrase of four words or more: generic form words ("Tender Closing Date")
+    # are shared by every tender and are not a leak.
+    specific = [v for v in values if isinstance(v, (int, float)) and abs(v) >= 10 or len(str(v).split()) >= 4]
+    leaked = [v for v in specific if re.search(rf"(?<![\w.]){re.escape(str(v).lower())}(?![\w.])", text)]
+    assert not leaked, leaked
 
 
 # ---------------------------------------------------------------- through the engine
@@ -175,13 +196,14 @@ def test_a_tender_sample_is_dormant_until_a_reviewer_records_it():
     slots = {"sample_min_kg": 600, "sample_pack_min_kg": 500, "sample_pack_max_kg": 950,
              "sample_label_particulars": ["tender reference", "tenderer"]}
     assert statuses(verdict("tender_sample_declaration", bid("tender_sample_declaration"), **slots)) == \
-        {"sample_received_date": "dormant"}
+        {"document": "dormant", "sample_received_date": "dormant"}
     recorded = bid("tender_sample_declaration", sample_received_date="3 July 2026", sample_net_weight_kg="400",
                    sample_pack_net_weight_kg="700", sample_label="Tender reference T-1; Tenderer: Bidder A",
                    sample_condition="original packing, sealed")
     s = verdict("tender_sample_declaration", recorded, **slots)
     assert statuses(s)["sample_net_weight_kg"] == "needs_review" and "at least 600" in " ".join(s["reasons"])
-    assert statuses(s)["sample_label"] == "pass" and statuses(s)["sample_charges"] == "pass"
+    assert statuses(s)["sample_label"] == "pass"
+    assert statuses(s)["sample_charges"] == "dormant", "a reviewer field left blank waits, whatever the rule says"
 
 
 def test_the_particulars_report_rows_left_empty_and_a_self_made_product():
@@ -191,6 +213,31 @@ def test_the_particulars_report_rows_left_empty_and_a_self_made_product():
     fields = {**bid("particulars_of_goods", **base), "offer_to_be_bound.tenderer_name": "Bidder A Ltd",
               "contact_details.address": "1 Plant Road"}
     slots = {"net_weight_min_kg": 500, "net_weight_max_kg": 950}
-    assert verdict("particulars_of_goods", fields, **slots)["outcome"] == "pass"
+    whole = verdict("particulars_of_goods", fields, **slots)
+    assert {k: v for k, v in statuses(whole).items() if k != "rows_left_blank"} == dict.fromkeys(
+        [k for k in statuses(whole) if k != "rows_left_blank"], "pass")
+    assert statuses(whole)["rows_left_blank"] == "needs_review", \
+        "'no row empty' cannot be checked, so a reviewer confirms it (a stop-gap, #100 review)"
     gaps = {**fields, **bid("particulars_of_goods", **base, rows_left_blank="Particle size; pH")}
     assert statuses(verdict("particulars_of_goods", gaps, **slots))["rows_left_blank"] == "dormant"
+
+
+def test_the_synthetic_case_still_disqualifies_tenderer_c_against_the_production_library(monkeypatch):
+    """The stored all-items rule set names tier `critical` on item (l); every template defines
+    the three presence tiers, so its rules are checked and a missing certificate still
+    disqualifies (#99 review, point 1)."""
+    from app.checks.engine_bridge import decide
+    from test.checks.conftest import RULESET_ALL, read_offer
+
+    monkeypatch.delenv("RULESET_TEMPLATES_DIR", raising=False)
+    c = decide(read_offer("Tenderer_C"), RULESET_ALL)
+    assert c["items"]["l"]["outcome"] == "disqualified" and c["stage1"]["outcome"] == "disqualified"
+    d = decide(read_offer("Tenderer_D", verify=True), RULESET_ALL)
+    assert d["items"]["l"]["outcome"] == "pass", "a complete certificate still passes"
+
+
+@pytest.mark.parametrize("tid", sorted(TEMPLATES))
+def test_every_template_defines_the_tiers_a_schedule_part_maps_to(tid):
+    """J12 question 1: a form's presence rule takes its tier from the item's Part."""
+    assert {"critical", "mandatory_on_request", "discretionary"} <= set(TEMPLATES[tid].consequences)
+    assert any(r.id == f"{tid}.submitted" and r.check.value == "document_present" for r in TEMPLATES[tid].rules)

@@ -278,6 +278,21 @@ def kind_of(rule: dict) -> tuple[str | None, str | None]:
     return None, "unmapped"
 
 
+# Rule-file checks the templates hand to a reviewer on purpose (`human_only`), because no
+# kind states them: a deviation explained and accepted, measured values within a product's
+# limits, a test report's results, a laboratory's independence. Only these count as placed
+# by a reviewer's check on their field; any other check needs a rule of its own kind.
+JUDGED_BY_A_REVIEWER = {
+    "product_specs_deviation_explanation", "product_specs_substantiates_values",
+    "test_report_compliance_with_product_specs", "tenderers_declaration_independence_content",
+}
+
+# Rule-file checks the templates state with another kind: a Compliance Schedule Part's
+# tick box can never fail (blank counts as complying), so the template asks instead that
+# the Part is not marked as not complying, a `contains` with `absent` (#99 review).
+KIND_IN_TEMPLATE = {f"compliance_part_{p}": "contains" for p in (
+    "a_mandatory_features", "b_delivery", "c_packing_labelling", "d_shelf_life")}
+
 # The kinds the engine decides by presence alone (blank, filled, redacted): one stands
 # for another, as a rule file's "filled" on a whole document is a template's
 # "document_present" on its heading.
@@ -290,11 +305,13 @@ def left_out(report: list[dict], templates: dict) -> dict[str, list[str]]:
     group = lambda kind: "presence" if kind in PRESENCE_KINDS else kind  # noqa: E731
     rules = [r for t in templates.values() for r in t.rules]
     have = {(r.field, group(r.check.value)) for r in rules}
-    judged = {r.field for r in rules if r.check.value == "human_only"}   # a reviewer judges what the kinds can't
+    judged = {r.field for r in rules if r.check.value == "human_only"}
     checked = {r.field for r in rules}
     out: dict[str, list[str]] = defaultdict(list)
     for r in report:
-        if r["field_status"] != "mapped" or (r["field"], group(r["kind"])) in have or r["field"] in judged:
+        if r["field_status"] != "mapped" or (r["field"], group(KIND_IN_TEMPLATE.get(r["id"], r["kind"]))) in have:
+            continue
+        if r["id"] in JUDGED_BY_A_REVIEWER and r["field"] in judged:
             continue
         if r["kind"] == "human_only" and r["field"] in checked:
             continue
@@ -362,7 +379,12 @@ def main() -> None:
           f"{placed.count('no_home')} with no home in their form yet")
     for template in sorted(homeless):
         print(f"  {template}: {', '.join(sorted(homeless[template]))}")
+    for out in (args.report, args.params):
+        # The report and the params carry a real tender's values: never inside the repository.
+        if out is not None and out.resolve().is_relative_to(ROOT):
+            sys.exit(f"{out} is inside the repository; write it beside the answer keys, outside git")
     if args.report:
+        args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, indent=1, ensure_ascii=False))
         print(f"classification written to {args.report}")
     if args.templates:
