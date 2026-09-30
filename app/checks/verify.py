@@ -112,7 +112,13 @@ def page_text(pdf: Path | None, page_index: int) -> str:
         try:
             if not 0 <= page_index < len(doc):
                 return ""
-            return doc[page_index].get_textpage().get_text_bounded() or ""
+            page = doc[page_index]
+            textpage = page.get_textpage()
+            try:                  # children before the document (app.ingest._render_locked says why)
+                return textpage.get_text_bounded() or ""
+            finally:
+                textpage.close()
+                page.close()
         finally:
             doc.close()
 
