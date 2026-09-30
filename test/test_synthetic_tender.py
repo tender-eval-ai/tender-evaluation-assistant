@@ -12,7 +12,7 @@ from pathlib import Path
 import pytest
 from pypdf import PdfReader
 
-from tools.make_synthetic_tender import PROFILES, generate
+from tools.make_synthetic_tender import PROFILES, case_card, generate
 
 FIXTURE = Path(__file__).resolve().parents[1] / "test" / "data" / "synthetic_tender"
 
@@ -119,3 +119,11 @@ def test_committed_fixture_matches_the_generator(case):
         pytest.skip("fixture not generated; run tools/make_synthetic_tender.py")
     _, truth = case
     assert json.loads((FIXTURE / "ground_truth.json").read_text()) == truth
+
+
+def test_committed_case_cards_match_their_ground_truth():
+    """The card the UI shows for a case (GET /inbox) comes from its ground truth, so it can't
+    promise a missing certificate or a planted instruction the case doesn't hold."""
+    for folder in (FIXTURE, FIXTURE.parent / "synthetic_tender_full"):
+        truth = json.loads((folder / "ground_truth.json").read_text())
+        assert json.loads((folder / "case.json").read_text()) == case_card(truth), folder.name

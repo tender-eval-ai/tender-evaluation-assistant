@@ -35,6 +35,9 @@ param deployApp bool = true
 @description('Client id of the Entra app registration for sign-in (setup.sh). Empty means the app gets no public ingress.')
 param signInClientId string = ''
 
+@description('Region for the Azure OpenAI resource alone, when the main region won\'t deploy the model as openAiSku (setup.sh OPENAI_LOCATION). A region can list a model it then refuses: canadacentral, gpt-4.1-mini GlobalStandard, 2026-09-30.')
+param openAiLocation string = location
+
 @description('Azure OpenAI model and version for text and vision. Check what the region offers: az cognitiveservices model list -l <region>.')
 param openAiModel string = 'gpt-4.1-mini'
 param openAiModelVersion string = '2025-04-14'
@@ -44,11 +47,14 @@ param openAiSku string = 'GlobalStandard'
 @description('Thousands of tokens per minute.')
 param openAiCapacity int = 10
 
+@description('Where the demo sends anyone who wants to run it on real documents (the UI\'s banner, GET /settings).')
+param sourceUrl string = 'https://github.com/tender-eval-ai/tender-evaluation-assistant'
+
 @description('The gateway stops model calls for a project past this many US dollars a day.')
 param dailyBudgetUsd string = '2'
 
-@description('Optional MODEL_PRICES JSON, so the cost ledger prices the Azure model.')
-param modelPricesJson string = ''
+@description('MODEL_PRICES JSON (USD per 1M tokens), so the cost ledger prices the Azure model. Without it every call costs $0 and the daily budget never stops anything. The default is gpt-4.1-mini on Global Standard, from the Azure Retail Prices API on 2026-09-30; another OPENAI_MODEL needs its own.')
+param modelPricesJson string = '{"gpt-4.1-mini": {"in": 0.40, "cached_in": 0.10, "out": 1.60}}'
 
 var names = {
   identity: '${prefix}-id'
@@ -123,7 +129,7 @@ module postgres 'postgres.bicep' = {
 
 resource openAi 'Microsoft.CognitiveServices/accounts@2024-10-01' = {
   name: names.openAi
-  location: location
+  location: openAiLocation
   kind: 'OpenAI'
   sku: {
     name: 'S0'
@@ -260,6 +266,9 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
             { name: 'API_KEY', secretRef: 'api-key' }
             { name: 'INBOX_DIR', value: '/data/inbox' }
             { name: 'CORS_ORIGINS', value: 'https://${appFqdn}' }
+            // Synthetic cases only, no uploads: real documents run on the client's machine.
+            { name: 'HOSTED_DEMO', value: '1' }
+            { name: 'SOURCE_URL', value: sourceUrl }
           ])
           volumeMounts: dataMount
           probes: [

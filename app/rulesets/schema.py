@@ -219,7 +219,8 @@ class Normalise(BaseModel):
     whole number from 1; `resolve_range_to_lower_bound` takes nothing."""
 
     op: Literal["round_significant_figures", "resolve_range_to_lower_bound"]
-    params: dict[str, str | int | float] = Field(default_factory=dict)
+    # bool first, so `true` stays a bool the check below refuses instead of becoming 1 (#117).
+    params: dict[str, bool | str | int | float] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _params_fit_the_op(self) -> Normalise:
@@ -258,6 +259,11 @@ class TemplateRule(BaseModel):
             raise ValueError(f"rule {self.id} needs a consequence or its own outcomes; a note belongs in ItemNote")
         if self.outcomes is not None:
             _check_outcome_keys(self.outcomes, f"rule {self.id}")
+        # `blank_if` lists the answers that mean "nothing" ("Nil", "None"); a string, or an empty
+        # entry, would be ignored without a word (#117).
+        empty = self.params.get("blank_if")
+        if empty is not None and (not isinstance(empty, list) or not empty or not all(isinstance(w, str) and w.strip() for w in empty)):
+            raise ValueError(f"rule {self.id}: blank_if is a list of answers that mean nothing, e.g. [\"nil\", \"none\"]")
         return self
 
     def slot_refs(self) -> set[str]:

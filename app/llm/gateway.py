@@ -1,7 +1,7 @@
 """The LLM gateway: every model call the pipeline makes goes through here, and the
 pipeline never talks to a provider directly.
 
-    typed errors     app.llm.LLMError.transient tells the job queue whether to retry
+    typed errors     app.llm.client.LLMError.transient tells the job queue whether to retry
     endpoint policy  by the project's data class: confidential text never leaves the
                      local network; redacted samples reach only hosts cleared by name;
                      synthetic text may go anywhere
@@ -11,9 +11,9 @@ pipeline never talks to a provider directly.
                      the run visibly instead of running up a bill
     rate limiter     one shared pace per provider across every worker process
 
-The backend is anything with the `app.llm.LLM` surface (`chat_json`, `ocr_page`,
+The backend is anything with the `app.llm.client.LLM` surface (`chat_json`, `ocr_page`,
 `scope`, `text_chain`, `vision_chain`, `usage`), including `test.fakes.FakeLLM`. The
-memory backends here suit one process; `app.gateway_pg` holds the Postgres ones the
+memory backends here suit one process; `app.llm.gateway_pg` holds the Postgres ones the
 workers share."""
 from __future__ import annotations
 

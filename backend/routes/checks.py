@@ -132,7 +132,10 @@ def _bid_result(pid: str, pdir, run: dict, result, steps: dict, spec: dict | Non
                 forms[letter] = forms_for_letter(letter)[0]
     fields: dict[str, dict[str, FieldValue]] = {}
     for letter, form in forms.items():
-        fields[letter] = {name: field_value(form.key(name)) for name in form.names if form.key(name) in result.fields}
+        # A corrected key too: a reviewer field entered on a result stored before the form had it
+        # (#100) is decided on, so it must be shown and correctable again (#117).
+        fields[letter] = {name: field_value(form.key(name)) for name in form.names
+                          if form.key(name) in result.fields or form.key(name) in result.corrections}
     verdicts: dict[str, Verdict] = {}
     for letter, v in items.items():
         # The engine's own "field" is display text ("tenderer name") and may be reworded; the

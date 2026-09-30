@@ -1,6 +1,6 @@
 """The price summary and the evaluation across tenderers (S4-4), from the confirmed rule
 set and the checked results. No model call, no number from a model: the arithmetic is the
-legacy price engine's (`app.pricing`, kept unchanged), cost-effectiveness = the optimal
+legacy price engine's (`app.checks.price_engine`, kept unchanged), cost-effectiveness = the optimal
 dosage rounded to two significant figures times the unit price in the tender's currency
 (lower is better), or unit price times the estimated quantity (lowest first). What is new
 is where the inputs come from: the rule set (the estimated quantity, the tender's currency
@@ -19,10 +19,9 @@ from typing import Any
 
 from app.checks import currency
 from app.checks.corrections import item_verdicts
-from app.pricing import ARITHMETIC_TOLERANCE, compute_price_rows
 from app.rulesets.schema import RuleSet
-from app.schemas import BidExtraction, BidPrice
-from app.schemas import PriceScheme as LegacyScheme
+from app.checks.price_engine import ARITHMETIC_TOLERANCE, BidExtraction, BidPrice, compute_price_rows
+from app.checks.price_engine import PriceScheme as LegacyScheme
 
 PRICE_FORM = "price_schedule"
 STAGE_ORDER = ("disqualified", "needs_review", "dormant", "pass")

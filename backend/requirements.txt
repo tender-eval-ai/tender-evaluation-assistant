@@ -14,9 +14,9 @@ pypdfium2>=4.30
 pillow>=10.0
 python-docx>=1.1
 
-google-auth[requests]>=2.40   # Vertex AI OAuth tokens (ADC); app/gcp.py refreshes them over requests
+google-auth[requests]>=2.40   # Vertex AI OAuth tokens (ADC); app/llm/gcp.py refreshes them over requests
 
-# The check worker and the API's job routes (app/jobs, app/gateway_pg): the Postgres queue.
+# The check worker and the API's job routes (app/jobs, app/llm/gateway_pg): the Postgres queue.
 procrastinate>=3.9
 psycopg[binary]>=3.2
 

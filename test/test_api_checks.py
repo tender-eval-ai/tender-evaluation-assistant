@@ -224,3 +224,26 @@ def test_every_item_is_checked_against_a_fifteen_item_rule_set_and_corrected_per
                      json={"value": "3 July 2026", "reason": "sample delivered, receipt 17"}, headers=NASI)
     assert r.status_code == 200, r.json()
     assert r.json()["fields"]["g"]["sample_received_date"]["value"] == "3 July 2026"
+
+
+def test_a_reviewer_value_on_a_result_from_before_the_form_had_the_field_is_shown(api, worker):
+    """A result stored before #100 has no key for a field a reviewer enters. The value a
+    reviewer gives it is decided on, so it must be listed too, to be seen and corrected (#117)."""
+    client, pid = api
+    body = {k: copy.deepcopy(v) for k, v in RULESET_ALL.items() if k not in ("status", "confirmed_by", "confirmed_at", "version", "project_id")}
+    assert client.put(f"/projects/{pid}/ruleset/draft", json=body, headers=CHENYU).status_code == 200
+    assert client.post(f"/projects/{pid}/ruleset/confirm", headers=NASI).status_code == 200
+    job_id = client.post(f"/projects/{pid}/checks", json={"tenderers": ["Tenderer_D"]}).json()["job_ids"]["Tenderer_D"]
+    assert _wait_done(client, pid, job_id)["state"] == "done"
+    key = "tender_sample_declaration.sample_received_date"
+    from app.jobs.store import Store
+    with Store().conn() as c:                # as stored before the form had the field
+        c.execute("update results set fields = (select coalesce(jsonb_object_agg(k, v), '{}'::jsonb) "
+                  "from jsonb_each(fields) as e(k, v) where k <> %s and k not like %s) where project = %s",
+                  (key, key + "\\_%", pid))
+    assert "sample_received_date" not in client.get(f"/projects/{pid}/bids/Tenderer_D/results").json()["fields"]["g"]
+    r = client.patch(f"/projects/{pid}/bids/Tenderer_D/fields/g/sample_received_date",
+                     json={"value": "3 July 2026", "reason": "receipt 17"}, headers=NASI)
+    assert r.status_code == 200, r.json()
+    assert r.json()["fields"]["g"]["sample_received_date"]["value"] == "3 July 2026"
+    assert client.get(f"/projects/{pid}/bids/Tenderer_D/results").json()["fields"]["g"]["sample_received_date"]["correction"]["by"] == "nasi"
