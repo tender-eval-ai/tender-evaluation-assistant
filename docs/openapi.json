@@ -47,7 +47,7 @@
             "title": "Currency",
             "type": "string"
           },
-          "fx_to_hkd": {
+          "fx_to_base": {
             "anyOf": [
               {
                 "type": "number"
@@ -56,8 +56,8 @@
                 "type": "null"
               }
             ],
-            "description": "Conversion rate to HKD if quoted in a foreign currency",
-            "title": "Fx To Hkd"
+            "description": "Conversion rate to the base currency if quoted in a foreign currency",
+            "title": "Fx To Base"
           },
           "optimal_dosage": {
             "anyOf": [

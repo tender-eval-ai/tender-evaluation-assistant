@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Synthetic tender-style tender case: the document *structure* of a Hong Kong public
+"""Synthetic tender case: the document *structure* of a Hong Kong public
 goods tender (17 sub-documents, PART headings, numbered clauses with sub-clauses and
 lettered sub-items, "Tender Ref." page headers, "<Document> Page N of M" footers, and a
 three-page Completeness Check Schedule inside the Schedules file) with entirely invented
@@ -84,7 +84,7 @@ class Prose:
 
 # ------------------------------------------------------------------ pagination
 class Paginator:
-    """Flows body lines into pages and renders each page with the running header an Authority
+    """Flows body lines into pages and renders each page with the running header a tender
     PDF carries at the top: "Tender Ref.: X" / "<Document name>" / "Page N of M" for the
     tender-specific documents, "Ref. No. <terms ref>" / "Page N of M" for the standard
     terms, and "Page N of M" / "Ref. No. ..." for the Tender Form. There is no bottom
@@ -169,7 +169,7 @@ def fill_to(pg: Paginator, prose: Prose, target: int, start: int, prefix_anchor:
 # ------------------------------------------------------------------ tender documents
 PROFILES = {
     # target page counts per sub-document; "full" follows the proportions of a real
-    # 17-document Authority goods tender (236 pages combined), "small" keeps every document
+    # 17-document goods tender (236 pages combined), "small" keeps every document
     # and every structural feature at a size that is cheap to parse in CI.
     "small": {"00": 2, "01": 3, "02": 12, "03": 2, "04": 6, "05": 1, "06": 1, "07": 4, "08": 2,
               "08A": 2, "08B": 2, "08C": 1, "08D": 1, "09": 8, "10": 2, "11": 1, "12": 1,
@@ -373,7 +373,7 @@ def build_tender(profile: dict, rng: random.Random) -> tuple[list[tuple[str, str
                      f"Attachment {letter} to the Technical Specifications", pg.render(), pg.anchors))
 
     # 09 Schedules: several schedules bound into one file, each with its own footer and
-    # page numbering (this is what a combined Authority PDF looks like inside).
+    # page numbering (this is what a combined tender PDF looks like inside).
     sched_lines: list[str] = []
     sched_anchors: dict[str, int] = {}
     offset = 0

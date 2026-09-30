@@ -9,7 +9,7 @@ authors:
   - given-names: Chenyu
     family-names: Fang
 abstract: >-
-  An AI-assisted procurement review pipeline for public tender evaluation. A
+  An AI-assisted procurement review pipeline for tender evaluation. A
   tender's documents are parsed into an addressable node tree, the Completeness
   Check Schedule's items are located and turned into a rule set a person confirms,
   and each bid is checked against that confirmed version by a deterministic engine.

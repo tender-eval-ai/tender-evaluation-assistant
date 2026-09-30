@@ -75,7 +75,7 @@ def _ce_table(doc: Docx, result: EvaluationResult) -> None:
             row.tenderer,
             _money(row.estimated_goods_price),
             _num(row.dosage_rounded if row.dosage_rounded is not None else row.dosage),
-            _money(row.unit_price_hkd),
+            _money(row.unit_price_base),
             _money(row.cost_effectiveness) if row.cost_effectiveness is not None else "cannot be calculated",
             str(row.ranking) if row.ranking is not None else "not applicable",
         ], bold=bold)
@@ -94,7 +94,7 @@ def _pq_table(doc: Docx, result: EvaluationResult) -> None:
         price = _money(row.estimated_goods_price)
         if row.ranking is not None:
             price += f"  [{row.ranking}]"
-        _fill_row(table, [row.tenderer, _unit_price(row.unit_price_hkd), price], bold=bold)
+        _fill_row(table, [row.tenderer, _unit_price(row.unit_price_base), price], bold=bold)
 
 
 def _price_notes(doc: Docx, result: EvaluationResult) -> None:

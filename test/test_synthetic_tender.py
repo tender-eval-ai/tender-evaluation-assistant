@@ -1,4 +1,4 @@
-"""The synthetic tender-style case (tools/make_synthetic_tender.py) must keep the document
+"""The synthetic tender case (tools/make_synthetic_tender.py) must keep the document
 structure the parser and the schedule locator key on: 17 sub-documents, a running
 header of "Tender Ref." / "<Document name>" / "Page N of M" at the top of every page,
 PART headings with per-part clause numbering, clause numbers on their own line above
@@ -19,7 +19,7 @@ FIXTURE = Path(__file__).resolve().parents[1] / "test" / "data" / "synthetic_ten
 
 @pytest.fixture(scope="module")
 def case(tmp_path_factory):
-    out = tmp_path_factory.mktemp("sample") / "case"
+    out = tmp_path_factory.mktemp("tender") / "case"
     truth = generate(out, "small")
     return out, truth
 
