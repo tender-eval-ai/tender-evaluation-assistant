@@ -344,9 +344,13 @@ def normalised(item: RuleSetItem, fields: dict) -> tuple[dict, list[dict], dict[
         if not rule.normalise or value is None:
             continue
         printed = out.get(f"{rule.field}_printed")
-        if rule.normalise[0].op == "resolve_range_to_lower_bound" and isinstance(value, (int, float)) \
-                and isinstance(printed, str) and not fields.get(f"{rule.field}_corrected"):
-            source = printed                   # 5.1 read from "5.1 - 4.36 kg/t": the range is in the text
+        span = _RANGE.search(printed) if isinstance(printed, str) else None
+        # 5.1 read from "5.1 - 4.36 kg/t": the range is in the text. Only a range with the
+        # figure read at one end, so "5.1 kg/t (tested 2023-2024)" isn't read as 2023 (#135 review).
+        if rule.normalise[0].op == "resolve_range_to_lower_bound" and isinstance(value, (int, float)) and span \
+                and not fields.get(f"{rule.field}_corrected") \
+                and value in (float(span.group(1).replace(",", "")), float(span.group(2).replace(",", ""))):
+            source = printed
         else:
             source = value
         try:
