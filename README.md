@@ -618,6 +618,73 @@ within `AGENT_OCR_PAGES`), local OCR speed (measured 48.7 s per page on `qwen3-v
 on the laptop; 3.8 s on Gemini), and no Stage III–V yet (technical marking / combined score —
 phase 2).
 
+## Next: tenders in other formats
+
+The project stays on procurement, but tenders don't all look alike. The parser was tuned on one authority's
+digital PDFs, with numbered clauses and a lettered Completeness Check Schedule. Today:
+- only PDFs are read;
+- a scanned page, which has no text layer, is skipped without a warning;
+- every new layout adds special cases to one parser: "PART 1", "Part A", "Table A" and "第 4 部分" are each a
+  hand-written pattern, and a tender that says "Section I" or numbers its checklist "Part 1/2/3" needs another.
+
+The plan, proposed in [decision 0003](docs/decisions/0003-tender-format-router.md):
+
+```mermaid
+flowchart LR
+    F["📄 Tender files<br/>PDF · scans · Word ·<br/>spreadsheets"]
+    R{"<b>router</b><br/>format + layout profile<br/>+ confidence"}
+    LP[("<b>layout profiles</b><br/>PART 1 · Part A · Section I<br/>Clause 12 · Article 12 · (a)<br/>what each checklist Part means")]
+    U["✋ unsure:<br/>a person decides"]
+
+    subgraph PARSERS["one parser per format · each with its own eval"]
+        direction TB
+        P1["digital PDF,<br/>numbered clauses<br/><i>(today's parser)</i>"]
+        P2["scanned PDF<br/>(OCR first)"]
+        P3["Word (DOCX)"]
+        P4["table-first<br/>schedules"]
+    end
+
+    N["<b>node table</b><br/>one contract,<br/>one validator"]
+    L["<b>locate + L1–L4</b><br/>schedule items,<br/>template match, slots,<br/>novel rules, gaps"]
+    T[("<b>shared template library</b><br/>keyed by form,<br/>grows with every tender")]
+    RS["<b>rule set</b><br/>per tender"]
+
+    F --> R
+    R --> P1 & P2 & P3 & P4
+    R -. low confidence .-> U
+    P1 & P2 & P3 & P4 --> N --> L --> RS
+    LP -. names the headings .-> PARSERS
+    T --> L
+    RS -. "a new form, confirmed:<br/>saved as a template" .-> T
+
+    classDef llm fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
+    classDef code fill:#dcfce7,stroke:#16a34a,color:#14532d
+    classDef human fill:#fef3c7,stroke:#d97706,color:#78350f
+    classDef docs fill:#f3f4f6,stroke:#9ca3af,color:#374151
+    class F docs
+    class R,P1,P2,P3,P4,N code
+    class L,RS llm
+    class U human
+    class T,LP docs
+```
+
+1. **A router identifies each document's structure first.** It looks at the file type, whether pages have a text
+   layer, one document or several in one file, language, numbering style and tables, and records a format label
+   with its confidence. When it's unsure, a person is told rather than a guess being made.
+2. **One parser per format**, each with its own answer keys and eval. Today's parser becomes the first, for
+   digital PDFs with numbered clauses. Scanned PDFs, Word files and table-first schedules are the likely next ones.
+   **A layout profile tells a parser what the structure is called.** It is a small data file per tender family:
+   heading names and numbering (`PART 1`, `Part A`, `Section I`, `Clause 12`, `Article 12`, `(a)`), running headers,
+   and how the checklist is found and what each of its Parts means. A tender that names its sections differently
+   then needs a new profile, not a parser change. Today's hand-written patterns become the first profile.
+3. **One node-table contract.** Every parser produces the same nodes, checked by one validator, so locating the
+   schedule, the rule-set layers L1–L4 and the UI don't change when a format is added.
+4. **One shared template library,** keyed by form, not by file layout, and extended with every tender. A form seen
+   before reuses its template. A new one is drafted by L3, confirmed by a person, and saved as a template.
+
+The first step changes no behaviour: put today's parser behind a parser interface, write down the node-table
+contract as a validator, and keep the Tender 1–3 numbers identical.
+
 ## Licence, before you reuse this
 
 The repository is licensed under the **GNU AGPL-3.0** ([LICENSE](LICENSE)). The choice
