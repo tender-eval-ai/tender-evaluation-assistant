@@ -3,7 +3,7 @@
 // No separate tab bar here anymore - PipelineStepper's 5-stage control is now
 // the only navigation (it covered every one of these tabs already; two nav
 // systems side by side was the redundancy, not either one alone).
-export default function TopNav({ tenderName, dataClass, mock = false, onChangeProject, user }) {
+export default function TopNav({ tenderName, dataClass, mock = false, replay = null, onChangeProject, user }) {
   return (
     <header className="h-11 bg-navy flex items-center px-4 gap-5 shrink-0">
       <div className="flex items-center gap-2 shrink-0">
@@ -14,6 +14,12 @@ export default function TopNav({ tenderName, dataClass, mock = false, onChangePr
       </div>
 
       <div className="ml-auto flex items-center gap-3 min-w-0">
+        {replay && (
+          <span className="px-1.5 py-0.5 rounded bg-white/15 text-white text-xs font-mono shrink-0"
+                title="a real run of the pipeline, recorded; nothing here can be changed" data-testid="replay-badge">
+            {replay}
+          </span>
+        )}
         {mock && (
           <span className="px-1.5 py-0.5 rounded bg-white/15 text-white text-xs font-mono shrink-0" title="web/mock/">
             mock API

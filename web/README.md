@@ -66,6 +66,8 @@ VITE_API_BASE=http://localhost:8000 VITE_API_USER=nasi npm run dev
 |---|---|
 | `VITE_API_BASE` | API origin. When it is set, the mock is off. |
 | `VITE_API_MOCK` | `1` or `0` forces the mock on or off, for example `0` with the API behind the same origin. |
+| `VITE_REPLAY` | `1`: the guest site. Every GET is answered from a recorded run under `public/replay/` (`tools/record_run.py`; `.github/workflows/pages.yml` fetches the newest `replay-*` release), and every change is refused. |
+| `VITE_REPLAY_LABEL` | What the top bar shows instead of "mock API", e.g. `Recorded run · 1 October 2026` (the recording's `manifest.json` has it). |
 | `VITE_API_KEY` | Sent as `X-API-Key`. Use it in development only, because a key in a browser bundle is public. |
 | `VITE_API_USER` | Sent as `X-User` until per-user sessions arrive (B9). |
 

@@ -10,6 +10,10 @@ detailed evaluation record sheet.
 *The review UI on its built-in mock and the synthetic tender: every verdict cites its page,
 and a person's correction keeps the model's value beside it, with who and why.*
 
+**Try it without signing in:** [a recorded run of the whole pipeline](https://tender-eval-ai.github.io/tender-evaluation-assistant/)
+on the synthetic tender. The rule set the model drafted and two people confirmed, every offer checked,
+the reviews, the scores and the Word reports: every window, read-only, no backend.
+
 <details>
 <summary>Screens</summary>
 

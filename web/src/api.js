@@ -8,9 +8,29 @@
 //   VITE_API_KEY   sent as X-API-Key (development only: a key in a browser
 //                  bundle is readable by anyone who loads the page).
 //   VITE_API_USER  sent as X-User until per-user sessions arrive (B9).
+//   VITE_REPLAY    "1": the guest site. Every GET is answered by a recorded run's static
+//                  files under replay/ (tools/record_run.py); nothing can be changed.
+//   VITE_REPLAY_LABEL  what the top bar says instead of "mock API", e.g. "Recorded run · 1 October 2026".
+import { routeKey } from "./replayKey.js";
+
 const env = import.meta.env ?? {};
 
-export const USE_MOCK = env.VITE_API_MOCK ? env.VITE_API_MOCK === "1" : !env.VITE_API_BASE;
+export const REPLAY = env.VITE_REPLAY === "1";
+export const REPLAY_LABEL = env.VITE_REPLAY_LABEL || "Recorded run";
+export const USE_MOCK = !REPLAY && (env.VITE_API_MOCK ? env.VITE_API_MOCK === "1" : !env.VITE_API_BASE);
+const replayRoot = () => `${env.BASE_URL ?? "/"}replay/`;
+const RECORDED = "This is a recorded run: nothing here can be changed. Run it yourself to try it.";
+
+// A GET from the recording: the exact path first, then without its query (a recording
+// keeps a route once when every version answers the same). Anything else is refused.
+async function replayed(method, path) {
+  if (method !== "GET") throw new ApiError(405, "recorded_run", RECORDED);
+  for (const candidate of new Set([path, path.split("?")[0]])) {
+    const response = await fetch(`${replayRoot()}api/${routeKey(candidate)}`);
+    if (response.ok) return response;
+  }
+  throw new ApiError(404, "not_found", `${path} is not in this recording`);
+}
 
 function apiBase() {
   const base = env.VITE_API_BASE || (typeof window !== "undefined" ? window.location.origin : "");
@@ -46,6 +66,7 @@ function headers(extra = {}) {
 // A call that answered 2xx, or an ApiError. `request` reads it as JSON; a report
 // download reads it as a file.
 async function call(method, path, body) {
+  if (REPLAY) return replayed(method, path);
   const response = await fetch(`${apiBase()}${path}`, {
     method,
     headers: headers(body === undefined ? {} : { "Content-Type": "application/json" }),
@@ -57,6 +78,7 @@ async function call(method, path, body) {
 // Files as multipart/form-data; the browser sets the boundary and the length the API
 // checks before it reads the body.
 async function upload(path, files) {
+  if (REPLAY) throw new ApiError(405, "recorded_run", RECORDED);
   const form = new FormData();
   for (const file of files) form.append("files", file, file.name);
   const response = await fetch(`${apiBase()}${path}`, { method: "POST", headers: headers(), body: form });
@@ -180,6 +202,11 @@ export const reevaluate = (pid, { version } = {}) =>
 // the Rules window marks a rule set quote on a tender page; the API still
 // accepts that unsigned highlight until tender citations are signed (S3).
 export function pageImageUrl(imageUrl, { highlight } = {}) {
+  if (REPLAY) {
+    const recorded = new URL(imageUrl, "http://replay.invalid/");
+    if (highlight) recorded.searchParams.set("highlight", highlight);
+    return `${replayRoot()}img/${routeKey(recorded.pathname + recorded.search)}.jpg`;
+  }
   const url = new URL(imageUrl, `${apiBase()}/`);
   if (highlight) url.searchParams.set("highlight", highlight);
   return url.toString();

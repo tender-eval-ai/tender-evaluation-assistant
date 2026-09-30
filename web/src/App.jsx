@@ -8,7 +8,7 @@ import RulesWindow from "./windows/RulesWindow.jsx";
 import ScoringWindow from "./windows/ScoringWindow.jsx";
 import StageIWindow from "./windows/StageIWindow.jsx";
 import StageIIWindow from "./windows/StageIIWindow.jsx";
-import { getProject, listProjects, listRulesetVersions, USE_MOCK } from "./api.js";
+import { getProject, listProjects, listRulesetVersions, REPLAY, REPLAY_LABEL, USE_MOCK } from "./api.js";
 
 // Until per-user sessions arrive (checklist item B9) the API takes the acting
 // user from X-User; there is no login screen.
@@ -77,6 +77,7 @@ function AppShell({ projectId, project, onChangeProject }) {
         tenderName={project?.name ?? projectId}
         dataClass={project?.data_class}
         mock={USE_MOCK}
+        replay={REPLAY ? REPLAY_LABEL : null}
         onChangeProject={onChangeProject}
         user={USER}
       />

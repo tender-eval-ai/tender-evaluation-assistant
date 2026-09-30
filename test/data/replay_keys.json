@@ -1,0 +1,38 @@
+[
+  {
+    "path": "/projects",
+    "key": "projects"
+  },
+  {
+    "path": "/projects/showcase-small-tender-1a2b3c/ruleset?version=2",
+    "key": "projects_2fshowcase-small-tender-1a2b3c_2fruleset_3fversion_3d2"
+  },
+  {
+    "path": "/projects/p1/bids/Tenderer_A/results?version=1",
+    "key": "projects_2fp1_2fbids_2fTenderer_5fA_2fresults_3fversion_3d1"
+  },
+  {
+    "path": "/projects/p1/ruleset/diff?to=2&from=1",
+    "key": "projects_2fp1_2fruleset_2fdiff_3ffrom_3d1_26to_3d2"
+  },
+  {
+    "path": "/projects/p1/documents/9f849435aa64/pages/10/image?highlight=Tender+Form+-+Offer+to+be+Bound&exp=1790000000&sig=abc123",
+    "key": "projects_2fp1_2fdocuments_2f9f849435aa64_2fpages_2f10_2fimage_3fhighlight_3dTender_20Form_20-_20Offer_20to_20be_20Bound"
+  },
+  {
+    "path": "/projects/p1/documents/9f849435aa64/pages/10/image?sig=abc&exp=1&highlight=The%20signed%20Non-collusive%20Tendering%20Certificate%20The%20signed%20Non-collusive%20Tendering%20Certificate%20The%20signed%20Non-collusive%20Tendering%20Certificate%20The%20signed%20Non-collusive%20Tendering%20Certificate%20",
+    "key": "projects_2fp1_2fdocuments_2f9f849435aa64_2fpages_2f10_2fimage_3fhighlight_3dThe_20signed_20Non-collu-40ed5786"
+  },
+  {
+    "path": "/projects/p1/reports/price_summary.docx?version=1",
+    "key": "projects_2fp1_2freports_2fprice_5fsummary.docx_3fversion_3d1"
+  },
+  {
+    "path": "/projects/p1/documents/d1/pages/2/image?highlight=%E7%AC%AC3%E9%A0%85",
+    "key": "projects_2fp1_2fdocuments_2fd1_2fpages_2f2_2fimage_3fhighlight_3d_e7_ac_ac3_e9_a0_85"
+  },
+  {
+    "path": "/projects/p1/bids/Tenderer%20X/results",
+    "key": "projects_2fp1_2fbids_2fTenderer_20X_2fresults"
+  }
+]
