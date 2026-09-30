@@ -109,7 +109,10 @@ _FORMS = (
         FieldDef("manufacturing_plant_address", "text", "the address of the plant where the goods are made, as printed"),
         FieldDef("product_code", "text", "the manufacturer's product code or number, as printed"),
         # The rows that describe the product differ from tender to tender (#76 review, point 3), so
-        # rather than one field per row, one field says which rows the tenderer left empty.
+        # rather than one field per row, one field says which rows the tenderer left empty. A
+        # stop-gap (#100 review): a row the model misses reads as "none empty" and cannot be
+        # verified, so a template treats a blank here as a reviewer's call. The lasting answer
+        # is V3 reading the schedule as {row label: value}, checked against a per-tender list.
         FieldDef("rows_left_blank", "text", "the names of the schedule's rows left empty, as printed, separated by "
                                             "semicolons; a row marked 'N/A' is not empty; null when every row is "
                                             "filled in"),
