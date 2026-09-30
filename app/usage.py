@@ -16,7 +16,6 @@ from __future__ import annotations
 import json
 import threading
 from contextlib import contextmanager
-from pathlib import Path
 
 # USD per 1M tokens. Verified 2026-09-09 against the providers' pricing pages:
 # Gemini 2.5 Flash $0.30 in (text/image) / $2.50 out incl. thinking (Vertex and AI
@@ -148,52 +147,3 @@ class UsageLedger:
     def scopes(self) -> list[str]:
         with self._lock:
             return sorted(self._data)
-
-
-# ---------------------------------------------------------------- files
-
-def write_usage(path: Path, ledger: UsageLedger, scope: str) -> dict | None:
-    """Persist one scope's usage as JSON (None if the scope made no calls)."""
-    snap = ledger.snapshot(scope)
-    if not snap["totals"]["calls"] and not snap["totals"]["failed"]:
-        return None
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(snap, indent=2))
-    return snap
-
-
-def summarize_usage(usage_dir: Path, bids: list[str]) -> dict:
-    """Aggregate usage/<scope>.json files into per-bid and total figures — the
-    "$ per bid" number. Bids without a usage file (stored/corrected extractions)
-    are listed as skipped, not averaged in."""
-    per_bid, missing = {}, []
-    for name in bids:
-        p = usage_dir / f"{name}.json"
-        if p.is_file():
-            per_bid[name] = json.loads(p.read_text())["totals"]
-        else:
-            missing.append(name)
-    rubric = json.loads((usage_dir / "rubric.json").read_text())["totals"] \
-        if (usage_dir / "rubric.json").is_file() else None
-    n = len(per_bid)
-    bid_totals = {f: sum(t[f] for t in per_bid.values()) for f in FIELDS}
-    totals = {f: bid_totals[f] + (rubric[f] if rubric else 0) for f in FIELDS}
-    usd = sorted(t["usd"] for t in per_bid.values())
-    secs = sorted(t["seconds"] for t in per_bid.values())
-    models: dict[str, str] = {}
-    for p in sorted(usage_dir.glob("*.json")):
-        if p.name == "summary.json":
-            continue
-        for entry, m in json.loads(p.read_text())["models"].items():
-            models[entry] = m.get("served", "")
-    return {
-        "bids": n, "skipped": missing,
-        "usd_total": round(totals["usd"], 4),
-        "usd_per_bid_mean": round(bid_totals["usd"] / n, 4) if n else None,
-        "usd_per_bid_median": round(usd[n // 2], 4) if n else None,
-        "tokens_per_bid": round((bid_totals["prompt_tokens"] + bid_totals["output_tokens"]) / n) if n else None,
-        "calls_per_bid": round(bid_totals["calls"] / n, 1) if n else None,
-        "model_seconds_per_bid_median": round(secs[n // 2], 1) if n else None,
-        "failed_calls": totals["failed"],
-        "rubric": rubric, "totals": totals, "models": models, "per_bid": per_bid,
-    }

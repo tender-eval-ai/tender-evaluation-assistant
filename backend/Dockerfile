@@ -2,7 +2,7 @@
 #   docker build -f backend/Dockerfile -t tea-backend .
 # The worker is the same image with: python -m app.jobs.worker --pipelines app.checks.vendor_check
 # It installs exactly backend/requirements.lock (hashed; the root lock's versions without the
-# test and MCP packages) and runs as the unprivileged user `app`, uid 1000. On a Linux host,
+# test packages) and runs as the unprivileged user `app`, uid 1000. On a Linux host,
 # a bind-mounted ./data must be writable by uid 1000 (README, "Service mode").
 FROM python:3.12-slim
 

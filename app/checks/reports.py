@@ -14,8 +14,44 @@ from docx import Document as Docx
 
 from app.checks.corrections import item_verdicts
 from app.checks.pricing import Offer
-from app.report import _fill_row, _header_row, _money, _num, _unit_price
 from app.rulesets.schema import RuleSet
+
+
+# ---------------------------------------------------------------- cells (from the prototype's app/report.py)
+def _money(v: float | None) -> str:
+    return f"{v:,.2f}" if v is not None else "—"
+
+
+def _num(v: float | None) -> str:
+    return f"{v:,.2f}".rstrip("0").rstrip(".") if v is not None else "—"
+
+
+def _unit_price(v: float | None) -> str:
+    """At least 2 decimals, up to 4 when quoted more precisely (e.g. 1.278)."""
+    if v is None:
+        return "—"
+    s = f"{v:,.4f}".rstrip("0")
+    if len(s.partition(".")[2]) < 2:
+        return f"{v:,.2f}"
+    return s
+
+
+def _set_cell(cell, value: str, bold: bool) -> None:
+    cell.text = value
+    for paragraph in cell.paragraphs:
+        for run in paragraph.runs:
+            run.bold = bold
+
+
+def _header_row(table, labels: list[str]) -> None:
+    for cell, label in zip(table.rows[0].cells, labels):
+        _set_cell(cell, label, bold=True)
+
+
+def _fill_row(table, values: list[str], bold: bool = False) -> None:
+    row = table.add_row()
+    for cell, value in zip(row.cells, values):
+        _set_cell(cell, value, bold)
 
 NAMES = ("price_summary.docx", "summary_list.docx", "evaluation_record.docx")
 

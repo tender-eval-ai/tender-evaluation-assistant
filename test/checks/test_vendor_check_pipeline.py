@@ -7,7 +7,7 @@ the contract deposit, which no synthetic bid has) + 11 extract + 11 second reads
 import pytest
 
 from app.checks import vendor_check
-from app.checks.extract_item_l import PREFIX
+from test.checks.item_l import PREFIX
 from app.checks.verify import SecondRead
 from app.jobs.execute import run_pipeline
 from test.checks import conftest as vendor_check_conftest

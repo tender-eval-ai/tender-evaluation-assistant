@@ -1,7 +1,7 @@
 """V3, one code path for every form: a fixed reading per form, engine-ready fields with a
 citation, numbers coerced with their printed form kept, redaction kept apart from absence."""
 from app.checks.extract import extract_form, fields_from, reading_model
-from app.checks.extract_item_l import FIELDS, PREFIX, extract
+from test.checks.item_l import FIELDS, PREFIX, extract
 from app.checks.forms import FORMS
 from app.checks.resolve import ItemPages
 from test.checks.conftest import fake_llm, pages_of

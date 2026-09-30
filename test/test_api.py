@@ -1,13 +1,12 @@
-"""Backend API tests — fully offline: rubric and bid extractions are injected through
-the API (the human-correction path), so evaluation runs without any LLM."""
+"""The API's project, upload, inbox, key and health routes, offline (no Postgres, no model).
+The rule-set, check and review routes have their own files (test_api_*.py)."""
 import importlib
-import json
-import time
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-from test.conftest import FIXTURES
+TEMPLATES = Path(__file__).resolve().parent / "data" / "templates"
 
 
 def make_client(tmp_path, monkeypatch, api_key: str | None = None):
@@ -31,61 +30,9 @@ def make_client(tmp_path, monkeypatch, api_key: str | None = None):
     return TestClient(api.app)
 
 
-def wait_done(client, pid, timeout=15.0):
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        status = client.get(f"/projects/{pid}/status").json()
-        if status["state"] in ("done", "error", "waiting"):
-            return status
-        time.sleep(0.05)
-    pytest.fail("background job did not finish in time")
-
-
-def test_full_project_flow_offline(tmp_path, monkeypatch):
-    client = make_client(tmp_path, monkeypatch)
-
-    assert client.get("/health").json()["ok"] is True
-
-    pid = client.post("/projects", json={"name": "Demo Tender 001"}).json()["id"]
-    assert pid in [p["id"] for p in client.get("/projects").json()]
-
-    # Human checkpoint: PUT a (fixture) rubric and read it back.
-    rubric = json.loads((FIXTURES / "rubric.json").read_text())
-    assert client.put(f"/projects/{pid}/rubric", json=rubric).status_code == 200
-    assert client.get(f"/projects/{pid}/rubric").json()["tender_ref"] == "DEMO0012026"
-
-    # Evaluation without bids must be rejected.
-    assert client.post(f"/projects/{pid}/legacy/evaluate").status_code == 400
-
-    # Inject the four fixture extractions (correction path — no LLM involved).
-    for path in sorted((FIXTURES / "bids").glob("*.json")):
-        ext = json.loads(path.read_text())
-        r = client.put(f"/projects/{pid}/bids/{ext['tenderer']}/extraction", json=ext)
-        assert r.status_code == 200
-
-    assert client.post(f"/projects/{pid}/legacy/evaluate").json()["started"] is True
-    status = wait_done(client, pid)
-    assert status["state"] == "done", status
-
-    ev = client.get(f"/projects/{pid}/legacy/evaluation").json()
-    assert ev["recommended"] == "Bidder B"
-    assert len(ev["stage1"]) == 4
-
-    reports = client.get(f"/projects/{pid}/legacy/reports").json()
-    assert sorted(reports) == ["evaluation_record.docx", "price_summary.docx", "summary_list.docx"]
-    docx = client.get(f"/projects/{pid}/legacy/reports/price_summary.docx")
-    assert docx.status_code == 200
-    assert docx.content[:2] == b"PK"  # docx is a zip container
-
-    # Project summary reflects the finished state.
-    proj = client.get(f"/projects/{pid}").json()
-    assert proj["has_rubric"] and proj["has_evaluation"]
-    assert len(proj["extracted"]) == 4
-
-
 def test_unknown_project_404(tmp_path, monkeypatch):
     client = make_client(tmp_path, monkeypatch)
-    assert client.get("/projects/nope/status").status_code == 404
+    assert client.get("/projects/nope").status_code == 404
 
 
 def test_inbox_import_and_delete(tmp_path, monkeypatch):
@@ -122,84 +69,6 @@ def test_inbox_import_and_delete(tmp_path, monkeypatch):
     assert client.get("/projects").json() == []
 
 
-def test_extraction_review_endpoints_and_page_image(tmp_path, monkeypatch):
-    client = make_client(tmp_path, monkeypatch)
-    pid = client.post("/projects", json={"name": "review"}).json()["id"]
-    rubric = json.loads((FIXTURES / "rubric.json").read_text())
-    client.put(f"/projects/{pid}/rubric", json=rubric)
-
-    # GET extraction: 404 before, roundtrip after PUT.
-    assert client.get(f"/projects/{pid}/bids/Alpha/extraction").status_code == 404
-    ext = json.loads((FIXTURES / "bids" / "bidder_a.json").read_text())
-    client.put(f"/projects/{pid}/bids/Alpha/extraction", json=ext)
-    assert client.get(f"/projects/{pid}/bids/Alpha/extraction").json()["tenderer"] == "Alpha"
-
-    # With every bid already extracted the orchestrated run needs no LLM at all: it
-    # goes straight to the review checkpoint and pauses there.
-    assert client.post(f"/projects/{pid}/run").status_code == 200
-    status = wait_done(client, pid)
-    assert status["state"] == "waiting" and "review" in status["detail"]
-
-    # Evidence page image rendered from a real uploaded PDF.
-    from tools.pdfgen import make_text_pdf
-    pdf = tmp_path / "offer.pdf"
-    make_text_pdf(pdf, "Offer of Alpha. Price Schedule Part A: unit price HK$ 1.00.")
-    client.post(f"/projects/{pid}/bids/Alpha",
-                files=[("files", ("offer.pdf", pdf.read_bytes(), "application/pdf"))])
-    img = client.get(f"/projects/{pid}/bids/Alpha/page", params={"page": 1})
-    assert img.status_code == 200
-    assert img.content[:8] == b"\x89PNG\r\n\x1a\n"
-    assert img.headers["content-type"] == "image/png"
-    assert client.get(f"/projects/{pid}/bids/Alpha/page",
-                      params={"page": 99}).status_code == 400
-    assert client.get(f"/projects/{pid}/bids/Nobody/page").status_code == 404
-
-
-def test_tender_page_image(tmp_path, monkeypatch):
-    client = make_client(tmp_path, monkeypatch)
-    pid = client.post("/projects", json={"name": "tp"}).json()["id"]
-    assert client.get(f"/projects/{pid}/tender/page").status_code == 404
-
-    from tools.pdfgen import make_text_pdf
-    pdf = tmp_path / "terms.pdf"
-    make_text_pdf(pdf, "Terms of Tender. Delivery within 45 days is essential.")
-    client.post(f"/projects/{pid}/tender",
-                files=[("files", ("terms.pdf", pdf.read_bytes(), "application/pdf"))])
-    img = client.get(f"/projects/{pid}/tender/page", params={"page": 1})
-    assert img.status_code == 200
-    assert img.content[:8] == b"\x89PNG\r\n\x1a\n"
-    assert client.get(f"/projects/{pid}/tender/page", params={"page": 99}).status_code == 400
-
-    # Highlighting the quoted evidence visibly changes the render; a quote that is
-    # nowhere on the page falls back to the clean render.
-    marked = client.get(f"/projects/{pid}/tender/page",
-                        params={"page": 1, "highlight": "Delivery within 45 days"})
-    assert marked.status_code == 200 and marked.content[:8] == b"\x89PNG\r\n\x1a\n"
-    assert marked.content != img.content
-    unfound = client.get(f"/projects/{pid}/tender/page",
-                         params={"page": 1, "highlight": "totally absent wording zz"})
-    assert unfound.content == img.content
-
-
-def test_page_image_accepts_query_key(tmp_path, monkeypatch):
-    """Evidence links open in a browser tab (no headers): page endpoints accept
-    ?key=…, but the data API must still require the header."""
-    client = make_client(tmp_path, monkeypatch, api_key="sesame")
-    h = {"X-API-Key": "sesame"}
-    pid = client.post("/projects", json={"name": "k"}, headers=h).json()["id"]
-    from tools.pdfgen import make_text_pdf
-    pdf = tmp_path / "t.pdf"
-    make_text_pdf(pdf, "Terms of Tender apply here.")
-    client.post(f"/projects/{pid}/tender", headers=h,
-                files=[("files", ("t.pdf", pdf.read_bytes(), "application/pdf"))])
-    assert client.get(f"/projects/{pid}/tender/page").status_code == 401
-    assert client.get(f"/projects/{pid}/tender/page",
-                      params={"key": "wrong"}).status_code == 401
-    assert client.get(f"/projects/{pid}/tender/page",
-                      params={"key": "sesame"}).status_code == 200
-    assert client.get("/projects", params={"key": "sesame"}).status_code == 401
-
-
 def test_api_key_enforced(tmp_path, monkeypatch):
     client = make_client(tmp_path, monkeypatch, api_key="sesame")
     assert client.get("/health").status_code == 200  # health stays open
@@ -210,7 +79,7 @@ def test_api_key_enforced(tmp_path, monkeypatch):
 
 def test_health_reports_the_template_library_without_naming_a_path(tmp_path, monkeypatch):
     client = make_client(tmp_path, monkeypatch, api_key="sesame")
-    monkeypatch.setenv("RULESET_TEMPLATES_DIR", str(FIXTURES.parent / "templates"))
+    monkeypatch.setenv("RULESET_TEMPLATES_DIR", str(TEMPLATES))
     body = client.get("/health").json()
     assert body["templates"] == 2 and body["templates_valid"] is True
     library = tmp_path / "templates"
@@ -223,120 +92,8 @@ def test_health_reports_the_template_library_without_naming_a_path(tmp_path, mon
     assert str(tmp_path) not in r.text and "broken.json" not in r.text, "an open route names no path and no file"
 
 
-def stub_pipeline(monkeypatch) -> dict:
-    """Replace the LLM-backed graph nodes with fixtures: the orchestrated run then
-    exercises checkpoints, pauses and edits without any model. Returns the bids."""
-    monkeypatch.setenv("VERIFY_FINDINGS", "0")
-    monkeypatch.setenv("AGENT_SEARCH", "0")
-    import app.graph as graph_mod
-    from app.schemas import BidExtraction, Rubric
-    fixture_rubric = Rubric.model_validate_json((FIXTURES / "rubric.json").read_text())
-    fixture_bids = {e.tenderer: e for e in (BidExtraction.model_validate_json(p.read_text())
-                                            for p in sorted((FIXTURES / "bids").glob("*.json")))}
-    monkeypatch.setattr(graph_mod, "load_folder", lambda *a, **k: [])
-    monkeypatch.setattr(graph_mod, "load_pdf", lambda *a, **k: None)
-    monkeypatch.setattr(graph_mod, "derive_rubric",
-                        lambda docs, cfg, llm: fixture_rubric.model_copy(deep=True))
-    monkeypatch.setattr(graph_mod, "extract_bid",
-                        lambda name, docs, rubric, cfg, llm: fixture_bids[name].model_copy(deep=True))
-    monkeypatch.setattr("app.llm.LLM", lambda cfg: object())
-    return fixture_bids
-
-
-def make_project_with_docs(client, fixture_bids, name="graph") -> str:
-    pid = client.post("/projects", json={"name": name}).json()["id"]
-    stub = b"%PDF-1.4 stub"
-    client.post(f"/projects/{pid}/tender", files=[("files", ("terms.pdf", stub, "application/pdf"))])
-    for bidder in fixture_bids:
-        client.post(f"/projects/{pid}/bids/{bidder}", files=[("files", ("offer.pdf", stub, "application/pdf"))])
-    return pid
-
-
-def test_orchestrated_run_pauses_at_both_checkpoints_and_honours_edits(tmp_path, monkeypatch):
-    """/run -> paused at rubric -> PUT edit -> /resume -> paused at review -> PUT
-    correction -> /resume -> done, with the edits visible in the evaluation."""
-    fixture_bids = stub_pipeline(monkeypatch)
-    client = make_client(tmp_path, monkeypatch)
-
-    pid = client.post("/projects", json={"name": "graph"}).json()["id"]
-    assert client.post(f"/projects/{pid}/run").status_code == 400   # no tender docs yet
-    stub = b"%PDF-1.4 stub"
-    client.post(f"/projects/{pid}/tender", files=[("files", ("terms.pdf", stub, "application/pdf"))])
-    for name in fixture_bids:
-        client.post(f"/projects/{pid}/bids/{name}", files=[("files", ("offer.pdf", stub, "application/pdf"))])
-
-    assert client.post(f"/projects/{pid}/run").json()["started"] is True
-    status = wait_done(client, pid)
-    assert status["state"] == "waiting" and "rubric" in status["detail"]
-    assert client.get(f"/projects/{pid}/graph").json()["pending"] == "rubric"
-    assert client.post(f"/projects/{pid}/run").status_code == 409         # paused: must resume
-
-    rubric = client.get(f"/projects/{pid}/rubric").json()
-    rubric["subject"] = "EDITED IN THE UI"
-    client.put(f"/projects/{pid}/rubric", json=rubric)
-    assert client.post(f"/projects/{pid}/resume", json={}).json()["resumed"] == "rubric"
-    status = wait_done(client, pid)
-    assert status["state"] == "waiting" and "extractions" in status["detail"]
-    assert client.get(f"/projects/{pid}/graph").json()["pending"] == "review"
-    assert len(client.get(f"/projects/{pid}").json()["extracted"]) == len(fixture_bids)
-
-    fixed = client.get(f"/projects/{pid}/bids/Bidder A/extraction").json()
-    fixed["documents"][0]["present"] = False
-    client.put(f"/projects/{pid}/bids/Bidder A/extraction", json=fixed)
-    assert client.post(f"/projects/{pid}/resume", json={}).json()["resumed"] == "review"
-    status = wait_done(client, pid)
-    assert status["state"] == "done", status
-
-    ev = client.get(f"/projects/{pid}/legacy/evaluation").json()
-    assert ev["rubric"]["subject"] == "EDITED IN THE UI"
-    assert next(r for r in ev["stage1"] if r["tenderer"] == "Bidder A")["passed"] is False
-    g = client.get(f"/projects/{pid}/graph").json()
-    assert g["pending"] is None and g["corrected"] == ["Bidder A"]
-    assert client.post(f"/projects/{pid}/resume", json={}).status_code == 409
-    assert client.get(f"/projects/{pid}/bids/Bidder A/agent").status_code == 404
-    assert sorted(client.get(f"/projects/{pid}/legacy/reports").json()) == [
-        "evaluation_record.docx", "price_summary.docx", "summary_list.docx"]
-
-
-def test_pause_state_survives_losing_the_scratch_disk(tmp_path, monkeypatch):
-    """Cloud Run mode: the graph's SQLite DB is worked on under GRAPH_DB_SCRATCH_DIR
-    (instance-local) and copied to the project's work/ dir (the bucket) after every
-    job. Wiping the scratch dir between two human checkpoints — an instance restart
-    — must lose nothing: the next call restores the working copy from work/."""
-    import shutil
-    fixture_bids = stub_pipeline(monkeypatch)
-    scratch = tmp_path / "scratch"
-    monkeypatch.setenv("GRAPH_DB_SCRATCH_DIR", str(scratch))
-    client = make_client(tmp_path, monkeypatch)
-    pid = make_project_with_docs(client, fixture_bids)
-    canonical = tmp_path / "data" / "projects" / pid / "work" / "graph.sqlite"
-
-    assert client.post(f"/projects/{pid}/run").json()["started"] is True
-    assert wait_done(client, pid)["state"] == "waiting"
-    assert canonical.is_file() and (scratch / pid / "graph.sqlite").is_file()
-    assert not list(canonical.parent.glob(".graph.sqlite.*")), "temp copy left behind"
-
-    shutil.rmtree(scratch)                                  # "instance restarted"
-    assert client.get(f"/projects/{pid}/graph").json()["pending"] == "rubric"
-    assert client.post(f"/projects/{pid}/resume", json={}).json()["resumed"] == "rubric"
-    assert client.get(f"/projects/{pid}/graph").json()["pending"] in ("rubric", "review", None)
-    assert wait_done(client, pid)["state"] == "waiting"
-
-    shutil.rmtree(scratch)                                  # and again
-    assert client.post(f"/projects/{pid}/resume", json={}).json()["resumed"] == "review"
-    assert wait_done(client, pid)["state"] == "done"
-    assert client.get(f"/projects/{pid}/graph").json()["pending"] is None
-    assert sorted(client.get(f"/projects/{pid}/legacy/reports").json()) == [
-        "evaluation_record.docx", "price_summary.docx", "summary_list.docx"]
-
-    # Deleting the project removes its scratch copy too.
-    client.delete(f"/projects/{pid}")
-    assert not (scratch / pid).exists()
-
-
 def test_project_synthetic_flag(tmp_path, monkeypatch):
-    # The flag the MCP server keys its confidentiality guard on: explicit at creation,
-    # off by default, visible on the project.
+    # Kept for older clients beside data_class: explicit at creation, off by default.
     client = make_client(tmp_path, monkeypatch)
     real = client.post("/projects", json={"name": "Real Tender"}).json()
     demo = client.post("/projects", json={"name": "Demo Case", "synthetic": True}).json()
@@ -362,18 +119,6 @@ def test_project_id_is_validated_before_touching_the_filesystem(tmp_path, monkey
     assert client.delete(f"/projects/{keep}").json() == {"deleted": keep}
 
 
-def test_jobs_interrupted_by_a_restart_are_not_left_running(tmp_path, monkeypatch):
-    """A job runs in a daemon thread; if the process dies mid-job the status file
-    would say "running" forever. Startup flips it to a clear error."""
-    client = make_client(tmp_path, monkeypatch)
-    pid = client.post("/projects", json={"name": "restart"}).json()["id"]
-    import backend.api as api
-    api._set_status(api.PROJECTS / pid, "running", "extracting Tenderer_07")
-    client = make_client(tmp_path, monkeypatch)          # process restarted (module reload)
-    status = client.get(f"/projects/{pid}/status").json()
-    assert status["state"] == "error" and "restarted" in status["detail"]
-
-
 def test_node_table_needs_the_key(tmp_path, monkeypatch):
     """The parsed clause tree is document content: behind X-API-Key like every other
     document route (it sat on the unkeyed router with the page image until ST-5)."""
@@ -387,30 +132,3 @@ def test_node_table_needs_the_key(tmp_path, monkeypatch):
     doc = client.get(f"/projects/{pid}/documents", headers=h).json()[0]["doc_id"]
     assert client.get(f"/projects/{pid}/documents/{doc}/nodes").status_code == 401
     assert client.get(f"/projects/{pid}/documents/{doc}/nodes", headers=h).status_code == 409, "keyed: not parsed yet"
-
-
-def test_legacy_run_refuses_a_cloud_model_for_a_confidential_project(tmp_path, monkeypatch):
-    """The graph calls the model client directly, so /run applies the gateway's policy
-    first: a confidential project never starts against a cloud endpoint."""
-    client = make_client(tmp_path, monkeypatch)
-    monkeypatch.setenv("TEXT_MODEL_FALLBACKS", "deepseek-chat@https://api.deepseek.com/v1")
-    pid = client.post("/projects", json={"name": "c"}).json()["id"]
-    from tools.pdfgen import make_text_pdf
-    pdf = tmp_path / "t.pdf"
-    make_text_pdf(pdf, "Terms of Tender apply here.")
-    client.post(f"/projects/{pid}/tender", files=[("files", ("t.pdf", pdf.read_bytes(), "application/pdf"))])
-
-    r = client.post(f"/projects/{pid}/run")
-    assert r.status_code == 403
-    assert r.json()["error"]["code"] == "data_class_forbidden"
-    assert r.json()["error"]["details"] == {"data_class": "confidential", "endpoints": ["api.deepseek.com"]}
-    assert client.get(f"/projects/{pid}/status").json()["state"] == "idle", "nothing started"
-
-
-def test_legacy_run_lets_a_synthetic_project_reach_any_endpoint(tmp_path, monkeypatch):
-    from backend.routes.runs import _check_endpoints
-    client = make_client(tmp_path, monkeypatch)
-    monkeypatch.setenv("TEXT_MODEL_FALLBACKS", "deepseek-chat@https://api.deepseek.com/v1")
-    pid = client.post("/projects", json={"name": "s", "synthetic": True}).json()["id"]
-    from backend import deps
-    _check_endpoints(deps._project_dir(pid))    # no exception: synthetic text may go anywhere

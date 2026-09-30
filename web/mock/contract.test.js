@@ -1,13 +1,12 @@
 // The mock answers exactly like the contract: every mocked route exists in
 // openapi.json, and every body it sends validates against the route's response
-// schema, with no field the schema does not name. Reads ../docs/openapi.json
-// once PR #27 has put it on main, else the S2 snapshot beside this file.
-import { existsSync, readFileSync } from "node:fs";
+// schema, with no field the schema does not name. Reads ../docs/openapi.json.
+import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import * as fx from "./fixtures.js";
-import { ROUTES, S3_ROUTES } from "./handlers.js";
+import { ROUTES } from "./handlers.js";
 import {
   validateDiff,
   validateGap,
@@ -16,9 +15,7 @@ import {
 } from "./rulesetSchema.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
-const repoSpec = resolve(here, "../../docs/openapi.json");
-const specPath = existsSync(repoSpec) ? repoSpec : resolve(here, "openapi.s2.json");
-const spec = JSON.parse(readFileSync(specPath, "utf8"));
+const spec = JSON.parse(readFileSync(resolve(here, "../../docs/openapi.json"), "utf8"));
 const BASE = "http://api.test";
 
 function deref(schema) {
@@ -107,7 +104,7 @@ const REQUESTS = [
   ["get", "/projects/{pid}/reports", `/projects/${fx.PID}/reports`],
 ];
 
-describe(`mock vs ${specPath.includes("docs/openapi.json") ? "docs/openapi.json" : "openapi.s2.json (PR #35)"}`, () => {
+describe("mock vs docs/openapi.json", () => {
   it("the checker itself rejects an unknown field, a missing field and a wrong enum", () => {
     const cite = { $ref: "#/components/schemas/PageCitation" };
     const ok = { doc_id: "9f849435aa64", file: "offer.pdf", page: 10, image_url: "/x" };
@@ -248,12 +245,6 @@ describe("mock rule-set routes (S3) vs app/rulesets/schema.py", () => {
     const schema = responseSchema(method, path, status);
     return schema ? validate(schema, body) : [];
   }
-
-  it("lists the S3 routes openapi.json does not have yet", () => {
-    const missing = S3_ROUTES.filter(([m, p]) => !spec.paths[p]?.[m]).map(([m, p]) => `${m.toUpperCase()} ${p}`);
-    // When this fails, a route reached openapi.json: move it to ROUTES.
-    expect(missing).toEqual(S3_ROUTES.map(([m, p]) => `${m.toUpperCase()} ${p}`));
-  });
 
   it("GET /ruleset is the latest draft; ?version= a confirmed one; both RuleSets", async () => {
     const draft = await (await fetch(R)).json();

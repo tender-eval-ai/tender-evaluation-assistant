@@ -14,6 +14,7 @@ action is logged with its result; the budget is fixed per form."""
 from __future__ import annotations
 
 import os
+import re
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -21,13 +22,32 @@ from pydantic import BaseModel, Field
 from app.checks.pages import read_png
 from app.config import DEFAULT_AGENT_STEPS
 from app.checks.verify import TextOf
-from app.grounding import quote_on_page
+
 
 PROMPT_VERSION = "agent-v6"
 MAX_STEPS = max(1, int(os.environ.get("AGENT_MAX_STEPS", str(DEFAULT_AGENT_STEPS))))
 MAX_READS = max(0, int(os.environ.get("AGENT_MAX_READS", "3")))
 TRANSCRIPT_CHARS = 3000
 TRACE_CHARS = 300
+
+
+def _norm(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "").replace("-\n", "")).strip().lower()
+
+
+def quote_on_page(quote: str, page_text: str | None) -> bool:
+    """Verbatim check with tolerance for OCR edge noise: the whole normalised quote, or
+    any 6-word window of it, must occur in the page text."""
+    if not quote or not page_text:
+        return False
+    q, t = _norm(quote), _norm(page_text)
+    if q in t:
+        return True
+    words = q.split(" ")
+    if len(words) < 6:
+        return False
+    return any(" ".join(words[i:i + 6]) in t for i in range(len(words) - 5))
+
 
 SYSTEM = (
     "You search ONE tenderer's offer to a tendering authority's goods tender for a form the page labels did not find: "

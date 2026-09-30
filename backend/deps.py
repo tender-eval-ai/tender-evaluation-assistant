@@ -18,14 +18,10 @@ from pathlib import Path
 
 from fastapi import Header, HTTPException, UploadFile
 
-from app.config import Config
-from app.schemas import BidExtraction
-
 DATA_DIR = Path("data")
 PROJECTS = DATA_DIR / "projects"
 API_KEY = ""
 INBOX_DIR = Path("inbox")
-GRAPH_DB_SCRATCH: str | None = None
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 DEFAULT_USER = "anonymous"
@@ -34,17 +30,13 @@ _runner = None
 
 def configure() -> None:
     """(Re)read the environment into the module's settings."""
-    global DATA_DIR, PROJECTS, API_KEY, INBOX_DIR, GRAPH_DB_SCRATCH
+    global DATA_DIR, PROJECTS, API_KEY, INBOX_DIR
     DATA_DIR = Path(os.environ.get("DATA_DIR", "data"))
     PROJECTS = DATA_DIR / "projects"
     API_KEY = os.environ.get("API_KEY", "")
     # Server-side folder imports: case folders placed here (host ./inbox, mounted
     # read-only in Docker) can be imported into a project with one click.
     INBOX_DIR = Path(os.environ.get("INBOX_DIR", "inbox"))
-    # Where the LangGraph SQLite checkpoint DB is *worked on* when DATA_DIR is a network
-    # or FUSE mount (Cloud Run + GCS: no POSIX locks, random writes unsupported — SQLite
-    # there is unsafe). Unset = the DB lives in the project's work/ dir directly.
-    GRAPH_DB_SCRATCH = os.environ.get("GRAPH_DB_SCRATCH_DIR")
 
 
 configure()
@@ -58,14 +50,6 @@ def _key_ok(candidate: str | None) -> bool:
 
 def require_key(x_api_key: str | None = Header(default=None)) -> None:
     if API_KEY and not _key_ok(x_api_key):
-        raise HTTPException(401, "invalid or missing X-API-Key header")
-
-
-def require_key_or_query(x_api_key: str | None = Header(default=None),
-                         key: str | None = None) -> None:
-    """Evidence page images are also opened as plain browser links (new tab), which
-    cannot send headers — those endpoints accept the key as ?key=… too."""
-    if API_KEY and not (_key_ok(x_api_key) or _key_ok(key)):
         raise HTTPException(401, "invalid or missing X-API-Key header")
 
 
@@ -110,9 +94,7 @@ def _read_json(path: Path) -> dict:
 
 
 def _write_json(path: Path, obj) -> None:
-    """Atomic write (temp file + rename): status.json is rewritten on every progress
-    line by background jobs while the UI/tests poll it — a reader must never see a
-    half-written file."""
+    """Atomic write (temp file + rename), so a reader never sees a half-written file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
     tmp.write_text(json.dumps(obj, indent=2, ensure_ascii=False))
@@ -173,13 +155,6 @@ def find_document(pdir: Path, wanted: str) -> dict:
         if d["doc_id"] == wanted:
             return d
     raise HTTPException(404, f"document '{wanted}' not found")
-
-
-def _make_cfg(pdir: Path) -> Config:
-    cfg = Config()
-    cfg.cache_dir = pdir / "work" / "cache"
-    cfg.max_ocr_pages = int(os.environ.get("MAX_OCR_PAGES", cfg.max_ocr_pages))
-    return cfg
 
 
 def _safe_name(name: str) -> str:
@@ -253,27 +228,3 @@ async def _save_pdfs(files: list[UploadFile], dest: Path) -> list[str]:
     for partial, name in zip(staged, names):
         partial.replace(dest / name)
     return names
-
-
-def _bidder_names(pdir: Path) -> set[str]:
-    uploaded = {p.name for p in (pdir / "bids").iterdir() if p.is_dir()}
-    extracted = {p.stem for p in (pdir / "work" / "bids").glob("*.json")}
-    return uploaded | extracted
-
-
-def _require_rubric(pdir: Path) -> Path:
-    rubric_path = pdir / "work" / "rubric.json"
-    if not rubric_path.is_file():
-        raise HTTPException(400, "derive (and review) the rubric first")
-    return rubric_path
-
-
-def _stored_extractions(pdir: Path) -> list[BidExtraction]:
-    """Every bidder's stored extraction (the graph's output, possibly human-corrected)."""
-    names = sorted(_bidder_names(pdir))
-    missing = [n for n in names if not (pdir / "work" / "bids" / f"{n}.json").is_file()]
-    if missing:
-        raise HTTPException(400, f"no extraction yet for: {', '.join(missing)} — start the "
-                                 "orchestrated run (POST /run) first")
-    return [BidExtraction.model_validate(_read_json(pdir / "work" / "bids" / f"{n}.json"))
-            for n in names]

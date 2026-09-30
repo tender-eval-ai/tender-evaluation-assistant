@@ -40,13 +40,6 @@ export const ROUTES = [
   ["delete", "/projects/{pid}/ruleset/items/{letter}"],
 ];
 
-// The S3 rule-set routes of docs/api_contract.md that openapi.json does not
-// have yet. contract.test.js checks their bodies against the models of
-// app/rulesets/schema.py (mock/rulesetSchema.js) until it does.
-export const S3_ROUTES = [
-  // Empty since PR #48: every S3 route the mock serves is in openapi.json (see ROUTES).
-];
-
 // Mutable state: which tenderers have a finished check, and the jobs started
 // through POST /checks. Tenderer_B starts unchecked so the Run check path
 // (202 -> poll the job -> results) has something to do.
@@ -59,9 +52,9 @@ export function resetMockState() {
 }
 resetMockState();
 
-// {"error": {code, message, details}} plus `detail`, as backend/errors.py sends it.
+// {"error": {code, message, details}}, as backend/errors.py sends it.
 function error(status, code, message, details = {}) {
-  return HttpResponse.json({ error: { code, message, details }, detail: message }, { status });
+  return HttpResponse.json({ error: { code, message, details } }, { status });
 }
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";

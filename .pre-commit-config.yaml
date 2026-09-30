@@ -24,8 +24,8 @@ repos:
   - repo: local
     hooks:
       - id: no-pdfs-outside-fixtures
-        name: block PDFs outside demo_case/ and test/data/
-        entry: bash -c 'echo "PDF files are only allowed under demo_case/ or test/data/:" "$@"; exit 1' --
+        name: block PDFs outside test/data/
+        entry: bash -c 'echo "PDF files are only allowed under test/data/:" "$@"; exit 1' --
         language: system
         files: '\.pdf$'
-        exclude: '^(demo_case|test/data)/'
+        exclude: '^test/data/'

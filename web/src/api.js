@@ -57,7 +57,7 @@ async function call(method, path, body) {
     throw new ApiError(
       response.status,
       err.code ?? "error",
-      err.message ?? data.detail ?? `${method} ${path} failed: ${response.status}`,
+      err.message ?? `${method} ${path} failed: ${response.status}`,
       err.details ?? {}
     );
   }

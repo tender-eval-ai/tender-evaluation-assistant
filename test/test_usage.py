@@ -9,10 +9,7 @@ from types import SimpleNamespace
 
 from app.config import Config
 from app.gcp import ADCToken, is_vertex
-from app.usage import (UsageLedger, cost_usd, load_prices, summarize_usage, tokens_of,
-                       write_usage)
-from tools.make_demo_case import synth_truth
-from tools.score_case import score
+from app.usage import UsageLedger, cost_usd, load_prices, tokens_of
 
 VERTEX = "https://us-central1-aiplatform.googleapis.com/v1/projects/p/locations/us-central1/endpoints/openapi"
 
@@ -71,31 +68,6 @@ def test_ledger_scopes_per_thread_and_counts_fallbacks():
     assert ledger.scope == "default"                       # main thread never scoped
 
 
-def test_usage_files_summarise_to_dollars_per_bid(tmp_path):
-    ledger = UsageLedger()
-    with ledger.scoped("rubric"):
-        ledger.record("google/gemini-2.5-flash@" + VERTEX, "gemini-2.5-flash", _usage(10_000, 1_000), 3)
-    for name, prompt in (("A", 20_000), ("B", 40_000)):
-        with ledger.scoped(name):
-            ledger.record("google/gemini-2.5-flash@" + VERTEX, "gemini-2.5-flash", _usage(prompt, 2_000), 4)
-            ledger.record("google/gemini-2.5-flash@" + VERTEX, "gemini-2.5-flash", _usage(1_000, 100), 1)
-    usage_dir = tmp_path / "usage"
-    for scope in ("rubric", "A", "B"):
-        assert write_usage(usage_dir / f"{scope}.json", ledger, scope)["totals"]["calls"] >= 1
-    assert write_usage(usage_dir / "C.json", ledger, "C") is None       # C made no calls
-    s = summarize_usage(usage_dir, ["A", "B", "C"])
-    assert s["bids"] == 2 and s["skipped"] == ["C"] and s["failed_calls"] == 0
-    per_a = (21_000 * 0.30 + 2_100 * 2.50) / 1e6
-    per_b = (41_000 * 0.30 + 2_100 * 2.50) / 1e6
-    rubric = (10_000 * 0.30 + 1_000 * 2.50) / 1e6
-    assert abs(s["usd_total"] - (per_a + per_b + rubric)) < 1e-4
-    assert abs(s["usd_per_bid_mean"] - (per_a + per_b) / 2) < 1e-4
-    assert s["calls_per_bid"] == 2.0 and s["tokens_per_bid"] == (23_100 + 43_100) // 2
-    assert s["models"] == {"google/gemini-2.5-flash@" + VERTEX: "gemini-2.5-flash"}
-
-
-# ---------------------------------------------------------------- Vertex auth
-
 class FakeCreds:
     def __init__(self, expiry):
         self.token, self.valid, self.expiry, self.refreshes = None, False, expiry, 0
@@ -143,21 +115,3 @@ def _evaluation_from_truth(truth: dict) -> dict:
         "price_rows": [{"tenderer": n, "arithmetic_ok": not t["arithmetic_error"],
                         "unit_price": t["unit_price"]} for n, t in truth.items()],
     }
-
-
-def test_seeded_defects_are_scored_against_ground_truth():
-    truth = {f"Tenderer_{i:02d}": synth_truth(i) for i in range(1, 31)}
-    assert [n for n, t in truth.items() if not t["certificate"]] == ["Tenderer_03", "Tenderer_10", "Tenderer_17", "Tenderer_24"]
-    assert [n for n, t in truth.items() if t["shelf_life_months"] < 12] == ["Tenderer_05", "Tenderer_16", "Tenderer_27"]
-    assert [n for n, t in truth.items() if t["arithmetic_error"]] == ["Tenderer_04", "Tenderer_13", "Tenderer_22"]
-    perfect = score(_evaluation_from_truth(truth), truth)
-    assert perfect["stage2"]["of"] == 26                  # 4 Stage I failures have no Stage II row
-    assert perfect["overall"] == {"agree": 116, "of": 116, "pct": 100.0}
-
-    ev = _evaluation_from_truth(truth)
-    ev["stage1"][2]["passed"] = True                      # Tenderer_03's missing cert not caught
-    ev["price_rows"][0]["unit_price"] = 10.38             # off by a cent
-    s = score(ev, truth)
-    assert s["stage1"]["agree"] == 29 and s["stage1"]["disagreements"] == ["Tenderer_03: passed=True truth cert=False"]
-    assert s["unit_price"]["disagreements"] == ["Tenderer_01: got=10.38 truth=10.37"]
-    assert s["overall"]["agree"] == 114

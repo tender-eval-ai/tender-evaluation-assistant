@@ -7,7 +7,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 from urllib.parse import parse_qs, urlsplit
 
-from app.checks.extract_item_l import PREFIX
+from test.checks.item_l import PREFIX
 from test.checks.conftest import CASE
 from test.test_api import make_client
 from test.test_api_errors import _upload_offer

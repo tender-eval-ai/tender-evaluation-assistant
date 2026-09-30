@@ -147,7 +147,7 @@ echo "== synthetic cases into the inbox (data/inbox on the file share)"
 export AZURE_STORAGE_ACCOUNT="$STORAGE"
 AZURE_STORAGE_KEY=$(az storage account keys list -g "$RG" -n "$STORAGE" --query "[0].value" -o tsv)
 export AZURE_STORAGE_KEY
-for case in test/data/synthetic_tender demo_case; do
+for case in test/data/synthetic_tender; do
     az storage file upload-batch --destination data --destination-path "inbox/$(basename "$case")" \
         --source "$case" --no-progress -o none
 done

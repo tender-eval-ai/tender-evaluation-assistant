@@ -188,7 +188,8 @@ class JobPage(BaseModel):
 
 
 class ProjectStatus(BaseModel):
-    """The legacy pipeline's state file: idle, running, waiting, done or error, with a detail line."""
+    """The project's state file. Only the prototype's pipeline moved it past `idle`, and it went at
+    S5; the jobs carry the state now (`GET /projects/{pid}/jobs`)."""
 
     state: Literal["idle", "running", "waiting", "done", "error"] = "idle"
     detail: str | None = None
@@ -207,10 +208,6 @@ class Project(BaseModel):
     status: ProjectStatus = Field(default_factory=ProjectStatus, description="an object, not a string: read status.state")
     tender_files: list[str] | None = None
     bidders: list[str] | None = None
-    extracted: list[str] | None = None
-    has_rubric: bool | None = None
-    has_evaluation: bool | None = None
-    reports: list[str] | None = None
 
 
 class CorrectionRequest(BaseModel):
@@ -278,7 +275,6 @@ class ErrorBody(BaseModel):
     """Every error response, 422 included (docs/api_contract.md, Conventions)."""
 
     error: ErrorDetail
-    detail: str = Field(description="the message again, for the Streamlit UI until S5")
 
 
 class BuildResponse(BaseModel):

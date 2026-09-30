@@ -1,9 +1,8 @@
-"""Item (l), the Non-collusive Tendering Certificate, as the first form V3 read (S2). The
-generic extractor (app/checks/extract.py) reads every form now; these names stay for the
-routes and tests that grew up around item (l)."""
+"""Item (l), the Non-collusive Tendering Certificate: the first form V3 read (S2), and the
+names the tests that grew up around it still use. The app reads every form through
+app/checks/extract.py; this used to be app/checks/extract_item_l.py (removed at S5)."""
 from __future__ import annotations
 
-from app.checks.extract import PROMPT_VERSION  # noqa: F401  re-exported
 from app.checks.extract import extract_form
 from app.checks.forms import FORMS
 from app.checks.resolve import ItemPages

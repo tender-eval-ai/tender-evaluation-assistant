@@ -7,6 +7,5 @@ cache/
 output/
 .pytest_cache/
 data/
-demo_case/
 test/
 .DS_Store

@@ -5,14 +5,12 @@
 # Default: pipeline, LLM layers, worker, gateway, backend, tools, tests.
 *                              @chenyufang-data
 
-# Nasi: React UI, parser, rule engine, schedule locator, templates, auth.
+# Nasi: React UI, parser, rule engine, schedule locator, templates.
 /web/                          @nlp4725
 /app/parsing/                  @nlp4725
 /app/engine/                   @nlp4725
 /app/rulesets/locate.py        @nlp4725
 /app/rulesets/templates/       @nlp4725
-/app/rulesets/render.py        @nlp4725
-/backend/routes/auth.py        @nlp4725
 
 # Shared contracts: both must approve.
 /app/rulesets/schema.py        @chenyufang-data @nlp4725

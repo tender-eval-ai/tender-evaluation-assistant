@@ -1,16 +1,15 @@
-# Dev/aggregate install: everything needed to run tests, the CLI and the API.
-# The backend image installs only backend/requirements.txt; the UI (web/) is npm.
+# Dev/aggregate install: everything needed to run the tests, the tools and the API.
+# The backend image installs only backend/requirements.lock; the UI (web/) is npm.
 -r backend/requirements.txt
 pytest>=8.0
 httpx>=0.27
-# MCP server + local-model client (mcp_server/); not part of the service images.
-mcp==2.2.0
-
 # Postgres driver: the orchestrator harness (test/jobs) now, the background worker from S1.
 psycopg[binary]>=3.2
 
-# Stop point S1 spikes (spikes/): the Procrastinate run queue and the LangGraph Postgres checkpointer.
+# Stop point S1 spikes (spikes/, decision 0001): the Procrastinate run queue and the LangGraph
+# spike with its Postgres checkpointer. Not in the image: the app runs on the queue.
 procrastinate>=3.9
+langgraph==1.2.11
 langgraph-checkpoint-postgres>=3.1
 
 # Tender parser (app/parsing/, ported from Bidding-AI-expert@7e8e273). PyMuPDF is AGPL-3.0 and

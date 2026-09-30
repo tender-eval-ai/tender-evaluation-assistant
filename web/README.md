@@ -49,13 +49,10 @@ no result until you press "Run check".
   quotes, until S3). Scanned offers (Tenderer_B, Tenderer_D) have no text layer:
   their citations have null `quote`/`box`/`page_size` and nothing is marked.
 - `mock/contract.test.js` fetches every mocked route and checks the body against
-  the contract's OpenAPI schemas. Any field the schema does not name fails the test.
-  The test reads `../docs/openapi.json` when it exists (after PR #27 merges), else
-  `mock/openapi.s2.json`, PR #35's file (`contract/page-highlight` at `5206179`)
-  trimmed to the routes the mock serves and the schemas they reference.
-- openapi.json types the rule set routes as a bare dict and has no diff, gaps or item
-  routes yet, so their bodies are checked against `mock/rulesetSchema.js`, the models
-  of `app/rulesets/schema.py` in JS, strict on unknown fields.
+  the contract's OpenAPI schemas (`../docs/openapi.json`). Any field the schema does
+  not name fails the test.
+- The rule set bodies are also checked against `mock/rulesetSchema.js`, the models of
+  `app/rulesets/schema.py` in JS, strict on unknown fields.
 - The rule set fixtures are checked against the pydantic model with:
   `python -c "import json; from app.rulesets.schema import RuleSet; [RuleSet.model_validate(json.load(open(f'web/mock/fixtures/{f}'))) for f in ('ruleset.json', 'ruleset_draft.json')]"`
 
