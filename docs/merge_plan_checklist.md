@@ -37,16 +37,16 @@ Last updated: 2026-09-20 (Chenyu).
 | E3 | Neutral framing of the two variants in the plan | agreed | — (update the plan) |
 | E4 | One full day for the comparison, decision next morning | agreed | — (update the plan) |
 | E5 | Orchestrator decision record 0001 (S1) | decided | — |
-| F1 | Repo moves to a shared organisation now, still private; public later, after F4 and F6 | moved (2026-09-29) | Nasi: accept the Owner invitation; position on F1 and its two rules |
+| F1 | Repo moves to a shared organisation now, still private; public later, after F4 and F6 | agreed; moved (2026-09-29) | Chenyu: the two-factor requirement |
 | F2 | Data classes and endpoints named per fixture and eval | agreed | — (update the plan) |
 | F3 | Files excluded from the port (commit `7e8e273`, see F5) | agreed | — (update the plan) |
 | F4 | Public-release audit at S5 | agreed | — (update the plan) |
 | F5 | Port source: pushed commit, no `aicamp-final` tag | agreed | — |
 | F6 | Public naming: an AI tender evaluation assistant, no tender numbers or Hong Kong wording | agreed | — (description set 2026-09-26; clean-up PR at S5) |
-| G1 | Two independent demos, same image | agreed | Nasi: domain, when chosen |
+| G1 | Two independent demos, same image | superseded by G4 | — |
 | G2 | No cloud named in code; configuration only | agreed | — (update the plan) |
 | G3 | Abuse limits before a public demo | agreed | — (update the plan) |
-| G4 | One shared demo, on Azure (amends G1 and G2; takes in #83's one-demo proposal) | proposed | Nasi: position |
+| G4 | One shared demo, on Azure (amends G1 and G2; takes in #83's one-demo proposal) | agreed | Nasi: end-to-end check once deployed |
 | H1 | Portfolio finish checklist | agreed | — (update the plan) |
 | I1 | Contract gaps found at S2 (locate, web mock, Rules window) | decided | 1–2 done (#35); 3–10, 14, 16, 17 done (#41, #44); 11–13, 15 at S3 |
 | J1 | Parser follow-ups after the S3 recall gate | done | 1 and 4 done; 2 and 3 closed without change: every tender clears the S3 gate (95.6 / 97.8 / 95.2) |
@@ -58,7 +58,7 @@ Last updated: 2026-09-20 (Chenyu).
 | J7 | S3 joint rule-set eval: L0 done; L1-L4 once the templates exist | part done | field map done (Nasi, 2026-09-26); fields into `forms.py` (e2b3189); templates in review (J12: #100, #99); then both: the L1-L4 eval on the synthetic case and the three tenders |
 | J8 | S5: README results, who built what, CITATION.cff | part done | Nasi: licence (F4), diagram, GIF |
 | J10 | The MCP server: retire it with the legacy stack at S5 (amends C1's "Kept, ported, removed") | agreed | — (removed in the S5 legacy-removal PR) |
-| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | proposed | Nasi: position on 9–13 |
+| J11 | Engineering fixes before release: templates in the image, logging, images, configuration, uploads, CI, stale files; README metrics | agreed | 1–6 done (#90, #93, #94, #95, #96); 7, 8 Chenyu; 9–11 Nasi |
 | J12 | The production templates: one per form, every rule-file rule placed; #76 points 2 and 3; two questions (tier by Part, conditions) | proposed | Chenyu: review #100 (contract, merge first) then #99; a position on points 2 and 3 and questions 1 and 2 |
 
 ## A. Corrections to the plan
@@ -272,8 +272,8 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   - base permission: none; members can't change a repository's visibility, delete or transfer one, or fork a private one;
   - Actions: GitHub's own and verified creators' actions only; the workflow token is read-only unless a workflow asks for more;
   - two-factor authentication is required once Nasi has joined, since requiring it removes anyone without it, outside collaborators included.
-- Nasi:
-- Decision:
+- Nasi (2026-09-29): agree: the organisation, the move, and both rules (neither of us alone removes the other owner, deletes or transfers a repository, or deletes the organisation; two-factor authentication required). Owner invitation accepted.
+- Decision: agreed (2026-09-29).
 
 ### F2. Data classes and endpoints
 - Proposal: every fixture and every project carries a `data_class` (`synthetic`, `redacted_sample`, `confidential`). The gateway allowlist keys on it. Each live eval names the endpoint it ran against in its stored result.
@@ -309,7 +309,7 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   3. **One clean-up PR at S5,** as counted on `main` on 2026-09-25:
      - tender numbers become the three names: 144 mentions in 18 files, mostly `docs/evals/parser_l0.md` and comments in `app/parsing/`;
      - Hong Kong and Authority wording becomes neutral: about 37 mentions in 17 files;
-     - `sample` in file names becomes `sample`: `test/data/synthetic_tender*`, `tools/make_synthetic_tender.py`, `tools/make_synthetic_tender_ruleset.py`, `test/test_synthetic_tender.py`;
+     - `sample` in file names becomes `synthetic_tender` (done in #97; `sample` was the first proposal, and `synthetic_case` was taken): `test/data/synthetic_tender*`, `tools/make_synthetic_tender.py`, `tools/make_synthetic_tender_ruleset.py`, `test/test_synthetic_tender.py`;
      - `HK$` stays for now. It is the currency of the synthetic bids and of the pricing code (90 mentions in 30 files), and removing it means regenerating the synthetic data and its goldens. Revisit at release.
   4. **History, at release.** Earlier commits and commit messages carry the same names. The public repository is a copy whose history is rewritten with `git filter-repo`: the names are replaced, and both authors' commits are kept. This private repository stays as it is, so nobody force-pushes and no clone breaks. The F4 audit adds a search of the rewritten history for the three numbers and the Hong Kong wording.
 - Chenyu (2026-09-25): proposed. Chenyu's old personal repository, `tender-evaluation-assistant`, gets a new name before it is ever made public.
@@ -366,8 +366,12 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   6. **GCP retired:** `deploy/cloudrun/` is removed in the Azure PR. The Cloud Run service and its data bucket are deleted, after a local copy of the bucket, which holds only synthetic data.
 - G2's rule still holds: nothing in the code names a cloud, and `deploy/azure/` holds only configuration.
 - Chenyu (2026-09-26): proposed. This takes in #83: one shared demo, run on Azure.
-- Nasi:
-- Decision:
+- Nasi (2026-09-26): agree: one shared demo on Azure. The AWS demo lapses and GCP is retired;
+  #84 already covers the container-level changes #83 listed (`web` as ingress, the worker as a
+  container, the settings reaching both). I'll run `tools/check_synthetic_case.py` end to end
+  against the deployed app once `setup.sh` has run, and need Contributor on the resource group
+  for that.
+- Decision: agreed (2026-09-26); built in #84.
 
 ## H. Portfolio finish
 
@@ -590,8 +594,8 @@ As written, the day-2 comparison decides itself. These four changes make it a fa
   12. **B9 after S4:** per-user login with a role, the security item interviewers ask about most. Chenyu: yes, after the S4 run.
   13. **Stated as limitations in the README, not fixed:** OIDC, an atomic budget with backoff, type checking, metrics and alerts, Stages III–V, replacing PyMuPDF, and conditions evaluated in the engine.
 - Chenyu (2026-09-26): proposed. Items 1–8 are mine; item 1 comes first.
-- Nasi:
-- Decision:
+- Nasi (2026-09-29): agree. 9–11 are mine; 9 now quotes the parser eval as it is being redone (recall and citation resolution only, the benchmark retired). 12: yes, per-user login with a role, after the S4 run. 13: agree with the list, stated in the README as limitations.
+- Decision: agreed (2026-09-29).
 
 ### J12. The production templates (the last step before J7's L1-L4 eval)
 - Found by: writing the templates from the 13 rule files (Nasi, 2026-09-29).

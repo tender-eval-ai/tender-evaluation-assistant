@@ -13,10 +13,10 @@ from app.checks.pages import read_png
 from app.rulesets.schema import SlotKind
 from app.rulesets.slots import coerce
 
-PROMPT_VERSION = "extract-v3"
+PROMPT_VERSION = "extract-v4"
 
 SYSTEM = (
-    "You read ONE form in ONE tenderer's offer to a public goods tender from the page images given: "
+    "You read ONE form in ONE tenderer's offer to a tendering authority's goods tender from the page images given: "
     "{title}. Report only what is printed, each field exactly as printed (a number with its currency and "
     "unit as printed; a date as printed). For a signature field give the printed name or title next to the "
     "signature, 'signature present' when only a signature or chop is visible, and null when it is not "
@@ -82,6 +82,6 @@ def fields_from(form: Form, reading: BaseModel | None, refs: list[dict]) -> dict
             value = coerce(value, SlotKind.NUMBER)
         out[key] = value
         out[f"{key}_redacted"] = redacted
-        out[f"{key}_confidence"] = confidence
+        out[f"{key}_confidence"] = None if f.by == "reviewer" else confidence
         out[f"{key}_page"] = citation if (value is not None or redacted) else None
     return out

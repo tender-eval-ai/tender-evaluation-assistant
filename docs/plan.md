@@ -8,7 +8,7 @@ agent upgrade and the §4 batch (MCP, Vertex AI, Cloud Run) complete and measure
 
 ## 1. Product and original plan (summary)
 
-**Who / what.** Procurement assistants supporting a public Tender Assessment Panel
+**Who / what.** Procurement assistants supporting a tendering authority's Tender Assessment Panel
 (TAP), reached only through the client's IT. Per procurement: review 20–60 bidders'
 offers against *that tender's own rules* and produce the procurement review report —
 Price Summary (two formats), Stage I/II conclusions, detailed evaluation record — as

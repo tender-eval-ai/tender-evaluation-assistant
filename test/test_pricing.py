@@ -2,14 +2,14 @@
 import pytest
 
 from app.pricing import compute_price_rows, round_2sf
-from app.schemas import BidExtraction, BidPrice, PriceScheme
+from app.schemas import BidExtraction, BidPrice, PriceRow, PriceScheme
 
 
 def bid(name, unit_price=None, dosage=None, quoted_total=None, currency="HKD", fx=None):
     return BidExtraction(
         tenderer=name, documents=[], compliance=[],
         price=BidPrice(currency=currency, unit_price=unit_price, optimal_dosage=dosage,
-                       quoted_total=quoted_total, fx_to_hkd=fx))
+                       quoted_total=quoted_total, fx_to_base=fx))
 
 
 class TestRound2sf:
@@ -59,7 +59,7 @@ class TestCostEffectiveness:
     def test_foreign_currency_converted(self):
         bids = [bid("US", unit_price=2.97, dosage=3.0, currency="USD", fx=7.8515)]
         rows, _ = compute_price_rows(self.scheme, bids, conforming=set())
-        assert rows[0].unit_price_hkd == pytest.approx(23.32, abs=0.01)
+        assert rows[0].unit_price_base == pytest.approx(23.32, abs=0.01)
         assert rows[0].cost_effectiveness == pytest.approx(69.96, abs=0.01)
 
     def test_estimated_goods_price_uses_quantity(self):
@@ -96,3 +96,11 @@ class TestUnitPriceTimesQuantity:
         rows, _ = compute_price_rows(self.scheme, bids, conforming={"Y"})
         assert rows[0].arithmetic_ok is True
         assert "error" not in rows[0].remark
+
+
+def test_a_price_stored_before_f6_keeps_its_rate_and_base_price():
+    # `fx_to_hkd` and `unit_price_hkd` were the names before F6. Read as unknown keys,
+    # the rate would be None and a US$ bid would be priced at 1.0.
+    assert BidPrice.model_validate({"unit_price": 3.0, "fx_to_hkd": 7.8}).fx_to_base == 7.8
+    assert PriceRow.model_validate({"tenderer": "T", "conforming": True, "unit_price_hkd": 23.4}).unit_price_base == 23.4
+    assert "fx_to_base" in BidPrice(unit_price=3.0, fx_to_base=7.8).model_dump()

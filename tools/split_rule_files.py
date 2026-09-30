@@ -99,7 +99,7 @@ PER_RULE = {
     "iso_certificate_original_or_certified_copy": "human_only",
     "test_report_original_or_certified_copy": "human_only",
     # value (2)
-    "estimated_quantity_value": "value",                         # public-printed constant
+    "estimated_quantity_value": "value",                         # authority-printed constant
     "tender_sample_quantity": "range",                           # a minimum, so range with only min
 }
 SPLITS = {"date_validity_and_presence": ("date", "human_only")}

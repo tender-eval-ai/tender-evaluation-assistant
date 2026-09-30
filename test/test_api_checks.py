@@ -219,3 +219,8 @@ def test_every_item_is_checked_against_a_fifteen_item_rule_set_and_corrected_per
     assert client.patch(f"/projects/{pid}/bids/Tenderer_D/fields/q/nothing", json={"value": 1, "reason": "x"}, headers=NASI).status_code == 404
     confirm = client.post(f"/projects/{pid}/bids/Tenderer_D/review/confirm", headers=NASI)
     assert confirm.status_code == 409 and confirm.json()["error"]["details"]["fields"] == ["price_schedule.total"]
+    # A field a reviewer enters (a tender sample's delivery) is corrected like any other (J12).
+    r = client.patch(f"/projects/{pid}/bids/Tenderer_D/fields/g/sample_received_date",
+                     json={"value": "3 July 2026", "reason": "sample delivered, receipt 17"}, headers=NASI)
+    assert r.status_code == 200, r.json()
+    assert r.json()["fields"]["g"]["sample_received_date"]["value"] == "3 July 2026"

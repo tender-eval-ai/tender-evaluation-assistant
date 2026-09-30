@@ -159,16 +159,75 @@ def test_contains_can_ask_for_every_phrase_or_for_none_and_range_can_count_decim
     assert on("range", "price_schedule.unit_price", max_decimals=2, max=4)[0] == "mismatch", "the bounds still apply"
 
 
-def test_a_rules_normalise_step_reaches_the_engine_and_is_reported():
+def test_a_rules_normalise_steps_run_in_order_on_a_number_and_are_reported():
     from app.rulesets.schema import Normalise
 
-    r = TemplateRule(id="price_schedule.dosage_given", check="filled", field="price_schedule.optimal_dosage", outcomes=OWN,
-                     normalise=[Normalise(op="round_significant_figures", params={"max_sig_figs": 2})])
+    steps = [Normalise(op="resolve_range_to_lower_bound"),
+             Normalise(op="round_significant_figures", params={"max_sig_figs": 2})]
+    r = TemplateRule(id="price_schedule.dosage_given", check="filled", field="price_schedule.optimal_dosage",
+                     outcomes=OWN, normalise=steps)
     item = RuleSetItem(letter="c", title="dosage", part="A", citation=ITEM.citation, rules=[r], status="novel")
-    v = evaluate(item, {"price_schedule.optimal_dosage": 4.36})
+    v = evaluate(item, {"price_schedule.optimal_dosage": "4.36 - 5.1 kg/t"})
     assert v["outcome"] == "pass" and v["adjustments"] == [
         {"rule_id": "price_schedule.dosage_given", "field_id": "price_schedule.optimal_dosage",
-         "operation": "round_significant_figures", "value": 4.4}]
+         "operations": ["resolve_range_to_lower_bound", "round_significant_figures"], "from": "4.36 - 5.1 kg/t",
+         "value": 4.4}], "the range's lower end, then rounded"
+    corrected = evaluate(item, {"price_schedule.optimal_dosage": "4.4 kg/t"})
+    assert corrected["outcome"] == "pass", "a person's correction arrives as text and is read as its number"
+    unreadable = evaluate(item, {"price_schedule.optimal_dosage": "see attached"})
+    assert unreadable["outcome"] == "needs_review" and "could not normalise" in unreadable["reasons"][0]
+    assert "adjustments" not in evaluate(item, {"price_schedule.optimal_dosage": 4.4}), \
+        "no key when nothing changed, so a stored verdict still compares equal"
+    assert "transform" not in rules_doc(item)["rules"][0], "the steps run in the bridge, not the engine"
+
+
+def test_a_blank_field_a_reviewer_enters_is_dormant_whatever_the_rule_says():
+    blank = {"status": "disqualified", "note": "{field} is missing"}
+    rules = [TemplateRule(id="s.delivered", check="filled", field="tender_sample_declaration.sample_received_date",
+                          outcomes={"blank": blank, "filled": {"status": "pass"}}),
+             TemplateRule(id="s.weight", check="range", field="tender_sample_declaration.sample_net_weight_kg",
+                          params={"min": 600}, outcomes={"match": {"status": "pass"}, "mismatch": {"status": "needs_review"}})]
+    item = RuleSetItem(letter="g", title="samples", part="A", citation=ITEM.citation, rules=rules, status="novel")
+    v = evaluate(item, {"tender_sample_declaration.sample_received_date": None})
+    by = {f["field_id"]: f for f in v["fields"]}
+    assert v["outcome"] == "dormant" and by["tender_sample_declaration.sample_received_date"]["status"] == "dormant"
+    assert "entered by a reviewer" in by["tender_sample_declaration.sample_received_date"]["note"]
+    assert by["tender_sample_declaration.sample_net_weight_kg"]["status"] == "dormant", \
+        "a rule with no blank outcome still gets a row to enter the value on"
+    entered = evaluate(item, {"tender_sample_declaration.sample_received_date": "3 July 2026",
+                              "tender_sample_declaration.sample_net_weight_kg": 400})
+    assert {f["field_id"]: f["status"] for f in entered["fields"]}["tender_sample_declaration.sample_net_weight_kg"] \
+        == "needs_review", "once entered, it is checked like any other"
+
+
+def test_a_reviewers_check_on_a_missing_document_waits_and_an_unreadable_date_bound_is_never_skipped():
+    judged = rule("human_only", "documentary_evidence.quality_certificate")
+    assert compare(judged, {}, {"documentary_evidence.quality_certificate": None}) is None
+    assert compare(judged, {}, {"documentary_evidence.quality_certificate": "QMS-1"})[0] == "unstated"
+    assert check("date", "offer_to_be_bound.date", after="noon on 30 June 2026") == \
+        ("unstated", "the bound after 'noon on 30 June 2026' is not a date a person has confirmed")
+
+
+def test_decimals_count_every_figure_as_written_and_nil_has_none():
+    def on(text, **params):
+        r = rule("range", "d.x", **params)
+        return compare(r, r.params, {"d.x": text})
+    assert on("Nil", max_decimals=2) == ("match", "read 'Nil', no figure")
+    assert on("7-day: 2.505%", max_decimals=2)[0] == "mismatch", "every figure, not only the first"
+    assert on("2,505%", max_decimals=2)[0] == "mismatch", "a decimal comma in a percentage"
+    assert on("HK$ 12,500.00", max_decimals=2)[0] == "match", "a thousands comma elsewhere"
+    assert on("Nil", max_decimals=2, max=5)[0] == "mismatch", "with bounds, a figure is still needed"
+
+
+def test_absent_is_a_yes_or_no_and_an_empty_phrase_is_ignored():
+    fields = {"c.address": "P.O. Box 12"}
+    def on(**params):
+        r = rule("contains", "c.address", **params)
+        return compare(r, r.params, fields)
+    assert on(phrases=["P.O. Box"], absent="false")[0] == "match", "the string 'false' is no"
+    assert on(phrases=["P.O. Box"], absent=True)[0] == "mismatch"
+    assert on(phrases=["", "P.O. Box"]) == ("match", "read 'P.O. Box 12', looked for 'P.O. Box'")
+    assert on(phrases=[""]) == ("unstated", "no phrase to look for")
 
 
 def test_dates_parse_in_the_forms_offers_print_them():

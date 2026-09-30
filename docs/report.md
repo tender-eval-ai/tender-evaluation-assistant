@@ -16,7 +16,7 @@ information.*
 ## 1. Executive Summary
 
 **What it does.** The Tender Evaluation Assistant drafts the procurement review report a
-Hong Kong public Tender Assessment Panel (TAP) produces after a tender closes. Given
+tendering authority's Tender Assessment Panel (TAP) produces after a tender closes. Given
 one tender's documents (digital PDFs) and one offer per bidder (scanned PDFs), it derives
 that tender's own evaluation rubric, extracts page-cited facts from every offer, applies
 the Stage I completeness and Stage II essential-requirement checks and the price
@@ -326,7 +326,7 @@ flowchart LR
   price_scheme{type, quantity, unit, currency}}`; `BidExtraction{tenderer,
   documents[DocumentPresence{checklist_id, present, page, note}],
   compliance[ComplianceFinding{requirement_id, complies∈yes|no|unclear, evidence, page}],
-  price{unit_price, optimal_dosage, quoted_total, fx_to_hkd, currency}}`;
+  price{unit_price, optimal_dosage, quoted_total, fx_to_base, currency}}`;
   `EvaluationResult{stage1[], stage2[], price_rows[PriceRow], recommended, conclusions}`.
 - Ground truth (`ground_truth.json`) per bidder: `certificate` (bool), `unit_price`,
   `quoted_total`, `arithmetic_error`, `shelf_life_months`, `delivery_days`, `scanned`.
@@ -946,7 +946,7 @@ cannot leave the client.
 
 **60–90 second spoken introduction.**
 
-> "I built a tender-evaluation assistant for a public procurement team. After a
+> "I built a tender-evaluation assistant for a tendering authority's procurement team. After a
 > tender closes, a panel reviews twenty to sixty scanned offers against rules that are
 > different for every tender, and the expensive mistake is eliminating a bidder for a
 > document that was actually on page eleven. So the system derives the rubric from the

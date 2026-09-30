@@ -16,7 +16,7 @@ describe("Report window", () => {
   it("shows the two stage conclusions and the recommendation", async () => {
     await renderReport();
 
-    expect(screen.getByText(/did not submit the Manufacturer's Letter of Intent/)).toBeInTheDocument();
+    expect(screen.getByText(/did not submit the signed Non-collusive Tendering Certificate/)).toBeInTheDocument();
     expect(screen.getByText(/met every Stage II requirement/)).toBeInTheDocument();
     expect(screen.getByText(/Tenderer A is recommended/)).toBeInTheDocument();
   });

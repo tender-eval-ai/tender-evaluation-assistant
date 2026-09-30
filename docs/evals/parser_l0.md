@@ -308,7 +308,7 @@ Deep recall is now above 95% on both tenders (97.8 and 95.2) and on Tender 1 (95
 | Tender 2 | 13/13 | 13/13 | 13/13 | 13/13 | 41/43 (95.3%) |
 | Tender 3 | 21/21 | 21/21 | 21/21 | 21/21 | 58/65 (89.2%) |
 
-Remaining misses are parser gaps, not locate: no node for the Parts of the Annex A deposit form (Tender 2, 2), the Tender Form in the combined PDF (Tender 3, 2), the numbered items of Price Schedule Part A (Tender 3, 4), or the TERMS Annex A (Tender 3, 1).
+Remaining misses are parser gaps, not locate: no node for the Parts of the Annex A deposit form (Tender 2, 2), the Tender Form in the combined PDF (Tender 3, 2), the numbered items of Price Schedule Part A (Tender 3, 4), or the TERMS-1 Annex A (Tender 3, 1).
 
 The resolver fixes in `8b5ce90` (chains sharing one document name, numbered file names, "respectively", wrapped footer labels) also raise the parser evaluator's references citation: Tender 2 87.5% to 95.0%, Tender 3 84.4% to 89.1%. No other metric changes.
 

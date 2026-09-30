@@ -98,7 +98,7 @@ are not split out of the 13 rule files, so L1 matches nothing and every item fal
 through to L3. The split is written and classified (126 rules, 99 checks, 27 not a
 rule, 0 unmapped) but stops at checklist **J2** — the 27 non-rules are facts about a
 FORM, and the schema currently holds notes and conditions only on an item. Once that
-is decided, what remains is: the templates and `params/Tender 1.json`, the
+is decided, what remains is: the templates and `params/tender_1.json`, the
 template/slot/check half of each key added by hand, and a build per tender through the
 API with `RULESET_TEMPLATES_DIR` and `DATA_DIR` pointing at the private folders, scored
 with `tools/eval_ruleset.py --api ... --project ... --key <private>/<tender>.ruleset_key.json

@@ -27,7 +27,7 @@ from .schemas import BidExtraction, Rubric
 from .tools import TOOL_DESCRIPTIONS, BidTools
 
 SYSTEM = (
-    "You are an evidence-search agent for a public Tender Assessment Panel. A "
+    "You are an evidence-search agent for a tendering authority's Tender Assessment Panel. A "
     "first-pass review could not find something in a tenderer's offer. Search the "
     "offer with the tools and either find VERBATIM evidence or conclude it is absent.\n"
     "Tools:\n" + TOOL_DESCRIPTIONS + "\n"

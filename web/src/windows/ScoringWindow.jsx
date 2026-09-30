@@ -71,13 +71,13 @@ export default function ScoringWindow({ projectId, version }) {
         <caption className="sr-only">Price summary by tenderer</caption>
         <thead>
           <tr>
-            <th scope="col">Rank</th>
+            <th scope="col" className="num">Rank</th>
             <th scope="col">Tenderer</th>
-            <th scope="col">Unit price</th>
-            <th scope="col">{scheme.currency ? `${scheme.currency} equivalent` : "Converted"}</th>
-            <th scope="col">Estimated goods price</th>
-            {effectiveness && <th scope="col">Dosage</th>}
-            {effectiveness && <th scope="col">Cost-effectiveness</th>}
+            <th scope="col" className="num">Unit price</th>
+            <th scope="col" className="num">{scheme.currency ? `${scheme.currency} equivalent` : "Converted"}</th>
+            <th scope="col" className="num">Estimated goods price</th>
+            {effectiveness && <th scope="col" className="num">Dosage</th>}
+            {effectiveness && <th scope="col" className="num">Cost-effectiveness</th>}
             <th scope="col">Stage I</th>
             <th scope="col">Stage II</th>
             <th scope="col">Remark</th>
@@ -88,7 +88,7 @@ export default function ScoringWindow({ projectId, version }) {
             <tr key={row.tenderer}
                 className={[row.conforming ? "conforming" : "non-conforming",
                             row.tenderer === recommended ? "recommended" : ""].filter(Boolean).join(" ")}>
-              <td>{plain(row.ranking)}</td>
+              <td className="num">{plain(row.ranking)}</td>
               <th scope="row">
                 {row.tenderer}
                 {row.tenderer === recommended && <span className="badge" title="best-ranked conforming offer">recommended</span>}
@@ -98,11 +98,11 @@ export default function ScoringWindow({ projectId, version }) {
                   </span>
                 )}
               </th>
-              <td>{money(row.unit_price)} {row.currency}</td>
-              <td>{money(row.unit_price_base)}</td>
-              <td>{money(row.estimated_goods_price)}</td>
-              {effectiveness && <td>{plain(row.dosage_rounded ?? row.dosage)}</td>}
-              {effectiveness && <td>{money(row.cost_effectiveness)}</td>}
+              <td className="num">{money(row.unit_price)} {row.currency}</td>
+              <td className="num">{money(row.unit_price_base)}</td>
+              <td className="num">{money(row.estimated_goods_price)}</td>
+              {effectiveness && <td className="num">{plain(row.dosage_rounded ?? row.dosage)}</td>}
+              {effectiveness && <td className="num">{money(row.cost_effectiveness)}</td>}
               <td>{row.stage1 ?? "—"}</td>
               <td>{row.stage2 ?? "—"}</td>
               <td>

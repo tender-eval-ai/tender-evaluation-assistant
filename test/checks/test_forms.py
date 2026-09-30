@@ -81,6 +81,17 @@ def test_a_field_a_reviewer_enters_is_never_asked_for_or_verified_but_is_always_
     assert out["tender_sample_declaration.sample_net_weight_kg"] is None, "blank until a person enters it"
     assert out["tender_sample_declaration.sample_net_weight_kg_page"] is None
     assert out["tender_sample_declaration.declaration"] == "we agree"
+    assert out["tender_sample_declaration.sample_net_weight_kg_confidence"] is None, "no reading, no confidence"
+
+
+def test_the_l3_field_menu_marks_what_a_reviewer_enters():
+    from types import SimpleNamespace
+
+    from app.rulesets.novel import field_menu
+
+    menu = field_menu(SimpleNamespace(template="tender_sample_declaration", title="", citation=None))
+    assert "sample_net_weight_kg (number, entered by a reviewer after the tender closes)" in menu
+    assert "declaration (text)," in menu
 
 
 def test_the_contract_lists_every_form_and_field():
