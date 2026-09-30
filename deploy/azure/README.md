@@ -99,7 +99,7 @@ class allows, and a real bid is `confidential`, so it stays on local models (the
 1. **A subscription.** A Free Trial, made with a personal Microsoft account rather than a university one, so the demo outlives the university account. Start it when you're ready to deploy: the trial credit lasts 30 days.
 2. **Tools:** `brew install azure-cli`, then `az login` and `gh auth login`.
 3. **A token to pull the images:** a classic GitHub token with the `read:packages` scope only, in `GHCR_TOKEN`. It goes straight into the key vault.
-4. Run `bash deploy/azure/setup.sh`. `LOCATION` (default `eastus2`) and `RG` (default `tender-demo`) can be set first.
+4. Run `bash deploy/azure/setup.sh`. `LOCATION` (default `eastus2`) and `RG` (default `tender-demo`) can be set first. It registers the seven resource providers a new subscription lacks (this can take a few minutes the first time), and if anything fails it says at which line it stopped.
 5. Actions tab → **deploy-azure** → **Run workflow**. Then open the address `setup.sh` printed and sign in.
 6. Let Nasi in: `bash deploy/azure/add_user.sh <email> --contributor`.
 

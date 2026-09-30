@@ -6,6 +6,9 @@
 # variables setup.sh stored. OPENAI_MODEL / OPENAI_MODEL_VERSION pick another model when
 # the region doesn't offer the default.
 set -euo pipefail
+# A failed command stops the script (set -e); this says where, since a failure inside
+# $(...) can otherwise stop it without a word.
+trap 'echo "$(basename "$0") stopped at line $LINENO (exit $?)" >&2' ERR
 cd "$(dirname "$0")/../.."
 
 TAG=${1:?usage: deploy.sh <image tag, e.g. a commit SHA the workflow pushed>}

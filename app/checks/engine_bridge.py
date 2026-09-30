@@ -129,8 +129,13 @@ def compare(rule: TemplateRule, params: dict, fields: dict) -> tuple[str, str] |
         return None
     if value is None:
         return None
+    # `text` is what the page printed beside a number (a unit, a currency sign), which a
+    # person's bare-number correction leaves in place; `shown` is the value as it stands,
+    # the person's once corrected (store._apply). Unit and contains checks look in `text`;
+    # the messages and the decimal count use `shown`.
     printed = fields.get(f"{rule.field}_printed")
-    shown = printed if printed is not None else value
+    text = printed if printed is not None else value
+    shown = value if fields.get(f"{rule.field}_corrected") else text
     prefix = rule.field.rpartition(".")[0]
     if kind == CheckType.VALUE:
         expected = params.get("expected")
@@ -142,8 +147,8 @@ def compare(rule: TemplateRule, params: dict, fields: dict) -> tuple[str, str] |
         places = _number(params.get("max_decimals"))
         if places is not None:
             # As written, every figure: "2.50%" has two places though it is the number 2.5,
-            # and "7-day: 2.505%" is judged by its 2.505. A person's correction drops the
-            # printed text (store._apply), so the corrected value is what is counted.
+            # and "7-day: 2.505%" is judged by its 2.505. Once a person corrects the value,
+            # `shown` is theirs, so their figure is what is counted.
             written = _decimal_places(shown)
             if written and max(written) > places:
                 return "mismatch", f"read {shown!r}, {max(written)} decimal places, at most {places:g}"
@@ -164,8 +169,8 @@ def compare(rule: TemplateRule, params: dict, fields: dict) -> tuple[str, str] |
         allowed = params.get("allowed") or ([params["expected"]] if params.get("expected") else [])
         if not allowed:
             return "unstated", "no unit to compare with"
-        ok = any(_contains(shown, u) for u in allowed)
-        return ("match" if ok else "mismatch", f"read {shown!r}, allowed {', '.join(str(u) for u in allowed)}")
+        ok = any(_contains(text, u) for u in allowed)
+        return ("match" if ok else "mismatch", f"read {text!r}, allowed {', '.join(str(u) for u in allowed)}")
     if kind == CheckType.CONTAINS:
         # `phrases`: every one must be there; with `absent`, none may be (an address is not a P.O. Box).
         phrase = params.get("phrase") or params.get("text") or params.get("expected")
@@ -175,14 +180,14 @@ def compare(rule: TemplateRule, params: dict, fields: dict) -> tuple[str, str] |
         phrases = [p for p in phrases if str(p).strip()]
         if not phrases:
             return "unstated", "no phrase to look for"
-        found = [p for p in phrases if _contains(shown, p)]
+        found = [p for p in phrases if _contains(text, p)]
         if _flag(params.get("absent")):
-            return ("mismatch", f"read {shown!r}, which should not contain {found[0]!r}") if found else \
-                ("match", f"read {shown!r}, none of {', '.join(map(repr, phrases))}")
+            return ("mismatch", f"read {text!r}, which should not contain {found[0]!r}") if found else \
+                ("match", f"read {text!r}, none of {', '.join(map(repr, phrases))}")
         missing = [p for p in phrases if p not in found]
         if missing:
-            return "mismatch", f"read {shown!r}, missing {', '.join(map(repr, missing))}"
-        return "match", f"read {shown!r}, looked for {', '.join(map(repr, phrases))}"
+            return "mismatch", f"read {text!r}, missing {', '.join(map(repr, missing))}"
+        return "match", f"read {text!r}, looked for {', '.join(map(repr, phrases))}"
     if kind == CheckType.DATE:
         date = parse_date(shown)
         if date is None:
