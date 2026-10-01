@@ -103,6 +103,7 @@ const REQUESTS = [
   ["get", "/projects/{pid}/evaluation", `/projects/${fx.PID}/evaluation`],
   ["get", "/projects/{pid}/reports", `/projects/${fx.PID}/reports`],
   ["get", "/settings", "/settings"],
+  ["get", "/me", "/me"],
   ["get", "/inbox", "/inbox"],
 ];
 

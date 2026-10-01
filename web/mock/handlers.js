@@ -40,6 +40,7 @@ export const ROUTES = [
   ["delete", "/projects/{pid}/ruleset/items/{letter}"],
   // The front door (#132): settings, the prepared cases, a new project and its first draft.
   ["get", "/settings"],
+  ["get", "/me"],
   ["get", "/inbox"],
   ["post", "/projects"],
   ["post", "/projects/{pid}/import"],
@@ -133,6 +134,8 @@ export const handlers = [
     ?? HttpResponse.json({ ...fx.projectDetail(), ...(state.created.get(params.pid) ?? {}) })),
 
   http.get("*/settings", () => HttpResponse.json(fx.settings)),
+  // The mock has no sign-in in front of it.
+  http.get("*/me", () => HttpResponse.json({ name: null })),
 
   http.get("*/inbox", () => HttpResponse.json(fx.inbox)),
 

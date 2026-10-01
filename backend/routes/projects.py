@@ -1,6 +1,7 @@
 """Projects: create, list, inspect, delete; PDF uploads; one-click imports from the inbox."""
 from __future__ import annotations
 
+import base64
 import json
 import re
 import secrets
@@ -9,12 +10,12 @@ import time
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from backend import deps
 from backend.errors import ApiError
-from backend.schemas_api import InboxCase, Project, Settings
+from backend.schemas_api import InboxCase, Me, Project, Settings
 from backend.times import when
 
 router = APIRouter(dependencies=[Depends(deps.require_key)])
@@ -41,6 +42,28 @@ def settings() -> Settings:
     hosted = deps.HOSTED_DEMO
     return Settings(hosted_demo=hosted, uploads=not hosted, source_url=deps.SOURCE_URL or None,
                     data_classes=["synthetic"] if hosted else ["synthetic", "redacted_sample", "confidential"])
+
+
+def principal_name(principal: str | None, account: str | None) -> str | None:
+    """The display name in the claims the sign-in forwards: X-MS-CLIENT-PRINCIPAL is base64 JSON,
+    {"claims": [{"typ", "val"}], ...}, whose "name" claim is the display name. Else the account
+    (X-MS-CLIENT-PRINCIPAL-NAME, an email or UPN) before any "@"."""
+    if principal:
+        try:
+            data = json.loads(base64.b64decode(principal + "=" * (-len(principal) % 4)))
+            name = next((c.get("val") for c in data.get("claims", []) if c.get("typ") == "name"), None)
+            if isinstance(name, str) and name.strip():
+                return name.strip()
+        except (ValueError, TypeError, AttributeError):
+            pass
+    return (account or "").split("@")[0].strip() or None
+
+
+@router.get("/me")
+def me(principal: str | None = Header(default=None, alias="X-MS-CLIENT-PRINCIPAL"),
+       account: str | None = Header(default=None, alias="X-MS-CLIENT-PRINCIPAL-NAME")) -> Me:
+    """Who signed in, for the UI's default acting user; null on a stack with no sign-in."""
+    return Me(name=principal_name(principal, account))
 
 
 @router.post("/projects")

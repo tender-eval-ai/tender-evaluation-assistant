@@ -75,7 +75,9 @@ The React UI is built against this file through `web/mock/`, which answers exact
 - every upload is `403 uploads_disabled`, before the body is read;
 - a project starts from an inbox case (`POST /projects/{pid}/import`).
 
-Both refusals carry `details.source_url`, where to get the code to run it on real documents. `GET /inbox` returns `[InboxCase]`: each case's `name`, `tender_pdfs`, `bidders` and `loose_pdfs`, and the card from the folder's `case.json` (`title`, `summary`, `look_for`), null when the folder has none.
+Both refusals carry `details.source_url`, where to get the code to run it on real documents.
+
+`GET /me` (added 2026-10-01) returns `Me {name?}`: who signed in, from the claims the sign-in in front of the app forwards with every request (`X-MS-CLIENT-PRINCIPAL`, base64 JSON; its `name` claim, else `X-MS-CLIENT-PRINCIPAL-NAME` before any "@", never the whole address). Null where nothing signs people in, as on a local stack. The UI sends it as `X-User` by default on the hosted demo. `GET /inbox` returns `[InboxCase]`: each case's `name`, `tender_pdfs`, `bidders` and `loose_pdfs`, and the card from the folder's `case.json` (`title`, `summary`, `look_for`), null when the folder has none.
 
 ## Routes removed at S5
 
