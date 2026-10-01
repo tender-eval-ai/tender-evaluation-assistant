@@ -131,7 +131,11 @@ SIGNIN_NAME="${PREFIX}-demo-signin"
 SIGNIN_ID=$(az ad app list --display-name "$SIGNIN_NAME" --query "[0].appId" -o tsv)
 [ -n "$SIGNIN_ID" ] || SIGNIN_ID=$(az ad app create --display-name "$SIGNIN_NAME" \
     --sign-in-audience AzureADMyOrg --query appId -o tsv)
-az ad app update --id "$SIGNIN_ID" --web-redirect-uris "${APP_URL}/.auth/login/aad/callback" \
+# The Azure address, and a custom domain when one is set (README: "A custom domain").
+CUSTOM_DOMAIN=${CUSTOM_DOMAIN:-$(gh variable get AZURE_CUSTOM_DOMAIN -R "$REPO" 2>/dev/null || true)}
+REDIRECTS=("${APP_URL}/.auth/login/aad/callback")
+[ -z "$CUSTOM_DOMAIN" ] || REDIRECTS+=("https://${CUSTOM_DOMAIN}/.auth/login/aad/callback")
+az ad app update --id "$SIGNIN_ID" --web-redirect-uris "${REDIRECTS[@]}" \
     --enable-id-token-issuance true --identifier-uris "api://${SIGNIN_ID}"
 az ad sp show --id "$SIGNIN_ID" -o none 2>/dev/null || az ad sp create --id "$SIGNIN_ID" -o none
 SIGNIN_SP=$(az ad sp show --id "$SIGNIN_ID" --query id -o tsv)
@@ -154,7 +158,12 @@ GH_APP=$(az ad app list --display-name "$GH_NAME" --query "[0].appId" -o tsv)
 [ -n "$GH_APP" ] || GH_APP=$(az ad app create --display-name "$GH_NAME" --query appId -o tsv)
 az ad sp show --id "$GH_APP" -o none 2>/dev/null || az ad sp create --id "$GH_APP" -o none
 GH_SP=$(az ad sp show --id "$GH_APP" --query id -o tsv)
-SUBJECT="repo:${REPO}:environment:azure-demo"
+# GitHub's token names the owner and the repository with their numeric ids as well
+# (repo:owner@id/name@id:...); a name-only subject is refused (AADSTS700213, 2026-10-01).
+OWNER=${REPO%%/*}
+OWNER_ID=$(gh api "users/$OWNER" -q .id)
+REPO_ID=$(gh api "repos/$REPO" -q .id)
+SUBJECT="repo:${OWNER}@${OWNER_ID}/${REPO#*/}@${REPO_ID}:environment:azure-demo"
 [ -n "$(az ad app federated-credential list --id "$GH_APP" --query "[?subject=='$SUBJECT'].name" -o tsv)" ] ||
     az ad app federated-credential create --id "$GH_APP" -o none --parameters \
         "{\"name\":\"azure-demo\",\"issuer\":\"https://token.actions.githubusercontent.com\",\"subject\":\"$SUBJECT\",\"audiences\":[\"api://AzureADTokenExchange\"]}"

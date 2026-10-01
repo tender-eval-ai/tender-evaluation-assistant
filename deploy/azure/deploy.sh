@@ -34,6 +34,14 @@ OAI_VERSION=${OPENAI_MODEL_VERSION:-$(optional AZURE_OPENAI_MODEL_VERSION)}
 [ -z "$OAI_LOCATION" ] || PARAMS+=(openAiLocation="$OAI_LOCATION")
 [ -z "$OAI_MODEL" ] || PARAMS+=(openAiModel="$OAI_MODEL")
 [ -z "$OAI_VERSION" ] || PARAMS+=(openAiModelVersion="$OAI_VERSION")
+# A custom domain, once bound by hand (README: "A custom domain"), is declared on every deploy
+# with its managed certificate; a deploy that left it out would remove the binding.
+DOMAIN=$(optional AZURE_CUSTOM_DOMAIN)
+if [ -n "$DOMAIN" ]; then
+    CERT=$(az containerapp env certificate list -g "$RG" -n "$(setting AZURE_PREFIX)-env" --managed-certificates-only \
+        --query "[?properties.subjectName=='$DOMAIN'].id | [0]" -o tsv)
+    PARAMS+=(customDomain="$DOMAIN" customDomainCertificateId="$CERT")
+fi
 
 URL=$(az deployment group create -g "$RG" -n "app-${TAG:0:12}" -f deploy/azure/main.bicep \
     -p "${PARAMS[@]}" --query properties.outputs.appUrl.value -o tsv)

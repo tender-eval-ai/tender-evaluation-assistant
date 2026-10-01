@@ -35,6 +35,12 @@ param deployApp bool = true
 @description('Client id of the Entra app registration for sign-in (setup.sh). Empty means the app gets no public ingress.')
 param signInClientId string = ''
 
+@description('A custom domain for the app, such as tender.example.org, bound once by hand with a managed certificate (README: "A custom domain"). Empty: the Azure address only.')
+param customDomain string = ''
+
+@description('The managed certificate for customDomain; deploy.sh looks it up. Empty: the domain stays attached without a certificate.')
+param customDomainCertificateId string = ''
+
 @description('Region for the Azure OpenAI resource alone, when the main region won\'t deploy the model as openAiSku (setup.sh OPENAI_LOCATION). A region can list a model it then refuses: canadacentral, gpt-4.1-mini GlobalStandard, 2026-09-30.')
 param openAiLocation string = location
 
@@ -227,6 +233,11 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = if (deployApp) {
         targetPort: 8080
         transport: 'auto'
         allowInsecure: false
+        // Declared on every deploy: a deploy that left it out would remove the binding.
+        customDomains: empty(customDomain) ? [] : [
+          union({ name: customDomain, bindingType: empty(customDomainCertificateId) ? 'Disabled' : 'SniEnabled' },
+                empty(customDomainCertificateId) ? {} : { certificateId: customDomainCertificateId })
+        ]
       }
       registries: [
         {
@@ -336,7 +347,7 @@ resource signIn 'Microsoft.App/containerApps/authConfigs@2024-03-01' = if (deplo
 }
 
 output environmentDomain string = containerEnv.properties.defaultDomain
-output appUrl string = 'https://${appFqdn}'
+output appUrl string = empty(customDomain) ? 'https://${appFqdn}' : 'https://${customDomain}'
 output storageAccount string = storage.name
 output postgresHost string = postgres.outputs.fqdn
 output modelEndpoint string = modelBaseUrl
