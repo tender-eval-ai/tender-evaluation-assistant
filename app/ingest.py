@@ -66,18 +66,25 @@ def _find_on_page(page, query: str) -> tuple[str | None, list[tuple[float, float
     if not words:
         return None, []
     textpage = page.get_textpage()
-    for n in dict.fromkeys([len(words), 10, 6, 4, 3]):
-        if n > len(words):
-            continue
-        needle = " ".join(words[:n])
-        if len(needle) < 4:
-            break
-        match = textpage.search(needle, match_case=False).get_next()
-        if match:
-            index, count = match
-            return (textpage.get_text_range(index, count),
-                    [textpage.get_rect(i) for i in range(textpage.count_rects(index, count))])
-    return None, []
+    try:
+        for n in dict.fromkeys([len(words), 10, 6, 4, 3]):
+            if n > len(words):
+                continue
+            needle = " ".join(words[:n])
+            if len(needle) < 4:
+                break
+            searcher = textpage.search(needle, match_case=False)
+            try:
+                match = searcher.get_next()
+            finally:
+                searcher.close()
+            if match:
+                index, count = match
+                return (textpage.get_text_range(index, count),
+                        [textpage.get_rect(i) for i in range(textpage.count_rects(index, count))])
+        return None, []
+    finally:
+        textpage.close()
 
 
 def _highlight_rects(page, query: str) -> list[tuple[float, float, float, float]]:
@@ -104,10 +111,13 @@ def locate_quote(path: Path, page_index: int, query: str) -> QuoteBox | None:
             if not 0 <= page_index < len(pdf):
                 return None
             page = pdf[page_index]
-            found, rects = _find_on_page(page, query)
-            if not rects:
-                return None
-            w, h = page.get_size()
+            try:                              # the page, then the document: see _render_locked
+                found, rects = _find_on_page(page, query)
+                if not rects:
+                    return None
+                w, h = page.get_size()
+            finally:
+                page.close()
             x0, x1 = min(r[0] for r in rects), max(r[2] for r in rects)
             y0, y1 = h - max(r[3] for r in rects), h - min(r[1] for r in rects)
             return QuoteBox(quote=re.sub(r"\s+", " ", found or query).strip(),
@@ -128,9 +138,14 @@ def render_page_png(path: Path, page_index: int, scale: float = 2.0,
 
 def _render_locked(pdfium, path: Path, page_index: int, scale: float, highlight: str | None) -> bytes:
     pdf = pdfium.PdfDocument(str(path))
+    page = None
     try:
         page = pdf[page_index]
-        pil = page.render(scale=scale).to_pil().convert("RGBA")
+        bitmap = page.render(scale=scale)
+        try:
+            pil = bitmap.to_pil().convert("RGBA")
+        finally:
+            bitmap.close()
         rects = _highlight_rects(page, highlight) if highlight else []
         if rects:
             from PIL import Image, ImageDraw
@@ -147,6 +162,11 @@ def _render_locked(pdfium, path: Path, page_index: int, scale: float, highlight:
         pil.convert("RGB").save(buf, format="PNG")
         return buf.getvalue()
     finally:
+        # Every child closed before the document: a page or text page the garbage collector
+        # frees while the document closes changed the set close() walks, and a correction
+        # answered 500 (RuntimeError: Set changed size during iteration, 2026-09-30).
+        if page is not None:
+            page.close()
         pdf.close()
 
 
