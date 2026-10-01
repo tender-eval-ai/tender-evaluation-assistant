@@ -88,7 +88,7 @@ const TABS = [
 // edited. Every change is a versioned, attributed record with a reason; the
 // model's value stays beside a person's correction; the person who changed a
 // draft last cannot confirm it.
-export default function RulesWindow({ projectId, tierFilter = "all", onCountsChange, onConfirmed }) {
+export default function RulesWindow({ projectId, tierFilter = "all", onCountsChange, onConfirmed, allowActAs = false }) {
   const [latest, setLatest] = useState(null);
   const [versions, setVersions] = useState([]);
   const [gaps, setGaps] = useState(null);
@@ -315,10 +315,10 @@ export default function RulesWindow({ projectId, tierFilter = "all", onCountsCha
                 re-evaluate every tenderer against v{shown.version}
               </button>
             )}
-            {USE_MOCK && (
+            {(USE_MOCK || allowActAs) && (
               <label
                 className="flex items-center gap-1.5 text-xs text-ink-4 ml-auto"
-                title="Sent as X-User. Mock only: edit as one person, confirm as another."
+                title="Sent as X-User. On the mock and the hosted demo: edit as one person, confirm as another."
               >
                 acting as
                 <input aria-label="Acting user" value={actingAs} onChange={(e) => changeUser(e.target.value)} className={`${inputCls} w-28 font-mono`} />

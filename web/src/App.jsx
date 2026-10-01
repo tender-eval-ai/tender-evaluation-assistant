@@ -8,19 +8,40 @@ import RulesWindow from "./windows/RulesWindow.jsx";
 import ScoringWindow from "./windows/ScoringWindow.jsx";
 import StageIWindow from "./windows/StageIWindow.jsx";
 import StageIIWindow from "./windows/StageIIWindow.jsx";
-import { getProject, listProjects, listRulesetVersions, REPLAY, REPLAY_LABEL, USE_MOCK } from "./api.js";
+import {
+  getActingUser,
+  getProject,
+  getSettings,
+  listProjects,
+  listRulesetVersions,
+  REPLAY,
+  REPLAY_LABEL,
+  setActingUser,
+  signedInName,
+  USE_MOCK,
+} from "./api.js";
 import { lastStep, rememberStep } from "./projectStage.js";
 
-// Until per-user sessions arrive (checklist item B9) the API takes the acting
-// user from X-User; there is no login screen.
-const USER = import.meta.env?.VITE_API_USER || "anonymous";
-
+// Until per-user sessions arrive (checklist item B9) the API takes the acting user from
+// X-User. Behind the hosted demo's sign-in, the signed-in person's name is the default, and
+// the Rules window can switch it, so one visitor can confirm a rule set as the second person.
 export default function App() {
   const [projects, setProjects] = useState(null);
   const [projectId, setProjectId] = useState(null);
+  const [hosted, setHosted] = useState(false);
+  const [user, setUser] = useState(getActingUser());
 
   useEffect(() => {
     listProjects().then(setProjects).catch(() => setProjects([]));
+    if (USE_MOCK || REPLAY) return;
+    getSettings()
+      .then((s) => setHosted(Boolean(s.hosted_demo)))
+      .catch(() => {});
+    signedInName().then((name) => {
+      if (!name || import.meta.env?.VITE_API_USER) return;
+      setActingUser(name);
+      setUser(name);
+    });
   }, []);
 
   // A project made a moment ago isn't in the list read at start: read it again.
@@ -38,11 +59,13 @@ export default function App() {
       projectId={projectId}
       project={projects?.find((p) => p.id === projectId)}
       onChangeProject={() => setProjectId(null)}
+      user={user}
+      hosted={hosted}
     />
   );
 }
 
-function AppShell({ projectId, project, onChangeProject }) {
+function AppShell({ projectId, project, onChangeProject, user, hosted }) {
   // A project reopens at the step it was left on; the project list shows that step.
   const [activeWindow, setActiveWindow] = useState(() => lastStep(projectId) ?? "rules");
   // null = no tenderer picked yet: the Stage I step shows the bid list, the
@@ -83,7 +106,7 @@ function AppShell({ projectId, project, onChangeProject }) {
         mock={USE_MOCK}
         replay={REPLAY ? REPLAY_LABEL : null}
         onChangeProject={onChangeProject}
-        user={USER}
+        user={user}
       />
       <PipelineStepper
         tierFilter={tierFilter}
@@ -100,6 +123,7 @@ function AppShell({ projectId, project, onChangeProject }) {
             tierFilter={tierFilter}
             onCountsChange={setTierCounts}
             onConfirmed={() => setConfirmed(true)}
+            allowActAs={hosted}
           />
         )}
         {activeWindow === "stage1" &&
