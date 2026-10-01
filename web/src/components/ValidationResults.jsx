@@ -3,7 +3,7 @@ import Badge from "./Badge.jsx";
 import CollapsibleSection from "./CollapsibleSection.jsx";
 import DecisionForm from "./DecisionForm.jsx";
 import FieldCorrection from "./FieldCorrection.jsx";
-import { fieldName, stageRollup, uniqueCitations } from "../verdicts.js";
+import { fieldName, stageRollup, stageStatus, uniqueCitations } from "../verdicts.js";
 
 function formatValue(value) {
   if (value === null || value === undefined || value === "") return "— blank —";
@@ -176,6 +176,7 @@ function FieldGroup({ title, checks, values, onViewCitation, letter, onCorrect }
 export default function VendorItemDetail({ item, verdict, values, stageFilter, onViewCitation, onViewTender, onCorrect }) {
   const checks = verdict?.checks ?? [];
   const rollup = verdict ? stageRollup(checks, stageFilter ?? "I") : null;
+  const status = stageStatus(verdict, stageFilter ?? "I");
   const stageChecks = checks.filter((c) => (stageFilter === "II" ? c.stage === "II" : c.stage !== "II"));
   const evidence = uniqueCitations(verdict?.evidence);
 
@@ -213,7 +214,11 @@ export default function VendorItemDetail({ item, verdict, values, stageFilter, o
         ) : (
           <div>
             <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <Badge kind={rollup.status} />
+              {status ? (
+                <Badge kind={status} />
+              ) : (
+                <span className="font-mono text-xs text-ink-4">nothing checked at this stage</span>
+              )}
               <span className="font-mono text-xs text-ink-4">
                 {rollup.counts.pass ?? 0} pass · {rollup.counts.needs_review ?? 0} needs review ·{" "}
                 {rollup.counts.disqualified ?? 0} disqualifying · {rollup.counts.dormant ?? 0} dormant

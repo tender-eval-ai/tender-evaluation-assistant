@@ -5,7 +5,7 @@ import DocumentViewer from "./DocumentViewer.jsx";
 import JobProgress from "./JobProgress.jsx";
 import VendorRequirementCard from "./VendorRequirementCard.jsx";
 import VendorItemDetail from "./ValidationResults.jsx";
-import { sortProblemsFirst, stageRollup, uniqueCitations } from "../verdicts.js";
+import { sortProblemsFirst, stageRollup, stageStatus, uniqueCitations } from "../verdicts.js";
 
 const POLL_INTERVAL_MS = 2000;
 
@@ -141,8 +141,7 @@ export default function StageResultsWindow({ projectId, tenderer, stage, title, 
       .filter((it) => inStage(it, verdicts[it.letter], stage))
       .map((it) => {
         const verdict = verdicts[it.letter] ?? null;
-        const rollup = verdict ? stageRollup(verdict.checks, stage) : null;
-        return { ...it, id: it.letter, displayId: `(${it.letter})`, verdict, status: rollup?.status ?? null };
+        return { ...it, id: it.letter, displayId: `(${it.letter})`, verdict, status: stageStatus(verdict, stage) };
       });
     return sortProblemsFirst(list);
   }, [ruleset, result, stage]);

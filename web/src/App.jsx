@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import TopNav from "./components/TopNav.jsx";
 import PipelineStepper from "./components/PipelineStepper.jsx";
-import VendorCompletenessList from "./components/VendorCompletenessList.jsx";
+import VendorList from "./components/VendorList.jsx";
 import ProjectPicker from "./screens/ProjectPicker.jsx";
 import ReportWindow from "./windows/ReportWindow.jsx";
 import RulesWindow from "./windows/RulesWindow.jsx";
@@ -10,7 +10,6 @@ import StageIWindow from "./windows/StageIWindow.jsx";
 import StageIIWindow from "./windows/StageIIWindow.jsx";
 import {
   getActingUser,
-  getProject,
   getSettings,
   listProjects,
   listRulesetVersions,
@@ -68,11 +67,10 @@ export default function App() {
 function AppShell({ projectId, project, onChangeProject, user, hosted }) {
   // A project reopens at the step it was left on; the project list shows that step.
   const [activeWindow, setActiveWindow] = useState(() => lastStep(projectId) ?? "rules");
-  // null = no tenderer picked yet: the Stage I step shows the bid list, the
-  // tenderer's own page once one is picked. Stage II falls back to the first
-  // tenderer, the single-tenderer assumption it always had.
+  // null = no tenderer picked yet: the Stage I and Stage II steps show the bid
+  // list, the tenderer's own page once one is picked. The two steps share the
+  // pick, so moving between them keeps the tenderer in view.
   const [tenderer, setTenderer] = useState(null);
-  const [bidders, setBidders] = useState([]);
   const [tierFilter, setTierFilter] = useState("all");
   const [tierCounts, setTierCounts] = useState(null);
   // Fail-closed: every step past the rules needs a confirmed rule set
@@ -86,17 +84,12 @@ function AppShell({ projectId, project, onChangeProject, user, hosted }) {
     listRulesetVersions(projectId)
       .then((versions) => !cancelled && setConfirmed(versions.some((v) => v.status === "confirmed")))
       .catch(() => {});
-    getProject(projectId)
-      .then((p) => !cancelled && setBidders(p.bidders ?? []))
-      .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, [projectId]);
 
   useEffect(() => rememberStep(projectId, activeWindow), [projectId, activeWindow]);
-
-  const effectiveTenderer = tenderer ?? bidders[0];
 
   return (
     <div className="app-shell">
@@ -128,27 +121,40 @@ function AppShell({ projectId, project, onChangeProject, user, hosted }) {
         )}
         {activeWindow === "stage1" &&
           (tenderer ? (
-            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-              <button
-                type="button"
-                onClick={() => setTenderer(null)}
-                className="font-mono text-xs text-accent hover:underline cursor-pointer text-left px-3 py-2
-                  border-b border-border bg-bg shrink-0 w-fit"
-              >
-                ← All tenderers
-              </button>
+            <TendererPage onBack={() => setTenderer(null)}>
               <StageIWindow projectId={projectId} tenderer={tenderer} />
-            </div>
+            </TendererPage>
           ) : (
-            <VendorCompletenessList projectId={projectId} onSelectVendor={setTenderer} />
+            <VendorList projectId={projectId} stage="I" onSelectVendor={setTenderer} />
           ))}
-        {activeWindow === "stage2" && effectiveTenderer && (
-          <StageIIWindow projectId={projectId} tenderer={effectiveTenderer} />
-        )}
+        {activeWindow === "stage2" &&
+          (tenderer ? (
+            <TendererPage onBack={() => setTenderer(null)}>
+              <StageIIWindow projectId={projectId} tenderer={tenderer} />
+            </TendererPage>
+          ) : (
+            <VendorList projectId={projectId} stage="II" onSelectVendor={setTenderer} />
+          ))}
         {/* Scoring and Report are across every tenderer, so neither takes one. */}
         {activeWindow === "scoring" && <ScoringWindow projectId={projectId} />}
         {activeWindow === "report" && <ReportWindow projectId={projectId} />}
       </main>
+    </div>
+  );
+}
+
+function TendererPage({ onBack, children }) {
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+      <button
+        type="button"
+        onClick={onBack}
+        className="font-mono text-xs text-accent hover:underline cursor-pointer text-left px-3 py-2
+          border-b border-border bg-bg shrink-0 w-fit"
+      >
+        ← All tenderers
+      </button>
+      {children}
     </div>
   );
 }

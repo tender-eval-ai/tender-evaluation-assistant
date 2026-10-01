@@ -16,10 +16,13 @@ const VARIANTS = {
   needs_review: { label: "Needs human review", tone: "warn", Icon: WarningIcon },
   dormant: { label: "Not yet required", tone: "pending", Icon: CircleDotIcon },
 
-  // Tenderer-level status on the bid list, from BidResult.stage1.outcome
-  // (VendorCompletenessList maps pass/disqualified onto these).
+  // Tenderer-level status on the bid lists, from BidResult.stage1 / stage2
+  // outcome (VendorList maps pass/disqualified onto these).
   complete: { label: "Complete", tone: "good", Icon: CheckCircleIcon },
   missing: { label: "Missing", tone: "crit", Icon: WarningIcon },
+  compliant: { label: "Compliant", tone: "good", Icon: CheckCircleIcon },
+  noncompliant: { label: "Non-compliant", tone: "crit", Icon: WarningIcon },
+  nothing_to_check: { label: "Nothing at this stage", tone: "pending", Icon: CircleDotIcon },
   not_checked: { label: "Not checked", tone: "pending", Icon: CircleDotIcon },
 
   // RuleSetItem.status (app/rulesets/schema.py ItemStatus) in the Rules window.

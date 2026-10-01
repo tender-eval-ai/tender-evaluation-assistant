@@ -2,33 +2,59 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Badge from "./Badge.jsx";
 import { getBidResult, getJob, getProject, startChecks } from "../api.js";
 
-// Landing page for the Stage I step: one row per tenderer with an uploaded
-// offer (GET /projects/{pid} `bidders`), its Stage I rollup from its
-// BidResult, clicking through to that tenderer's StageResultsWindow. The
-// contract has no per-project rollup route, so this is one results call per
-// tenderer; a tenderer without a finished check shows "not checked".
-const FILTERS = [
-  { key: "all", label: "All" },
-  { key: "missing", label: "missing" },
-  { key: "needs_review", label: "review" },
-  { key: "complete", label: "complete" },
-];
+// Landing page for the Stage I and Stage II steps: one row per tenderer with an
+// uploaded offer (GET /projects/{pid} `bidders`), that stage's rollup from its
+// BidResult (`stage1`, `stage2`), clicking through to that tenderer's
+// StageResultsWindow. The contract has no per-project rollup route, so this is
+// one results call per tenderer; a tenderer without a finished check shows
+// "not checked".
+const STAGES = {
+  I: {
+    summary: "stage1",
+    rowStatus: { pass: "complete", dormant: "complete", needs_review: "needs_review", disqualified: "missing" },
+    filters: [
+      { key: "all", label: "All" },
+      { key: "missing", label: "missing" },
+      { key: "needs_review", label: "review" },
+      { key: "complete", label: "complete" },
+    ],
+    columns: ["OK", "Review", "Missing"],
+  },
+  II: {
+    summary: "stage2",
+    rowStatus: { pass: "compliant", dormant: "compliant", needs_review: "needs_review", disqualified: "noncompliant" },
+    filters: [
+      { key: "all", label: "All" },
+      { key: "noncompliant", label: "non-compliant" },
+      { key: "needs_review", label: "review" },
+      { key: "compliant", label: "compliant" },
+    ],
+    columns: ["Pass", "Review", "Fail"],
+  },
+};
 
 const POLL_INTERVAL_MS = 2000;
-const ROW_STATUS = { pass: "complete", dormant: "complete", needs_review: "needs_review", disqualified: "missing" };
 
-async function loadRow(projectId, tenderer) {
+async function loadRow(projectId, tenderer, stage) {
+  const { summary, rowStatus } = STAGES[stage];
   try {
     const r = await getBidResult(projectId, tenderer);
-    const outcomes = Object.values(r.stage1.items);
+    // stage2 is null when the rule set has nothing at Stage II.
+    if (!r[summary]) {
+      return { tenderer, checked: true, status: "nothing_to_check", pass: 0, review: 0, fail: 0,
+               rulesetVersion: r.ruleset_version };
+    }
+    const outcomes = Object.values(r[summary].items);
     return {
       tenderer,
       checked: true,
-      status: ROW_STATUS[r.stage1.outcome] ?? "needs_review",
-      ok: outcomes.filter((o) => o === "pass").length,
+      status: rowStatus[r[summary].outcome] ?? "needs_review",
+      pass: outcomes.filter((o) => o === "pass").length,
       review: outcomes.filter((o) => o === "needs_review").length,
-      missing: outcomes.filter((o) => o === "disqualified").length,
+      fail: outcomes.filter((o) => o === "disqualified").length,
       rulesetVersion: r.ruleset_version,
+      // Stage II still lists a tenderer Stage I put out, and says so.
+      outAtStageI: stage === "II" && r.stage1.outcome === "disqualified",
     };
   } catch (err) {
     if (err.code !== "not_found") throw err;
@@ -36,7 +62,8 @@ async function loadRow(projectId, tenderer) {
   }
 }
 
-export default function VendorCompletenessList({ projectId, onSelectVendor, pollMs = POLL_INTERVAL_MS }) {
+export default function VendorList({ projectId, stage = "I", onSelectVendor, pollMs = POLL_INTERVAL_MS }) {
+  const { filters, columns } = STAGES[stage];
   const [rows, setRows] = useState(null);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
@@ -46,7 +73,7 @@ export default function VendorCompletenessList({ projectId, onSelectVendor, poll
 
   async function loadRows() {
     const project = await getProject(projectId);
-    const loaded = await Promise.all((project.bidders ?? []).map((t) => loadRow(projectId, t)));
+    const loaded = await Promise.all((project.bidders ?? []).map((t) => loadRow(projectId, t, stage)));
     setRows(loaded);
   }
 
@@ -89,7 +116,7 @@ export default function VendorCompletenessList({ projectId, onSelectVendor, poll
     loadRows().catch((err) => setError(err.message));
     return stopPolling;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId]);
+  }, [projectId, stage]);
 
   const filtered = useMemo(() => {
     if (!rows) return [];
@@ -99,15 +126,13 @@ export default function VendorCompletenessList({ projectId, onSelectVendor, poll
       .filter((r) => !term || r.tenderer.toLowerCase().includes(term));
   }, [rows, filter, search]);
 
-  const counts = useMemo(() => {
-    if (!rows) return { all: 0, missing: 0, needs_review: 0, complete: 0 };
-    return {
-      all: rows.length,
-      missing: rows.filter((r) => r.status === "missing").length,
-      needs_review: rows.filter((r) => r.status === "needs_review").length,
-      complete: rows.filter((r) => r.status === "complete").length,
-    };
-  }, [rows]);
+  const counts = useMemo(
+    () =>
+      Object.fromEntries(
+        filters.map((f) => [f.key, (rows ?? []).filter((r) => f.key === "all" || r.status === f.key).length])
+      ),
+    [rows, filters]
+  );
 
   if (!rows) {
     return (
@@ -150,7 +175,7 @@ export default function VendorCompletenessList({ projectId, onSelectVendor, poll
         </div>
         {error && <p className="text-xs text-mandatory">{error}</p>}
         <div className="flex items-center gap-1.5 flex-wrap font-mono text-xs">
-          {FILTERS.map((f) => (
+          {filters.map((f) => (
             <button
               key={f.key}
               type="button"
@@ -173,9 +198,9 @@ export default function VendorCompletenessList({ projectId, onSelectVendor, poll
             <tr className="font-mono text-ink-4 uppercase tracking-wider">
               <th className="text-left px-4 py-2 font-medium">Tenderer</th>
               <th className="text-left px-3 py-2 font-medium">Rule set</th>
-              <th className="text-left px-3 py-2 font-medium">OK</th>
-              <th className="text-left px-3 py-2 font-medium">Review</th>
-              <th className="text-left px-3 py-2 font-medium">Missing</th>
+              {columns.map((c) => (
+                <th key={c} className="text-left px-3 py-2 font-medium">{c}</th>
+              ))}
               <th className="text-left px-3 py-2 font-medium">Status</th>
             </tr>
           </thead>
@@ -186,11 +211,16 @@ export default function VendorCompletenessList({ projectId, onSelectVendor, poll
                 onClick={() => onSelectVendor(row.tenderer)}
                 className="cursor-pointer border-b border-border-soft hover:bg-faint transition-colors"
               >
-                <td className="px-4 py-2.5 font-medium text-accent-strong">{row.tenderer}</td>
+                <td className="px-4 py-2.5 font-medium text-accent-strong">
+                  {row.tenderer}
+                  {row.outAtStageI && (
+                    <span className="ml-2 font-mono font-normal text-mandatory">disqualified at Stage I</span>
+                  )}
+                </td>
                 <td className="px-3 py-2.5 text-ink-3 font-mono">{row.checked ? `v${row.rulesetVersion}` : "—"}</td>
-                <td className="px-3 py-2.5 font-mono text-ok">{row.checked ? row.ok : "—"}</td>
+                <td className="px-3 py-2.5 font-mono text-ok">{row.checked ? row.pass : "—"}</td>
                 <td className="px-3 py-2.5 font-mono text-rectifiable">{row.checked ? row.review : "—"}</td>
-                <td className="px-3 py-2.5 font-mono text-mandatory">{row.checked ? row.missing : "—"}</td>
+                <td className="px-3 py-2.5 font-mono text-mandatory">{row.checked ? row.fail : "—"}</td>
                 <td className="px-3 py-2.5">
                   <Badge kind={row.status} />
                 </td>
