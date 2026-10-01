@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronIcon } from "./Icons.jsx";
 
+// Scrolls the viewer's own page stack, never the window: scrollIntoView also scrolls every
+// scrollable ancestor, so opening a window or picking an item pushed the top bar out of view.
+function scrollWithin(container, node, block) {
+  if (!container || !node) return;
+  const offset = node.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+  const top = Math.max(0, block === "center" ? offset - (container.clientHeight - node.offsetHeight) / 2 : offset);
+  if (container.scrollTo) container.scrollTo({ top, behavior: "smooth" });
+  else container.scrollTop = top;
+}
+
 export default function DocumentViewer({ pages, emptyLabel, focusPage }) {
   const pageRefs = useRef({});
   const containerRef = useRef(null);
@@ -12,8 +22,8 @@ export default function DocumentViewer({ pages, emptyLabel, focusPage }) {
     // A cited page with a box scrolls to the marked text; without one, to the
     // top of the page.
     const mark = node?.querySelector(".page-highlight");
-    if (mark) mark.scrollIntoView({ behavior: "smooth", block: "center" });
-    else if (node) node.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (mark) scrollWithin(containerRef.current, mark, "center");
+    else if (node) scrollWithin(containerRef.current, node, "start");
     setCurrentPage(focusPage);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusPage, pages]);
@@ -39,7 +49,7 @@ export default function DocumentViewer({ pages, emptyLabel, focusPage }) {
 
   function goToPage(pageNumber) {
     const node = pageRefs.current[pageNumber];
-    if (node) node.scrollIntoView({ behavior: "smooth", block: "start" });
+    scrollWithin(containerRef.current, node, "start");
     setCurrentPage(pageNumber);
   }
 
