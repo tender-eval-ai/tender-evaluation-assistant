@@ -5,14 +5,14 @@ Input: a tender document set + one bid (offer) per tenderer. Output: an editable
 **procurement review report** — Price Summary table, Stage I / Stage II conclusions, and a
 detailed evaluation record sheet.
 
+**Try it without signing in:** [a recorded run of the whole pipeline](https://tender-eval-ai.github.io/tender-evaluation-assistant/)
+on the synthetic tender. The rule set the model drafted and two people confirmed, every offer checked,
+the reviews, the scores and the Word reports: every window, read-only, no backend.
+
 ![A reviewer checks item (l) with its page highlighted, runs a check on a scanned offer, corrects a field the model could not read, and confirms the review](docs/images/review.gif)
 
 *The review UI on its built-in mock and the synthetic tender: every verdict cites its page,
 and a person's correction keeps the model's value beside it, with who and why.*
-
-**Try it without signing in:** [a recorded run of the whole pipeline](https://tender-eval-ai.github.io/tender-evaluation-assistant/)
-on the synthetic tender. The rule set the model drafted and two people confirmed, every offer checked,
-the reviews, the scores and the Word reports: every window, read-only, no backend.
 
 <details>
 <summary>Screens</summary>
