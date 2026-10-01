@@ -55,10 +55,12 @@ def correct_field(pid: str, tenderer: str, letter: str, field: str, body: Correc
     if body.decision is not None:
         if body.value is not None or body.present is not None or body.page is not None:
             raise ApiError(400, "bad_request", "a decision stands alone: give it without a value, present or a page")
-        row = next((f for f in item_verdicts(result.verdict).get(letter, {}).get("fields", []) if f["field_id"] == key), None)
-        if row is None or row["status"] != "needs_review":
+        # One field can carry several checks (a presence check that passes and a reviewer's
+        # judgement on the same document): the decision is for the one that needs review.
+        rows = [f for f in item_verdicts(result.verdict).get(letter, {}).get("fields", []) if f["field_id"] == key]
+        if not any(f["status"] == "needs_review" for f in rows):
             raise ApiError(409, "conflict", f"{field!r} of item ({letter}) does not need review; correct its value instead",
-                           {"status": row["status"] if row else None})
+                           {"status": rows[0]["status"] if rows else None})
         entries = {f"{key}_decision": body.decision}
     else:
         entries = correction_entries(result.fields, key, body.value, body.present, body.page)
