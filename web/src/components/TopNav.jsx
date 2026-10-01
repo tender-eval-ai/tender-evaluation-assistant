@@ -12,6 +12,15 @@ export default function TopNav({ tenderName, dataClass, mock = false, replay = n
         </div>
         <span className="text-white text-sm font-semibold tracking-tight">Procurement Review</span>
       </div>
+      <button
+        type="button"
+        className="h-7 px-2.5 rounded border border-white/50 bg-white/10 text-white text-xs font-medium
+          hover:bg-white/25 transition-colors cursor-pointer shrink-0"
+        onClick={onChangeProject}
+        title="Back to the project list"
+      >
+        ← Change project
+      </button>
 
       <div className="ml-auto flex items-center gap-3 min-w-0">
         {replay && (
@@ -27,13 +36,6 @@ export default function TopNav({ tenderName, dataClass, mock = false, replay = n
         )}
         {tenderName && <span className="text-white/50 text-xs font-mono truncate">{tenderName}</span>}
         {dataClass && <span className="text-white/50 text-xs font-mono shrink-0">{dataClass}</span>}
-        <button
-          type="button"
-          className="text-white/70 hover:text-white text-xs transition-colors cursor-pointer shrink-0"
-          onClick={onChangeProject}
-        >
-          Change project
-        </button>
         <div
           className="w-7 h-7 rounded-full bg-accent flex items-center justify-center text-white text-xs font-semibold shrink-0"
           title={user}

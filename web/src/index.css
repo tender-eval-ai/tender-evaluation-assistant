@@ -277,6 +277,7 @@
 }
 
 .project-card {
+  position: relative;
   text-align: left;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -310,6 +311,31 @@
 .project-card-meta {
   font-size: 12px;
   color: var(--ink-secondary);
+}
+
+.project-card-stage {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  min-width: 26px;
+  height: 22px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  border: 1px solid var(--accent);
+  background: var(--accent-wash);
+  color: var(--accent-strong);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.project-card-stage-done {
+  border-color: var(--good);
+  background: var(--good);
+  color: #fff;
 }
 
 .project-picker-head {

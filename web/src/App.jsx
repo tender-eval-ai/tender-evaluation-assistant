@@ -9,6 +9,7 @@ import ScoringWindow from "./windows/ScoringWindow.jsx";
 import StageIWindow from "./windows/StageIWindow.jsx";
 import StageIIWindow from "./windows/StageIIWindow.jsx";
 import { getProject, listProjects, listRulesetVersions, REPLAY, REPLAY_LABEL, USE_MOCK } from "./api.js";
+import { lastStep, rememberStep } from "./projectStage.js";
 
 // Until per-user sessions arrive (checklist item B9) the API takes the acting
 // user from X-User; there is no login screen.
@@ -42,7 +43,8 @@ export default function App() {
 }
 
 function AppShell({ projectId, project, onChangeProject }) {
-  const [activeWindow, setActiveWindow] = useState("rules");
+  // A project reopens at the step it was left on; the project list shows that step.
+  const [activeWindow, setActiveWindow] = useState(() => lastStep(projectId) ?? "rules");
   // null = no tenderer picked yet: the Stage I step shows the bid list, the
   // tenderer's own page once one is picked. Stage II falls back to the first
   // tenderer, the single-tenderer assumption it always had.
@@ -68,6 +70,8 @@ function AppShell({ projectId, project, onChangeProject }) {
       cancelled = true;
     };
   }, [projectId]);
+
+  useEffect(() => rememberStep(projectId, activeWindow), [projectId, activeWindow]);
 
   const effectiveTenderer = tenderer ?? bidders[0];
 

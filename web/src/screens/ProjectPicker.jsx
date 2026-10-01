@@ -1,12 +1,29 @@
 import { useEffect, useState } from "react";
 import { getSettings, listProjects, REPLAY, REPLAY_LABEL } from "../api.js";
+import { projectStage } from "../projectStage.js";
 import NewProject from "./NewProject.jsx";
+
+// Bottom right of a card: a green tick when the project is finished, otherwise sN, the
+// step this browser last had open (s1 Rules … s5 Report).
+function StageBadge({ stage }) {
+  if (!stage) return null;
+  const title = stage.finished
+    ? "Finished: every tenderer checked and its review confirmed"
+    : `In progress: last open at step ${stage.number}, ${stage.label}`;
+  return (
+    <span className={`project-card-stage${stage.finished ? " project-card-stage-done" : ""}`}
+          title={title} aria-label={title} data-testid="project-stage">
+      {stage.finished ? "✓" : `s${stage.number}`}
+    </span>
+  );
+}
 
 export default function ProjectPicker({ onSelect, pollMs }) {
   const [projects, setProjects] = useState(null);
   const [settings, setSettings] = useState(null);
   const [error, setError] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [stages, setStages] = useState({});
 
   useEffect(() => {
     listProjects()
@@ -17,6 +34,19 @@ export default function ProjectPicker({ onSelect, pollMs }) {
       .then(setSettings)
       .catch(() => setSettings({ hosted_demo: false, uploads: true, data_classes: ["synthetic", "redacted_sample", "confidential"] }));
   }, []);
+
+  useEffect(() => {
+    if (!projects) return undefined;
+    let cancelled = false;
+    for (const project of projects) {
+      projectStage(project.id)
+        .then((stage) => !cancelled && setStages((prev) => ({ ...prev, [project.id]: stage })))
+        .catch(() => {});
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [projects]);
 
   if (error) {
     return <div className="window-status window-status-error">Failed to load projects: {error}</div>;
@@ -73,6 +103,7 @@ export default function ProjectPicker({ onSelect, pollMs }) {
             <div className="project-card-meta">
               {project.data_class ?? "confidential"}
             </div>
+            <StageBadge stage={stages[project.id]} />
           </button>
         ))}
       </div>
