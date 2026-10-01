@@ -15,6 +15,18 @@
       "description": "the currencies the Price Schedule allows prices to be quoted in, e.g. two currency symbols"
     },
     {
+      "name": "currency",
+      "kind": "text",
+      "required": false,
+      "description": "the currency the tender compares every price in, when it names one, e.g. one currency symbol"
+    },
+    {
+      "name": "exchange_rates",
+      "kind": "list",
+      "required": false,
+      "description": "each rate the tender gives for converting another currency into its own, one entry per currency: its symbol or code, then the rate"
+    },
+    {
       "name": "dosage_unit",
       "kind": "text",
       "required": false,

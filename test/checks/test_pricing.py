@@ -131,3 +131,33 @@ def test_the_conclusions_read_like_the_summary_list():
     assert "Tenderer_A awaits a reviewer's decision on item (i)" in pending["stage1_conclusion"]
     assert stage_conclusion([], "stage1", ALL) == "Stage I: no tenderer has been checked yet."
     assert stage_conclusion(offers()[:1], "stage2", RuleSet.model_validate(RULESET)).startswith("Stage II: Tenderer_A passed")
+
+
+def ruleset_with(**slots) -> RuleSet:
+    """The all-items rule set with item (b)'s currency slots replaced by these."""
+    from app.rulesets.schema import SlotValue
+    items = []
+    for item in ALL.items:
+        if item.letter == "b":
+            kept = {k: v for k, v in item.slots.items() if k not in ("currency", "exchange_rates", "allowed_currencies")}
+            item = item.model_copy(update={"slots": {**kept, **{k: SlotValue.model_construct(value=v) for k, v in slots.items()}}})
+        items.append(item)
+    return ALL.model_copy(update={"items": items})
+
+
+def test_the_price_schedules_own_slots_name_the_currency_and_the_rates():
+    """The production price_schedule template (#99) holds the tender's currency and its rates as
+    slots: `currency`, and `exchange_rates` as "currency rate" entries. Before, pricing found
+    neither on a rule set built from it, and nothing was ranked (the Showcase, 2026-09-30)."""
+    from app.checks.pricing import _rates, currency_settings
+    assert _rates(["US$ 7.8", "EUR: 8.45"], "x") == {"USD": 7.8, "EUR": 8.45}
+    assert _rates("US$ 7.8; C$ = 5.7", "x") == {"USD": 7.8, "CAD": 5.7}
+    assert _rates({"USD": 7.8}, "x") == {"USD": 7.8}
+    with pytest.raises(ValueError, match="not a currency and a rate"):
+        _rates(["seven point eight"], "x")
+    stated = ruleset_with(currency="HK$", exchange_rates=["US$ 7.8"])
+    assert currency_settings(stated)[:2] == ("HKD", {"USD": 7.8})
+    one = ruleset_with(allowed_currencies=["HK$"])
+    assert currency_settings(one)[0] == "HKD", "one currency allowed is the one prices are compared in"
+    two = ruleset_with(allowed_currencies=["HK$", "US$"])
+    assert currency_settings(two)[0] is None, "two allowed: the tender has to name its own"
