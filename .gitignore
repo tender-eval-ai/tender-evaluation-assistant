@@ -19,3 +19,6 @@ web/dist/
 # A real tender's values from tools/split_rule_files.py: kept beside the answer keys, never here (J2 d)
 params/
 *classification*.json
+
+# The guest site's recorded run (tools/record_run.py): a release asset, not in git
+web/public/replay/

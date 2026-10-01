@@ -1,0 +1,66 @@
+name: pages
+
+# The guest site (#132): the React UI replaying a recorded run of the pipeline, on GitHub Pages.
+# No backend and no secret: every GET is a static file from the newest `replay-*` release's
+# bundle (tools/record_run.py), and nothing can be changed. Pages needs a public repository,
+# so the jobs run only once it is.
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/pages.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event.repository.visibility == 'public'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: the newest recorded run
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(gh release list -R "$GITHUB_REPOSITORY" --json tagName -q '[.[] | select(.tagName | startswith("replay-"))][0].tagName')
+          [ -n "$tag" ] || { echo "no replay-* release yet: record one with tools/record_run.py" >&2; exit 1; }
+          gh release download "$tag" -R "$GITHUB_REPOSITORY" --pattern 'replay-*.tar.gz' --output replay.tar.gz
+          tar -xzf replay.tar.gz -C web/public
+          echo "LABEL=$(jq -r .label web/public/replay/manifest.json)" >> "$GITHUB_ENV"
+      - working-directory: web
+        env:
+          VITE_REPLAY: "1"
+          VITE_REPLAY_LABEL: ${{ env.LABEL }}
+        run: |
+          npm ci
+          npm run build -- --base "/${{ github.event.repository.name }}/"
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9  # v5.0.0
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346  # v5.0.1

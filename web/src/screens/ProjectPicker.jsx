@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getSettings, listProjects } from "../api.js";
+import { getSettings, listProjects, REPLAY, REPLAY_LABEL } from "../api.js";
 import NewProject from "./NewProject.jsx";
 
 export default function ProjectPicker({ onSelect, pollMs }) {
@@ -27,7 +27,18 @@ export default function ProjectPicker({ onSelect, pollMs }) {
 
   return (
     <div className="project-picker">
-      {settings?.hosted_demo && (
+      {REPLAY && (
+        <p className="demo-banner" role="note" data-testid="replay-banner">
+          <strong>{REPLAY_LABEL}.</strong> A real run of the pipeline on a synthetic tender, recorded: the rule set the
+          model drafted and two people confirmed, every offer checked, the reviews, the scores and the Word reports.
+          Browse every window; nothing here can be changed.
+          {settings?.source_url && (
+            <> To run it yourself: <a href={`${settings.source_url}#quickstart`} target="_blank" rel="noreferrer">
+              {settings.source_url.replace(/^https?:\/\//, "")}</a>.</>
+          )}
+        </p>
+      )}
+      {!REPLAY && settings?.hosted_demo && (
         <p className="demo-banner" role="note" data-testid="demo-banner">
           A demo on synthetic tenders. To use your own documents, run it on a machine you control
           {settings.source_url && (
@@ -45,7 +56,7 @@ export default function ProjectPicker({ onSelect, pollMs }) {
             Each project holds the tender documents and the tenderers' offers.
           </p>
         </div>
-        {!creating && (
+        {!creating && !REPLAY && (
           <button type="button" className="project-picker-new" onClick={() => setCreating(true)}>
             + New project
           </button>
