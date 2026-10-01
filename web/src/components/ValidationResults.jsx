@@ -81,7 +81,9 @@ function FieldRow({ check, value, onViewCitation, letter, onCorrect }) {
           </p>
         </div>
       )}
-      {check.decision && (
+      {/* A field can carry two checks; the decision belongs to the one it settled, whose
+          status it set, not to a sibling that passed on its own. */}
+      {check.decision && check.decision.status === check.status && (
         <div className="mb-2 pl-2 border-l-2 border-accent" data-testid={`decided-${check.field_id}`}>
           <FieldMicroLabel>Decided</FieldMicroLabel>
           <p className="text-xs leading-5 text-ink-2">
@@ -141,8 +143,8 @@ function FieldGroup({ title, checks, values, onViewCitation, letter, onCorrect }
   if (checks.length === 0) return null;
   const active = checks.filter((c) => c.status !== "dormant");
   const dormant = checks.filter((c) => c.status === "dormant");
-  const row = (c) => (
-    <FieldRow key={c.field_id} check={c} value={values?.[fieldName(c.field_id)]}
+  const row = (c, i) => (
+    <FieldRow key={`${c.field_id}:${c.rule_id ?? i}`} check={c} value={values?.[fieldName(c.field_id)]}
               onViewCitation={onViewCitation} letter={letter} onCorrect={onCorrect} />
   );
   return (
