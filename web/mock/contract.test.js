@@ -102,6 +102,8 @@ const REQUESTS = [
   ["get", "/projects/{pid}/price-summary", `/projects/${fx.PID}/price-summary`],
   ["get", "/projects/{pid}/evaluation", `/projects/${fx.PID}/evaluation`],
   ["get", "/projects/{pid}/reports", `/projects/${fx.PID}/reports`],
+  ["get", "/settings", "/settings"],
+  ["get", "/inbox", "/inbox"],
 ];
 
 describe("mock vs docs/openapi.json", () => {
@@ -128,6 +130,28 @@ describe("mock vs docs/openapi.json", () => {
     const schema = responseSchema(method, path, 200);
     expect(schema, `no 200 schema for ${path}`).toBeDefined();
     expect(validate(schema, await res.json())).toEqual([]);
+  });
+
+  it("the front door: a new project, its case imported, its first draft a Job", async () => {
+    const post = (url, b) => fetch(BASE + url, { method: "POST", headers: { "Content-Type": "application/json" },
+                                                 body: JSON.stringify(b) });
+    const created = await post("/projects", { name: "Small tender, try 1", data_class: "synthetic" });
+    const project = await created.json();
+    expect(validate(responseSchema("post", "/projects", 200), project)).toEqual([]);
+    expect((await post(`/projects/${project.id}/import`, { path: "synthetic_tender" })).status).toBe(200);
+    const started = await post(`/projects/${project.id}/ruleset/build`, {});
+    expect(started.status).toBe(202);
+    const { job_id } = await started.json();
+    const job = await (await fetch(`${BASE}/projects/${project.id}/jobs/${job_id}`)).json();
+    expect(validate(responseSchema("get", "/projects/{pid}/jobs/{job_id}", 200), job)).toEqual([]);
+    expect(job.kind).toBe("ruleset_build");
+    const listed = await (await fetch(`${BASE}/projects`)).json();
+    expect(listed.map((p) => p.id)).toContain(project.id);
+  });
+
+  it("the synthetic case's card is the one the case folder carries", () => {
+    const card = JSON.parse(readFileSync(resolve(here, "../../test/data/synthetic_tender/case.json"), "utf8"));
+    expect(fx.CASE_CARD).toEqual(card);
   });
 
   it("POST /checks answers 202 CheckResponse, and the job it starts is a Job", async () => {

@@ -22,8 +22,14 @@ export default function App() {
     listProjects().then(setProjects).catch(() => setProjects([]));
   }, []);
 
+  // A project made a moment ago isn't in the list read at start: read it again.
+  const open = (pid) => {
+    listProjects().then(setProjects).catch(() => {});
+    setProjectId(pid);
+  };
+
   if (!projectId) {
-    return <ProjectPicker onSelect={setProjectId} />;
+    return <ProjectPicker onSelect={open} />;
   }
 
   return (

@@ -51,6 +51,19 @@ async function call(method, path, body) {
     headers: headers(body === undefined ? {} : { "Content-Type": "application/json" }),
     body: body === undefined ? undefined : JSON.stringify(body),
   });
+  return checked(response, method, path);
+}
+
+// Files as multipart/form-data; the browser sets the boundary and the length the API
+// checks before it reads the body.
+async function upload(path, files) {
+  const form = new FormData();
+  for (const file of files) form.append("files", file, file.name);
+  const response = await fetch(`${apiBase()}${path}`, { method: "POST", headers: headers(), body: form });
+  return (await checked(response, "POST", path)).json();
+}
+
+async function checked(response, method, path) {
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
     const err = data.error ?? {};
@@ -78,6 +91,14 @@ const p = (pid) => `/projects/${encodeURIComponent(pid)}`;
 // Projects (today's routes, kept).
 export const listProjects = () => request("GET", "/projects");
 export const getProject = (pid) => request("GET", p(pid));
+// The front door (#132): what this deployment allows, the prepared cases, a new project.
+export const getSettings = () => request("GET", "/settings");
+export const listInbox = () => request("GET", "/inbox");
+export const createProject = (name, dataClass) => request("POST", "/projects", { name, data_class: dataClass });
+export const importCase = (pid, path) => request("POST", `${p(pid)}/import`, { path });
+export const uploadTender = (pid, files) => upload(`${p(pid)}/tender`, files);
+export const uploadBid = (pid, tenderer, files) => upload(`${p(pid)}/bids/${encodeURIComponent(tenderer)}`, files);
+export const buildRuleset = (pid) => request("POST", `${p(pid)}/ruleset/build`, {});
 
 // Rules window.
 export const getRuleset = (pid, { version } = {}) => request("GET", `${p(pid)}/ruleset${q({ version })}`);

@@ -7,6 +7,15 @@ const STEP_LABEL = {
   extract: "Reading values off the vendor's submission",
   verify: "Checking the values read against the pages",
   evaluate: "Checking against the rules",
+  // ruleset_build (app/rulesets/build_job.py)
+  parse: "Reading the tender documents",
+  locate: "Finding the Completeness Check Schedule's items",
+  match: "Matching each item to a form template",
+  slots: "Filling in the tender's own values",
+  novel: "Drafting rules no template has",
+  additions: "Looking for requirements the templates miss",
+  coverage: "Listing the clauses no rule covers",
+  save: "Saving the draft",
 };
 
 export default function JobProgress({ job }) {

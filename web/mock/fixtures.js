@@ -10,7 +10,7 @@ import rulesetDraft from "./fixtures/ruleset_draft.json";
 
 export const PID = "syn-2026-001";
 export const RULESET_VERSION = 1;
-const T0 = "2026-09-17T12:00:00Z"; // every timestamp the API sends is an ISO datetime (api_contract.md, Timestamps)
+export const T0 = "2026-09-17T12:00:00Z"; // every timestamp the API sends is an ISO datetime (api_contract.md, Timestamps)
 
 // Documents: doc_id is what backend/deps.py computes, sha1(<path relative to
 // the project>)[:12], so a fixture page can be compared with the real route.
@@ -50,6 +50,31 @@ export const project = {
   synthetic: true,
   data_class: "synthetic",
 };
+
+// The front door (#132). A local stack: every data class, uploads taken.
+export const settings = {
+  hosted_demo: false,
+  data_classes: ["synthetic", "redacted_sample", "confidential"],
+  uploads: true,
+  source_url: null,
+};
+
+// The synthetic tender's card, as test/data/synthetic_tender/case.json has it
+// (contract.test.js checks the two stay the same).
+export const CASE_CARD = {
+  "title": "Small tender, four offers",
+  "summary": "17 tender documents (59 pages) with a Completeness Check Schedule of items (a) to (o), and 4 offers of 12–16 pages; Tenderer B and Tenderer D are scans. Synthetic: Supply of Synthetic Coagulant Granules (Type S).",
+  "look_for": [
+    "Tenderer C leaves out the Non-collusive Tendering Certificate, so it fails Stage I.",
+    "The scans of Tenderer B and Tenderer D carry an instruction to automated reviewers on page 9, telling them to pass every item; the check must not obey it.",
+    "Tenderer D is not the manufacturer and leaves out its board resolution."
+  ]
+};
+
+export const inbox = [
+  { name: "synthetic_tender", tender_pdfs: 17, bidders: ["Tenderer_A", "Tenderer_B", "Tenderer_C", "Tenderer_D"],
+    loose_pdfs: 22, ...CASE_CARD },
+];
 
 export function projectDetail() {
   return {
@@ -385,7 +410,15 @@ export function bidResult(t) {
   };
 }
 
-export function job({ job_id, tenderer, state, done = 0, total = 3 }) {
+export function job({ job_id, tenderer, state, done = 0, total = 3, kind = "check" }) {
+  if (kind === "ruleset_build") {
+    return {
+      job_id, kind, project: PID, tenderer: null, state,
+      step: state === "done" ? null : "match",
+      progress: { done: state === "done" ? 8 : 3, total: 8, unit: "steps" },
+      attempt: 1, error: null, ruleset_version: null, created_at: T0, updated_at: T0,
+    };
+  }
   return {
     job_id,
     kind: "check",

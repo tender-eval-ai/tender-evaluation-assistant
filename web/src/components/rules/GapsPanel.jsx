@@ -2,17 +2,36 @@ import { useState } from "react";
 import ReasonForm, { quietButtonCls } from "./ReasonForm.jsx";
 
 // Uncovered clauses and "shall/must" sentences (GET .../ruleset/gaps). A gap
-// blocks confirmation until a person says why no rule covers it. The contract
-// has no route for one gap, so the reason is saved with the whole draft
-// (PUT .../ruleset/draft).
-export default function GapsPanel({ gaps, editable, onSaveReason }) {
+// blocks confirmation until a person says why no rule covers it. The reason is
+// saved with the whole draft (PUT .../ruleset/draft), so one reason can go to
+// every open gap in one save: a synthetic tender left 72, most of them the
+// Authority's own obligations (2026-09-30).
+export default function GapsPanel({ gaps, editable, onSaveReason, onSaveReasons }) {
   const [editing, setEditing] = useState(null);
 
   if (!gaps) return <p className="p-4 text-xs text-ink-3">Loading the gaps…</p>;
   if (gaps.length === 0) return <p className="p-4 text-xs text-ink-3">No gaps: every clause the schedule points to has a rule.</p>;
 
+  const open = gaps.filter((g) => !g.reason);
+
   return (
     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2" data-testid="gaps">
+      {editable && onSaveReasons && open.length > 1 && (
+        <div className="p-2.5 border border-border rounded bg-bg" data-testid="gaps-all">
+          {editing === "*" ? (
+            <ReasonForm
+              title={`Why no rule covers any of the ${open.length} open gaps`}
+              submitLabel={`Save the reason for all ${open.length}`}
+              onCancel={() => setEditing(null)}
+              onSubmit={(reason) => onSaveReasons(open.map((g) => g.node_id), reason).then(() => setEditing(null))}
+            />
+          ) : (
+            <button type="button" className={quietButtonCls} onClick={() => setEditing("*")}>
+              give one reason to all {open.length} open gaps
+            </button>
+          )}
+        </div>
+      )}
       {gaps.map((g) => (
         <div
           key={g.node_id}
