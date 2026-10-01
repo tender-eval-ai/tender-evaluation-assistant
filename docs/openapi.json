@@ -1295,6 +1295,24 @@
         "title": "JobStarted",
         "type": "object"
       },
+      "Me": {
+        "description": "Who signed in, where a sign-in sits in front of the app (the Azure demo's Entra ID, which\nforwards the person's claims in X-MS-CLIENT-PRINCIPAL). `name` is the display name, else\nthe account name before any \"@\", never the whole address; null without a sign-in.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "Me",
+        "type": "object"
+      },
       "NewItem": {
         "description": "`POST /ruleset/items` (S3): an item a person adds from a clause; lettered x1, x2, ...\nand `edited` with the person's edit record.",
         "properties": {
@@ -3244,6 +3262,85 @@
           }
         },
         "summary": "List Inbox"
+      }
+    },
+    "/me": {
+      "get": {
+        "description": "Who signed in, for the UI's default acting user; null on a stack with no sign-in.",
+        "operationId": "me_me_get",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-MS-CLIENT-PRINCIPAL",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ms-Client-Principal"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-MS-CLIENT-PRINCIPAL-NAME",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Ms-Client-Principal-Name"
+            }
+          },
+          {
+            "in": "header",
+            "name": "x-api-key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Me"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorBody"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Me"
       }
     },
     "/projects": {

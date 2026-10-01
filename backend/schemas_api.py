@@ -214,6 +214,14 @@ class InboxCase(BaseModel):
     look_for: list[str] | None = None
 
 
+class Me(BaseModel):
+    """Who signed in, where a sign-in sits in front of the app (the Azure demo's Entra ID, which
+    forwards the person's claims in X-MS-CLIENT-PRINCIPAL). `name` is the display name, else
+    the account name before any "@", never the whole address; null without a sign-in."""
+
+    name: str | None = None
+
+
 class Settings(BaseModel):
     """What the UI needs to know about this deployment. On a hosted demo (`hosted_demo`) a
     project is synthetic and starts from an inbox case: `data_classes` is `["synthetic"]`,

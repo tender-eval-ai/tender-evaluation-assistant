@@ -83,3 +83,27 @@ def test_the_inbox_shows_each_case_card_and_ignores_a_bad_one(tmp_path, monkeypa
                      "b_broken": (None, None, None),
                      "c_wrong_types": (None, "ok", None),
                      "d_none": (None, None, None)}
+
+
+def _principal(claims: list[dict]) -> str:
+    import base64
+    return base64.b64encode(json.dumps({"auth_typ": "aad", "claims": claims}).encode()).decode()
+
+
+def test_me_reads_the_display_name_the_sign_in_forwards(tmp_path, monkeypatch):
+    client = make_client(tmp_path, monkeypatch)
+    principal = _principal([{"typ": "preferred_username", "val": "someone@example.com"}, {"typ": "name", "val": "Chenyu Fang"}])
+    got = client.get("/me", headers={"X-MS-CLIENT-PRINCIPAL": principal, "X-MS-CLIENT-PRINCIPAL-NAME": "someone@example.com"})
+    assert got.status_code == 200 and got.json() == {"name": "Chenyu Fang"}
+
+
+def test_me_falls_back_to_the_account_before_the_at_never_the_whole_address(tmp_path, monkeypatch):
+    client = make_client(tmp_path, monkeypatch)
+    no_name = _principal([{"typ": "preferred_username", "val": "reviewer.two@example.com"}])
+    for headers in ({"X-MS-CLIENT-PRINCIPAL": no_name, "X-MS-CLIENT-PRINCIPAL-NAME": "reviewer.two@example.com"},
+                    {"X-MS-CLIENT-PRINCIPAL": "not base64 json", "X-MS-CLIENT-PRINCIPAL-NAME": "reviewer.two@example.com"}):
+        assert client.get("/me", headers=headers).json() == {"name": "reviewer.two"}
+
+
+def test_me_is_null_without_a_sign_in(tmp_path, monkeypatch):
+    assert make_client(tmp_path, monkeypatch).get("/me").json() == {"name": None}
