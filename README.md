@@ -70,7 +70,7 @@ and page, scored against a separate key:
 | Tender 2 | 13/13 | 13/13 | 13/13 | none |
 | Tender 3 | 21/21 | 21/21 | 21/21 | none |
 
-**Tests** — 757 Python (738 offline, 19 against Postgres), 106 browser-component (Vitest), 5
+**Tests** — 757 Python (738 offline, 19 against Postgres), 118 browser-component (Vitest), 5
 end-to-end (Playwright), run by CI on every pull request: lint and a secrets and dependency
 scan, the offline suite, Postgres integration, web and e2e.
 

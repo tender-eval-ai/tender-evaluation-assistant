@@ -25,6 +25,21 @@ export function stageRollup(checks, stage) {
   return { status: worst, counts, empty: inStage.length === 0 };
 }
 
+// An item's status on one stage's page, read the way stage_summary
+// (app/checks/engine_bridge.py) reads it, so the page agrees with the bid list
+// and the report: null when nothing was checked at that stage (a Stage II rule
+// for a limit the tender doesn't set, say), "dormant" when everything there
+// is, and "needs_review" at Stage I for an item the engine could not check.
+export function stageStatus(verdict, stage) {
+  if (!verdict) return null;
+  const { status, counts, empty } = stageRollup(verdict.checks, stage);
+  if (empty) {
+    return stage !== "II" && verdict.checks.length === 0 && verdict.outcome === "needs_review" ? "needs_review" : null;
+  }
+  const total = Object.values(counts).reduce((a, b) => a + b, 0);
+  return counts.dormant === total ? "dormant" : status;
+}
+
 // Where a citation's page sits, deduplicated: the engine cites a page once per
 // field read on it, so one certificate page can appear four times.
 // One citation per page, in first-cited order. Verdict.evidence cites a page
