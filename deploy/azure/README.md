@@ -121,6 +121,24 @@ The rerun makes a new name suffix. A rerun into a group that still exists reuses
 
 **If the first pass stops at the Azure OpenAI resource** ("The specified SKU 'GlobalStandard' for model … is not supported in this region"): a region can list a model and still refuse to deploy it to your subscription. canadacentral did for `gpt-4.1-mini` on 2026-09-30, while canadaeast, westus3, northcentralus and centralus accepted it. Nothing was created, so rerun with the OpenAI resource alone in another region, keeping the rest where it is: `LOCATION=canadacentral OPENAI_LOCATION=canadaeast bash deploy/azure/setup.sh`. To check a region first, validate a deployment without creating it (`az deployment group validate`). `OPENAI_MODEL=… OPENAI_MODEL_VERSION=…` pick another model the same way. `setup.sh` stores all three as repository variables, and the deploy workflow passes them on.
 
+## A custom domain
+The demo can also answer on a domain of your own, such as `tender.example.org`, with a free managed certificate. Once it's bound, every deploy keeps it.
+
+1. **DNS:** at your registrar, add two records for the subdomain:
+   - `CNAME tender` → the app's Azure address (`tender-demo.<environment domain>`);
+   - `TXT asuid.tender` → the app's verification id, from `az containerapp show -n tender-demo -g tender-demo --query properties.customDomainVerificationId -o tsv`.
+2. **Bind the domain and certificate.** Once the records resolve:
+   ```bash
+   az containerapp hostname add  -n tender-demo -g tender-demo --hostname tender.example.org
+   az containerapp hostname bind -n tender-demo -g tender-demo --hostname tender.example.org \
+       --environment tender-env --validation-method CNAME
+   ```
+   Issuing the certificate takes a few minutes.
+3. **Sign-in:** add `https://tender.example.org/.auth/login/aad/callback` to the sign-in registration's redirect addresses. Rerunning `setup.sh` with `CUSTOM_DOMAIN` set does this.
+4. **Keep it on every deploy:** `gh variable set AZURE_CUSTOM_DOMAIN --body tender.example.org`.
+   - `deploy.sh` then declares the domain and finds its certificate.
+   - A deploy that left the domain out would remove the binding, so set the variable before the next deploy.
+
 ## What it costs
 The trial credit covers the first 30 days. To keep the demo after that, upgrade to pay-as-you-go:
 - **Postgres B1ms:** the free account covers 750 hours of B1ms and 32 GB a month for 12 months, which is the whole month. After that, it's the one real cost.
