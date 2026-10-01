@@ -31,11 +31,12 @@ and a person's correction keeps the model's value beside it, with who and why.*
 
 > **CONFIDENTIALITY WARNING**
 > The models are whatever `.env` points at: the measured demo configurations use
-> **cloud APIs** (DeepSeek, Gemini on Vertex AI) or local Ollama. **Never** feed real
-> client tender/bid documents through any cloud path. Use the bundled synthetic
+> **cloud APIs** (DeepSeek, Gemini on Vertex AI, Azure OpenAI) or local Ollama. **Never** feed
+> real tender or bid documents through any cloud path. Use the bundled synthetic
 > fixtures, or your own sanitized samples. The production design targets fully local
-> inference (Qwen3-VL / Qwen3.6 / DeepSeek on DGX Spark via vLLM) — the LLM client is
-> OpenAI-compatible, so production points the base URL at vLLM with no code change.
+> inference (Qwen3-VL / Qwen3.6 / DeepSeek on a DGX Spark via vLLM). The LLM client is
+> OpenAI-compatible, so a production deployment would point the base URL at vLLM with no
+> code change.
 
 ## Results
 
@@ -69,7 +70,7 @@ and page, scored against a separate key:
 | Tender 2 | 13/13 | 13/13 | 13/13 | none |
 | Tender 3 | 21/21 | 21/21 | 21/21 | none |
 
-**Tests** — 654 Python (637 offline, 17 against Postgres), 73 browser-component (Vitest), 4
+**Tests** — 757 Python (738 offline, 19 against Postgres), 106 browser-component (Vitest), 5
 end-to-end (Playwright), run by CI on every pull request: lint and a secrets and dependency
 scan, the offline suite, Postgres integration, web and e2e.
 
@@ -144,7 +145,7 @@ text never leaves the local network), a cache, a daily budget and a rate limit.
 cd tender-evaluation-assistant
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 
-# 1) The tests: offline, no network, no keys, no client data.
+# 1) The tests: offline, no network, no keys, no real documents.
 .venv/bin/python -m pytest test/ -q
 
 # 2) The whole stack in Docker (Postgres, the API, the worker, the UI), then the synthetic
@@ -172,7 +173,7 @@ documents only on any cloud path. Hosted endpoints pick their key by hostname
 (`DEEPSEEK_API_KEY`, `GEMINI_API_KEY`, `AZURE_OPENAI_API_KEY`, `DASHSCOPE_API_KEY`,
 `ZHIPU_API_KEY`), so a fallback chain can span providers. Chains
 (`*_MODEL_FALLBACKS`) are tried automatically when the model before them fails.
-Production swaps the base URL for vLLM on the client's hardware. (The original demo
+In the production design, the base URL points at vLLM on the buyer's own hardware. (The original demo
 backend, GitHub Models, was retired in 2026; the base URL's variable keeps its name,
 `GITHUB_MODELS_BASE_URL`.)
 
@@ -199,7 +200,7 @@ CI on every pull request (`.github/workflows/ci.yml`), with each heavy job runni
 - `web`: Vitest, lint and the build;
 - `e2e`: Playwright on the mock.
 
-Every action is pinned by commit, and the workflow token is read-only unless a job asks for more. `deploy-azure.yml` validates the Bicep on pull requests and deploys by hand. Opt-in test levels are the pytest markers `orchestrator`, `realdata` and `live`; the default run excludes them and needs no network, tokens or client data. Dependabot watches only the GitHub Actions versions; Python versions are fixed by `requirements.lock`, refreshed by hand at each stop point or when pip-audit fails.
+Every action is pinned by commit, and the workflow token is read-only unless a job asks for more. `deploy-azure.yml` validates the Bicep on pull requests and deploys by hand. Opt-in test levels are the pytest markers `orchestrator`, `realdata` and `live`; the default run excludes them and needs no network, tokens or real documents. Dependabot watches only the GitHub Actions versions; Python versions are fixed by `requirements.lock`, refreshed by hand at each stop point or when pip-audit fails.
 
 ## Repository layout
 
@@ -235,7 +236,7 @@ docker-compose.yml  Postgres, the API, the check worker (same image) and the UI 
 deploy/azure/       the shared demo on Azure: Bicep, setup/deploy scripts (workflow: .github/workflows/deploy-azure.yml)
 spikes/             the orchestrator spike behind decision 0001 (LangGraph), run by test/jobs/
 test/               637 offline tests and 17 against Postgres: parser, rule sets, checks, engine,
-                    jobs, gateway, API and its contract (no network, no client data)
+                    jobs, gateway, API and its contract (no network, no real documents)
 tools/              the synthetic tender generator (tender and bids, with ground truth) and its rule set, the
                     PDF generator; the evals (parser, rule set, bid key scoring), the end-to-end check through
                     the API, the OCR comparison, the rule-file splitter
@@ -316,19 +317,21 @@ Until 2026-09-26, the prototype stack ran as a private Cloud Run service on GCP.
 ([`docs/archive/prototype_2026-09.md`](docs/archive/prototype_2026-09.md)). That deployment
 and `deploy/cloudrun/` are retired; git history has them.
 
-## Client-site (production) deployment
+## Local (production) deployment: the design target
 
-The product is NDA-bound to **local** deployment — real tender/bid documents never
-leave the client's network. The same compose stack is the deliverable for the client's
-DGX Spark: stand up vLLM serving the local models, point `GITHUB_MODELS_BASE_URL` at
-it in `.env`, and build the images for ARM (`docker compose build` on the GB10, or
-`--platform linux/arm64`). Set a strong `API_KEY` whenever the services are reachable
-by anyone but you, and keep port 8000 (API) firewalled — the UI on 8080 is the only
+There is no client yet: this is a portfolio project, built and measured on synthetic and
+redacted sample documents. It is **designed for local deployment**, because real tender and bid
+documents should never leave the buyer's own network. The gateway enforces that in code: a
+`confidential` project reaches local endpoints only. The target is the same compose stack on a
+DGX Spark with vLLM serving the local models: point `GITHUB_MODELS_BASE_URL` at it in `.env`,
+and build the images for ARM (`docker compose build` on the GB10, or `--platform linux/arm64`).
+It hasn't been run on that hardware yet. Set a strong `API_KEY` whenever the services are
+reachable by anyone but you, and keep port 8000 (API) firewalled: the UI on 8080 is the only
 thing users need.
 
 ## Demo ⇄ production mapping
 
-| Demo (this repo)                      | Production (client site)                          |
+| Demo (this repo)                      | Production (target)                               |
 | ------------------------------------- | ------------------------------------------------- |
 | DeepSeek API `deepseek-chat` (text), or Gemini 2.5 Flash on Vertex AI | Qwen3.6-35B-A3B / DeepSeek-V4-Flash via vLLM |
 | Ollama `qwen3-vl:8b` vision OCR, or Gemini 2.5 Flash on Vertex AI | Qwen3-VL-30B-A3B (MoE) page OCR, batched |
@@ -343,7 +346,7 @@ offer once, at triage.
 
 Stated, not fixed (checklist J11, item 13):
 
-- **Sign-in.** There is no single sign-on with a client's own identity provider (OIDC). The demo signs people in with Azure in front of the app, and the API trusts one shared key. There are no per-user roles yet; they come after the S4 run (J11, item 12).
+- **Sign-in.** There is no single sign-on with an organisation's own identity provider (OIDC). The demo signs people in with Azure in front of the app, and the API trusts one shared key. There are no per-user roles yet; they come after the S4 run (J11, item 12).
 - **The model budget.** The gateway checks the daily budget before a call and adds the cost after it, so workers running at once can go slightly over it. A rate-limited job is retried with a growing wait, but a single call is not.
 - **Type checking.** Ruff and the tests run in CI, but no type checker does.
 - **Metrics and alerts.** The Azure demo writes its logs to Log Analytics. There are no dashboards or alerts.
