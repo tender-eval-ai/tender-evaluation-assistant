@@ -48,12 +48,33 @@ export class ApiError extends Error {
   }
 }
 
-// The acting user, sent as X-User. On the mock the Rules window can switch it,
-// so one browser can edit a draft as one person and confirm it as another.
+// The acting user, sent as X-User. On the mock and on the hosted demo the Rules window
+// can switch it, so one browser can edit a draft as one person and confirm it as another.
 let actingUser = env.VITE_API_USER || "";
 export const getActingUser = () => actingUser || "anonymous";
 export function setActingUser(name) {
   actingUser = (name ?? "").trim();
+}
+
+// The display name in Azure's sign-in session (Easy Auth's /.auth/me): [{user_id, user_claims:
+// [{typ, val}]}]. The "name" claim, else the user id before any "@" (never the whole address).
+export function principalName(me) {
+  const entry = Array.isArray(me) ? me[0] : null;
+  if (!entry) return null;
+  const claim = (typ) => entry.user_claims?.find((c) => c.typ === typ)?.val;
+  return (claim("name") || String(entry.user_id ?? "").split("@")[0]).trim() || null;
+}
+
+// Who signed in, where the deployment has a sign-in in front of it; null on the mock, the
+// recorded run and a local stack (no /.auth/me there).
+export async function signedInName() {
+  if (USE_MOCK || REPLAY) return null;
+  try {
+    const response = await fetch(`${apiBase()}/.auth/me`, { credentials: "same-origin" });
+    return response.ok ? principalName(await response.json()) : null;
+  } catch {
+    return null;
+  }
 }
 
 function headers(extra = {}) {
