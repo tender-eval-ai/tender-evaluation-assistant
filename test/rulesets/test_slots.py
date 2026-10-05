@@ -68,6 +68,10 @@ def test_a_missing_or_unreadable_answer_leaves_the_slot_empty(located, templates
 
 def test_values_are_coerced_by_slot_kind():
     assert l2.coerce("875,000 kg", SlotKind.NUMBER) == 875000 and l2.coerce("HK$ 12.50", SlotKind.MONEY) == 12.5
+    # Thousands printed with a space (or a no-break space) read as one number, not the first group.
+    assert l2.coerce("875 000 kg", SlotKind.NUMBER) == 875000 and l2.coerce("1 000 000.50", SlotKind.NUMBER) == 1000000.5
+    assert l2.coerce("1\u00a0250", SlotKind.NUMBER) == 1250 and l2.coerce("HK$ 4 252 500", SlotKind.MONEY) == 4252500
+    assert l2.coerce("4.3 mg/L", SlotKind.NUMBER) == 4.3 and l2.coerce("12 24", SlotKind.NUMBER) == 12
     assert l2.coerce(42, SlotKind.NUMBER) == 42 and l2.coerce("none stated", SlotKind.NUMBER) is None
     assert l2.coerce(True, SlotKind.NUMBER) is None
     assert l2.coerce("HK$; US$", SlotKind.LIST) == ["HK$", "US$"] and l2.coerce(["a", 1], SlotKind.LIST) == ["a", "1"]

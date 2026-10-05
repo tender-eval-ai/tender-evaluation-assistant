@@ -45,6 +45,9 @@ class SlotFill(BaseModel):
 
 
 _NUMBER = re.compile(r"-?\d[\d,]*(?:\.\d+)?")
+# A space (or a no-break space) between digits before a group of exactly three is a thousands
+# separator, as many offers print it: "875 000 kg" is 875000, not 875.
+_SPACED_THOUSANDS = re.compile(r"(?<=\d)[ \u00a0\u202f](?=\d{3}(?!\d))")
 
 
 def coerce(value: Any, kind: SlotKind) -> Any | None:
@@ -56,7 +59,7 @@ def coerce(value: Any, kind: SlotKind) -> Any | None:
             return None
         if isinstance(value, (int, float)):
             return value
-        found = _NUMBER.search(str(value))
+        found = _NUMBER.search(_SPACED_THOUSANDS.sub("", str(value)))
         if not found:
             return None
         number = found.group(0).replace(",", "")
