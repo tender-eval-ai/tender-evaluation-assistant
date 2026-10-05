@@ -108,16 +108,18 @@ def test_each_value_of_a_multi_page_form_cites_the_page_it_is_printed_on(monkeyp
                "business_entity_type": "limited company", "event_disclosure_box": "box (a) ticked",
                "shareholders_ownership": "as listed"}
     llm = FakeLLM([Rule(reply=reading, match=r"extract form "),
-                   Rule(reply={"track_record": 22, "event_disclosure_box": 24, "shareholders_ownership": 99},
+                   Rule(reply={"track_record": 2, "event_disclosure_box": 24, "shareholders_ownership": 99},
                         match=r"values read from form ")])
     fields = extract_form(form, pages, [21, 22, 23, 24], "Tenderer_B", llm)
     seq = lambda name: fields[f"{form.key(name)}_page"]["seq"]  # noqa: E731
-    assert seq("track_record") == 22 and seq("event_disclosure_box") == 24
+    assert seq("track_record") == 22, "the second image is page 22"
+    assert seq("event_disclosure_box") == 24, "a page number of the form is taken as one"
     assert seq("business_entity_type") == 21, "no page given: the form's page"
     assert seq("shareholders_ownership") == 21, "a page outside the form: the form's page"
     assert fields[form.key("track_record")] == "5 years", "the values stay as read"
     located = next(c for c in llm.calls if "values read from form" in c.user)
     assert '"track_record": "5 years"' in located.user and "subcontractor_name" not in located.user
+    assert "image 1 is page 21, image 2 is page 22" in located.user
 
 
 def test_a_single_page_form_makes_no_second_call(monkeypatch):
