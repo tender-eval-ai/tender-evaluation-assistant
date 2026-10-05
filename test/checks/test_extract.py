@@ -97,6 +97,14 @@ def test_a_value_read_wins_over_a_redacted_mark_and_a_placeholder_is_redacted():
     assert fields[key("signature")] is None and fields[f"{key('signature')}_redacted"] is True
 
 
+def test_a_form_read_as_absent_on_pages_found_for_it_says_so():
+    form = FORMS["offer_to_be_bound"]
+    absent = reading_model(form).model_validate({"present": False})
+    fields = fields_from(form, absent, [{"seq": 2, "doc": "offer.pdf", "page": 2}, {"seq": 3, "doc": "offer.pdf", "page": 3}])
+    assert fields[form.key("document")] is None and fields[f"{form.key('document')}_located"] == [2, 3]
+    assert f"{form.key('document')}_located" not in fields_from(form, None, []), "no pages found: nothing to say"
+
+
 def test_each_value_of_a_multi_page_form_cites_the_page_it_is_printed_on(monkeypatch):
     """One page for a whole multi-page form cited every value on its first page (2026-10-05); a
     second call points each value at its page, and leaves the values as read."""

@@ -71,16 +71,18 @@ def reading_model(form: Form) -> type[BaseModel]:
     return _MODELS[form.id]
 
 
-def extract_form(form: Form, pages: list[dict], form_pages: list[int], vendor: str, llm) -> dict:
+def extract_form(form: Form, pages: list[dict], form_pages: list[int], vendor: str, llm, *, located: bool = True) -> dict:
     """The engine-ready fields of one form. No pages: absent, no call. On a form of several
-    pages, a second call gives each value its own page."""
+    pages, a second call gives each value its own page. `located` says the pages come from the
+    offer's own page labels; pages the V5 agent pointed at do not count as having found the form
+    (a planted page could otherwise turn an absence into a review)."""
     if not form_pages:
         return fields_from(form, None, [])
     refs = [p for p in pages if p["seq"] in set(form_pages)]
     reading = llm.chat_json(SYSTEM.format(title=form.title),
                             f"Offer of {vendor}: extract form {form.id} ({form.title}) from pages {sorted(form_pages)}",
                             reading_model(form), images=[read_png(r) for r in refs])
-    return locate_values(form, refs, fields_from(form, reading, refs), vendor, llm)
+    return locate_values(form, refs, fields_from(form, reading, refs, located=located), vendor, llm)
 
 
 def locate_values(form: Form, refs: list[dict], fields: dict, vendor: str, llm) -> dict:
@@ -126,7 +128,7 @@ def redacted_reading(value: Any, listed: bool) -> bool:
     return listed and (value is None or (isinstance(value, str) and not value.strip()))
 
 
-def fields_from(form: Form, reading: BaseModel | None, refs: list[dict]) -> dict:
+def fields_from(form: Form, reading: BaseModel | None, refs: list[dict], located: bool = True) -> dict:
     """The flat keys: value, `_redacted`, `_confidence`, `_page` for every field of the menu,
     plus `_printed` beside a number. An absent form (no reading, or present=false) reports
     every field blank with no citation, as is a field a reviewer enters, which no reading has."""
@@ -151,4 +153,8 @@ def fields_from(form: Form, reading: BaseModel | None, refs: list[dict]) -> dict
         out[f"{key}_redacted"] = redacted
         out[f"{key}_confidence"] = None if f.by == "reviewer" else confidence
         out[f"{key}_page"] = citation if (value is not None or redacted) else None
+    if located and refs and not present:
+        # Pages were found for this form, yet the reading says it is not there: the engine sends
+        # that to a reviewer instead of disqualifying on the model's word (engine_bridge).
+        out[f"{form.key('document')}_located"] = sorted(r["seq"] for r in refs)
     return out

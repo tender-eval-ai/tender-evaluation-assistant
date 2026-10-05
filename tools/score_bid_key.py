@@ -12,6 +12,9 @@ READ, item by item:
             applicable or unsure are not scored);
 - pages     the pages the checker cited for the item overlap the key's (hit) and all
             lie inside them (within);
+- value pages  each value read where the key gives its page: cited on that page or not,
+            and the same for the values of forms longer than one page, where a citation
+            for the whole form cannot be right for every value;
 - values    each field the key gives a value for, compared as a number when both sides
             read as one (0.5% tolerance, "1. 3" reads as 1.3), as a date when both parse,
             by presence for a signature, and otherwise by V4's `agree`. A field the form
@@ -104,13 +107,15 @@ def checker_item(fields: dict | None) -> dict:
     """What the checker reported for one letter: present (None when no form read it),
     the pages it cited, and each field's value."""
     if not fields:
-        return {"covered": False, "present": None, "pages": set(), "values": {}, "verified": {}}
+        return {"covered": False, "present": None, "pages": set(), "values": {}, "verified": {}, "cited": {}}
     document = fields.get("document") or {}
     present = not _blank(document.get("value")) or bool(document.get("redacted"))
     pages = {(PurePosixPath(v["page"]["file"]).name, v["page"]["page"]) for v in fields.values() if v.get("page")}
     return {"covered": True, "present": present, "pages": pages,
             "values": {n: (v.get("value"), bool(v.get("redacted"))) for n, v in fields.items() if n != "document"},
-            "verified": {n: (v.get("verification") or {}).get("verified") for n, v in fields.items() if n != "document"}}
+            "verified": {n: (v.get("verification") or {}).get("verified") for n, v in fields.items() if n != "document"},
+            "cited": {n: (PurePosixPath(v["page"]["file"]).name, v["page"]["page"]) for n, v in fields.items()
+                      if n != "document" and v.get("page")}}
 
 
 def _kinds(form_id: str) -> dict[str, str]:
@@ -125,7 +130,8 @@ def score_item(letter: str, item: dict, got: dict, pages: dict | None) -> dict:
            "presence_ok": None, "page_hit": None, "page_within": None,
            "values": {"compared": 0, "match": 0, "missed": 0, "mismatch": 0, "invented": 0},
            "extras": len([x for x in item.get("extra", []) if not _blank(x.get("value"))]), "disagreements": [],
-           "verification": dict.fromkeys(VERIFICATION, 0)}
+           "verification": dict.fromkeys(VERIFICATION, 0),
+           "value_pages": {"right": 0, "scored": 0, "multi_right": 0, "multi_scored": 0}}
     if not row["scored"] or not row["covered"]:
         return row
     row["presence_ok"] = (item["status"] == "present") == bool(got["present"])
@@ -162,11 +168,20 @@ def score_item(letter: str, item: dict, got: dict, pages: dict | None) -> dict:
         else:
             v["mismatch"] += 1
             row["disagreements"].append((name, "signed" if signed else "unsigned", got_value))
+    multi = len(item.get("pages") or []) > 1
     for name, field in (item.get("fields") or {}).items():
         kind = kinds.get(name, "text")
         if kind == "signature" or field.get("unsure") or name not in got["values"]:
             continue
         got_value, got_redacted = got["values"][name]
+        if field.get("page") is not None and not _blank(got_value) and name in got["cited"]:
+            where = pages[field["page"]] if pages and field["page"] in pages else (None, field["page"])
+            cited = got["cited"][name] if pages else (None, got["cited"][name][1])
+            vp = row["value_pages"]
+            vp["scored"] += 1
+            vp["right"] += cited == where
+            vp["multi_scored"] += multi
+            vp["multi_right"] += multi and cited == where
         if field.get("redacted") or _blank(field.get("value")):
             if not field.get("redacted") and field.get("page") is None:
                 continue                                     # nothing recorded: not an answer
@@ -197,6 +212,7 @@ def score(key: dict, result: dict, pages: dict | None = None) -> dict:
     both = [r for r in covered if r["page_hit"] is not None]
     total = {k: sum(r["values"][k] for r in rows) for k in ("compared", "match", "missed", "mismatch", "invented")}
     verification = {k: sum(r["verification"][k] for r in rows) for k in VERIFICATION}
+    value_pages = {k: sum(r["value_pages"][k] for r in rows) for k in ("right", "scored", "multi_right", "multi_scored")}
     rate = lambda n, d: round(n / d, 3) if d else None      # noqa: E731
     return {
         "tender": key.get("tender"), "tenderer": result.get("tenderer"), "key_frozen": (key.get("frozen") or {}).get("sha256"),
@@ -206,6 +222,7 @@ def score(key: dict, result: dict, pages: dict | None = None) -> dict:
         "page_hit": sum(r["page_hit"] for r in both), "page_within": sum(r["page_within"] for r in both), "page_scored": len(both),
         "values": total, "value_accuracy": rate(total["match"], total["compared"]),
         "verification": verification,
+        "value_pages": value_pages,
         "accepted_precision": rate(verification["accepted"] - verification["accepted_wrong"], verification["accepted"]),
         "extras_outside_menu": sum(r["extras"] for r in rows),
         "rows": rows,
@@ -218,6 +235,8 @@ def format_score(s: dict, details: bool = False) -> str:
              f"  items            {s['items_scored']} scored of {s['items']}; {s['not_covered']} not covered by the form menu",
              f"  presence         {s['presence_correct']}/{s['presence_scored']}",
              f"  pages            hit {s['page_hit']}/{s['page_scored']}, within {s['page_within']}/{s['page_scored']}",
+             f"  value pages      {s['value_pages']['right']}/{s['value_pages']['scored']} cited on the key's page; "
+             f"on forms of several pages {s['value_pages']['multi_right']}/{s['value_pages']['multi_scored']}",
              f"  values           {v['match']}/{v['compared']} match; {v['missed']} missed, {v['mismatch']} wrong",
              f"  invented         {v['invented']}",
              f"  verification     {c['accepted']} accepted by V4, {c['accepted_wrong']} of them wrong; "

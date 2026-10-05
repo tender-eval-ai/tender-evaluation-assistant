@@ -169,6 +169,39 @@ function FieldGroup({ title, checks, values, onViewCitation, letter, onCorrect }
   );
 }
 
+// Values the model read for this item that no rule checks: without them a reviewer can't see
+// everything that was read, or where. Read-only; a value only matters once a rule reads it.
+function OtherValues({ values, checks, onViewCitation }) {
+  const checked = new Set(checks.map((c) => c.field ?? fieldName(c.field_id)));
+  const others = Object.entries(values ?? {}).filter(([name]) => name !== "document" && !checked.has(name));
+  if (others.length === 0) return null;
+  return (
+    <CollapsibleSection title={`Other values read · ${others.length}`}>
+      <p className="text-xs text-ink-4 mb-2">Read from the offer; no rule in the rule set checks these.</p>
+      <div className="flex flex-col gap-1.5">
+        {others.map(([name, value]) => (
+          <div key={name} className="p-2 border border-border-soft rounded bg-faint" data-testid={`other-${name}`}>
+            <p className="text-xs font-medium text-ink-2 mb-1">{name.replace(/_/g, " ")}</p>
+            <p className={`font-mono text-xs ${value?.redacted ? "text-rectifiable" : "text-ink-3"}`}>
+              {value?.redacted ? "content present, redacted in this copy" : formatValue(value?.value)}
+              {value?.confidence != null && value?.value != null && (
+                <span className="text-ink-4"> · confidence {Math.round(value.confidence * 100)}%</span>
+              )}
+              {value?.verification?.verified === false && <span className="text-rectifiable"> · not verified</span>}
+            </p>
+            {value?.page && (
+              <button type="button" onClick={() => onViewCitation(value.page)}
+                      className="font-mono text-xs text-accent hover:underline cursor-pointer">
+                read on {value.page.file}, p.{value.page.page} →
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </CollapsibleSection>
+  );
+}
+
 // The per-item breakdown on the Stage I and Stage II pages, one Verdict of a
 // BidResult: EVIDENCE (the offer pages the checker read), RULES (every
 // checked field with the value read and its status), REFERENCES (the rule
@@ -239,6 +272,8 @@ export default function VendorItemDetail({ item, verdict, values, stageFilter, o
           </div>
         )}
       </CollapsibleSection>
+
+      {verdict && <OtherValues values={values} checks={checks} onViewCitation={onViewCitation} />}
 
       {item.citation && (
         <CollapsibleSection title="References">

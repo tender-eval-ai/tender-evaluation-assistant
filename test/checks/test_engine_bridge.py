@@ -72,6 +72,18 @@ def test_a_missing_form_still_disqualifies_at_once():
     assert v["outcome"] == "disqualified"
 
 
+def test_a_form_found_on_pages_but_read_as_absent_goes_to_review():
+    """A small local model read a 5-page Offer to be Bound as absent after a schema change
+    (2026-10-05); the pages the triage found for it say otherwise, so a person decides."""
+    located = {**fields(document=None, signature=None, name=None, date=None), f"{PREFIX}.document_located": [12, 13]}
+    v = evaluate(ITEM, located)
+    row = next(f for f in v["fields"] if f["field_id"] == f"{PREFIX}.document")
+    assert v["outcome"] == "needs_review" and row["status"] == "needs_review"
+    assert "pages were found for this form (p.12, p.13)" in row["note"]
+    marked = evaluate(ITEM, {**located, f"{PREFIX}.document_corrected": True})
+    assert marked["outcome"] == "disqualified", "a person who marks it absent makes it stand"
+
+
 @pytest.mark.parametrize("status", ["pass", "dormant", "disqualified"])
 def test_a_decision_settles_only_a_check_that_needs_review(status):
     decision = {"status": status, "by": "chenyu", "reason": "checked the original"}
