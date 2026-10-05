@@ -19,6 +19,7 @@ The S4 stop point was "compare Tender 1's bid with the historical Summary List a
    | pages | cited pages that hit the key's pages and lie within them |
    | values | matches, as numbers, dates, signature presence or text |
    | invented | values the checker reports where the key says the field is blank or blacked out |
+   | verification | where each scored value went: accepted by V4, flagged for a reviewer, or not checkable; and how many of each were wrong. A wrong value V4 accepted is the one that reaches a verdict unseen |
 
    Items the checker's form menu can't read count as *not covered*, a measure of the menu.
 4. **Which bids play which role:**

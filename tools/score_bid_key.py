@@ -16,7 +16,10 @@ READ, item by item:
             read as one (0.5% tolerance, "1. 3" reads as 1.3), as a date when both parse,
             by presence for a signature, and otherwise by V4's `agree`;
 - invented  a value the checker reports where the key says the field is blank or
-            blacked out: the error the verification layer exists to stop.
+            blacked out: the error the verification layer exists to stop;
+- verification  where each scored value went: accepted (V4 verified it), flagged (V4
+            could not, so a reviewer sees it) or not checkable, and how many of each were
+            wrong. A wrong value V4 accepted is the error that reaches a verdict unseen.
 
 An item the key found but no form of the checker's menu reads (form "other", or no
 fields for the letter) is counted as not covered, not as a miss: it measures the menu.
@@ -41,6 +44,7 @@ from app.checks.forms import FORMS  # noqa: E402
 from app.checks.verify import agree  # noqa: E402
 
 SCORED = ("present", "absent")
+VERIFICATION = ("accepted", "accepted_wrong", "flagged", "flagged_wrong", "unchecked", "unchecked_wrong")
 TOLERANCE = 0.005
 
 
@@ -83,12 +87,13 @@ def checker_item(fields: dict | None) -> dict:
     """What the checker reported for one letter: present (None when no form read it),
     the pages it cited, and each field's value."""
     if not fields:
-        return {"covered": False, "present": None, "pages": set(), "values": {}}
+        return {"covered": False, "present": None, "pages": set(), "values": {}, "verified": {}}
     document = fields.get("document") or {}
     present = not _blank(document.get("value")) or bool(document.get("redacted"))
     pages = {(PurePosixPath(v["page"]["file"]).name, v["page"]["page"]) for v in fields.values() if v.get("page")}
     return {"covered": True, "present": present, "pages": pages,
-            "values": {n: (v.get("value"), bool(v.get("redacted"))) for n, v in fields.items() if n != "document"}}
+            "values": {n: (v.get("value"), bool(v.get("redacted"))) for n, v in fields.items() if n != "document"},
+            "verified": {n: (v.get("verification") or {}).get("verified") for n, v in fields.items() if n != "document"}}
 
 
 def _kinds(form_id: str) -> dict[str, str]:
@@ -102,7 +107,8 @@ def score_item(letter: str, item: dict, got: dict, pages: dict | None) -> dict:
            "scored": item.get("status") in SCORED, "covered": got["covered"] and item.get("form") != "other",
            "presence_ok": None, "page_hit": None, "page_within": None,
            "values": {"compared": 0, "match": 0, "missed": 0, "mismatch": 0, "invented": 0},
-           "extras": len([x for x in item.get("extra", []) if not _blank(x.get("value"))]), "disagreements": []}
+           "extras": len([x for x in item.get("extra", []) if not _blank(x.get("value"))]), "disagreements": [],
+           "verification": dict.fromkeys(VERIFICATION, 0)}
     if not row["scored"] or not row["covered"]:
         return row
     row["presence_ok"] = (item["status"] == "present") == bool(got["present"])
@@ -117,6 +123,13 @@ def score_item(letter: str, item: dict, got: dict, pages: dict | None) -> dict:
 
     kinds = _kinds(item.get("form", ""))
     v = row["values"]
+
+    def went(name: str, right: bool) -> None:
+        verified = got["verified"].get(name)
+        where = "accepted" if verified is True else "flagged" if verified is False else "unchecked"
+        row["verification"][where] += 1
+        row["verification"][f"{where}_wrong"] += not right
+
     # A signature is scored from the key's item-level `signed` flag (yes / no; unclear and
     # n/a are not scored), whatever the key wrote in the field, which describes the mark.
     signed = {"yes": True, "no": False}.get(item.get("signed", ""))
@@ -125,7 +138,9 @@ def score_item(letter: str, item: dict, got: dict, pages: dict | None) -> dict:
             continue
         got_value, got_redacted = got["values"][name]
         v["compared"] += 1
-        if same_value(signed, not _blank(got_value) or got_redacted, "signature"):
+        right = same_value(signed, not _blank(got_value) or got_redacted, "signature")
+        went(name, right)
+        if right:
             v["match"] += 1
         else:
             v["mismatch"] += 1
@@ -140,13 +155,16 @@ def score_item(letter: str, item: dict, got: dict, pages: dict | None) -> dict:
                 continue                                     # nothing recorded: not an answer
             if not _blank(got_value) and not got_redacted:
                 v["invented"] += 1
+                went(name, False)
                 row["disagreements"].append((name, "[blacked out]" if field.get("redacted") else "[blank]", got_value))
             continue
         v["compared"] += 1
+        right = not _blank(got_value) and same_value(field["value"], got_value, kind)
+        went(name, right)
         if _blank(got_value):
             v["missed"] += 1
             row["disagreements"].append((name, field["value"], None))
-        elif same_value(field["value"], got_value, kind):
+        elif right:
             v["match"] += 1
         else:
             v["mismatch"] += 1
@@ -161,6 +179,7 @@ def score(key: dict, result: dict, pages: dict | None = None) -> dict:
     covered = [r for r in scored if r["covered"]]
     both = [r for r in covered if r["page_hit"] is not None]
     total = {k: sum(r["values"][k] for r in rows) for k in ("compared", "match", "missed", "mismatch", "invented")}
+    verification = {k: sum(r["verification"][k] for r in rows) for k in VERIFICATION}
     rate = lambda n, d: round(n / d, 3) if d else None      # noqa: E731
     return {
         "tender": key.get("tender"), "tenderer": result.get("tenderer"), "key_frozen": (key.get("frozen") or {}).get("sha256"),
@@ -169,19 +188,24 @@ def score(key: dict, result: dict, pages: dict | None = None) -> dict:
         "presence_accuracy": rate(sum(bool(r["presence_ok"]) for r in covered), len(covered)),
         "page_hit": sum(r["page_hit"] for r in both), "page_within": sum(r["page_within"] for r in both), "page_scored": len(both),
         "values": total, "value_accuracy": rate(total["match"], total["compared"]),
+        "verification": verification,
+        "accepted_precision": rate(verification["accepted"] - verification["accepted_wrong"], verification["accepted"]),
         "extras_outside_menu": sum(r["extras"] for r in rows),
         "rows": rows,
     }
 
 
 def format_score(s: dict, details: bool = False) -> str:
-    v = s["values"]
+    v, c = s["values"], s["verification"]
     lines = [f"{s['tender']} / {s['tenderer']}  (key {str(s['key_frozen'])[:10] if s['key_frozen'] else 'NOT FROZEN'})",
              f"  items            {s['items_scored']} scored of {s['items']}; {s['not_covered']} not covered by the form menu",
              f"  presence         {s['presence_correct']}/{s['presence_scored']}",
              f"  pages            hit {s['page_hit']}/{s['page_scored']}, within {s['page_within']}/{s['page_scored']}",
              f"  values           {v['match']}/{v['compared']} match; {v['missed']} missed, {v['mismatch']} wrong",
              f"  invented         {v['invented']}",
+             f"  verification     {c['accepted']} accepted by V4, {c['accepted_wrong']} of them wrong; "
+             f"{c['flagged']} flagged for a reviewer, {c['flagged_wrong']} wrong; "
+             f"{c['unchecked']} not checkable, {c['unchecked_wrong']} wrong",
              f"  outside the menu {s['extras_outside_menu']} key values no form reads",
              "", "  item  key            checker   presence  pages       values"]
     for r in s["rows"]:
