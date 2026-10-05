@@ -55,8 +55,11 @@ OCR_SYSTEM = (
 
 
 def _is_reasoning_model(model: str) -> bool:
-    """o-series models (o1/o3/o4-...) reject the temperature parameter."""
-    return model.split("/")[-1].startswith("o")
+    """OpenAI's reasoning models (o1/o3/o4-..., gpt-5, gpt-5-mini, ...): they reject the
+    temperature parameter and take max_completion_tokens, which counts their reasoning too.
+    The gpt-5 chat variants are not reasoning models."""
+    name = model.split("/")[-1]
+    return name.startswith("o") or (name.startswith("gpt-5") and "-chat" not in name)
 
 
 _CJK = re.compile(r"[\u3000-\u9fff\uf900-\ufaff\uff00-\uffef]")
@@ -130,7 +133,9 @@ class LLM:
         elif json_mode:
             params["response_format"] = {"type": "json_object"}
         if getattr(self.cfg, "max_tokens", None):
-            params["max_tokens"] = self.cfg.max_tokens
+            params["max_completion_tokens" if _is_reasoning_model(model) else "max_tokens"] = self.cfg.max_tokens
+        if _is_reasoning_model(model) and getattr(self.cfg, "reasoning_effort", None):
+            params["reasoning_effort"] = self.cfg.reasoning_effort
         return params
 
     def _attempt(self, entry: str, messages: list, json_mode: bool, schema: dict | None):

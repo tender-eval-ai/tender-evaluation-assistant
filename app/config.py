@@ -66,6 +66,9 @@ class Config:
     # their reasoning against it, so keep it generous (4096+) if set.
     max_tokens: int | None = field(
         default_factory=lambda: int(os.environ["LLM_MAX_TOKENS"]) if os.environ.get("LLM_MAX_TOKENS") else None)
+    # How hard a reasoning model thinks (LLM_REASONING_EFFORT: minimal, low, medium, high;
+    # unset = the provider's default). Sent to reasoning models only.
+    reasoning_effort: str | None = field(default_factory=lambda: os.environ.get("LLM_REASONING_EFFORT") or None)
     # Structured output as a server-enforced grammar: LLM_JSON_SCHEMA=1 sends the
     # Pydantic schema as response_format={"type": "json_schema"} (vLLM guided decoding,
     # Ollama structured outputs, Gemini) — the model then cannot emit a malformed object
