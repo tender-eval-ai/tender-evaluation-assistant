@@ -7,7 +7,7 @@ import json
 
 from backend.schemas_api import BidResult, FieldValue, PageCitation, StageSummary, Verification
 from tools.key_from_ground_truth import key_from_truth
-from tools.score_bid_key import format_score, load_pages, score
+from tools.score_bid_key import format_score, load_pages, same_value, score
 
 
 def fv(value, page=None, file="offer.pdf", redacted=False, verified=None) -> FieldValue:
@@ -124,3 +124,10 @@ def test_a_key_from_the_synthetic_ground_truth_has_the_keyer_shape():
     assert set(k["items"]["b"]["fields"]) >= {"unit_price", "currency", "total"}
     assert k["items"]["a"]["signed"] == "yes"
     assert len(pages) == truth["bids"]["Tenderer_A"]["pages"]
+
+
+def test_a_number_field_compares_the_number_whatever_the_key_prints_around_it():
+    """The key keeps a value as printed; a form's number field keeps the number."""
+    assert same_value("4.3 mg/L", 4.3, "number") and same_value("875 000 kg", 875000, "number")
+    assert same_value("1. 3 g/cm3", "1.3", "number") and not same_value("4.3 mg/L", 4.8, "number")
+    assert same_value("1.0 g/cm3", 1.00, "number") and not same_value("1.0 g/cm3", "1.00", "text"), "text stays text"
