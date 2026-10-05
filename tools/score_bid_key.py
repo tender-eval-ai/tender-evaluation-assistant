@@ -14,7 +14,9 @@ READ, item by item:
             lie inside them (within);
 - values    each field the key gives a value for, compared as a number when both sides
             read as one (0.5% tolerance, "1. 3" reads as 1.3), as a date when both parse,
-            by presence for a signature, and otherwise by V4's `agree`;
+            by presence for a signature, and otherwise by V4's `agree`. A field the form
+            reads as a number is compared by its first number: the key keeps the value as
+            printed ("4.3 mg/L"), the checker keeps the number;
 - invented  a value the checker reports where the key says the field is blank or
             blacked out: the error the verification layer exists to stop;
 - verification  where each scored value went: accepted (V4 verified it), flagged (V4
@@ -59,9 +61,24 @@ def _number(value) -> float | None:
     return float(m.group(1)) if m else None
 
 
+def _first_number(value) -> float | None:
+    """The first number in a value as printed, thousands joined: "875 000 kg" -> 875000."""
+    if isinstance(value, bool) or value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = re.sub(r"(?<=\d)[\s,](?=\d{3}(?!\d))|(?<=\d\.)\s+(?=\d)", "", str(value))
+    m = re.search(r"-?\d+(?:\.\d+)?", text)
+    return float(m.group(0)) if m else None
+
+
 def same_value(expected, got, kind: str = "text") -> bool:
     if kind == "signature":
         return bool(expected) == bool(got)
+    if kind == "number":
+        a, b = _first_number(expected), _first_number(got)
+        if a is not None and b is not None:
+            return abs(a - b) <= TOLERANCE * max(abs(a), abs(b), 1e-9)
     a, b = _number(expected), _number(got)
     if a is not None and b is not None:
         return abs(a - b) <= TOLERANCE * max(abs(a), abs(b), 1e-9)
