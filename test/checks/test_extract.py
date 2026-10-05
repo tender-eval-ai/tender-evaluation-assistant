@@ -95,3 +95,11 @@ def test_a_value_read_wins_over_a_redacted_mark_and_a_placeholder_is_redacted():
     assert fields[key("tenderer_name")] == "Tenderer B Ltd" and fields[f"{key('tenderer_name')}_redacted"] is False
     assert fields[key("date")] is None and fields[f"{key('date')}_redacted"] is True
     assert fields[key("signature")] is None and fields[f"{key('signature')}_redacted"] is True
+
+
+def test_a_form_read_as_absent_on_pages_found_for_it_says_so():
+    form = FORMS["offer_to_be_bound"]
+    absent = reading_model(form).model_validate({"present": False})
+    fields = fields_from(form, absent, [{"seq": 2, "doc": "offer.pdf", "page": 2}, {"seq": 3, "doc": "offer.pdf", "page": 3}])
+    assert fields[form.key("document")] is None and fields[f"{form.key('document')}_located"] == [2, 3]
+    assert f"{form.key('document')}_located" not in fields_from(form, None, []), "no pages found: nothing to say"

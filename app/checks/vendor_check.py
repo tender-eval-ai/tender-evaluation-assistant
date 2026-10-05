@@ -185,7 +185,7 @@ def agent_step(ctx: Context):
             found, steps = search_form(form, ctx.data["pages"], ctx.data["labels"], text_of, llm)
             if found:
                 form_pages[form_id] = {"pages": found, "confidence": 0.8, "reason": "found by the agent with a verified quote"}
-                fields.update(extract_form(form, ctx.data["pages"], found, ctx.run["tenderer"], llm))
+                fields.update(extract_form(form, ctx.data["pages"], found, ctx.run["tenderer"], llm, located=False))
                 fields = verify_fields(fields, ctx.data["pages"], found, form.specs(), ctx.run["tenderer"], llm, text_of)
             trace[form_id] = steps
             done.add(form_id)

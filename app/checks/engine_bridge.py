@@ -441,7 +441,9 @@ def apply_unread_blanks(checked: list[FieldResult], fields: dict) -> None:
     can miss a signature on a signed page (Tenderer C's offer, 2026-09-30), and a false
     disqualification is the costliest mistake the check can make. The row goes to review; a
     person who marks the field absent, or decides the check, makes it stand. A missing form
-    (its `document` blank) still disqualifies at once."""
+    (its `document` blank) still disqualifies at once, unless pages were found for it and only
+    the reading says it is not there (`document_located`): a small model can read a form that is
+    there as absent, and that goes to review the same way."""
     for f in checked:
         prefix, _, name = f.field_id.rpartition(".")
         if (f.status == "disqualified" and name != "document" and fields.get(f.field_id) is None
@@ -449,6 +451,12 @@ def apply_unread_blanks(checked: list[FieldResult], fields: dict) -> None:
                 and not fields.get(f"{f.field_id}_redacted")):
             f.status = "needs_review"
             f.note = f"{f.field}: the model read nothing here on a form that is there; a reviewer confirms before it disqualifies"
+        elif (f.status == "disqualified" and name == "document" and fields.get(f.field_id) is None
+                and fields.get(f"{f.field_id}_located") and not fields.get(f"{f.field_id}_corrected")):
+            pages = ", ".join(f"p.{s}" for s in fields[f"{f.field_id}_located"])
+            f.status = "needs_review"
+            f.note = (f"{f.field}: pages were found for this form ({pages}) but the reading says it is not there; "
+                      f"a reviewer confirms before it disqualifies")
 
 
 def apply_decisions(checked: list[FieldResult], fields: dict) -> dict[str, dict]:
