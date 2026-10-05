@@ -181,3 +181,19 @@ def test_the_second_read_names_the_fields_and_never_shows_the_first_reading(monk
     assert prompt.startswith("Offer of Tenderer_B: read these fields of form noncollusive_certificate from pages [13]:")
     assert all(f"- {n}:" in prompt for n in FIELDS) and set(readings) == set(FIELDS)
     assert "Non-collusive" not in prompt and "authorised" not in prompt
+
+
+def test_a_second_read_with_no_usable_answer_flags_the_values_and_lets_the_check_go_on(monkeypatch):
+    """A cloud model ran on inside one value until its output was cut, twice (2026-10-05): the
+    check went on with every value of that form left for a reviewer, none passed unverified."""
+    monkeypatch.setattr("app.checks.verify.read_png", lambda ref: b"png")
+    llm = fake_llm("Tenderer_B")
+
+    def unusable(*a, **kw):
+        raise RuntimeError("LLM output failed schema validation after retry: EOF while parsing")
+    monkeypatch.setattr(llm, "chat_json", unusable)
+    fields = verify_fields(first_read("Tenderer_B", 13), B_PAGES, [13], VERIFY, "Tenderer_B", llm, text_reader(CASE / "bids" / "Tenderer_B"))
+    for name in ("tenderer_name", "date"):
+        v = verification(fields, name)
+        assert v["verified"] is False and v["method"] == "second_read" and "no usable answer" in v["note"], name
+        assert fields[f"{PREFIX}.{name}_confidence"] == 0.0
