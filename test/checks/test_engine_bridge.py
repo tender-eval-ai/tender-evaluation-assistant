@@ -481,3 +481,11 @@ def test_a_decision_settles_the_check_that_needs_review_on_a_field_with_two():
     decided = {**fields, "compliance_schedule.document_decision": {"status": "pass", "by": "r", "reason": "all complied"}}
     v = evaluate(item, decided, template)
     assert v["outcome"] == "pass" and all(f["status"] == "pass" for f in v["fields"])
+
+
+def test_an_empty_string_is_a_blank_and_goes_to_review_like_one():
+    """gpt-4.1-mini answered "" for a field it could not read, and the safety rule for a blank
+    on a form that is there looked only for None: the offer was disqualified (2026-10-05)."""
+    v = evaluate(ITEM, fields(signature="", date=None))
+    row = next(f for f in v["fields"] if f["field_id"] == f"{PREFIX}.signature")
+    assert v["outcome"] == "needs_review" and row["status"] == "needs_review"

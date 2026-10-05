@@ -138,3 +138,11 @@ def test_a_single_page_form_makes_no_second_call(monkeypatch):
     llm = FakeLLM([Rule(reply={"present": True, "unit_price": "4.40", "page": 3}, match=r"extract form ")])
     extract_form(form, pages, [3], "Tenderer_B", llm)
     assert llm.count() == 1
+
+
+def test_an_empty_string_reads_as_blank():
+    form = FORMS["particulars_of_goods"]
+    reading = reading_model(form).model_validate({"present": True, "manufacturer": "  ", "product_name": "Ferric chloride"})
+    fields = fields_from(form, reading, [{"seq": 5, "doc": "offer.pdf", "page": 5}])
+    assert fields[form.key("manufacturer")] is None and fields[f"{form.key('manufacturer')}_page"] is None
+    assert fields[form.key("product_name")] == "Ferric chloride"

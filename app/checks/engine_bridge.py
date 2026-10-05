@@ -436,6 +436,10 @@ REVIEWER_NOTE = "{field} is entered by a reviewer once it arrives; not recorded 
 DECISIONS = ("pass", "dormant", "disqualified")
 
 
+def _blank(value) -> bool:
+    return value is None or (isinstance(value, str) and not value.strip())
+
+
 def apply_unread_blanks(checked: list[FieldResult], fields: dict) -> None:
     """A blank the model read on a form that is there never disqualifies on its own: the model
     can miss a signature on a signed page (Tenderer C's offer, 2026-09-30), and a false
@@ -446,12 +450,12 @@ def apply_unread_blanks(checked: list[FieldResult], fields: dict) -> None:
     there as absent, and that goes to review the same way."""
     for f in checked:
         prefix, _, name = f.field_id.rpartition(".")
-        if (f.status == "disqualified" and name != "document" and fields.get(f.field_id) is None
+        if (f.status == "disqualified" and name != "document" and _blank(fields.get(f.field_id))
                 and fields.get(f"{prefix}.document") not in (None, False) and not fields.get(f"{f.field_id}_corrected")
                 and not fields.get(f"{f.field_id}_redacted")):
             f.status = "needs_review"
             f.note = f"{f.field}: the model read nothing here on a form that is there; a reviewer confirms before it disqualifies"
-        elif (f.status == "disqualified" and name == "document" and fields.get(f.field_id) is None
+        elif (f.status == "disqualified" and name == "document" and _blank(fields.get(f.field_id))
                 and fields.get(f"{f.field_id}_located") and not fields.get(f"{f.field_id}_corrected")):
             pages = ", ".join(f"p.{s}" for s in fields[f"{f.field_id}_located"])
             f.status = "needs_review"

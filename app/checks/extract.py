@@ -142,6 +142,8 @@ def fields_from(form: Form, reading: BaseModel | None, refs: list[dict], located
     for f in form.all_fields:
         key = form.key(f.name)
         raw = getattr(reading, f.name, None) if present else None
+        if isinstance(raw, str) and not raw.strip():
+            raw = None              # a blank is a blank: OpenAI models answer "" where others say null
         if f.name == "document" and present and not raw:
             raw = form.title
         redacted = redacted_reading(raw, f.name in redacted_names)
