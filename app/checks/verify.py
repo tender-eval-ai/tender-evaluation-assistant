@@ -215,7 +215,17 @@ def verify_fields(fields: dict, pages: list[dict], item_pages: Sequence[int], sp
         else:
             out[f"{key}_verification"] = _record(None, None, "a signature is not on the text layer; the image is the evidence")
     if pending:
-        readings = second_read(pending, scan_refs, vendor, llm)
+        try:
+            readings = second_read(pending, scan_refs, vendor, llm)
+        except RuntimeError:
+            # An answer that never fit its schema, twice (a cloud model ran on inside one value
+            # until its output was cut, 2026-10-05): nothing is verified, every value goes to a
+            # reviewer, and the rest of the offer is still checked.
+            for spec in pending:
+                out[f"{spec.key}_verification"] = _record(
+                    False, "second_read", "the second read gave no usable answer; a reviewer checks this value")
+                out[f"{spec.key}_confidence"] = 0.0
+            return out
         for spec in pending:
             key = spec.key
             first, first_conf = fields.get(key), float(fields.get(f"{key}_confidence") or 0.0)
