@@ -131,3 +131,17 @@ def test_a_number_field_compares_the_number_whatever_the_key_prints_around_it():
     assert same_value("4.3 mg/L", 4.3, "number") and same_value("875 000 kg", 875000, "number")
     assert same_value("1. 3 g/cm3", "1.3", "number") and not same_value("4.3 mg/L", 4.8, "number")
     assert same_value("1.0 g/cm3", 1.00, "number") and not same_value("1.0 g/cm3", "1.00", "text"), "text stays text"
+
+
+def test_each_value_is_scored_on_its_own_page():
+    """A citation for the whole form can't be right for a value printed pages later."""
+    k = key(e=item(form="information_schedule", pages=(21, 22, 24),
+                   fields={"track_record": f("5 years", page=22), "event_disclosure_box": f("box (a)", page=24),
+                           "business_entity_type": f("limited company", page=21)}),
+            b=item(fields={"unit_price": f("24.60")}))
+    r = result({"e": {"document": fv("Information Schedule", 21), "track_record": fv("5 years", 22),
+                      "event_disclosure_box": fv("box (a)", 21), "business_entity_type": fv("limited company", 21)},
+                "b": {"document": fv("Price Schedule", 3), "unit_price": fv(24.6, 3)}})
+    s = score(k, r)
+    assert s["value_pages"] == {"right": 3, "scored": 4, "multi_right": 2, "multi_scored": 3}
+    assert "3/4 cited on the key's page; on forms of several pages 2/3" in format_score(s)
