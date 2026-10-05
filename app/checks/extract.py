@@ -13,7 +13,7 @@ from app.checks.pages import read_png
 from app.rulesets.schema import SlotKind
 from app.rulesets.slots import coerce
 
-PROMPT_VERSION = "extract-v4"
+PROMPT_VERSION = "extract-v5"
 
 SYSTEM = (
     "You read ONE form in ONE tenderer's offer to a tendering authority's goods tender from the page images given: "
@@ -38,7 +38,14 @@ def reading_model(form: Form) -> type[BaseModel]:
         fields: dict[str, Any] = {"present": (bool, Field(description="whether the pages hold this form"))}
         for f in form.read_fields:
             fields[f.name] = (str | None, Field(default=None, description=f.hint))
-        fields["redacted"] = (list[str], Field(default_factory=list, description="fields covered by a black bar"))
+        # Named from the form's own fields, each at most once: with a server-enforced schema
+        # (LLM_JSON_SCHEMA=1) a list that can only grow made a small local model repeat field
+        # names until it ran out of tokens (223 entries on a 12-page form, 2026-10-05).
+        # Validation stays as loose as before; fields_from ignores a name it does not know.
+        names = [f.name for f in form.read_fields]
+        fields["redacted"] = (list[str], Field(default_factory=list, description="fields covered by a black bar",
+                                               json_schema_extra={"items": {"type": "string", "enum": names},
+                                                                  "maxItems": len(names), "uniqueItems": True}))
         fields["page"] = (int | None, Field(default=None, description="sequence number of the page the values were read from"))
         fields["confidence"] = (float, Field(default=0.0, ge=0.0, le=1.0,
                                              description="how sure you are of the values above, 0 to 1: 1 when every field "
