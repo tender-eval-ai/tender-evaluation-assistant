@@ -71,6 +71,20 @@ def test_the_reading_model_is_fixed_per_form_and_names_every_field():
 def test_the_prompt_asks_for_what_is_printed_and_treats_pages_as_evidence():
     from app.checks.extract import PROMPT_VERSION, SYSTEM
 
-    assert PROMPT_VERSION == "extract-v4"
+    assert PROMPT_VERSION == "extract-v5"
     for phrase in ("exactly as printed", "signature present", "black bar", "Never infer", "present=false", "evidence", "between 0 and 1"):
         assert phrase in SYSTEM, phrase
+
+
+def test_the_redacted_list_names_only_the_forms_fields_and_each_once():
+    """A server-enforced schema can then not let a local model list names until its tokens run
+    out (223 entries on a 12-page form, 2026-10-05); validation stays as loose as before."""
+    for form in FORMS.values():
+        names = [f.name for f in form.read_fields]
+        spec = reading_model(form).model_json_schema()["properties"]["redacted"]
+        assert spec["items"] == {"type": "string", "enum": names}
+        assert spec["maxItems"] == len(names) and spec["uniqueItems"] is True
+    form = FORMS["noncollusive_certificate"]
+    reading = reading_model(form).model_validate({"present": True, "redacted": ["signature", "not a field"]})
+    fields = fields_from(form, reading, [{"seq": 13, "doc": "offer.pdf", "page": 13}])
+    assert fields[f"{form.key('signature')}_redacted"] is True
