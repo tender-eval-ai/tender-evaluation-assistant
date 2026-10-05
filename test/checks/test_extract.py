@@ -64,16 +64,15 @@ def test_the_reading_model_is_fixed_per_form_and_names_every_field():
     assert model is reading_model(FORMS["contact_details"]), "built once"
     props = model.model_json_schema()["properties"]
     assert {"present", "document", "tenderer_name", "contact_person", "telephone", "email", "address", "facsimile",
-            "process_agent", "redacted", "pages", "page", "confidence"} == set(props)
+            "process_agent", "redacted", "page", "confidence"} == set(props)
     assert "0 to 1" in props["confidence"]["description"] and props["email"]["description"] == "the e-mail address as printed"
 
 
 def test_the_prompt_asks_for_what_is_printed_and_treats_pages_as_evidence():
     from app.checks.extract import PROMPT_VERSION, SYSTEM
 
-    assert PROMPT_VERSION == "extract-v7"
-    for phrase in ("exactly as printed", "signature present", "black bar", "Never infer", "present=false", "evidence",
-                   "between 0 and 1", "In `pages`"):
+    assert PROMPT_VERSION == "extract-v6"
+    for phrase in ("exactly as printed", "signature present", "black bar", "Never infer", "present=false", "evidence", "between 0 and 1"):
         assert phrase in SYSTEM, phrase
 
 
@@ -98,25 +97,34 @@ def test_a_value_read_wins_over_a_redacted_mark_and_a_placeholder_is_redacted():
     assert fields[key("signature")] is None and fields[f"{key('signature')}_redacted"] is True
 
 
-def test_each_value_cites_its_own_page_and_falls_back_to_the_forms():
-    """One page for a whole multi-page form cited every value on its first page (2026-10-05)."""
+def test_each_value_of_a_multi_page_form_cites_the_page_it_is_printed_on(monkeypatch):
+    """One page for a whole multi-page form cited every value on its first page (2026-10-05); a
+    second call points each value at its page, and leaves the values as read."""
+    from test.fakes import FakeLLM, Rule
+    monkeypatch.setattr("app.checks.extract.read_png", lambda ref: b"png")
     form = FORMS["information_schedule"]
-    refs = [{"seq": s, "doc": "offer.pdf", "page": s} for s in (21, 22, 23, 24)]
-    reading = reading_model(form).model_validate({
-        "present": True, "page": 21, "track_record": "5 years", "business_entity_type": "limited company",
-        "shareholders_ownership": "as listed", "event_disclosure_box": "box (a) ticked",
-        "pages": {"track_record": 22, "event_disclosure_box": 24, "shareholders_ownership": 99}})
-    fields = fields_from(form, reading, refs)
-    page = lambda name: fields[f"{form.key(name)}_page"]["seq"]  # noqa: E731
-    assert page("track_record") == 22 and page("event_disclosure_box") == 24
-    assert page("business_entity_type") == 21, "no page given: the form's page"
-    assert page("shareholders_ownership") == 21, "a page outside the form: the form's page"
-    assert fields[f"{form.key('subcontractor_name')}_page"] is None, "no value, no citation"
+    pages = [{"seq": s, "doc": "offer.pdf", "page": s, "path": "", "has_text": False} for s in (21, 22, 23, 24)]
+    reading = {"present": True, "page": 21, "redacted": [], "confidence": 0.9, "track_record": "5 years",
+               "business_entity_type": "limited company", "event_disclosure_box": "box (a) ticked",
+               "shareholders_ownership": "as listed"}
+    llm = FakeLLM([Rule(reply=reading, match=r"extract form "),
+                   Rule(reply={"track_record": 22, "event_disclosure_box": 24, "shareholders_ownership": 99},
+                        match=r"values read from form ")])
+    fields = extract_form(form, pages, [21, 22, 23, 24], "Tenderer_B", llm)
+    seq = lambda name: fields[f"{form.key(name)}_page"]["seq"]  # noqa: E731
+    assert seq("track_record") == 22 and seq("event_disclosure_box") == 24
+    assert seq("business_entity_type") == 21, "no page given: the form's page"
+    assert seq("shareholders_ownership") == 21, "a page outside the form: the form's page"
+    assert fields[form.key("track_record")] == "5 years", "the values stay as read"
+    located = next(c for c in llm.calls if "values read from form" in c.user)
+    assert '"track_record": "5 years"' in located.user and "subcontractor_name" not in located.user
 
 
-def test_the_pages_object_has_one_fixed_key_per_field_read():
-    for form in FORMS.values():
-        schema = reading_model(form).model_json_schema()
-        pages = schema["$defs"][f"Pages_{form.id}"]
-        assert set(pages["properties"]) == {f.name for f in form.read_fields}
-        assert pages["additionalProperties"] is False
+def test_a_single_page_form_makes_no_second_call(monkeypatch):
+    from test.fakes import FakeLLM, Rule
+    monkeypatch.setattr("app.checks.extract.read_png", lambda ref: b"png")
+    form = FORMS["price_schedule"]
+    pages = [{"seq": 3, "doc": "offer.pdf", "page": 3, "path": "", "has_text": False}]
+    llm = FakeLLM([Rule(reply={"present": True, "unit_price": "4.40", "page": 3}, match=r"extract form ")])
+    extract_form(form, pages, [3], "Tenderer_B", llm)
+    assert llm.count() == 1
