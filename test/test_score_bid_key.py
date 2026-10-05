@@ -5,14 +5,15 @@ BidResult shape breaks these tests rather than the scorer on a real bid.
 """
 import json
 
-from backend.schemas_api import BidResult, FieldValue, PageCitation, StageSummary
+from backend.schemas_api import BidResult, FieldValue, PageCitation, StageSummary, Verification
 from tools.key_from_ground_truth import key_from_truth
-from tools.score_bid_key import load_pages, score
+from tools.score_bid_key import format_score, load_pages, score
 
 
-def fv(value, page=None, file="offer.pdf", redacted=False) -> FieldValue:
+def fv(value, page=None, file="offer.pdf", redacted=False, verified=None) -> FieldValue:
     cite = PageCitation(doc_id="d", file=file, page=page, image_url="/x") if page else None
-    return FieldValue(value=value, redacted=redacted, page=cite)
+    check = Verification(verified=verified, method="second_read") if verified is not None else None
+    return FieldValue(value=value, redacted=redacted, page=cite, verification=check)
 
 
 def result(fields: dict) -> dict:
@@ -50,6 +51,22 @@ def test_a_value_where_the_key_says_blacked_out_is_invented():
     honest = result({"k": {"document": fv("Contact Details", 3), "tenderer_name": fv(None, 3, redacted=True)}})
     assert score(k, invented)["values"]["invented"] == 1
     assert score(k, honest)["values"]["invented"] == 0
+
+
+def test_each_value_is_counted_where_verification_sent_it():
+    """A wrong value V4 accepted reaches a verdict unseen; a flagged one goes to a reviewer."""
+    k = key(b=item(fields={"unit_price": f("24.60"), "currency": f("HK$"), "total": f("27,109,200.00"),
+                           "dosage": f("4.3")}),
+            k=item(form="contact_details", fields={"tenderer_name": f(redacted=True)}))
+    r = result({"b": {"document": fv("Price Schedule", 3), "unit_price": fv(24.6, 3, verified=True),
+                      "currency": fv("US$", 3, verified=False), "total": fv(27109200.0, 3, verified=False),
+                      "dosage": fv(None, 3)},
+                "k": {"document": fv("Contact Details", 3), "tenderer_name": fv("Tenderer A", 3, verified=True)}})
+    s = score(k, r)
+    assert s["verification"] == {"accepted": 2, "accepted_wrong": 1, "flagged": 2, "flagged_wrong": 1,
+                                 "unchecked": 1, "unchecked_wrong": 1}
+    assert s["accepted_precision"] == 0.5
+    assert "2 accepted by V4, 1 of them wrong" in format_score(s)
 
 
 def test_a_wrong_presence_and_wrong_pages_are_counted():
