@@ -64,15 +64,16 @@ def test_the_reading_model_is_fixed_per_form_and_names_every_field():
     assert model is reading_model(FORMS["contact_details"]), "built once"
     props = model.model_json_schema()["properties"]
     assert {"present", "document", "tenderer_name", "contact_person", "telephone", "email", "address", "facsimile",
-            "process_agent", "redacted", "page", "confidence"} == set(props)
+            "process_agent", "redacted", "pages", "page", "confidence"} == set(props)
     assert "0 to 1" in props["confidence"]["description"] and props["email"]["description"] == "the e-mail address as printed"
 
 
 def test_the_prompt_asks_for_what_is_printed_and_treats_pages_as_evidence():
     from app.checks.extract import PROMPT_VERSION, SYSTEM
 
-    assert PROMPT_VERSION == "extract-v6"
-    for phrase in ("exactly as printed", "signature present", "black bar", "Never infer", "present=false", "evidence", "between 0 and 1"):
+    assert PROMPT_VERSION == "extract-v7"
+    for phrase in ("exactly as printed", "signature present", "black bar", "Never infer", "present=false", "evidence",
+                   "between 0 and 1", "In `pages`"):
         assert phrase in SYSTEM, phrase
 
 
@@ -95,3 +96,27 @@ def test_a_value_read_wins_over_a_redacted_mark_and_a_placeholder_is_redacted():
     assert fields[key("tenderer_name")] == "Tenderer B Ltd" and fields[f"{key('tenderer_name')}_redacted"] is False
     assert fields[key("date")] is None and fields[f"{key('date')}_redacted"] is True
     assert fields[key("signature")] is None and fields[f"{key('signature')}_redacted"] is True
+
+
+def test_each_value_cites_its_own_page_and_falls_back_to_the_forms():
+    """One page for a whole multi-page form cited every value on its first page (2026-10-05)."""
+    form = FORMS["information_schedule"]
+    refs = [{"seq": s, "doc": "offer.pdf", "page": s} for s in (21, 22, 23, 24)]
+    reading = reading_model(form).model_validate({
+        "present": True, "page": 21, "track_record": "5 years", "business_entity_type": "limited company",
+        "shareholders_ownership": "as listed", "event_disclosure_box": "box (a) ticked",
+        "pages": {"track_record": 22, "event_disclosure_box": 24, "shareholders_ownership": 99}})
+    fields = fields_from(form, reading, refs)
+    page = lambda name: fields[f"{form.key(name)}_page"]["seq"]  # noqa: E731
+    assert page("track_record") == 22 and page("event_disclosure_box") == 24
+    assert page("business_entity_type") == 21, "no page given: the form's page"
+    assert page("shareholders_ownership") == 21, "a page outside the form: the form's page"
+    assert fields[f"{form.key('subcontractor_name')}_page"] is None, "no value, no citation"
+
+
+def test_the_pages_object_has_one_fixed_key_per_field_read():
+    for form in FORMS.values():
+        schema = reading_model(form).model_json_schema()
+        pages = schema["$defs"][f"Pages_{form.id}"]
+        assert set(pages["properties"]) == {f.name for f in form.read_fields}
+        assert pages["additionalProperties"] is False
