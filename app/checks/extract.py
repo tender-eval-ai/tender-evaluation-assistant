@@ -4,6 +4,7 @@ signature block; a confidence), turned into the engine's flat keys. No pages: th
 is absent and no call is made."""
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from pydantic import BaseModel, Field, create_model
@@ -13,7 +14,7 @@ from app.checks.pages import read_png
 from app.rulesets.schema import SlotKind
 from app.rulesets.slots import coerce
 
-PROMPT_VERSION = "extract-v5"
+PROMPT_VERSION = "extract-v6"
 
 SYSTEM = (
     "You read ONE form in ONE tenderer's offer to a tendering authority's goods tender from the page images given: "
@@ -38,14 +39,14 @@ def reading_model(form: Form) -> type[BaseModel]:
         fields: dict[str, Any] = {"present": (bool, Field(description="whether the pages hold this form"))}
         for f in form.read_fields:
             fields[f.name] = (str | None, Field(default=None, description=f.hint))
-        # Named from the form's own fields, each at most once: with a server-enforced schema
-        # (LLM_JSON_SCHEMA=1) a list that can only grow made a small local model repeat field
-        # names until it ran out of tokens (223 entries on a 12-page form, 2026-10-05).
-        # Validation stays as loose as before; fields_from ignores a name it does not know.
-        names = [f.name for f in form.read_fields]
+        # Bounded, with a server-enforced schema (LLM_JSON_SCHEMA=1): unbounded, a small local
+        # model repeated field names until it ran out of tokens (223 entries on a 12-page form,
+        # 2026-10-05). The names are not listed as an enum: offered the whole menu, the same
+        # model named nearly every field, including ones it had read. Validation stays loose;
+        # fields_from ignores a name it does not know.
         fields["redacted"] = (list[str], Field(default_factory=list, description="fields covered by a black bar",
-                                               json_schema_extra={"items": {"type": "string", "enum": names},
-                                                                  "maxItems": len(names), "uniqueItems": True}))
+                                               json_schema_extra={"maxItems": len(form.read_fields),
+                                                                  "uniqueItems": True}))
         fields["page"] = (int | None, Field(default=None, description="sequence number of the page the values were read from"))
         fields["confidence"] = (float, Field(default=0.0, ge=0.0, le=1.0,
                                              description="how sure you are of the values above, 0 to 1: 1 when every field "
@@ -66,6 +67,20 @@ def extract_form(form: Form, pages: list[dict], form_pages: list[int], vendor: s
     return fields_from(form, reading, refs)
 
 
+# A value that only says it is hidden ("[REDACTED]", "blacked out", "████", "XXXX").
+_PLACEHOLDER = re.compile(r"\W*(redacted|blacked[ -]?out|masked|covered|hidden|[█■▇*xX]{3,})\W*", re.I)
+
+
+def redacted_reading(value: Any, listed: bool) -> bool:
+    """Whether a field reads as covered by a black bar: its value is only a placeholder, or the
+    model named it in `redacted` and gave no value. A real value the model also named there
+    is kept, and verification checks it: on a masked offer a small model named fields it had
+    read as well (2026-10-05)."""
+    if isinstance(value, str) and _PLACEHOLDER.fullmatch(value.strip()):
+        return True
+    return listed and (value is None or (isinstance(value, str) and not value.strip()))
+
+
 def fields_from(form: Form, reading: BaseModel | None, refs: list[dict]) -> dict:
     """The flat keys: value, `_redacted`, `_confidence`, `_page` for every field of the menu,
     plus `_printed` beside a number. An absent form (no reading, or present=false) reports
@@ -82,7 +97,7 @@ def fields_from(form: Form, reading: BaseModel | None, refs: list[dict]) -> dict
         raw = getattr(reading, f.name, None) if present else None
         if f.name == "document" and present and not raw:
             raw = form.title
-        redacted = f.name in redacted_names
+        redacted = redacted_reading(raw, f.name in redacted_names)
         value: Any = None if redacted else raw
         if f.kind == "number" and value is not None:
             out[f"{key}_printed"] = str(value)
