@@ -70,12 +70,55 @@ and page, scored against a separate key:
 | Tender 2 | 13/13 | 13/13 | 13/13 | none |
 | Tender 3 | 21/21 | 21/21 | 21/21 | none |
 
-**Tests** — 757 Python (738 offline, 19 against Postgres), 119 browser-component (Vitest), 5
+**Bid check on two real bids.** Each bid is a 62-page scanned offer. Each is scored against its own answer key: a model prefilled the key from the page images, then a person checked it value by value and froze it. The scorer is `tools/score_bid_key.py`, and only numbers are recorded here.
+
+Tender 1 was the development bid: the fixes made before the held-out run were found on it. Tender 2 was held out and run **once**, at a recorded commit, fully local: one 8B open-weight model (Qwen3-VL-8B-Instruct) on a 16 GB Mac mini, with the project marked confidential so the gateway refuses every cloud endpoint.
+
+| Tender 2, held out (local, run once) | |
+|---|---|
+| Items present or absent, as in the key | 13 / 13 |
+| Numbers and dates (price, quantity, dosage, deadlines) | 5 / 5 |
+| All values, read exactly | 21 / 35 |
+| Values made up where the bid is blank or blacked out | 2, both flagged for a reviewer |
+| Wrongful disqualifications | 0 |
+| Time, cost | rule set 16 min 43 s; bid 38 min 47 s; $0 in API fees |
+
+**What runs on its own and what doesn't.**
+- **Numbers and dates** were read right every time, on both bids and with all three models below.
+- **Text fields** are where the misses are: names, entries, and above all long free-text answers such as lists of documents. Those stay with the reviewer. On the held-out bid, 42 of its 123 checks went to a person.
+
+**Same pipeline, three models.** The documents are redacted samples provided by the course, cleared by the instructor for this comparison. The cloud runs went to a single Azure OpenAI endpoint, the only host the gateway allows for that data class. Both bids are shown. Tender 1's local column is its final development run, so it isn't unseen.
+
+| | Qwen3-VL-8B, local | gpt-4.1-mini | gpt-5-mini (reasoning) |
+|---|---|---|---|
+| Numbers and dates, both bids | 14 / 14 | 14 / 14 | 14 / 14 |
+| All values, read exactly (Tender 1; Tender 2) | **23 / 38; 21 / 35** | 20 / 38; 18 / 35 | 21 / 37; 18 / 34 |
+| Rule-set gaps left for a person (fewer is better) | 43; 41 | 40; 38 | **29; 32** |
+| Wrongful disqualifications | 0 | 0 | 0 |
+| Time per tender (rule set + bid) | about 55 min | **about 6–9 min** | about 25 min |
+| API cost per tender | **$0** | about $0.27 | about $0.43 |
+
+gpt-5-mini read one item per bid as absent, so its values are out of 37 and 34.
+
+**Takeaways.**
+- On these scans, the open 8B model read as accurately as both cloud models, at no API cost.
+- The reasoning model drafted fuller rule sets: about a quarter fewer gaps. Many of its added rules check values the form menu doesn't read, so they go to a reviewer.
+
+**The runs led to eleven changes (#9–#19), each with a test.** Five of them:
+- **A false disqualification (#18):** a cloud model answered `""` for a blank, and the blank safety rule looked only for null.
+- **A form read as absent although its pages were found (#16):** the reading now goes to a reviewer instead of disqualifying.
+- **Citations per value, not per form (#13):** on forms longer than one page, values cited on their own page rose from 5 of 23 to 21 of 23. The fix was developed on Tender 1, then measured on Tender 2.
+- **Spaced thousands (#10):** a quantity printed as "1 000 000" was converted to 1.
+- **A model's output that ran on until it was cut off** used to stop a whole check (#9, #17).
+
+Method, every measure, and the limits (two bids, exact matching, keys prefilled by a model): [`docs/evals/bid_keys.md`](docs/evals/bid_keys.md).
+
+**Tests** — 770 Python (751 offline, 19 against Postgres), 119 browser-component (Vitest), 5
 end-to-end (Playwright), run by CI on every pull request: lint and a secrets and dependency
 scan, the offline suite, Postgres integration, web and e2e.
 
-Full method and per-document numbers: [`docs/evals/parser_l0.md`](docs/evals/parser_l0.md)
-and [`docs/evals/ruleset_l1_l4.md`](docs/evals/ruleset_l1_l4.md).
+Full method and per-document numbers: [`docs/evals/parser_l0.md`](docs/evals/parser_l0.md),
+[`docs/evals/ruleset_l1_l4.md`](docs/evals/ruleset_l1_l4.md) and [`docs/evals/bid_keys.md`](docs/evals/bid_keys.md).
 
 ## Architecture
 
@@ -325,7 +368,8 @@ documents should never leave the buyer's own network. The gateway enforces that 
 `confidential` project reaches local endpoints only. The target is the same compose stack on a
 DGX Spark with vLLM serving the local models: point `GITHUB_MODELS_BASE_URL` at it in `.env`,
 and build the images for ARM (`docker compose build` on the GB10, or `--platform linux/arm64`).
-It hasn't been run on that hardware yet. Set a strong `API_KEY` whenever the services are
+It hasn't been run on that hardware yet. The whole pipeline has run fully local on a 16 GB Mac mini
+with one 8B open-weight model, for the real-bid evaluation under [Results](#results). Set a strong `API_KEY` whenever the services are
 reachable by anyone but you, and keep port 8000 (API) firewalled: the UI on 8080 is the only
 thing users need.
 
@@ -346,12 +390,13 @@ offer once, at triage.
 
 Stated, not fixed (checklist J11, item 13):
 
-- **Sign-in.** There is no single sign-on with an organisation's own identity provider (OIDC). The demo signs people in with Azure in front of the app, and the API trusts one shared key. There are no per-user roles yet; they come after the S4 run (J11, item 12).
+- **Sign-in.** There is no single sign-on with an organisation's own identity provider (OIDC). The demo signs people in with Azure in front of the app, and the API trusts one shared key. There are no per-user roles yet (J11, item 12).
 - **The model budget.** The gateway checks the daily budget before a call and adds the cost after it, so workers running at once can go slightly over it. A rate-limited job is retried with a growing wait, but a single call is not.
 - **Type checking.** Ruff and the tests run in CI, but no type checker does.
 - **Metrics and alerts.** The Azure demo writes its logs to Log Analytics. There are no dashboards or alerts.
 - **Stages III to V.** Technical marking and the combined score aren't built.
 - **PyMuPDF.** The parser depends on PyMuPDF and `pymupdf-layout`, whose licences limit reuse (see [Licence](#licence-before-you-reuse-this)). Replacing them is not planned.
+- **Text on scans.** On the two real bids, every number and date was read right, but text fields were read exactly only about half the time (short ones) and a third of the time (long free text), with each of the three models tried. They are left to the reviewer, and no bid is decided without one.
 - **Conditions.** A rule's `condition` ("where the tenderer is not the manufacturer") is recorded but not evaluated. Such a rule never disqualifies on a blank; a reviewer confirms instead.
 
 ## Next: tenders in other formats
