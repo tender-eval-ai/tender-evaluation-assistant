@@ -103,6 +103,8 @@ def test_reasoning_models_get_no_temperature():
     params = LLM(Config())._params
     assert "temperature" not in params("openai/o3", [], json_mode=True)
     assert params("openai/gpt-4.1", [], json_mode=True)["temperature"] == 0
+    assert "temperature" not in params("gpt-5-mini", [], json_mode=True), "gpt-5 reasons too"
+    assert params("gpt-5-chat", [], json_mode=True)["temperature"] == 0, "its chat variant does not"
     assert params("openai/gpt-4.1", [], json_mode=True)["response_format"] == {"type": "json_object"}
     assert "response_format" not in params("openai/gpt-4.1", [], json_mode=False)
 
@@ -122,6 +124,17 @@ def test_max_tokens_cap_is_optional(monkeypatch):
     monkeypatch.setenv("LLM_MAX_TOKENS", "4096")
     llm = LLM(Config())
     assert llm._params("m", [], True)["max_tokens"] == 4096
+    reasoning = llm._params("gpt-5-mini", [], True)
+    assert reasoning["max_completion_tokens"] == 4096 and "max_tokens" not in reasoning, "the reasoning models' name for it"
+
+
+def test_reasoning_effort_reaches_reasoning_models_only(monkeypatch):
+    monkeypatch.setenv("LLM_REASONING_EFFORT", "low")
+    llm = LLM(Config())
+    assert llm._params("gpt-5-mini", [], True)["reasoning_effort"] == "low"
+    assert "reasoning_effort" not in llm._params("qwen3-vl:8b-instruct-32k", [], True)
+    monkeypatch.delenv("LLM_REASONING_EFFORT")
+    assert "reasoning_effort" not in LLM(Config())._params("gpt-5-mini", [], True)
 
 
 def test_json_schema_mode_sends_the_pydantic_schema(monkeypatch):
