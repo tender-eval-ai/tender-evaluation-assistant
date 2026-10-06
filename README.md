@@ -396,7 +396,7 @@ Stated, not fixed (checklist J11, item 13):
 - **Metrics and alerts.** The Azure demo writes its logs to Log Analytics. There are no dashboards or alerts.
 - **Stages III to V.** Technical marking and the combined score aren't built.
 - **PyMuPDF.** The parser depends on PyMuPDF and `pymupdf-layout`, whose licences limit reuse (see [Licence](#licence-before-you-reuse-this)). Replacing them is not planned.
-- **Text on scans.** On the two real bids, every number and date was read right, but text fields were not: about half of the short ones and a third of the long ones, with any of the three models tried. They are left to the reviewer, and no bid is decided without one.
+- **Text on scans.** On the two real bids, every number and date was read right, but text fields were read exactly only about half the time (short ones) and a third of the time (long free text), with each of the three models tried. They are left to the reviewer, and no bid is decided without one.
 - **Conditions.** A rule's `condition` ("where the tenderer is not the manufacturer") is recorded but not evaluated. Such a rule never disqualifies on a blank; a reviewer confirms instead.
 
 ## Next: tenders in other formats
